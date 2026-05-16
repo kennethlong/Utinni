@@ -42,7 +42,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 2 plans
 **Plans**:
 - [x] 01-01-PLAN.md — Test project scaffold: .editorconfig, UtinniCoreDotNet.Tests SDK-style xUnit csproj + HotkeyTests.cs (3 pass + 1 C-08-Skip), Utinni.sln update, packages.lock.json
-- [ ] 01-02-PLAN.md — CI workflow: .github/workflows/ci.yml on windows-2022 (project-targeted dotnet test), README badge for master, test-the-tester human-verify checkpoint
+- [x] 01-02-PLAN.md — CI workflow: .github/workflows/ci.yml on windows-2022 (project-targeted dotnet test), README badge for master, test-the-tester human-verify checkpoint
 
 ### Phase 2: Critical bug burn-down (C-01..C-15)
 **Goal**: All 15 critical bugs enumerated in assessment.md are closed. Framework no longer exhibits the listed silent failures, crashes, or data losses; class-of-bug constraints CON-H-01..-05, CON-L-01..-04, CON-B-04, CON-D-01 are honoured going forward.
