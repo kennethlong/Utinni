@@ -22,6 +22,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UtinniCoreDotNet", "UtinniC
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UtinniCoreDotNetGen", "UtinniCoreDotNetGen\UtinniCoreDotNetGen.csproj", "{88A2EDD9-FBE1-4D66-A867-6359B31566D3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UtinniCoreDotNet.Tests", "UtinniCoreDotNet.Tests\UtinniCoreDotNet.Tests.csproj", "{F82DC2C0-B957-4EAC-994A-9E95EA12D70D}"
+	ProjectSection(ProjectDependencies) = postProject
+		{39AB8A43-B916-4C6E-87DD-928B438CAE68} = {39AB8A43-B916-4C6E-87DD-928B438CAE68}
+	EndProjectSection
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UtINI", "UtINI\UtINI.vcxproj", "{5F903813-E62A-49F6-8B3E-0443DECADB5D}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UtinniCore-Symbols", "UtinniCore-Symbols\UtinniCore-Symbols.vcxproj", "{10EA6136-AAA0-4F1D-8117-07081C785E5B}"
@@ -69,6 +74,11 @@ Global
 		{10EA6136-AAA0-4F1D-8117-07081C785E5B}.Release|x86.Build.0 = Release|Win32
 		{10EA6136-AAA0-4F1D-8117-07081C785E5B}.RelWithDbgInfo|x86.ActiveCfg = RelWithDbgInfo|Win32
 		{10EA6136-AAA0-4F1D-8117-07081C785E5B}.RelWithDbgInfo|x86.Build.0 = RelWithDbgInfo|Win32
+		{F82DC2C0-B957-4EAC-994A-9E95EA12D70D}.Debug|x86.ActiveCfg = Debug|x86
+		{F82DC2C0-B957-4EAC-994A-9E95EA12D70D}.Debug|x86.Build.0 = Debug|x86
+		{F82DC2C0-B957-4EAC-994A-9E95EA12D70D}.Release|x86.ActiveCfg = Release|x86
+		{F82DC2C0-B957-4EAC-994A-9E95EA12D70D}.Release|x86.Build.0 = Release|x86
+		{F82DC2C0-B957-4EAC-994A-9E95EA12D70D}.RelWithDbgInfo|x86.ActiveCfg = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
