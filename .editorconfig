@@ -1,0 +1,32 @@
+﻿# See http://editorconfig.org to read about the EditorConfig format.
+# Codifies the de-facto conventions documented in .planning/codebase/CONVENTIONS.md
+# without enforcing analyzer rules (those land in Phase 6 with .clang-format).
+# Vendored external/imgui/.editorconfig is preserved and overrides this file
+# for files under external/imgui/.
+
+root = true
+
+[*]
+indent_style = space
+indent_size = 4
+end_of_line = crlf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# C#, C++, and headers - Allman braces enforced by file content (no analyzer rules this phase)
+[*.{cs,cpp,h}]
+indent_style = space
+indent_size = 4
+
+# Markdown - preserve trailing whitespace so two-space line breaks are not stripped
+[*.md]
+trim_trailing_whitespace = false
+
+# YAML (e.g. GitHub Actions) - 2-space indent per de-facto convention
+[*.{yml,yaml}]
+indent_size = 2
+
+# Makefiles require tabs (POSIX)
+[Makefile]
+indent_style = tab
