@@ -1,0 +1,56 @@
+# Source: github.com/microsoft/setup-msbuild (README v2), docs.github.com/en/actions/how-tos/monitor-workflows/add-a-status-badge
+# Verified action versions as of 2026-05-16: actions/checkout@v4, actions/cache@v4,
+# actions/upload-artifact@v4, microsoft/setup-msbuild@v2.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build (Release|x86) + Test (net472)
+    runs-on: windows-2022          # deterministic pin; windows-latest now points at windows-2025 (migrated 2025-09-02); revisit in Phase 6
+    timeout-minutes: 25            # generous — first cold-cache runs include NuGet restore + CppSharp post-build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1           # no history needed for build
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json', '**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+        # windows-2022 has VS 2022 with v142 toolset preinstalled
+        # (Microsoft.VisualStudio.ComponentGroup.VC.Tools.142.x86.x64); MSBuild auto-selects v142
+        # because PlatformToolset=v142 is declared in every .vcxproj. RESEARCH §Pitfall 1.
+
+      - name: Build solution (Release|x86)
+        run: msbuild Utinni.sln /m /restore /p:Configuration=Release /p:Platform=x86 /p:RestorePackagesConfig=true
+        # Fires CON-T-01 PostBuildEvent on UtinniCore (xcopy data/ + UtinniCoreDotNetGen.exe). STAB-04 preservation: invoke the chain; do not refactor.
+
+      - name: Run tests (net472 / x86)
+        run: dotnet test UtinniCoreDotNet.Tests/UtinniCoreDotNet.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal" --logger "trx;LogFileName=test-results.trx"
+        # Project-targeted (not `dotnet test Utinni.sln`) per RESEARCH §Pitfall 2 — dotnet/sdk#9007 + microsoft/vstest#1129 confirm the solution form fails on mixed C++/C# solutions.
+        # --no-build because msbuild above already produced bin/Release/net472/UtinniCoreDotNet.Tests.dll.
+
+      - name: Upload test results (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: UtinniCoreDotNet.Tests/TestResults/*.trx
+          if-no-files-found: warn
