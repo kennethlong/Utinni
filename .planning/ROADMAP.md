@@ -41,7 +41,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. `.editorconfig` exists at repo root and is applied by the build.
 **Plans**: 2 plans
 **Plans**:
-- [ ] 01-01-PLAN.md — Test project scaffold: .editorconfig, UtinniCoreDotNet.Tests SDK-style xUnit csproj + HotkeyTests.cs (3 pass + 1 C-08-Skip), Utinni.sln update, packages.lock.json
+- [x] 01-01-PLAN.md — Test project scaffold: .editorconfig, UtinniCoreDotNet.Tests SDK-style xUnit csproj + HotkeyTests.cs (3 pass + 1 C-08-Skip), Utinni.sln update, packages.lock.json
 - [ ] 01-02-PLAN.md — CI workflow: .github/workflows/ci.yml on windows-2022 (project-targeted dotnet test), README badge for master, test-the-tester human-verify checkpoint
 
 ### Phase 2: Critical bug burn-down (C-01..C-15)
