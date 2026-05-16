@@ -17,4 +17,9 @@
   <ItemGroup>
     <ProjectReference Include="..\UtinniCoreDotNet\UtinniCoreDotNet.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- HotkeyTests.cs uses Keys enum and key chord syntax from System.Windows.Forms,
+         mirroring the production UtinniCoreDotNet.csproj which also declares this reference. -->
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
 </Project>
