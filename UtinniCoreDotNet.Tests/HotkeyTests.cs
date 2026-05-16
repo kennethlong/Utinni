@@ -57,6 +57,8 @@ namespace UtinniCoreDotNet.Tests
             Assert.Equal(expectedKey, hk.Key);
         }
 
+        [Fact] public void Verify_TestRunner_FailsBuild_OnAssertFalse() => Assert.True(false, "intentional failure for test-the-tester");
+
         [Fact(Skip = "C-08: expected to fail until Phase 2 fix lands (Enum.TryParse refactor on Hotkey.cs:82,91). " +
                       "When unskipped, this asserts that malformed input like 'Ctrl + T' (note 'Ctrl' is not a valid Keys enum name - should be 'Control') is gracefully handled instead of throwing ArgumentException.")]
         public void Ctor_StringConstructor_MalformedInput_DoesNotThrow()
