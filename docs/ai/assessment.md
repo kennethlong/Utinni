@@ -1,0 +1,552 @@
+# Code-quality assessment
+
+> **Status:** Audit completed 2026-05-16 across three parallel reviewers
+> (native C++, managed C#, build/SDK/tooling). This document captures the
+> full findings as a single reference. It's the work-list that gets us to a
+> stable 1.0 base for the [vision](vision.md) — a one-stop modding tool
+> for SWG.
+
+## Executive summary
+
+**The architecture is solid. The execution has real bugs but they're all
+localised and fixable — none touch the foundational design.**
+
+The framework's *shape* is good: clean separation between the SWG shim
+layer (`swg::*`), the public façade (`utinni::*`), the CLR bridge, the MEF
+plugin contract, and the editor host. The detour-installation convention is
+uniform and easy to extend. The two-language plugin model (C++ + C#) is
+consistent and well-documented. The undo/redo event model, hotkey manager
+with INI persistence, themed WinForms controls, and `*Impl`-separated
+plugin pattern (from the Jawa Toolbox) are all things to *keep*.
+
+The risky stuff lives in well-known files — none of them are foundations.
+You can ship fixes incrementally without rewriting anything. The biggest
+investment isn't a code rewrite; it's adding **CI** so the next change
+doesn't silently regress.
+
+### Effort estimate
+
+| Phase | Effort | Outcome |
+| --- | --- | --- |
+| Fix the 15 critical bugs | ~2 person-weeks | Framework is reliable. No more silent failures. |
+| Do the 8 strategic reworks | ~3–4 person-weeks | Plugin authoring is genuinely pleasant. CI catches regressions. |
+| Cleanups + dep bumps | ~1 person-week | Modern toolchain, no dead code. |
+| **Total to a confident "1.0"** | **~6–8 person-weeks** | Sovereign fork ready to advance independently of upstream. |
+
+### Findings summary
+
+- **15 critical issues** — must fix; cause crashes, silent failures, or data loss
+- **8 strategic reworks** — 1–2 days each, significant pay-back
+- **~30 cleanups** — low-risk tidying, dead-code removal, naming consistency
+- **24 solid foundations** — explicitly call-out so they don't get touched
+- **8 open questions** — need someone-who-knows-the-history to answer
+
+---
+
+## 🔴 Critical issues (must fix)
+
+Ordered roughly by impact.
+
+### C-01 — `DllMain` does `CreateThread → main() → LoadLibrary` inside the loader lock
+
+**File:** `UtinniCore/utinni.cpp:138-151`
+**Problem:** The spawned thread immediately walks plugin DLLs via
+`LoadLibrary` and brings up the CLR (`CoInitializeEx`, `mscoree`).
+Microsoft explicitly forbids both inside `DLL_PROCESS_ATTACH`. Works today
+only because the launcher's `WaitForSingleObject(hThread)` happens to
+serialize things. Load-bearing luck.
+**Fix:** Defer all heavy startup until the first SWG callback fires (e.g.
+inside `Game::install`), or have the launcher trigger startup via a separate
+`CreateRemoteThread` call to an exported `utinni_init` function after
+`LoadLibraryA` returns.
+**Severity / effort:** High / Medium.
+
+### C-02 — Cross-CRT `delete[]` in config override path
+
+**File:** `UtinniCore/swg/misc/config.cpp:65-72`
+**Problem:** SWG allocates the buffer with its own CRT; Utinni `delete[]`s
+with its own. Undefined behaviour; the following line then double-frees via
+the SWG dtor.
+**Fix:** Use SWG's own buffer-free function. Verify from IDA decomp.
+**Severity / effort:** High / Medium.
+
+### C-03 — `Network::cast` returns uninitialized stack memory
+
+**File:** `UtinniCore/swg/misc/network.cpp:65-69`
+**Problem:** `swgptr networkId;` is never written before the cast call,
+and the call's return value is discarded. Comment `// This is broken`
+admits it. Caller `WorldSnapshotReaderWriter::Node::getNodeNetworkId`
+blindly forwards garbage.
+**Fix:** Reverse-engineer the real ABI (likely returns through the first
+parameter) or remove the function until correct.
+**Severity / effort:** High / Low.
+
+### C-04 — `GroundSceneCallbacks.DequeuePostDrawLoopCalls` drains the wrong queue
+
+**File:** `UtinniCoreDotNet/Callbacks/GroundSceneCallbacks.cs:97-106`
+**Problem:** Drains `preDrawLoopCallQueue` instead of
+`postDrawLoopCallQueue`. `AddPostDrawLoopCall` is effectively a no-op for
+post-draw semantics. Likely undetected since 2020.
+**Fix:** Two-line change. Factor a `Drain(ConcurrentQueue<Action>)` helper
+so this category of bug can't reoccur.
+**Severity / effort:** High / Low.
+
+### C-05 — `GameDragDropEventHandlers` static-field pattern silently breaks drag-drop
+
+**File:** `UtinniCoreDotNet/UI/GameDragDropEventHandlers.cs:33-44`,
+called from `UI/Controls/PanelGame.cs:68`
+**Problem:** `Initialize(panel)` is called before any subscriber exists, so
+it wires `panel.DragDrop += null` once and that's it. Later
+`OnDragDrop += handler` only mutates the static field, never the panel's
+event. Plugin drag-drop handlers never fire on the live game window. (The
+Jawa Toolbox object-browser drag-drop may be working via a different path;
+needs verification.)
+**Fix:** Replace with a proper `static event` and a single forwarder, or
+expose the `PanelGame` instance and let plugins subscribe directly.
+**Severity / effort:** High / Low.
+
+### C-06 — `PluginLoader.Load` swallows every plugin exception silently
+
+**File:** `UtinniCoreDotNet/PluginFramework/PluginLoader.cs:39-73`
+**Problem:** If any plugin DLL throws during composition (missing
+dependency, ctor exception, ambiguous export, x86/x64 mismatch, hotkey ctor
+crash — see C-08), `ComposeParts` throws and the *entire* editor tears
+down with no message telling the user which plugin caused it.
+**Fix:** Wrap per-plugin in its own `AssemblyCatalog` + try/catch. Log the
+offending DLL name and `ReflectionTypeLoadException.LoaderExceptions[*]`.
+Allow surviving plugins to load.
+**Severity / effort:** High / Low–Medium.
+
+### C-07 — `UndoRedoManager` is thread-unsafe and `AllowMerge` is dead code
+
+**File:** `UtinniCoreDotNet/UndoRedo/UndoRedoManager.cs:60-74`
+**Problem:** `Stack<T>` mutated from the game thread (when commands are
+pushed from callbacks) and the UI thread (when user clicks Undo) without
+locks. `AllowMerge()` is declared but **never called** — the manager always
+invokes `Peek().Merge(new)` and trusts the return. `RedoCommands.Clear()`
+happens before the merge check, so a merged-away command still clears redo.
+**Fix:** Lock around stack mutations. Decide what `AllowMerge` means and
+either call it or delete it. Document the merge contract.
+**Severity / effort:** High / Medium.
+
+### C-08 — `Hotkey.ProcessString` throws on any unknown enum token → triggers C-06
+
+**File:** `UtinniCoreDotNet/Hotkeys/Hotkey.cs:66-92`
+**Problem:** `Enum.Parse` on a typo'd `input.ini` ("Ctrl + T") throws from
+the plugin ctor → MEF composition fails → entire editor dies silently
+(because of C-06). Compounding bug.
+**Fix:** `Enum.TryParse`. Log + disable the hotkey on failure rather than
+throwing.
+**Severity / effort:** High / Low.
+
+### C-09 — UI thread busy-waits on the game thread during minimize / restore
+
+**File:** `UtinniCoreDotNet/UI/Forms/FormMain.cs:57-78`
+**Problem:** `WM_SYSCOMMAND` handler does `BlockPresent(true)` then
+`while (IsPresentBlocked()) Thread.Sleep(1)`. If the game thread is
+awaiting the UI thread for any reason, hard deadlock. Comment admits
+"Find better solution in the future."
+**Fix:** Timed `WaitOne` on an event the native side signals, with a
+fallback timeout (e.g. 100 ms).
+**Severity / effort:** High / Medium.
+
+### C-10 — `clr::stop()` dereferences nulls after a failed `clr::load()`
+
+**File:** `UtinniCore/clr.cpp:93-102`
+**Problem:** No null checks on `Release` calls. If startup fails (any of
+four `SUCCEEDED(hr)` branches) the cleanup path already nulled the
+pointers — then `detatch()` calls `stop()` again from
+`DLL_PROCESS_DETACH` and crashes.
+**Fix:** Null-check before each `Release`, null after. Or `ComPtr`.
+**Severity / effort:** High / Low.
+
+### C-11 — DirectX9 hook installation has no null check on pattern scan
+
+**File:** `UtinniCore/swg/graphics/directx9.cpp:297-303`
+**Problem:** `findPattern` can return 0 (pattern not found, `d3d9.dll`
+not yet loaded). The code then does `memcpy` from address `0x2` →
+immediate crash.
+**Fix:** Bail with logged error if `findPattern` or
+`GetModuleHandle("d3d9.dll")` returns 0.
+**Severity / effort:** Medium / Low.
+
+### C-12 — VSIX manifest pins to VS 2019 only (`[16.0,17.0)`)
+
+**File:** `sdk/UtinniPluginTemplates/Vsix/source.extension.vsixmanifest:9-11,17`
+**Problem:** Any contributor with VS 2022 cannot install the templates.
+The most visible thing breaking new-user onboarding today.
+**Fix:** Widen to `[16.0,18.0)`. Bump `Microsoft.VisualStudio.SDK`
+PackageReference. Test extension load in both IDEs.
+**Severity / effort:** High / Medium.
+
+### C-13 — Jawa Toolbox Debug config has a wrong relative path
+
+**File:** `UtinniPlugins/The Jawa Toolbox/TheJawaToolbox/TheJawaToolbox.vcxproj:63`
+**Problem:** Uses `..\..\..\..\` (four) while Release uses `..\..\..\`
+(three). Debug builds drop their output in `D:/bin/` — nowhere usable. The
+`.sln` also lacks `Debug|Win32.Build.0` for this project, masking the
+breakage.
+**Fix:** Three dots. Restore the `.sln` build entry.
+**Severity / effort:** High / Trivial.
+
+### C-14 — `utinni.cfg` ships with `login.swgemu.com:44453` as default
+
+**File:** `data/utinni.cfg:4-5`
+**Problem:** For a sovereign fork this defaults users into SWGEmu's
+infrastructure. Some shards may not auth Utinni-launched clients — could
+violate ToS too.
+**Fix:** Blank both. Add comment about set-your-server-host.
+**Severity / effort:** High / Trivial.
+
+### C-15 — CppSharp `slnDir` computation is brittle
+
+**File:** `UtinniCoreDotNetGen/Program.cs:39-41`
+**Problem:** Requires the binary's path to literally contain `\bin\`. CI
+runners or non-default output directories throw
+`ArgumentOutOfRangeException`.
+**Fix:** Pass `$(SolutionDir)` as `args[0]`, or walk up looking for
+`Utinni.sln`, or env var.
+**Severity / effort:** High / Low.
+
+---
+
+## 🟡 Strategic reworks worth doing
+
+These need 1–2 days each but pay back significantly:
+
+### R-A — Symmetric callback `Add` / `Remove` everywhere
+
+Native callbacks take raw C function pointers and have **no `Remove`**
+anywhere. Managed `Add*Callback` has asymmetric `Remove` coverage (some
+have it, some don't). Plugins that subscribe and then dispose continue to
+fire callbacks against dead controls — eventual `ObjectDisposedException`
+on `Control.BeginInvoke`.
+**Fix:** Standardize on a tagged-handle pattern: `Subscribe()` returns an
+`IDisposable` / opaque handle, `Unsubscribe(handle)` removes it. Or
+convert to proper `event` semantics. Mechanical across ~15 files but worth
+it.
+
+### R-B — Plugin lifecycle contract
+
+Native `PluginManager::~PluginManager` does `delete plugin` — only safe if
+plugin uses the same CRT. Adding a `destroyPlugin` symmetric export is the
+right contract. While there: log `LoadLibrary` failures (currently
+silent), track `HMODULE`s, and call `plugin->init()` after the load loop
+(it's declared but **never called** today).
+**Fix:** Symmetric `createPlugin` / `destroyPlugin` ABI. Call `init()`
+after the load loop. Log failures. Track and `FreeLibrary` on shutdown.
+
+### R-C — Single source of truth for hard-coded RVAs
+
+`0x00AA0970` (SWG WndProc) is duplicated in
+`UtinniCore/swg/client/client.cpp:43` and
+`UtinniCoreDotNet/UI/Controls/PanelGame.cs:40`. Same with the two
+`isSafeToUse` flag addresses (and the doc says `&&` while the code uses
+`||` — actual bug somewhere).
+**Fix:** Expose `Client::getSwgWndProc()` via `UTINNI_API`, have
+`PanelGame.WndProc` resolve it at runtime. Same pattern for any other RVA
+that leaks out of `UtinniCore/swg/*`.
+
+### R-D — Add CI — even just a build job
+
+There is no CI, no tests, no analyzers, no `.editorconfig`. A single
+30-line `.github/workflows/build.yml` invoking `msbuild Utinni.sln
+/p:Configuration=Release /p:Platform=x86` catches 90% of regressions
+immediately.
+**Fix:** Build workflow first. `.editorconfig` second. Smoke-test xUnit
+project third.
+
+### R-E — Replace `Log` `StackTrace` reflection with `[CallerMemberName]`
+
+`UtinniCoreDotNet/Utility/Log.cs:50-69`. Walks the stack on every call —
+expensive when class/function name prefixing is enabled.
+`[CallerMemberName]` and `[CallerFilePath]` are compile-time, free at
+runtime.
+**Fix:** Mechanical refactor.
+
+### R-F — CppSharp header auto-discovery
+
+`UtinniCoreDotNetGen/Program.cs:67-92` lists 27 headers; the
+`UtinniCore/swg/` tree has ~60. New C++ APIs silently miss being projected
+to managed unless someone remembers to register them in `Program.cs`. The
+TODO comment admits this.
+**Fix:** Glob `UtinniCore/**/*.h`, filter by blocklist / `_internal/`
+convention.
+
+### R-G — `Directory.Build.props` wizard is destructive-by-omission
+
+`sdk/UtinniPluginTemplates/Vsix/Utility/Props.cs:9-14`. If a
+`Directory.Build.props` already exists, the wizard silently returns —
+plugin then fails to find `UtinniCoreDotNet.dll` with no useful error.
+**Fix:** Idempotent merge (parse existing, inject missing properties) or
+emit a separate `Utinni.props` and Import it.
+
+### R-H — `SynchronizedCollection` iteration races
+
+Native callback vectors and managed `SynchronizedCollection<T>` callback
+lists are iterated without locking around the enumeration. A subscriber
+adding/removing during dispatch throws `InvalidOperationException`.
+**Fix:** Snapshot `.ToArray()` under the collection's `SyncRoot` before
+iterating, then iterate the snapshot. Same pattern for the native
+`std::vector` callback stores — copy-on-iterate.
+
+---
+
+## 🟢 Easy cleanups (quick wins)
+
+### Dead code to delete (~250 lines)
+
+- `Launcher/main.cpp:33-172` — the entire `attachToVisualStudio` block with
+  `#import` typelib magic. Comment admits it never worked. Recoverable
+  from git history if anyone wants it.
+- `utinni.cpp:71,75` — commented-out detours (`cuiIntro`,
+  `cuiMediatorFactorySetup`).
+- `swg/scene/render_world.cpp` `hkRender` / `hkClearVisibleCells` — disabled
+  experimental bodies, file is now effectively just
+  `addObjectNotifications`.
+- `swg/scene/client_world.cpp:46-58,63` — `hkInternalCollide` exists but
+  isn't hooked.
+- `swg/misc/io_win.cpp:50-57` — `IoWin::hkDraw` is hooked nowhere.
+- `swg/ui/cui_chat_window.cpp:166`, `cui_io.cpp:96`, `cui_hud.cpp:164,168`,
+  `appearance.cpp:102-103` — commented-out detours.
+- `swg/appearance/particle.cpp`, `swg/scene/scene.cpp` — empty `.cpp` files.
+
+### Typos / consistency
+
+- `void detatch()` → `void detach()` in `utinni.cpp:132`.
+- `Log.AddOuputSinkCallback` → `AddOutputSinkCallback` (with `[Obsolete]`
+  shim for compat). `Utility/Log.cs:121,126`.
+- `// Executes/redose` → `redoes` in `IUndoCommand.cs:31`.
+- `licenses.txt` has `Jo�o Matos` (mojibake — should be `João`) and is
+  missing **DetourXS** and **nvapi** entries.
+- Stray semicolons after `#include "utinni.h";` and similar.
+- 3-space / 4-space / tab-mixed indentation across the C++ tree. Adopt a
+  `.clang-format` and run once.
+
+### Pointlessly inconsistent
+
+- `Add*Callback` (persistent) vs `Add*Call` (queue) naming is not enforced
+  by type. Pick one suffix scheme and rename.
+- `OnUpdateCommandsCallback` / `OnUndo` / `OnRedo` in `FormMain.cs:230-246`
+  are identical — three callbacks plumbed for one effect.
+- `Native.SendMessage` uses `int wParam, int lParam` — should be `IntPtr`.
+- `TJT.ico` baked into the framework as default form icon — that's a
+  plugin's branding, not the framework's.
+- Empty `namespace Std {}` blocks in `Generated/StdEdited.cs`.
+
+### Build / config polish
+
+- Windows SDK target versions differ across `.vcxproj` files (`10.0` vs
+  `10.0.19041.0` vs `10.0.16299.0`). Pick one in a shared
+  `Directory.Build.props`.
+- DXSDK include / lib paths only set in `RelWithDbgInfo` config — Debug /
+  Release fail silently if user doesn't have `DXSDK_DIR` env var.
+- `UtinniCoreDotNetGen.csproj:37-48` has `PlatformTarget=x64` and
+  `Prefer32Bit=true` together — incoherent. Drop `Prefer32Bit`.
+- `ExampleEditorPlugin.csproj:28` — Release config outputs to
+  `bin\Debug\Plugins\...`. Copy-paste bug.
+- `.gitignore` excludes `Std.cs` but `StdEdited.cs` is committed — document
+  the convention.
+
+---
+
+## ✅ Solid foundations (don't refactor)
+
+These are well-designed and load-bearing — leave them alone:
+
+### Native architecture
+
+- The `swg::<subsystem>` namespace **detour-table pattern**
+  (`using pX = ...; pX x = (pX)0xRVA;` then optional `Detour::Create` swaps
+  the slot). Uniform, greppable, makes per-build RVA churn a single-table
+  find/replace.
+- The `utinni::` thin-wrapper firewall over `swg::*` — right separation
+  between "messy RE'd SWG" and "callable from CLR + plugins."
+- Mid-function naked trampolines (`midPopCell`, `midCrashLogWrite`,
+  `midCtor`) with `pushad`/`popad` register save — uniform and correct.
+- `utility/memory::copy` / `createJMP` bracket every write with
+  `VirtualProtect` save/restore.
+- The Launcher's suspended-process + EP-park (`EB FE`) +
+  `CreateRemoteThread(LoadLibraryA)` + OEP-restore — textbook
+  implementation.
+- `imgui_impl` device-loss handling (`isSetup` guard, invalidate/recreate
+  on `hkReset`).
+- `Game::loadScene`'s two-frame state machine (`loadNewScene` +
+  `sceneCleaned` ping-pong).
+- `PluginManager` pImpl idiom keeping STL out of the DLL boundary.
+- `spdlog::sinks::base_sink<std::mutex>` for the `OutputSink` — correct.
+
+### Managed architecture
+
+- The `IPlugin` / `IEditorPlugin` interfaces are minimal and friendly. Null
+  returns from `GetForms()` etc. are a clean low-coupling SPI.
+- `[InheritedExport]` for MEF discovery — plugin authors just implement
+  the interface.
+- `WorldSnapshotCommands` copy-on-construct
+  (`new WorldSnapshotReaderWriter.Node(node)`) — captures state at
+  command-creation time rather than dereferencing potentially-dangling
+  natives.
+- `HotkeyManager`'s `CreateSettings` / `Load` / `Save` triplet against
+  `UtINI` — clean opt-in persistence.
+- `UndoRedoManager.OnCleanupCallback` clearing both stacks on scene-cleanup
+  — prevents undoing into a dead world.
+- `UtinniForm`'s custom title bar via `OnPaint` + `WM_NCHITTEST` regions —
+  sensible WinForms-only approach.
+- `Log.AddOutputSinkCallback` pattern (modulo typo): UI-agnostic fanout;
+  `FormLog` correctly marshals via `BeginInvoke`.
+- `PanelGame.PanelGame_Layout` re-calls `Client.SetHwnd(Handle)` on every
+  layout — subtle but correct for re-parenting.
+- `FormObjectBrowser`'s drag-drop orchestration (preview-object follows
+  cursor, ray-cast via `cui_hud.CollideCursorWithWorld`, commit on drop) —
+  genuinely good design worth documenting as canonical.
+
+### Process / tooling
+
+- The `UtinniCore.vcxproj` post-build chain (copy `data/` then run
+  `UtinniCoreDotNetGen.exe`) is the right factoring.
+- `RelWithDbgInfo` configuration plumbed end-to-end across all five
+  projects plus templates plus examples — conscientious.
+- Two-language template parity (C++ + .NET runtime + .NET editor).
+- `Props.cs` factoring centralizes plugin MSBuild boilerplate in one
+  wizard-emitted file.
+- The Jawa Toolbox `*Impl` separation pattern (presentation thin SubPanel,
+  business in `*Impl`, callbacks registered in `*Impl` ctor) — promote
+  this as **the** canonical plugin architecture.
+
+---
+
+## ❓ Open questions for project history
+
+These need someone-who-was-there to answer:
+
+1. **`isSafeToUse`** — code uses `||` (`game.cpp:307`), doc says `&&`.
+   Which is correct?
+2. **Was `AddPostDrawLoopCall` ever actually used?** If broken since 2020
+   and nobody noticed, the fix is trivial but adds a strong case for
+   smoke tests.
+3. **The "very odd bug … storing this in a variable prevents corruption"**
+   comment in `GameCallbacks.cs:46`, etc. — strongly smells like
+   GC-collected delegate being passed to unmanaged without `GCHandle.Alloc`.
+   Knowing the original repro would let us confirm the right fix is
+   `GCHandle.Alloc`.
+4. **VS 2019 pin** — was there a real reason (compiler bug with x86 + CLR
+   hosting?) or just history?
+5. **`StdEdited.cs` curation criteria** — what exactly is hand-maintained
+   vs auto-generated?
+6. **LeksysINI** — README says "temporary, will most likely be replaced"
+   — what was the plan?
+7. **Sytner's plugin** — code elsewhere that was never merged, or always
+   aspirational?
+8. **DXSDK June 2010 dependency** — could it be replaced with Windows 10
+   SDK's d3d9 headers? (DXSDK has `d3dx9.h`, Windows SDK lacks it — check
+   if Utinni actually uses `d3dx9` math helpers.)
+
+---
+
+## 📋 Recommended sequencing
+
+If we were doing this work top-to-bottom:
+
+### Week 1 — stop the bleeding (trivial / low-effort criticals)
+
+- C-04 (post-draw queue)
+- C-06 (PluginLoader exception swallowing)
+- C-08 (Hotkey TryParse)
+- C-13 (TJT Debug path)
+- C-14 (utinni.cfg login server)
+- C-12 (VSIX 16+17)
+
+### Week 2 — durability (single-file criticals)
+
+- C-02 (cross-CRT free)
+- C-03 (Network::cast)
+- C-05 (drag-drop static-field)
+- C-07 (UndoRedo locking)
+- C-10 (clr::stop nulls)
+- C-11 (DirectX null check)
+- C-15 (CppSharp slnDir)
+
+### Week 3 — architectural
+
+- C-01 (DllMain loader-lock) — the riskiest, deserves a focused week with
+  a debugger attached.
+- C-09 (UI / game thread deadlock candidate)
+
+### Week 4 — leverage
+
+- R-D (Add CI build workflow). Sweep dead code (the ~250 lines listed
+  above). Run a C++ formatter once.
+
+### Week 5–6 — strategic reworks
+
+- R-A (symmetric callbacks)
+- R-B (plugin lifecycle)
+- R-C (single-source RVAs)
+- R-E (`[CallerMemberName]` logging)
+
+### Week 7–8 — modernization
+
+- Bump imgui to docking-branch + spdlog 1.14 + ImGuizmo latest.
+- R-F (CppSharp header auto-discovery)
+- R-G (Directory.Build.props idempotent)
+- R-H (snapshot-iteration)
+- Decide LeksysINI fate.
+- Move templates to SDK-style csproj if we also widen to VS 2022.
+
+### Week 9 — 1.0 cut
+
+- Packaging script
+- Release workflow
+- Tag 1.0
+
+After this, [the Wave 1 plugins from the vision](vision.md#wave-1--round-out-what-we-have)
+become tractable: TRE Browser, IFF Editor, Datatable Editor, String-table
+Editor, Object Template Editor.
+
+---
+
+## 📝 Status tracking
+
+When work begins on these items, update the status in this table. Keep this
+doc in sync so future sessions (human or AI) can see what's done.
+
+| ID    | Item                                              | Status     | Notes |
+| ----- | ------------------------------------------------- | ---------- | ----- |
+| C-01  | DllMain loader-lock                               | open       |       |
+| C-02  | Cross-CRT delete[] in config                      | open       |       |
+| C-03  | `Network::cast` returns uninitialized             | open       |       |
+| C-04  | DequeuePostDrawLoopCalls wrong queue              | open       |       |
+| C-05  | GameDragDropEventHandlers static-field            | open       |       |
+| C-06  | PluginLoader swallows exceptions                  | open       |       |
+| C-07  | UndoRedoManager thread-safety + AllowMerge        | open       |       |
+| C-08  | Hotkey.ProcessString throws                       | open       |       |
+| C-09  | UI/game thread busy-wait deadlock                 | open       |       |
+| C-10  | clr::stop null deref                              | open       |       |
+| C-11  | DirectX9 findPattern no null check                | open       |       |
+| C-12  | VSIX pinned to VS 2019                            | open       |       |
+| C-13  | TJT Debug path extra ..\                          | open       |       |
+| C-14  | utinni.cfg login.swgemu.com default               | open       |       |
+| C-15  | CppSharp slnDir brittle                           | open       |       |
+| R-A   | Symmetric Add/Remove for callbacks                | open       |       |
+| R-B   | Plugin lifecycle contract                         | open       |       |
+| R-C   | Single source of truth for RVAs                   | open       |       |
+| R-D   | Add CI                                            | open       |       |
+| R-E   | Log `[CallerMemberName]`                          | open       |       |
+| R-F   | CppSharp header auto-discovery                    | open       |       |
+| R-G   | Directory.Build.props idempotent                  | open       |       |
+| R-H   | SynchronizedCollection snapshot iteration         | open       |       |
+
+When updating: set status to `in progress` while working, `done` when
+merged, and add a one-line note (PR link, commit SHA, or "deferred — see
+follow-up"). Keep this list compact; once an item is `done`, it can be
+deleted on the next cleanup pass.
+
+---
+
+## See also
+
+- [Vision](vision.md) — the one-stop-shop modding-tool direction this
+  assessment serves.
+- [Architecture](architecture.md) — how the framework is shaped today.
+- [Internals](internals.md) — the RVAs and hooks that some critical items
+  touch.

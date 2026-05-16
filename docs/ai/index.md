@@ -75,11 +75,20 @@ The Jawa Toolbox + your plugins
 | `UtINI` (project)        | C++ (static lib)  | `UtINI.lib`                  | A small INI library (LeksysINI under the hood). Used by Launcher and Core. **Not** the editor host — the editor is in `UtinniCoreDotNet`. |
 | `UtinniPlugins/`         | C++ + C#          | per plugin                   | Companion repo. Houses the **Jawa Toolbox** reference editor plugin and Sytner's stub. |
 
+## Where we're going
+
+The strategic direction is a **one-stop modding tool** that replaces the
+~30 separate apps a modder juggles today. See [the vision](vision.md) for
+the long-form, and [the code-quality assessment](assessment.md) for the
+near-term work-list (15 critical bugs, 8 reworks, sequencing to a 1.0).
+
 ## Where to dig in
 
 | Topic                                            | For…                              |
 | ------------------------------------------------ | --------------------------------- |
-| [Architecture](architecture.md)                  | Everyone — start here.            |
+| [Vision](vision.md)                              | Strategic direction — read second after the overview. |
+| [Assessment](assessment.md)                      | Code-quality audit + work-list to 1.0. |
+| [Architecture](architecture.md)                  | Everyone — start here for the technical map. |
 | [Injection & boot](injection.md)                 | Core contributors, .NET plugin authors curious about lifecycle. |
 | [Native core (UtinniCore)](core.md)              | C++ plugin authors, core contributors. |
 | [Managed bridge (UtinniCoreDotNet)](bridge.md)   | .NET plugin authors.              |

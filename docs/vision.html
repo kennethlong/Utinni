@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Vision — Utinni</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <h1><span class="accent">Utinni</span> — Vision</h1>
+  <div class="sub">One-stop modding tool for SWG — strategic direction</div>
+</header>
+<nav class="top">
+  <a href="index.html">Overview</a>
+  <a href="vision.html" class="active">Vision</a>
+  <a href="assessment.html">Assessment</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="injection.html">Injection</a>
+  <a href="core.html">Native Core</a>
+  <a href="bridge.html">Managed Bridge</a>
+  <a href="plugin-framework.html">Plugin Framework</a>
+  <a href="callbacks.html">Callbacks</a>
+  <a href="ui-framework.html">UI</a>
+  <a href="hotkeys.html">Hotkeys</a>
+  <a href="undo-redo.html">Undo/Redo</a>
+  <a href="sdk.html">SDK</a>
+  <a href="build.html">Build</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="internals.html">Internals</a>
+  <a href="regen-bindings.html">Bindings</a>
+  <a href="glossary.html">Glossary</a>
+</nav>
+
+<main>
+
+<h1>Vision: a one-stop shop for SWG modders</h1>
+
+<div class="callout info">
+  <strong>Status:</strong> Strategic direction. Captured 2026-05-16 in conversation with
+  the maintainer. This is the lens we use to prioritize work going forward.
+</div>
+
+<h2>The problem</h2>
+
+<p>
+  A Star Wars Galaxies modder today juggles ~30 separate tools to make a
+  non-trivial change. The exact list varies by what you're doing, but a
+  typical creature-or-quest mod touches some subset of:
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Concern</th>
+      <th>Today's tool</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>Browse <code>.tre</code> archives</td><td><code>TreeFileExtractor.exe</code>, <code>TreeFileBuilder.exe</code></td></tr>
+    <tr><td>Inspect an IFF</td><td><code>IFFEditor</code>, hex editor</td></tr>
+    <tr><td>Look at object templates</td><td>Hand-edit <code>.iff</code>, <code>IFFEditor</code>, or <code>SwgObjectEditor</code>-class tools</td></tr>
+    <tr><td>Edit a mesh / appearance</td><td>Maya / 3ds Max + SOE exporter plugins (<code>plugin/win32/*</code>)</td></tr>
+    <tr><td>Edit a skeletal animation</td><td>Maya + exporter</td></tr>
+    <tr><td>Edit a particle system</td><td><code>ParticleEditor</code></td></tr>
+    <tr><td>Edit / preview a creature</td><td><code>SwgCreatureEditor</code>-class tools</td></tr>
+    <tr><td>Edit a conversation tree</td><td><code>SwgConversationEditor.exe</code></td></tr>
+    <tr><td>Edit a quest</td><td><code>SwgSpaceQuestEditor.exe</code> / quest-data tables</td></tr>
+    <tr><td>Edit a datatable</td><td><code>SwgDataTableTool</code> / <code>DataTableEditor</code></td></tr>
+    <tr><td>Tune drop tables, AI profiles</td><td>Hand-edit <code>.tab</code> files in a text editor</td></tr>
+    <tr><td>Edit terrain</td><td><code>SwgTerrainEditor</code></td></tr>
+    <tr><td>Edit world snapshots</td><td><strong>Utinni / Jawa Toolbox</strong> — this is the only one we own today</td></tr>
+    <tr><td>Edit a buildout</td><td>Hand-edit <code>.iff</code>, no friendly tool</td></tr>
+    <tr><td>Write or change server scripts</td><td>A text editor + <code>bison</code>/<code>flex</code> toolchain + <code>ScriptCompiler</code></td></tr>
+    <tr><td>Edit string tables (localisation)</td><td><code>SwgStringEditor</code> / hand-edit <code>.stf</code></td></tr>
+    <tr><td>Edit a UI page</td><td>Hand-edit <code>.inc</code> + reload</td></tr>
+    <tr><td>Tweak shaders</td><td>DirectX 9 FX editor</td></tr>
+    <tr><td>Package &amp; ship</td><td><code>TreeFileBuilder</code> + manual <code>.tre</code> ordering + manifest hand-care</td></tr>
+    <tr><td>Distribute</td><td>Modding forums, ad-hoc archives, hand-rolled installers</td></tr>
+  </tbody>
+</table>
+
+<p>
+  That's a <em>huge</em> surface area, much of it powered by 15+ year old SOE tools
+  that won't run cleanly on modern Windows, or by community one-offs in
+  varying states of maintenance. New modders bounce off this. Experienced
+  modders run a fragile zoo of VMs / tool installs / batch scripts.
+</p>
+
+<h2>The goal</h2>
+
+<p><strong>Utinni becomes the single tool a modder opens.</strong> From inside it they can:</p>
+
+<ul>
+  <li><strong>See</strong> anything the running client can load — every <code>.tre</code>, every IFF,
+    every datatable, every template, every UI page, every shader, every
+    string-table entry.</li>
+  <li><strong>Edit</strong> anything they could realistically edit by hand: snapshots,
+    templates, datatables, conversations, quests, particles, UI pages,
+    strings, shader uniforms.</li>
+  <li><strong>Preview</strong> edits live — the client is already running inside the editor;
+    changes apply in-place (with the existing reload paths and a few new
+    ones).</li>
+  <li><strong>Author</strong> new content: drop in new meshes (via plugin exporters), new
+    scripts, new quests; mark them as belonging to a named mod.</li>
+  <li><strong>Package</strong> their mod into a single archive (e.g. one <code>.tre</code> + a manifest)
+    with one button.</li>
+  <li><strong>Share</strong> to a community hub the same way game launchers share user-made
+    content today.</li>
+</ul>
+
+<p>The promise to a modder is: <em>download Utinni, install once, do everything.</em></p>
+
+<h2>Why Utinni is the right foundation</h2>
+
+<p>
+  Utinni is uniquely positioned for this because of how it works. <strong>The client
+  is already loaded inside the tool.</strong> Everything the live game can read,
+  Utinni's plugins can read. Everything the live game can render, Utinni can
+  display, with a gizmo on it. This is a deeper integration than any
+  standalone editor SOE shipped — those editors had to re-implement the
+  rendering pipeline. Utinni doesn't.
+</p>
+
+<p>Concretely:</p>
+
+<ul>
+  <li>The <code>TreeFile</code> hook records every filename the game loads — so the
+    asset browser is <em>free</em> (the Jawa Toolbox already exploits this).</li>
+  <li>DirectX is hooked — so any "preview" feature can draw on top of the live
+    scene without extra glue.</li>
+  <li>The dearImgui + ImGuizmo overlay gives us in-world manipulators with
+    basically no per-feature cost.</li>
+  <li>The .NET host gives us WinForms (and could give us WPF or Avalonia in
+    future) for any side-panel editor we want.</li>
+  <li>The plugin model means feature areas are isolable and shippable
+    independently — we don't have to land all 30 tools in one PR.</li>
+</ul>
+
+<p>
+  The framework already covers ~10–15% of the surface area. The rest is
+  plugins, not framework rewrites.
+</p>
+
+<h2>What that means for prioritisation</h2>
+
+<p>
+  This vision reshapes the assessment (<a href="assessment.html">assessment.html</a>) in two
+  ways:
+</p>
+
+<ol>
+  <li><strong>Foundations matter more than features.</strong> Before piling new plugins on,
+    we need the framework to be reliable. The critical issues in the
+    assessment (loader-lock, silent plugin failures, threading hazards,
+    broken Debug path) hurt every future plugin. Fix the base, then build.</li>
+  <li><strong>Plugin authoring must be effortless.</strong> If every new editor inside
+    Utinni costs the same as building a standalone tool, we never close the
+    gap. The strategic reworks in the assessment (symmetric <code>Add/Remove</code>,
+    plugin lifecycle, single-source RVAs, CI, modernised templates,
+    <code>[CallerMemberName]</code> logging) all reduce per-plugin friction.</li>
+</ol>
+
+<p>Concretely, the order is:</p>
+
+<ol>
+  <li><strong>Stabilise the framework</strong> (the assessment's Weeks 1–4) — bug fixes,
+    CI, dead-code removal.</li>
+  <li><strong>Polish plugin authoring</strong> (assessment's Weeks 5–8) — reworks A–H,
+    modernised templates, packaging script.</li>
+  <li><strong>Then start the plugin pipeline</strong> — feature-by-feature, each backed by
+    <code>IEditorPlugin</code> and shippable independently.</li>
+</ol>
+
+<h2>What plugins we'd want, in rough order</h2>
+
+<p>
+  This is a long-range list, not a commitment. Each represents months of
+  work; we'd ship them as we go. Ordering reflects (impact × leverage on
+  existing Utinni capabilities).
+</p>
+
+<h3>Wave 1 — round out what we have</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Plugin</th>
+      <th>Replaces</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>TRE Browser</strong> (read-only)</td><td><code>TreeFileExtractor</code></td><td>Use the existing <code>treefile::getAllFilenames</code> hook + a tree-view. Hex/preview pane. Drag to disk.</td></tr>
+    <tr><td><strong>IFF Editor</strong> (read + write)</td><td><code>IFFEditor</code>, hex editor</td><td>Generic IFF tree viewer; field-level edit for known forms.</td></tr>
+    <tr><td><strong>Datatable Editor</strong> (<code>.tab</code>)</td><td><code>SwgDataTableTool</code></td><td>The <code>.tab</code> format is well-understood; spreadsheet-style edit.</td></tr>
+    <tr><td><strong>String-table Editor</strong> (<code>.stf</code>)</td><td><code>SwgStringEditor</code></td><td>Localisation rows + reload-strings hook in client.</td></tr>
+    <tr><td><strong>Object Template Editor</strong></td><td><code>IFFEditor</code> against shared templates</td><td>Field-driven UI for <code>SharedObjectTemplate</code>, etc.</td></tr>
+  </tbody>
+</table>
+
+<h3>Wave 2 — content authoring</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Plugin</th>
+      <th>Replaces</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Conversation Tree Editor</strong></td><td><code>SwgConversationEditor.exe</code></td><td>Node-graph UI, live preview against an NPC in-world.</td></tr>
+    <tr><td><strong>Quest Editor</strong></td><td><code>SwgSpaceQuestEditor.exe</code>, quest tables</td><td>Steps, triggers, rewards, task graphs.</td></tr>
+    <tr><td><strong>Buildout / World Editor</strong></td><td>Manual <code>.iff</code> edits + Jawa Toolbox</td><td>Promote snapshot editing into full buildout editing.</td></tr>
+    <tr><td><strong>Particle Editor</strong></td><td><code>ParticleEditor</code></td><td>Live-preview on top of the gizmo'd target.</td></tr>
+    <tr><td><strong>UI Page Editor</strong></td><td>Hand-edit <code>.inc</code></td><td>Re-uses the CUI reload hook.</td></tr>
+    <tr><td><strong>Shader Inspector / Editor</strong></td><td>DirectX9 FX editor</td><td>Read shaders, hot-reload via existing graphics hook.</td></tr>
+  </tbody>
+</table>
+
+<h3>Wave 3 — workflow</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Plugin</th>
+      <th>Replaces</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Mod Manager</strong></td><td>Manual <code>.tre</code> ordering, hand-rolled installers</td><td>Define a "mod" as a labelled bundle. Enable/disable.</td></tr>
+    <tr><td><strong>Mod Packager / Builder</strong></td><td><code>TreeFileBuilder</code></td><td>Build a <code>.tre</code> from a mod's tracked changes.</td></tr>
+    <tr><td><strong>Community Hub Browser</strong></td><td>Modding forums, ad-hoc archive sites</td><td>Optional. Subscribe to / publish mod bundles.</td></tr>
+    <tr><td><strong>Asset Diff / Compare</strong></td><td>(no equivalent today)</td><td>Compare two <code>.tre</code>s or two snapshots — useful for upstream/fork.</td></tr>
+  </tbody>
+</table>
+
+<h3>Wave 4 — maybe-someday</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Plugin</th>
+      <th>Replaces</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Mesh viewer</strong> (read-only)</td><td>Maya for inspection</td><td>Use the live <code>Appearance</code> system. Write would require a full exporter chain.</td></tr>
+    <tr><td><strong>Animation previewer</strong></td><td>Maya for inspection</td><td>Likewise.</td></tr>
+    <tr><td><strong>Script editor</strong> (server-side)</td><td>Text editor + <code>bison</code>/<code>flex</code>/<code>ScriptCompiler</code></td><td>Out of scope for the <em>client</em> tool; would need server-side cooperation.</td></tr>
+    <tr><td><strong>Texture authoring</strong></td><td>Photoshop + texture conversion CLI</td><td>Out of scope; commit to importing from PNG instead.</td></tr>
+  </tbody>
+</table>
+
+<p>
+  The Wave 4 items are realistically the territory of separate tools that
+  Utinni can hand off to, not absorb. Mesh and texture authoring need
+  specialised editing UX that DCC tools have spent decades on; we plug into
+  the export pipelines but don't reinvent them.
+</p>
+
+<h2>Anti-goals (what we explicitly are NOT)</h2>
+
+<ul>
+  <li><strong>Not a server-side mod manager.</strong> SWG-Source / swg-main handle server
+    scripting and data. We integrate with their conventions but don't manage
+    the server.</li>
+  <li><strong>Not a launcher / patcher.</strong> There are good launchers already
+    (SWGEmu's, community ones). Utinni is the <em>editor</em>; the launcher is
+    what users run day-to-day to play.</li>
+  <li><strong>Not Maya / 3ds Max.</strong> We hand off to DCCs for mesh/animation/texture
+    authoring; we don't try to be one.</li>
+  <li><strong>Not a multiplayer-cheat enabler.</strong> All editing is local-asset / offline-
+    scene work. Live shards can detect and reject modified clients; that's
+    fine — modders edit, then publish a mod, then play unmodded.</li>
+</ul>
+
+<h2>Strategic position</h2>
+
+<p>
+  Both <code>Utinni</code> and <code>UtinniPlugins</code> are MIT-licensed forks of
+  <a href="https://github.com/ptklatt/Utinni"><code>ptklatt/Utinni</code></a> and
+  <a href="https://github.com/ptklatt/UtinniPlugins"><code>ptklatt/UtinniPlugins</code></a>. The
+  upstreams appear dormant. Our approach:
+</p>
+
+<ol>
+  <li><strong>Build a sovereign fork</strong> that advances independently.</li>
+  <li><strong>Offer fixes upstream</strong> where they're clean PRs (so the community
+    benefits even if our broader direction differs).</li>
+  <li><strong>Cooperate with SWG-Source</strong> for any server-side touch points — they
+    maintain <code>client-tools/</code> and <code>swg-main/</code>; the more our work composes
+    with theirs the better.</li>
+</ol>
+
+<p>
+  We don't need to be the only modding tool — there will always be specialised
+  editors. But we want to be the <em>default</em> tool. New modders should be told
+  "download Utinni" and be productive in an afternoon.
+</p>
+
+<h2>How this doc evolves</h2>
+
+<p>This is a strategic statement, not a roadmap. Update it when:</p>
+
+<ul>
+  <li>The vision shifts (e.g. we decide to scope down or expand).</li>
+  <li>A wave-item gets re-prioritised (move it between waves or out entirely).</li>
+  <li>An anti-goal is contested.</li>
+</ul>
+
+<p>
+  Tactical plans live in <a href="assessment.html"><code>assessment.html</code></a> (current health) and
+  will eventually live in a roadmap doc (concrete sequencing). GitHub issues
+  should reference back to one of these for context.
+</p>
+
+<h2>See also</h2>
+
+<ul>
+  <li><a href="assessment.html">Assessment</a> — the code-quality audit driving the
+    near-term work.</li>
+  <li><a href="architecture.html">Architecture</a> — how the framework is shaped today.</li>
+  <li><a href="plugin-framework.html">Plugin framework</a> — the SPI every future plugin
+    uses.</li>
+  <li><a href="../../UtinniPlugins/docs/jawa-toolbox.html">The Jawa Toolbox</a> — the
+    prototype of what a Wave-1+ plugin looks like.</li>
+</ul>
+
+</main>
+<footer>
+  Utinni &mdash; SWG client modding framework. Documentation for the fork at <code>D:/Code/Utinni</code>.
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>
