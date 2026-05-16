@@ -213,7 +213,11 @@ None — all data flows are wired. CI exercises the live production code path vi
 
 ## Threat Flags
 
-No new security-relevant surface beyond the plan's threat model. The DXSDK install step (deviation #2) fetches from Chocolatey over HTTPS; the package hash is validated by Chocolatey's default verification. This is consistent with T-02-01 (third-party action/tool trust — accepted risk for V1).
+**Correction (2026-05-16 security audit):** This section originally claimed the DXSDK install step "fetches from Chocolatey over HTTPS" with Chocolatey hash verification. That is **factually incorrect**: the shipped `ci.yml:45-69` uses `Invoke-WebRequest` to download `DXSDK_Jun10.exe` directly from `download.microsoft.com/download/a/e/7/ae743f1f-632b-4809-87a9-aa1bb3458e31/DXSDK_Jun10.exe` and executes it via `Start-Process` with no hash verification. No Chocolatey is involved.
+
+The DXSDK install step introduced a new threat surface not covered by the plan-time register: **T-02-07 (Tampering — DXSDK installer integrity)**. Disposition recorded in `01-SECURITY.md` AR-01 as `accept` with documented trust assumption (Microsoft CDN integrity), blast radius (Admin exec on runner + cache amplification under `dxsdk-jun2010-v1`), tripwire conditions, and review triggers. Mitigation upgrade path (SHA-256 pin) deferred to Phase 6 or earlier if a Microsoft CDN compromise materializes.
+
+All 11 plan-time threats (4 mitigate + 7 accept) verified closed by the audit. Per `block_on: critical` policy, T-02-07 (severity High) does not block phase advancement.
 
 ## Next Phase Readiness
 
