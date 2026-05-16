@@ -39,9 +39,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. An xUnit (or NUnit) test project exists in the Utinni solution and contains at least one smoke test that exercises a real Utinni code path.
   3. A test failure on `main` blocks the workflow and is visible on the commit.
   4. `.editorconfig` exists at repo root and is applied by the build.
-**Plans**: TBD
-**Plans (placeholder)**:
-- [ ] 01-01: TBD (filled during `/gsd:plan-phase 1`)
+**Plans**: 2 plans
+**Plans**:
+- [ ] 01-01-PLAN.md — Test project scaffold: .editorconfig, UtinniCoreDotNet.Tests SDK-style xUnit csproj + HotkeyTests.cs (3 pass + 1 C-08-Skip), Utinni.sln update, packages.lock.json
+- [ ] 01-02-PLAN.md — CI workflow: .github/workflows/ci.yml on windows-2022 (project-targeted dotnet test), README badge for master, test-the-tester human-verify checkpoint
 
 ### Phase 2: Critical bug burn-down (C-01..C-15)
 **Goal**: All 15 critical bugs enumerated in assessment.md are closed. Framework no longer exhibits the listed silent failures, crashes, or data losses; class-of-bug constraints CON-H-01..-05, CON-L-01..-04, CON-B-04, CON-D-01 are honoured going forward.
@@ -235,7 +236,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. CI + Tier 1 C# scaffold | 0/TBD | Not started | - |
+| 1. CI + Tier 1 C# scaffold | 0/2 | Not started | - |
 | 2. Critical bug burn-down (C-01..C-15) | 0/TBD | Not started | - |
 | 3. Strategic reworks (R-A..R-H) | 0/TBD | Not started | - |
 | 4. Tier 2 CLI shim + golden fixtures | 0/TBD | Not started | - |
