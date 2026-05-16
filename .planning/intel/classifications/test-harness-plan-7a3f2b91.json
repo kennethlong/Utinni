@@ -1,0 +1,29 @@
+{
+  "source_path": "D:/Code/Utinni/docs/ai/test-harness-plan.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Test Harness Plan",
+  "summary": "Draft plan proposing a four-tier automated test strategy (unit, CLI shim, recorded fixtures + mock D3D9, manual) to reduce manual UAT load for Utinni.",
+  "scope": [
+    "Utinni WinForms tool",
+    "UtinniCore C++ DLL",
+    "test infrastructure",
+    "xUnit/NUnit C# unit tests",
+    "Catch2 C++ unit tests",
+    "utinni-cli shim",
+    "TRE/IFF parsers",
+    "plugin manifest loader",
+    "D3D9 hook code",
+    "recorded fixtures",
+    "CI on GitHub Actions Windows runners"
+  ],
+  "cross_refs": [
+    "docs/ai/vision.md",
+    "docs/ai/assessment.md",
+    ".planning/codebase/"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "Document is labeled 'Status: Draft' and describes a forward-looking plan with open questions and suggested phase ordering rather than a locked decision, product requirement, or technical contract. Contains some PRD-adjacent goal language and SPEC-adjacent CLI command shapes, but no acceptance criteria, no formal API contract, and no Accepted decision — classified as DOC. Synthesizer may want to surface the four-tier structure and suggested phase order as candidate phase seeds."
+}

@@ -1,0 +1,28 @@
+{
+  "source_path": "D:/Code/Utinni/docs/ai/assessment.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Code-quality assessment",
+  "summary": "Three-reviewer code-quality audit of Utinni framework cataloging 15 critical bugs, 8 strategic reworks, ~30 cleanups, and recommended sequencing toward a 1.0 cut.",
+  "scope": [
+    "UtinniCore (native C++ shim and detour layer)",
+    "UtinniCoreDotNet (managed C# bridge and plugin framework)",
+    "CLR hosting and MEF plugin loading",
+    "UndoRedo, Hotkey, Log, callback subsystems",
+    "DirectX9 hook installation",
+    "Launcher and DllMain startup path",
+    "SDK/VSIX templates and CppSharp generator",
+    "Jawa Toolbox plugin build configuration",
+    "Build/tooling (CI, .editorconfig, Directory.Build.props)",
+    "Default data/utinni.cfg shipped config"
+  ],
+  "cross_refs": [
+    "vision.md",
+    "architecture.md",
+    "internals.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

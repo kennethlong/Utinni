@@ -1,0 +1,28 @@
+{
+  "source_path": "D:/Code/Utinni/docs/ai/vision.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Vision: a one-stop shop for SWG modders",
+  "summary": "Strategic vision positioning Utinni as the single integrated modding tool for Star Wars Galaxies, replacing ~30 disparate legacy editors via a plugin-based architecture.",
+  "scope": [
+    "Utinni framework",
+    "UtinniPlugins",
+    "SWG modding tool ecosystem",
+    "plugin pipeline (TRE Browser, IFF Editor, Datatable Editor, Conversation Editor, Quest Editor, Buildout Editor, Mod Manager, etc.)",
+    "framework prioritisation",
+    "anti-goals (launcher, server-side, DCC replacement)",
+    "fork strategy (sovereign MIT fork of ptklatt/Utinni)"
+  ],
+  "cross_refs": [
+    "assessment.md",
+    "architecture.md",
+    "plugin-framework.md",
+    "../../../UtinniPlugins/docs/ai/jawa-toolbox.md",
+    "https://github.com/ptklatt/Utinni",
+    "https://github.com/ptklatt/UtinniPlugins"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "Strategic vision/positioning document. Prose-heavy, no user stories or acceptance criteria (not PRD), no API/schema contracts (not SPEC), no single decision with Context/Decision/Consequences (not ADR). Contains a long-range plugin wishlist and anti-goals but explicitly self-describes as 'strategic statement, not a roadmap'. Classified as DOC (context only) per taxonomy; synthesizer should treat the goal/anti-goal/wave-ordering content as steering context for any downstream PRDs."
+}
