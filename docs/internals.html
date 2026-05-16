@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Internals — Utinni</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <h1><span class="accent">Utinni</span> — Hooks, RVAs, patches</h1>
+  <div class="sub">The reverse-engineering record for the targeted SwgClient_r.exe build.</div>
+</header>
+<nav class="top">
+  <a href="index.html">Overview</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="injection.html">Injection</a>
+  <a href="core.html">Native Core</a>
+  <a href="bridge.html">Managed Bridge</a>
+  <a href="plugin-framework.html">Plugin Framework</a>
+  <a href="callbacks.html">Callbacks</a>
+  <a href="ui-framework.html">UI</a>
+  <a href="hotkeys.html">Hotkeys</a>
+  <a href="undo-redo.html">Undo/Redo</a>
+  <a href="sdk.html">SDK</a>
+  <a href="build.html">Build</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="internals.html" class="active">Internals</a>
+  <a href="regen-bindings.html">Bindings</a>
+  <a href="glossary.html">Glossary</a>
+</nav>
+<main>
+
+<h1>Internals: hooks, RVAs, patches</h1>
+
+<div class="callout info">
+Audience: core contributors and reversers. Plugin authors don't need this
+page — depend on the curated <code>utinni::*</code> / <code>UtinniCore.*</code> APIs, not the
+raw RVAs.
+</div>
+
+<p>
+This is the reverse-engineering record for the SWG client build Utinni was
+originally written against. <strong>All addresses below are pinned to that specific
+binary</strong> — a different <code>SwgClient_r.exe</code> (different SWGEmu drop, different
+SWG-Source build) will have different RVAs and will require an updated set.
+</p>
+
+<p>
+If you're porting Utinni to a new client, your job is to find the
+corresponding addresses in your binary (typically via signature scanning or
+symbol matching) and update the per-subsystem <code>detour()</code> and <code>patch()</code>
+functions.
+</p>
+
+<h2>How detours are installed</h2>
+
+<p><code>UtinniCore/swg/&lt;subsystem&gt;/&lt;subsystem&gt;.cpp</code>'s <code>detour()</code> typically does:</p>
+
+<pre><code>swg::&lt;subsystem&gt;::&lt;fn&gt; = (swg::&lt;subsystem&gt;::&lt;Fn_t&gt;)Detour::Create(
+    (LPVOID)0x...RVA...,             // address in SwgClient_r.exe
+    Hook_&lt;subsystem&gt;_&lt;fn&gt;,            // our replacement
+    DETOUR_TYPE_PUSH_RET);            // detour style
+</code></pre>
+
+<p>
+<code>DETOUR_TYPE_PUSH_RET</code> is DetourXS's standard inline hook — the original
+prologue bytes are copied to a trampoline, the original site is patched with
+a <code>push imm32 / ret</code> jump to our hook, and our hook is responsible for
+chaining via the trampoline when it wants to call the original.
+</p>
+
+<p>
+<code>patch()</code> functions, where they exist, do non-detour memory writes — typically
+either a 5-byte JMP (<code>utinni::memory::createJMP</code>) or a direct byte sequence
+write (<code>utinni::memory::write&lt;T&gt;</code>).
+</p>
+
+<h2>Hook table</h2>
+
+<p>
+The list below is the union of every <code>detour()</code> / <code>patch()</code> invocation found
+in the surveyed source. Subsystem grouping matches <code>swg/*</code> layout.
+</p>
+
+<h3><code>swg/client/client.cpp</code> — <code>utinni::Client::detour()</code></h3>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Original function</th><th>Hook style</th><th>Reason</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0x00A9F970</code></td><td><code>Client::setupStartDataInstall</code></td><td>PUSH_RET</td><td>Editor-mode HWND/HINSTANCE handoff before window creation.</td></tr>
+    <tr><td><code>0x00401050</code></td><td><code>clientMain</code></td><td>PUSH_RET</td><td>Crash-log redirection, top-level lifecycle.</td></tr>
+    <tr><td><code>0x00AA0970</code></td><td>SWG main <code>WndProc</code></td><td>PUSH_RET</td><td>Used as the forwarded WndProc by <code>PanelGame.WndProc</code>; also patched.</td></tr>
+    <tr><td><code>0x00A9F640</code></td><td><code>Client::writeCrashLog</code></td><td>PUSH_RET</td><td>Redirect crash logs to <code>logs/</code>.</td></tr>
+    <tr><td><code>0x00A8A170</code></td><td><code>Client::writeMiniDump</code></td><td>PUSH_RET</td><td>Redirect minidumps to <code>logs/</code>.</td></tr>
+    <tr><td><code>0xA9F766</code></td><td>(mid-<code>writeCrashLog</code>)</td><td>JMP patch (<code>patch()</code>)</td><td>Splice a custom log line into the crash log.</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/scene/ground_scene.cpp</code> — <code>utinni::GroundScene::detour()</code></h3>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Original function</th><th>Hook style</th><th>Reason</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0x00519830</code></td><td><code>GroundScene::ctor</code> (offline-mode variant)</td><td>PUSH_RET</td><td>Allows manual GroundScene construction.</td></tr>
+    <tr><td><code>0x0051A4F0</code></td><td><code>GroundScene::reloadTerrain</code></td><td>PUSH_RET</td><td>Exposed as <code>utinni::GroundScene::reloadTerrain</code>.</td></tr>
+    <tr><td><code>0x0051A350</code></td><td><code>GroundScene::changeCamera</code></td><td>PUSH_RET</td><td>Fires camera-change callbacks.</td></tr>
+    <tr><td><code>0x0051A4D0</code></td><td><code>GroundScene::getCurrentCamera</code></td><td>PUSH_RET</td><td>Exposed.</td></tr>
+    <tr><td><code>0x0051B770</code></td><td><code>GroundScene::draw</code></td><td>PUSH_RET</td><td>Pre/post-draw callbacks.</td></tr>
+    <tr><td><code>0x0051AF10</code></td><td><code>GroundScene::update</code></td><td>PUSH_RET</td><td>Update-loop callbacks.</td></tr>
+    <tr><td><code>0x0051AB20</code></td><td><code>GroundScene::handleInputMapUpdate</code></td><td>PUSH_RET</td><td>Input map editor.</td></tr>
+    <tr><td><code>0x0051AA40</code></td><td><code>GroundScene::handleInputMapEvent</code></td><td>PUSH_RET</td><td>Input event editor.</td></tr>
+    <tr><td><code>0x00518EB0</code></td><td><code>GroundScene::init</code></td><td>PUSH_RET</td><td>Init.</td></tr>
+    <tr><td><code>0x190885C</code> <em>(data)</em></td><td><code>GroundScene*</code> singleton pointer</td><td>direct read</td><td><code>utinni::GroundScene::get()</code> dereferences this address.</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/scene/render_world.cpp</code> — <code>utinni::renderWorld::detour()</code></h3>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Original function</th><th>Hook style</th><th>Reason</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0x765C20</code></td><td><code>RenderWorld::clearVisibleCells</code></td><td>PUSH_RET (disabled)</td><td>Commented out in current source.</td></tr>
+    <tr><td><code>0x007664F0</code></td><td><code>RenderWorld::addObjectNotifications</code></td><td>PUSH_RET</td><td>Exposed; required to register dynamically-spawned objects.</td></tr>
+    <tr><td><code>0x00766DE0</code></td><td><code>RenderWorld::render</code></td><td>PUSH_RET (disabled)</td><td>Commented out in current source.</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/scene/client_world.cpp</code> — <code>utinni::clientWorld::detour()</code></h3>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Original function</th><th>Hook style</th><th>Reason</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0x00561350</code></td><td><code>ClientWorld::collide</code></td><td>PUSH_RET (disabled)</td><td>Available but disabled.</td></tr>
+    <tr><td><code>0x00562940</code></td><td><code>ClientWorld::internalCollide</code></td><td>PUSH_RET (disabled)</td><td>Available but disabled.</td></tr>
+    <tr><td><code>0x00562680</code></td><td><code>ClientWorld::internalCollideFindAllObjects</code></td><td>PUSH_RET (disabled)</td><td>Available but disabled.</td></tr>
+    <tr><td><code>0x199CB34</code> <em>(data)</em></td><td>unknown collision context pointer</td><td>direct read</td><td>Used internally during collide calls.</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/object/creature_object.cpp</code> — <code>utinni::creatureObject::detour()</code></h3>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Original function</th><th>Hook style</th><th>Reason</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0x00434AB0</code></td><td><code>CreatureObject::setTarget</code></td><td>PUSH_RET</td><td>Fires <code>addOnTargetCallback</code> (the <code>ObjectCallbacks.AddOnTarget*</code> flow).</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/object/object.cpp</code> (direct calls, no detour)</h3>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Original function</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0x00B28700</code></td><td><code>ObjectTemplateList::getByFilename</code></td></tr>
+    <tr><td><code>0x00B28720</code></td><td><code>ObjectTemplateList::getByIff</code></td></tr>
+    <tr><td><code>0x00B28740</code></td><td><code>ObjectTemplateList::getByCrc</code></td></tr>
+    <tr><td><code>0x00B289B0</code></td><td><code>Object::reloadObject</code></td></tr>
+    <tr><td><code>0x00B28A10</code> / <code>0x00B28AA0</code></td><td><code>CrcString</code> getters</td></tr>
+    <tr><td><code>0x00B2E760</code></td><td><code>Object::createObject(template)</code></td></tr>
+    <tr><td><code>0x011A6C10</code> / <code>0x011A6D30</code> / <code>0x011A6E50</code></td><td><code>SharedObjectTemplate</code> getters</td></tr>
+    <tr><td><code>0x011A8B60</code></td><td><code>SharedObjectTemplate::getGameObjectType</code></td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/ui/cui_manager.cpp</code> — <code>utinni::CuiManager::detour()</code></h3>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Original function</th><th>Hook style</th><th>Reason</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0x00881210</code></td><td><code>CuiManager::render</code></td><td>PUSH_RET</td><td>Hook for render bookkeeping.</td></tr>
+    <tr><td><code>0x00BD3E20</code></td><td><code>findObjectUnderCursor</code></td><td>PUSH_RET</td><td>Exposed via <code>hasObjectUnderCursor()</code>.</td></tr>
+    <tr><td><code>0x00882410</code></td><td><code>CuiManager::setSize</code></td><td>PUSH_RET</td><td>Exposed.</td></tr>
+    <tr><td><code>0x00881940</code></td><td><code>CuiManager::togglePointer</code></td><td>PUSH_RET</td><td>Exposed.</td></tr>
+    <tr><td><code>0x00881560</code></td><td><code>CuiManager::restartMusic</code></td><td>PUSH_RET</td><td>Exposed.</td></tr>
+    <tr><td><code>0x010E8410</code></td><td><code>UiManager::drawCursor</code></td><td>PUSH_RET</td><td>Cursor draw override (editor-mode).</td></tr>
+    <tr><td><code>0x008ABEB0</code></td><td><code>SystemMessageManager::receiveMessage</code></td><td>PUSH_RET</td><td>Fires <code>addReceiveMessageCallback</code>.</td></tr>
+    <tr><td><code>0x008AC250</code></td><td><code>SystemMessageManager::sendMessage</code></td><td>PUSH_RET</td><td>Exposed.</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/ui/cui_chat_window.cpp</code> — <code>utinni::CuiChatWindow::detour()</code></h3>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Original function</th><th>Hook style</th><th>Reason</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0x00F364B0</code></td><td><code>CuiChatWindow::ctor</code></td><td>PUSH_RET</td><td>Wires <code>addCreateCommandParserCallback</code> (where plugins register custom slash commands).</td></tr>
+    <tr><td><code>0x00F38500</code></td><td><code>enableTextInput</code></td><td>PUSH_RET</td><td>Exposed.</td></tr>
+    <tr><td><code>0x00F3BFD0</code></td><td><code>writeToAllTabs</code></td><td>PUSH_RET</td><td>Exposed.</td></tr>
+    <tr><td><code>0x00F3C1F0</code></td><td><code>writeToCurrentTab</code></td><td>PUSH_RET</td><td>Exposed.</td></tr>
+    <tr><td><code>0x009141D0</code></td><td><code>CuiConsoleHelper::sendInput</code></td><td>PUSH_RET</td><td>Console-input hook.</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/ui/cui_hud.cpp</code> / <code>cui_radial_menu.cpp</code> / <code>cui_menu.cpp</code> / <code>cui_io.cpp</code> / <code>cui_misc.cpp</code></h3>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Original function</th><th>Hook style</th><th>Subsystem</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0x00BD56F0</code></td><td><code>CuiHud::update</code></td><td>PUSH_RET</td><td><code>cuiHud</code></td></tr>
+    <tr><td><code>0x00EDBAA0</code></td><td><code>actionPerformAction</code></td><td>PUSH_RET</td><td><code>cuiHud</code></td></tr>
+    <tr><td><code>0x00BD3E20</code></td><td><code>CuiHud::getTarget</code></td><td>PUSH_RET</td><td><code>cuiHud</code></td></tr>
+    <tr><td><code>0x009698C0</code></td><td><code>CuiRadialMenuManager::update</code></td><td>PUSH_RET</td><td><code>cuiRadialMenuManager</code></td></tr>
+    <tr><td><code>0x0096C550</code></td><td><code>CuiRadialMenuManager::clear</code></td><td>PUSH_RET</td><td><code>cuiRadialMenuManager</code></td></tr>
+    <tr><td>(various)</td><td><code>cuiMisc::patch()</code> writes</td><td>direct writes</td><td><code>cuiMisc</code></td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/graphics/graphics.cpp</code> — <code>utinni::Graphics::detour()</code></h3>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Original function</th><th>Hook style</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0x007548A0</code></td><td><code>Graphics::install</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00755700</code></td><td><code>Graphics::update</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00755730</code></td><td><code>Graphics::beginScene</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00755740</code></td><td><code>Graphics::endScene</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00755810</code></td><td><code>Graphics::presentWindow</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00755800</code></td><td><code>Graphics::present</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00755940</code></td><td><code>useHardwareCursor</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00755A50</code></td><td><code>showMouseCursor</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00755AC0</code></td><td><code>setSystemMouseCursorPosition</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00754E40</code></td><td><code>Graphics::resize</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00755520</code></td><td><code>Graphics::flushResources</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00764B70</code></td><td><code>textureListReloadTextures</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00755910</code></td><td><code>setStaticShader</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00755D30</code></td><td><code>setObjectToWorldTransformAndScale</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00759A70</code></td><td><code>drawExtent</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00755890</code></td><td><code>Graphics::screenshot</code></td><td>PUSH_RET</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/graphics/directx9.cpp</code></h3>
+
+<p>
+DirectX9 device methods are hooked via <strong>vtable index</strong>, not RVA, because
+the device interface is dynamic:
+</p>
+
+<table>
+  <thead>
+    <tr><th>vtable index</th><th>Method</th><th>Used for</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>8</td><td><code>Reset</code></td><td>Reinit ImGui textures on device reset.</td></tr>
+    <tr><td>16</td><td><code>Present</code></td><td>ImGui + ImGuizmo render pass.</td></tr>
+    <tr><td>20</td><td><code>BeginScene</code></td><td>Pre/post-begin-scene callbacks.</td></tr>
+    <tr><td>21</td><td><code>EndScene</code></td><td>Pre/post-end-scene callbacks.</td></tr>
+  </tbody>
+</table>
+
+<p>
+Plus a hook in <code>s207_r.dll</code> for the shader compiler at <code>0x62A4F9DB</code> (used to
+intercept compile errors for the depth-texture path).
+</p>
+
+<h3><code>swg/graphics/shader.cpp</code> / <code>post_processing.cpp</code></h3>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Hook / patch</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0x00773E39</code></td><td>JMP patch on <code>midPopCell</code> (5 bytes) — fires <code>shader::drawPhaseCallback</code>.</td></tr>
+    <tr><td><code>0x772D60</code></td><td>Sibling call target referenced from <code>midPopCell</code>.</td></tr>
+    <tr><td><code>0x0064B500</code></td><td><code>Bloom::preSceneRender</code> — PUSH_RET → <code>postProcessing::preSceneRenderCallback</code>.</td></tr>
+    <tr><td><code>0x0064B560</code></td><td><code>Bloom::postSceneRender</code> — PUSH_RET → <code>postProcessing::postSceneRenderCallback</code>.</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/misc/config.cpp</code> — <code>swg::config::detour()</code></h3>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Original function</th><th>Hook style</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0x00A9C6C0</code></td><td><code>loadConfigFileBuffer</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00A9C780</code></td><td><code>loadConfigFileString</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00401000</code></td><td><code>loadOverrideConfig</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00910A70</code></td><td><code>setModalChat</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00910D40</code></td><td><code>getModalChat</code></td><td>PUSH_RET</td></tr>
+  </tbody>
+</table>
+
+<p>
+The <code>loadOverrideConfig</code> hook is what implements <code>useSwgOverrideCfg=true</code> —
+the original SWG config path is replaced with our <code>utinni.cfg</code>.
+</p>
+
+<h3><code>swg/misc/direct_input.cpp</code></h3>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Original function</th><th>Hook style</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0x00420880</code></td><td><code>DirectInput::suspend</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00420890</code></td><td><code>DirectInput::resume</code></td><td>PUSH_RET</td></tr>
+    <tr><td><code>0x00421490</code></td><td><code>DirectInput::setupInstall</code></td><td>PUSH_RET</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/misc/tree_file.cpp</code></h3>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Original function</th><th>Hook style</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0xA992E0</code></td><td><code>TreeFile::searchTree</code></td><td>PUSH_RET — records every requested filename into a set queried by <code>getAllFilenames()</code>.</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/camera/debug_camera.cpp</code></h3>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Original function</th><th>Hook style</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0x006DA1B0</code></td><td><code>GameCamera::alter</code> (debug variant)</td><td>PUSH_RET (plus <code>patch()</code>)</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/game/game.cpp</code></h3>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Original function</th><th>Hook style</th><th>Use</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0x00422E80</code></td><td><code>Game::install</code></td><td>PUSH_RET</td><td>Fires install callbacks.</td></tr>
+    <tr><td><code>0x00423720</code></td><td><code>Game::quit</code></td><td>PUSH_RET</td><td>Exposed.</td></tr>
+    <tr><td><code>0x004237C0</code></td><td><code>Game::mainLoop</code></td><td>PUSH_RET</td><td>Pre/post-main-loop callbacks; drains queues.</td></tr>
+    <tr><td><code>0x00424220</code></td><td><code>Game::setupScene</code></td><td>PUSH_RET</td><td>Fires setup-scene callbacks.</td></tr>
+    <tr><td><code>0x00423700</code></td><td><code>Game::cleanupScene</code></td><td>PUSH_RET</td><td>Fires cleanup-scene callbacks.</td></tr>
+    <tr><td><code>0x00425140</code></td><td><code>Game::getPlayer</code></td><td>PUSH_RET</td><td>Exposed.</td></tr>
+    <tr><td><code>0x004251D0</code></td><td><code>Game::getPlayerCreatureObject</code></td><td>PUSH_RET</td><td>Exposed.</td></tr>
+    <tr><td><code>0x00425BB0</code></td><td><code>Game::getCamera</code></td><td>PUSH_RET</td><td>Exposed.</td></tr>
+    <tr><td><code>0x00425BE0</code></td><td><code>Game::getConstCamera</code></td><td>PUSH_RET</td><td>Exposed.</td></tr>
+    <tr><td><code>0x1908830</code> <em>(data)</em></td><td><code>Game::mainLoopCount</code> (int)</td><td>direct read</td><td>Used by callback bookkeeping.</td></tr>
+    <tr><td><code>0x01908858</code> <em>(data)</em></td><td><code>Game::isSafeToUse</code> flag #1</td><td>direct read</td><td><code>Game::isSafeToUse()</code> reads this AND...</td></tr>
+    <tr><td><code>0x01919410</code> <em>(data)</em></td><td><code>Game::isSafeToUse</code> flag #2</td><td>direct read</td><td>...this. Both must be true.</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/appearance/skeleton.cpp</code></h3>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Original function</th><th>Hook style</th><th>Use</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0x007C8B60</code></td><td><code>SkeletalAppearance::render</code></td><td>PUSH_RET</td><td>Skeleton-rendering toggle.</td></tr>
+    <tr><td><code>0x007CA130</code></td><td><code>SkeletalAppearance::getDisplayLodSkeleton</code></td><td>PUSH_RET</td><td>LOD selection for skeleton draw.</td></tr>
+    <tr><td><code>0x007E6C50</code></td><td><code>Skeleton::addShaderPrimitives</code></td><td>PUSH_RET</td><td>Inject our bone-overlay draw call.</td></tr>
+  </tbody>
+</table>
+
+<h3>Static singletons / data addresses</h3>
+
+<p>These are read directly (no detour) by various subsystems:</p>
+
+<table>
+  <thead>
+    <tr><th>RVA</th><th>Symbol</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>0x190885C</code></td><td><code>GroundScene*</code> singleton</td><td>Read by <code>GroundScene::get()</code>.</td></tr>
+    <tr><td><code>0x1908830</code></td><td><code>Game::mainLoopCount</code> (int)</td><td>Used to debounce callback firing.</td></tr>
+    <tr><td><code>0x01908858</code></td><td><code>Game::isSafeToUse</code> flag (bool)</td><td>Composite of two flags.</td></tr>
+    <tr><td><code>0x01919410</code></td><td><code>Game::isSafeToUse</code> flag (bool)</td><td>Composite of two flags.</td></tr>
+    <tr><td><code>0x0193C5E0</code></td><td>HCURSOR cell (editor-mode DirectInput)</td><td>Cursor handle override.</td></tr>
+    <tr><td><code>0x0193C268</code></td><td>(unknown — used in crash-log hook)</td><td>Some kind of state ptr.</td></tr>
+    <tr><td><code>0x199CB34</code></td><td>(unknown — collision context)</td><td>Used during <code>ClientWorld::collide</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2>Memory utilities</h2>
+
+<p>
+<code>utinni::memory::createJMP(source, target, byteCount)</code> does the patch above
+that <code>midPopCell</code> uses — writes a <code>E9 &lt;rel32&gt;</code> jump and pads to <code>byteCount</code>
+with NOPs. The source must be at least 5 bytes from any branch target;
+otherwise you'll corrupt control flow.
+</p>
+
+<p>
+<code>utinni::memory::read&lt;T&gt;</code> / <code>write&lt;T&gt;</code> are typed <code>*((T*)addr)</code> reads/writes —
+useful for grabbing or poking the singleton pointers above.
+</p>
+
+<p>
+<code>utinni::memory::findPattern(...)</code> is a signature scanner — accepts a pattern
++ mask and returns the first match in a memory range or module. Used in
+practice when an RVA is too volatile across builds; not heavily used in
+current code because RVAs are stable for the targeted binary.
+</p>
+
+<h2>Vtable hooking (DirectX9)</h2>
+
+<p><code>swg/graphics/directx9.cpp</code> uses the <strong>first-call-back</strong> pattern:</p>
+
+<ol>
+  <li>Detour <code>Graphics::install</code> (RVA <code>0x007548A0</code>) — fires after the device is
+    created.</li>
+  <li>In the hook, read the device pointer from a known offset, dereference
+    its vtable, and patch entries 8/16/20/21 with our trampolines.</li>
+  <li>From then on, every <code>BeginScene</code> / <code>EndScene</code> / <code>Present</code> / <code>Reset</code>
+    passes through us.</li>
+</ol>
+
+<p>
+This is fragile if SWG ever recreates the device (resize, mode change). The
+current code re-installs the hooks on <code>Reset</code> to handle this.
+</p>
+
+<h2>Porting checklist for a new client build</h2>
+
+<p>If you want Utinni against a different SWG binary:</p>
+
+<ol>
+  <li>Open the binary in IDA Pro / Ghidra. Find:
+    <ul>
+      <li><code>Game::install</code>, <code>mainLoop</code>, <code>setupScene</code>, <code>cleanupScene</code> — typically a
+        cluster of public static functions on the <code>Game</code> namespace.</li>
+      <li><code>GroundScene::ctor</code>, <code>draw</code>, <code>update</code>, <code>reloadTerrain</code>,
+        <code>changeCamera</code>, <code>getCurrentCamera</code>.</li>
+      <li><code>Client::setupStartDataInstall</code>, <code>clientMain</code>, <code>writeCrashLog</code>,
+        <code>writeMiniDump</code>.</li>
+      <li><code>Graphics::install</code> / <code>beginScene</code> / <code>endScene</code> / <code>present</code> /
+        <code>presentWindow</code> / <code>update</code> / <code>resize</code>.</li>
+      <li><code>TreeFile::searchTree</code>.</li>
+      <li><code>CuiManager::render</code>, <code>CuiChatWindow::ctor</code>, etc.</li>
+      <li><code>CreatureObject::setTarget</code>.</li>
+    </ul>
+  </li>
+  <li>Replace the RVAs in each <code>swg/*/&lt;file&gt;.cpp::detour()</code>.</li>
+  <li>Verify the WndProc address used by <code>PanelGame.WndProc</code>
+    (<code>UtinniCoreDotNet/UI/Controls/PanelGame.cs</code>) — that's a separate
+    constant duplicating <code>Client::WndProc</code> RVA.</li>
+  <li>Run; iterate on any crashes by attaching a debugger and resolving the
+    bad call site.</li>
+</ol>
+
+<p>
+The <code>UtinniCore-Symbols</code> project exists specifically so CppSharp can resolve
+mangled native symbols — if you change ABI (calling conv, mangled names),
+you'll need to update that side too. See <a href="regen-bindings.html">Regenerating bindings</a>.
+</p>
+
+<h2>See also</h2>
+
+<ul>
+  <li><a href="core.html">Native core</a> — public API on top of these RVAs.</li>
+  <li><a href="injection.html">Injection &amp; boot</a> — how the EP-loop trick works.</li>
+  <li><a href="regen-bindings.html">Regenerating bindings</a> — when adding a new hook means
+    re-running CppSharp.</li>
+  <li><a href="../../swg-client/docs/index.html">swg-client docs</a> — to find the
+    source-level function being hooked.</li>
+</ul>
+
+</main>
+<footer>
+  Utinni — SWG client modding framework. Documentation for the fork at <code>D:/Code/Utinni</code>.
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>

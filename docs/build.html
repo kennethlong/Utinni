@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Build &amp; run — Utinni</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <h1><span class="accent">Utinni</span> — Build &amp; run</h1>
+  <div class="sub">Compile, install, run, debug.</div>
+</header>
+<nav class="top">
+  <a href="index.html">Overview</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="injection.html">Injection</a>
+  <a href="core.html">Native Core</a>
+  <a href="bridge.html">Managed Bridge</a>
+  <a href="plugin-framework.html">Plugin Framework</a>
+  <a href="callbacks.html">Callbacks</a>
+  <a href="ui-framework.html">UI</a>
+  <a href="hotkeys.html">Hotkeys</a>
+  <a href="undo-redo.html">Undo/Redo</a>
+  <a href="sdk.html">SDK</a>
+  <a href="build.html" class="active">Build</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="internals.html">Internals</a>
+  <a href="regen-bindings.html">Bindings</a>
+  <a href="glossary.html">Glossary</a>
+</nav>
+<main>
+
+<h1>Build &amp; run</h1>
+
+<div class="callout info"><strong>Audience:</strong> everyone.</div>
+
+<h2>What you need</h2>
+
+<table>
+  <thead>
+    <tr><th>Tool</th><th>Version</th><th>Why</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Visual Studio 2019</td><td>16.x with <strong>C++ desktop development</strong> + <strong>.NET desktop development</strong></td><td>The solution targets <code>v142</code> C++ toolset and .NET Framework 4.7.2.</td></tr>
+    <tr><td>Windows 10 SDK</td><td>10.0.19041.0 or later</td><td>Targeted by the C++ projects.</td></tr>
+    <tr><td>DirectX 9 SDK (June 2010)</td><td>for <code>RelWithDbgInfo</code>-configured graphics debugging</td><td>Optional but the project files reference it under that configuration.</td></tr>
+    <tr><td>.NET Framework 4.7.2 Targeting Pack</td><td>matches the runtime</td><td>Build target for managed projects.</td></tr>
+    <tr><td>The SWG client</td><td>Pre-CU SWGEmu / SWG-Source variant</td><td>Target process. Utinni validates <code>ProductName == "Star Wars Galaxies"</code>.</td></tr>
+    <tr><td>(optional) VSIX SDK</td><td>Microsoft.VisualStudio.SDK 16.x</td><td>Only needed if you want to build the plugin-template VSIX.</td></tr>
+    <tr><td>5–10 GB free disk</td><td>—</td><td>Mostly for VS, SDKs, and intermediates.</td></tr>
+  </tbody>
+</table>
+
+<p>The whole solution builds for <strong>x86 only</strong> — the SWG client is 32-bit.</p>
+
+<h2>Repo layout for build</h2>
+
+<pre><code>Utinni/
+├── Utinni.sln                          ← open this in VS 2019
+├── Launcher/Launcher.vcxproj
+├── UtinniCore/UtinniCore.vcxproj
+├── UtinniCore-Symbols/UtinniCore-Symbols.vcxproj
+├── UtinniCoreDotNet/UtinniCoreDotNet.csproj
+├── UtinniCoreDotNetGen/UtinniCoreDotNetGen.csproj
+├── UtINI/UtINI.vcxproj
+├── data/                               ← Icons, ut.ini template, utinni.cfg template
+├── external/                           ← vendored CppSharp, DetourXS, ImGuizmo, LeksysINI, imgui, nvapi, spdlog
+└── sdk/, docs/, etc.</code></pre>
+
+<h2>Build the solution</h2>
+
+<ol>
+  <li>Open <code>Utinni.sln</code> in Visual Studio 2019.</li>
+  <li>Select <strong><code>x86</code></strong> in the configuration platform dropdown.</li>
+  <li>Select <strong><code>Release</code></strong> (or <code>RelWithDbgInfo</code> if you want PDBs).</li>
+  <li><strong>Build → Build Solution</strong> (Ctrl+Shift+B).</li>
+</ol>
+
+<p>Dependencies build in this order automatically:</p>
+
+<div class="mermaid">
+graph LR
+  Symbols[UtinniCore-Symbols] --> Core[UtinniCore]
+  Core --> Launcher
+  Core --> Bridge[UtinniCoreDotNet]
+  Gen[UtinniCoreDotNetGen]
+  UtINI
+</div>
+
+<p><code>UtinniCoreDotNet</code>'s post-build <em>can</em> regenerate the CppSharp bindings via
+<code>UtinniCoreDotNetGen.exe</code> — see <a href="regen-bindings.html">Regenerating bindings</a>.
+In normal builds the existing <code>Generated/UtinniCore.cs</code> is used as-is.</p>
+
+<h3>Configurations</h3>
+
+<table>
+  <thead>
+    <tr><th>Configuration</th><th>Optimisation</th><th>PDBs</th><th>When to use</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>Debug</code></td><td>Off</td><td>Yes</td><td>Debugging C++. Significant runtime perf cost.</td></tr>
+    <tr><td><code>Release</code></td><td>On</td><td>No</td><td>Normal use / distribution.</td></tr>
+    <tr><td><code>RelWithDbgInfo</code></td><td>On</td><td>Yes (full PDBs)</td><td>Profile / mid-debug. Use this if you want to attach a debugger to a release-perf client.</td></tr>
+  </tbody>
+</table>
+
+<h3>Common build failures</h3>
+
+<table>
+  <thead>
+    <tr><th>Symptom</th><th>Cause</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>Cannot open input file 'UtinniCore-Symbols.lib'</code></td><td>UtinniCore-Symbols hasn't been built yet. Right-click the project → Build, then rebuild Core.</td></tr>
+    <tr><td><code>error MSB4019</code> referring to a missing DirectX SDK</td><td>Open <code>RelWithDbgInfo</code> config and either install DXSDK_DIR=<code>C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\</code> or switch to <code>Release</code>.</td></tr>
+    <tr><td>Managed compile error in <code>Generated/UtinniCore.cs</code></td><td>Regenerate (see below). If you just changed C++ public headers, you must regenerate.</td></tr>
+    <tr><td><code>MEF composition exception</code> at runtime</td><td>A plugin in <code>Plugins/</code> references a different <code>UtinniCoreDotNet.dll</code> than the one in your install. Same DLL identity required.</td></tr>
+  </tbody>
+</table>
+
+<h2>Install layout</h2>
+
+<p>Copy the build output into the SWG client folder (or any folder you'll
+launch from):</p>
+
+<pre><code>&lt;install&gt;/                        ← anywhere; doesn't have to be inside the client dir
+├── Launcher.exe                  ← from bin\&lt;Config&gt;\
+├── UtinniCore.dll                ← from bin\&lt;Config&gt;\
+├── UtinniCoreDotNet.dll          ← from bin\&lt;Config&gt;\
+├── ut.ini                        ← from data\ (edit before first run)
+├── utinni.cfg                    ← from data\
+├── Icons/                        ← from data\
+└── Plugins/
+    └── &lt;YourPlugin&gt;/
+        └── ...</code></pre>
+
+<p>Notes:</p>
+
+<ul>
+  <li>The build system copies <code>data/</code> to <code>bin/&lt;Config&gt;/</code> automatically (see
+    the UtinniCore post-build step). You can run directly from there.</li>
+  <li><code>Launcher.exe</code> reads <code>ut.ini</code> from <strong>its own directory</strong>, not the SWG
+    client's directory.</li>
+</ul>
+
+<h2>First-run setup</h2>
+
+<p>Edit <code>ut.ini</code> before first launch:</p>
+
+<pre><code>[Launcher]
+swgClientPath =                ; will pop a file dialog if blank
+swgClientName =
+
+[UtinniCore]
+enableEditorMode    = true     ; set false for headless plugins only
+enableInternalUi    = false    ; developer ImGui panels
+useSwgOverrideCfg   = true     ; use utinni.cfg instead of client.cfg
+autoLoadScene       = false
+
+[Log]
+writeClassName      = false
+writeFunctionName   = false
+
+[Plugins]
+plugin_0 = true,TheJawaToolbox</code></pre>
+
+<p>Then run <code>Launcher.exe</code> (optionally with the <code>-- -s &lt;Section&gt; key=value</code>
+config passthrough — see <a href="injection.html#command-line-passthrough">Injection — Command-line passthrough</a>).</p>
+
+<h2>Iterating on a plugin</h2>
+
+<p>The fast loop:</p>
+
+<ol>
+  <li>Build your plugin project — output lands in <code>bin/&lt;Config&gt;/Plugins/&lt;YourPlugin&gt;/</code>
+    thanks to <code>Directory.Build.props</code> (or your own post-build copy).</li>
+  <li>Quit the launcher / SWG client. <strong>Plugins are loaded once at injection</strong> —
+    there is no hot-reload.</li>
+  <li>Re-run <code>Launcher.exe</code>.</li>
+</ol>
+
+<p>For C++ plugins, link errors usually mean the <code>UtinniCore.lib</code> reference
+needs updating; the VSIX scaffolding handles this for .NET, but for C++ you
+maintain the include/lib paths yourself.</p>
+
+<h2>Attaching a debugger</h2>
+
+<h3>To the launcher</h3>
+
+<pre><code>Debug → Other Targets → ... → process: Launcher.exe</code></pre>
+
+<p>Useful for injection-time issues. Once injection succeeds the launcher
+process terminates.</p>
+
+<h3>To the SWG client (managed code)</h3>
+
+<p>After the editor opens:</p>
+
+<pre><code>Debug → Attach to Process → SwgClient_r.exe → Attach to: Managed (v4.x), Native</code></pre>
+
+<p>You'll see breakpoints fire in WinForms event handlers, callbacks, etc.</p>
+
+<h3>To the SWG client (native code)</h3>
+
+<p>Same as above but <strong>Attach to: Native</strong> only. You'll need PDBs — use the
+<code>RelWithDbgInfo</code> build for <code>UtinniCore.dll</code>. The SWG client itself has no
+PDBs available, so you'll see lots of <code>?? + 0x...</code> frames for the lower
+half of stacks.</p>
+
+<p>The <code>Launcher/main.cpp</code> has commented-out code for <strong>automatic
+Visual-Studio-DTE attach on injection</strong> — disabled because it was flaky.
+If you want to revive it, see the <code>#if defined RELDBG || defined _DEBUG</code>
+section.</p>
+
+<h2>Logs</h2>
+
+<p>By default, logs go to <code>&lt;install&gt;/logs/utinni.log</code> (rotated by spdlog) and
+into the in-game ImGui log panel if <code>enableInternalUi=true</code>. The editor's
+bottom rail also tails the log.</p>
+
+<p>Toggle verbosity per-class via <code>ut.ini → [Log]</code>:</p>
+
+<pre><code>[Log]
+writeClassName    = true   ; prefix every line with [ClassName]
+writeFunctionName = true   ; ...and [MethodName]</code></pre>
+
+<h2>Distribution</h2>
+
+<p>For a release archive, the minimal contents are:</p>
+
+<pre><code>Utinni/
+├── Launcher.exe
+├── UtinniCore.dll
+├── UtinniCoreDotNet.dll
+├── ut.ini       (with sane defaults; clear out plugin_N entries)
+├── utinni.cfg
+└── Icons/</code></pre>
+
+<p>…then your <code>Plugins/</code> tree if you're bundling specific ones.</p>
+
+<h2>See also</h2>
+
+<ul>
+  <li><a href="injection.html">Injection &amp; boot</a> — what <code>Launcher.exe</code> actually does.</li>
+  <li><a href="sdk.html">SDK &amp; templates</a> — fastest path to a new plugin project.</li>
+  <li><a href="regen-bindings.html">Regenerating bindings</a> — when you change C++ headers.</li>
+</ul>
+
+</main>
+<footer>
+  Utinni — SWG client modding framework. Documentation for the fork at <code>D:/Code/Utinni</code>.
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>

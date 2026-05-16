@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Native Core — Utinni</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <h1><span class="accent">Utinni</span> — Native core</h1>
+  <div class="sub">Inside UtinniCore — the native side.</div>
+</header>
+<nav class="top">
+  <a href="index.html">Overview</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="injection.html">Injection</a>
+  <a href="core.html" class="active">Native Core</a>
+  <a href="bridge.html">Managed Bridge</a>
+  <a href="plugin-framework.html">Plugin Framework</a>
+  <a href="callbacks.html">Callbacks</a>
+  <a href="ui-framework.html">UI</a>
+  <a href="hotkeys.html">Hotkeys</a>
+  <a href="undo-redo.html">Undo/Redo</a>
+  <a href="sdk.html">SDK</a>
+  <a href="build.html">Build</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="internals.html">Internals</a>
+  <a href="regen-bindings.html">Bindings</a>
+  <a href="glossary.html">Glossary</a>
+</nav>
+
+<main>
+
+<h1>Native core (UtinniCore)</h1>
+
+<div class="callout info">
+  <strong>Audience:</strong> C++ plugin authors + core contributors. .NET plugin authors can
+  skip to <a href="bridge.html">Managed bridge</a> &mdash; most C++ surface is auto-projected
+  into C# and you rarely need to touch native directly.
+</div>
+
+<p>
+  <code>UtinniCore.dll</code> is the heart of Utinni: a 32-bit native DLL injected into the
+  SWG client. It's structured around three responsibilities:
+</p>
+
+<ol>
+  <li><strong>Wrap the running SWG client</strong> &mdash; one <code>swg/&lt;subsystem&gt;/</code> folder per client
+   subsystem. Each folder owns a thin layer of (a) function pointers into the
+   client, (b) DetourXS hook installers, (c) C++ callbacks, and (d) a
+   public-facing <code>utinni::&lt;Subsystem&gt;</code> API.</li>
+  <li><strong>Provide a plugin model</strong> &mdash; <code>plugin_framework/</code> lets DLLs in <code>Plugins/</code>
+   declare themselves and run <code>init()</code> after Utinni boots.</li>
+  <li><strong>Provide infrastructure</strong> &mdash; <code>utility/</code> (log, memory, string),
+   <code>clr.h/cpp</code> (CLR host), plus dearImgui+ImGuizmo wired through the
+   D3D9 device.</li>
+</ol>
+
+<h2>Layout</h2>
+
+<pre><code>UtinniCore/
+&#x251C;&#x2500;&#x2500; utinni.h / .cpp           &larr; DllMain, main(), createDetours/Patches, getPath/getConfig/getPluginManager
+&#x251C;&#x2500;&#x2500; clr.h / .cpp              &larr; CLR v4 host (CLRCreateInstance, ExecuteInDefaultAppDomain)
+&#x251C;&#x2500;&#x2500; UtinniCore.rc / resource.h
+&#x251C;&#x2500;&#x2500; plugin_framework/
+&#x2502;   &#x251C;&#x2500;&#x2500; utinni_plugin.h       &larr; UtinniPlugin interface + UTINNI_PLUGIN macro
+&#x2502;   &#x251C;&#x2500;&#x2500; plugin_manager.h
+&#x2502;   &#x2514;&#x2500;&#x2500; plugin_manager.cpp
+&#x251C;&#x2500;&#x2500; utility/
+&#x2502;   &#x251C;&#x2500;&#x2500; log.h / .cpp          &larr; spdlog wrapper + sink callbacks
+&#x2502;   &#x251C;&#x2500;&#x2500; memory.h / .cpp       &larr; pattern scan + read&lt;T&gt;/write&lt;T&gt;/createJMP
+&#x2502;   &#x251C;&#x2500;&#x2500; string_utility.h/.cpp
+&#x2502;   &#x2514;&#x2500;&#x2500; utility.h / .cpp
+&#x2514;&#x2500;&#x2500; swg/
+    &#x251C;&#x2500;&#x2500; appearance/   (skeleton, particle, appearance, portal, extent)
+    &#x251C;&#x2500;&#x2500; camera/       (camera, debug_camera)
+    &#x251C;&#x2500;&#x2500; client/       (client)
+    &#x251C;&#x2500;&#x2500; game/         (game)
+    &#x251C;&#x2500;&#x2500; graphics/     (graphics, directx9, shader, post_processing, depth_texture)
+    &#x251C;&#x2500;&#x2500; misc/         (config, direct_input, tree_file, network, audio, swg_math,
+    &#x2502;                  swg_memory, swg_string, swg_misc, swg_utility, crc_string, io_win)
+    &#x251C;&#x2500;&#x2500; object/       (object, creature_object, client_object, player_object)
+    &#x251C;&#x2500;&#x2500; scene/        (ground_scene, render_world, terrain, client_world, scene, world_snapshot)
+    &#x2514;&#x2500;&#x2500; ui/           (cui_manager, cui_chat_window, cui_hud, cui_radial_menu, cui_menu,
+                       cui_io, cui_misc, cui_login_screen, command_parser, imgui_impl,
+                       utinni_command_parser, plus ui_* control-tree wrappers)</code></pre>
+
+<h2>How a single <code>swg/&lt;subsystem&gt;/</code> works</h2>
+
+<p>
+  Each subsystem follows the same convention. Take <code>swg/game/game.h</code> / <code>game.cpp</code>
+  as the canonical example:
+</p>
+
+<pre><code>// utinni.cpp
+void createDetours() {
+    ...
+    utinni::Game::detour();   // &larr; per-subsystem hook installer
+    ...
+}</code></pre>
+
+<pre><code>// swg/game/game.cpp (sketch)
+namespace swg::game {
+    // Native function pointer types matching the SWG client's signatures.
+    typedef void(__thiscall *install_t)(void* this_);
+    install_t install = nullptr;
+    // ... etc for mainLoop, setupScene, cleanupScene, etc.
+}
+
+namespace utinni::Game {
+    // Public C++ API exported under utinni::Game
+    void install() { swg::game::install_call(...); }
+    bool isRunning();
+    void loadScene(const char* terrain, const char* avatar);
+    void cleanupScene();
+    // Callback registration
+    static std::vector&lt;std::function&lt;void()&gt;&gt; installCallbacks;
+    void addInstallCallback(std::function&lt;void()&gt; cb) { installCallbacks.push_back(cb); }
+    // ...
+
+    void detour() {
+        // Wire DetourXS to the SWG addresses
+        swg::game::install = (swg::game::install_t)Detour::Create(
+            (LPVOID)0x00422E80,           // RVA of Game::install in the SWG client
+            myInstallHook,                // our replacement
+            DETOUR_TYPE_PUSH_RET);
+        // ... more hooks
+    }
+}</code></pre>
+
+<p>
+  The pattern repeats across all ~9 subsystem folders. Once a <code>detour()</code>
+  installer has run, calls into the original SWG function are routed through our
+  hook; our hook typically (a) raises any registered callbacks, then (b) chains
+  back to the original via the saved trampoline pointer.
+</p>
+
+<p>
+  <strong>A C++ plugin's job is to call <code>utinni::&lt;Subsystem&gt;::add*Callback()</code> to
+  subscribe.</strong> The detours themselves are not user-extensible at runtime &mdash; to
+  add a new hook you edit <code>swg/&lt;subsystem&gt;/</code> in the core.
+</p>
+
+<h2>Subsystem catalog</h2>
+
+<p>
+  The detail tables below list the <strong>public <code>utinni::</code> API</strong> for each
+  subsystem. For the hard-coded RVAs and hook trampolines, see
+  <a href="internals.html">Internals</a>.
+</p>
+
+<h3><code>swg/client/client.h</code> &mdash; <code>utinni::Client</code></h3>
+
+<p>
+  The top-level client lifecycle (window, input, crash dumps). Editor mode
+  hangs off this &mdash; <code>Client::setEditorMode(bool)</code> is the master switch read by
+  many other subsystems.
+</p>
+
+<table>
+  <thead>
+    <tr><th>Symbol</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>setEditorMode(bool)</code> / <code>getEditorMode()</code></td><td>Master toggle. Read from <code>ut.ini &rarr; [UtinniCore] enableEditorMode</code>.</td></tr>
+    <tr><td><code>setHwnd(HWND)</code> / <code>getHwnd()</code></td><td>Set when WinForms re-parents the SWG window into <code>PanelGame</code>.</td></tr>
+    <tr><td><code>setHInstance</code> / <code>getHInstance</code></td><td>Likewise for the SWG window HINSTANCE.</td></tr>
+    <tr><td><code>setSize(w,h)</code> / <code>getWidth/getHeight</code></td><td>Forwarded to SWG resize when the host panel changes size.</td></tr>
+    <tr><td><code>suspendInput()</code> / <code>resumeInput()</code> / <code>isInputAllowed()</code></td><td>Tells SWG to stop reading mouse/DInput while the user is in a non-game WinForms control.</td></tr>
+  </tbody>
+</table>
+
+<p>
+  Wraps SWG's <code>Client</code> singleton entry points: <code>setupStartDataInstall</code>,
+  <code>clientMain</code>, <code>WndProc</code>, <code>writeCrashLog</code>, <code>writeMiniDump</code>.
+</p>
+
+<h3><code>swg/game/game.h</code> &mdash; <code>utinni::Game</code></h3>
+
+<p>The main game loop. <strong>The most-used callback surface for plugins.</strong></p>
+
+<table>
+  <thead>
+    <tr><th>Symbol</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>addInstallCallback(fn)</code></td><td>Fires once when <code>Game::install</code> completes (engine subsystems ready).</td></tr>
+    <tr><td><code>addPreMainLoopCallback(fn)</code> / <code>addMainLoopCallback(fn)</code></td><td>Before / after each frame.</td></tr>
+    <tr><td><code>addSetSceneCallback(fn)</code> / <code>addCleanupSceneCallback(fn)</code></td><td>A scene was loaded / is being torn down.</td></tr>
+    <tr><td><code>quit()</code></td><td>Ask SWG to shut down cleanly.</td></tr>
+    <tr><td><code>isRunning()</code></td><td>Has <code>Game::install</code> completed?</td></tr>
+    <tr><td><code>isSafeToUse()</code></td><td>Checks the two SWG-side "safe" flags. Useful for re-entrancy guards.</td></tr>
+    <tr><td><code>loadScene(terrain, avatar)</code></td><td><code>setupScene</code> with two filenames. Avatar is e.g. <code>object/creature/player/shared_human_male.iff</code>.</td></tr>
+    <tr><td><code>cleanupScene()</code></td><td>Tear down the current scene.</td></tr>
+    <tr><td><code>getRepository()</code></td><td>The client-side object repository (used by Network::getObjectById).</td></tr>
+    <tr><td><code>getPlayer()</code> / <code>getPlayerCreatureObject()</code></td><td>The local player's <code>CreatureObject</code>.</td></tr>
+    <tr><td><code>getPlayerLookAtTargetObject()</code></td><td>What the player is currently targeting.</td></tr>
+    <tr><td><code>getCamera()</code> / <code>getConstCamera()</code></td><td>The active camera (debug or game).</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/scene/ground_scene.h</code> &mdash; <code>utinni::GroundScene</code></h3>
+
+<p>
+  The ground-side scene. This is the most-detoured subsystem after <code>Game</code>
+  because almost every editor action eventually wants to touch the scene.
+</p>
+
+<table>
+  <thead>
+    <tr><th>Symbol</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>get()</code></td><td>Static singleton getter (reads <code>0x190885C</code> directly).</td></tr>
+    <tr><td><code>ctor(terrain, avatar)</code></td><td>Manually construct a GroundScene &mdash; used by offline-mode boot.</td></tr>
+    <tr><td><code>addUpdateLoopCallback(fn)</code></td><td>Per-frame after <code>update()</code>.</td></tr>
+    <tr><td><code>addPreDrawLoopCallback(fn)</code> / <code>addPostDrawLoopCallback(fn)</code></td><td>Around <code>draw()</code>.</td></tr>
+    <tr><td><code>addCameraChangeCallback(fn)</code></td><td>Camera index swapped (e.g. free-cam toggled).</td></tr>
+    <tr><td><code>removeDetour()</code></td><td>Tear down hooks (used by offline-mode reload).</td></tr>
+    <tr><td><code>getCurrentCamera()</code></td><td>The active camera (index 0 = chase, etc.).</td></tr>
+    <tr><td><code>toggleFreeCamera()</code> / <code>changeCameraMode()</code> / <code>isFreeCameraActive()</code></td><td>Free-cam (debug camera) controls.</td></tr>
+    <tr><td><code>reloadTerrain()</code></td><td>Force re-load <code>.trn</code> from disk.</td></tr>
+    <tr><td><code>createObjectAtPlayer(filename)</code> / <code>createAppearanceAtPlayer(filename)</code></td><td>Temporary spawn for object-browser drag-drop preview.</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/scene/render_world.h</code> &mdash; <code>utinni::renderWorld</code></h3>
+
+<table>
+  <thead>
+    <tr><th>Symbol</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>addObjectNotifications(obj)</code></td><td>Register a manually-instanced object with the renderer so it actually draws.</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/scene/client_world.h</code> &mdash; <code>utinni::clientWorld</code></h3>
+
+<p>
+  Wraps <code>ClientWorld::collide</code> for ray-cast queries. Currently the detour is
+  disabled in <code>createDetours()</code> (commented out); callable directly.
+</p>
+
+<h3><code>swg/scene/world_snapshot.h</code> &mdash; <code>utinni::WorldSnapshot</code></h3>
+
+<p>
+  Wraps the <code>.ws</code> world-snapshot system &mdash; placement records for "static"
+  objects within a planet. The Jawa Toolbox's snapshot editing all flows
+  through here. <code>WorldSnapshotReaderWriter</code> handles load/save.
+</p>
+
+<h3><code>swg/object/*</code> &mdash; <code>utinni::Object</code> and friends</h3>
+
+<p>
+  <code>Object</code> is the base of the SWG object hierarchy. <code>CreatureObject</code> /
+  <code>ClientObject</code> / <code>PlayerObject</code> extend it. Notable hooks:
+</p>
+
+<table>
+  <thead>
+    <tr><th>Symbol</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>getObjectTemplateByFilename/Iff/Crc</code></td><td>Template lookup.</td></tr>
+    <tr><td><code>createObject(template)</code></td><td>Spawn a new object instance.</td></tr>
+    <tr><td><code>creatureObject::addOnTargetCallback(fn)</code></td><td>Detours <code>CreatureObject::setTarget</code>; fires whenever target changes.</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/graphics/graphics.h</code> &mdash; <code>utinni::Graphics</code></h3>
+
+<p>
+  Wraps SWG's <code>Graphics</code> class &mdash; the wrapper around D3D9 + render-loop
+  bookkeeping. The hot path is the begin/end-scene callbacks.
+</p>
+
+<table>
+  <thead>
+    <tr><th>Symbol</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>addPreUpdateLoopCallback</code> / <code>addPostUpdateLoopCallback</code></td><td>Around <code>Graphics::update</code>.</td></tr>
+    <tr><td><code>addPreBeginSceneCallback</code> / <code>addPostBeginSceneCallback</code></td><td>Around <code>Graphics::beginScene</code>.</td></tr>
+    <tr><td><code>addPreEndSceneCallback</code> / <code>addPostEndSceneCallback</code></td><td>Around <code>Graphics::endScene</code>.</td></tr>
+    <tr><td><code>addPrePresentCallback</code> / <code>addPostPresentCallback</code></td><td>Around <code>Graphics::present</code>.</td></tr>
+    <tr><td><code>addPrePresentWindowCallback</code> / <code>addPostPresentWindowCallback</code></td><td>Likewise for the window present path.</td></tr>
+    <tr><td><code>flushResources()</code> / <code>reloadTextures()</code></td><td>Manual cache invalidation.</td></tr>
+    <tr><td><code>useHardwareCursor</code> / <code>showMouseCursor</code> / <code>setSystemMouseCursorPosition</code></td><td>Cursor control.</td></tr>
+    <tr><td><code>setStaticShader</code> / <code>setObjectToWorldTransformAndScale</code></td><td>Direct draw helpers used by ImGui overlay.</td></tr>
+    <tr><td><code>drawExtent(transform)</code></td><td>Visualise an extent box (object collision bounds).</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/graphics/directx9.h</code> &mdash; <code>utinni::directX</code></h3>
+
+<p>Lower-level: the wrapped <code>IDirect3DDevice9</code>. ImGui+ImGuizmo render here.</p>
+
+<table>
+  <thead>
+    <tr><th>Symbol</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>getDirectXDevice()</code></td><td>The <code>IDirect3DDevice9*</code> SWG handed back to us.</td></tr>
+    <tr><td><code>getDepthTexture()</code></td><td>A depth texture resolve (when supported).</td></tr>
+    <tr><td><code>enableWireframe()</code></td><td>D3DRS_FILLMODE &rarr; wireframe.</td></tr>
+    <tr><td><code>cleanup()</code></td><td>Free our owned device resources on detach.</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/graphics/shader.h</code> / <code>post_processing.h</code></h3>
+
+<p>
+  <code>shader::addDrawPhaseCallback(fn)</code> &mdash; fires on each draw phase (uses a JMP
+  patch at <code>0x00773E39</code> inside SWG's <code>midPopCell</code>).
+</p>
+
+<p>
+  <code>postProcessing::addPreSceneRenderCallback(fn)</code> / <code>addPostSceneRenderCallback(fn)</code>
+  &mdash; fire before/after the bloom pass (detoured via Bloom::preSceneRender /
+  postSceneRender). Generic "do something with the depth buffer" hook for
+  post-process effects.
+</p>
+
+<h3><code>swg/ui/imgui_impl.h</code> &mdash; <code>utinni::imgui_impl</code></h3>
+
+<p>
+  The bridge that puts dearImgui on top of SWG. <strong>Plugins don't usually call
+  this directly &mdash; they use the higher-level <code>imgui_gizmo</code> and the managed
+  <code>ImGuiCallbacks</code> instead.</strong>
+</p>
+
+<table>
+  <thead>
+    <tr><th>Symbol</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>enableInternalUi(bool)</code></td><td>Toggle developer ImGui panels.</td></tr>
+    <tr><td><code>Enable(Object*)</code></td><td>Show the gizmo attached to an object.</td></tr>
+    <tr><td><code>Disable()</code></td><td>Hide the gizmo.</td></tr>
+    <tr><td><code>SetGizmoMode(World/Local)</code></td><td>Coordinate space.</td></tr>
+    <tr><td><code>SetOperationMode(Translate/Rotate)</code></td><td>Active manipulator.</td></tr>
+    <tr><td><code>EnableSnap(bool)</code> / <code>SetSnapSize(f)</code></td><td>Snap-to-grid.</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/ui/cui_manager.h</code> &mdash; <code>utinni::CuiManager</code>, <code>utinni::UiManager</code></h3>
+
+<p>The client UI manager. Two related things share this file:</p>
+
+<ul>
+  <li><code>CuiManager::setSize/togglePointer/isRenderingUi/hasObjectUnderCursor</code> &mdash; UI
+  state inspection.</li>
+  <li><code>UiManager::get()</code> and <code>UiManager::drawCursor()</code> &mdash; the lower-level singleton.</li>
+  <li><code>SystemMessageManager::addReceiveMessageCallback(fn)</code> /
+  <code>sendMessage(msg)</code> &mdash; system-message stream (chat-style messages from the
+  game engine).</li>
+</ul>
+
+<h3><code>swg/ui/cui_chat_window.h</code> &mdash; <code>utinni::CuiChatWindow</code></h3>
+
+<table>
+  <thead>
+    <tr><th>Symbol</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>addCreateCommandParserCallback(fn)</code></td><td>Hook the chat window's parser construction &mdash; used by example C++ plugin to inject a slash-command.</td></tr>
+    <tr><td><code>enableTextInput(bool)</code></td><td>Toggle text-input mode.</td></tr>
+    <tr><td><code>writeToAllTabs(text)</code> / <code>writeToCurrentTab(text)</code></td><td>Programmatic text injection.</td></tr>
+  </tbody>
+</table>
+
+<h3><code>swg/ui/cui_hud.h</code> &mdash; <code>utinni::cuiHud</code></h3>
+
+<p>
+  HUD update + action dispatch. Used by editor for "what is the player looking
+  at right now."
+</p>
+
+<h3><code>swg/ui/cui_radial_menu.h</code> &mdash; <code>utinni::cuiRadialMenuManager</code></h3>
+
+<p>
+  Radial context menu around the targeted object. Detoured for the gizmo
+  integration.
+</p>
+
+<h3><code>swg/ui/command_parser.h</code> &mdash; <code>utinni::CommandParser</code></h3>
+
+<p>
+  The base class for SWG slash-commands. Plugins (both C++ and via the
+  chat-window callback) subclass this to add their own commands. See the
+  <code>ExampleCppPlugin</code> for the canonical pattern.
+</p>
+
+<h3><code>swg/misc/config.h</code> &mdash; <code>utinni::config</code></h3>
+
+<p>
+  Detours <code>loadOverrideConfig</code> so that <strong><code>utinni.cfg</code> shadows <code>client.cfg</code></strong>.
+  The <code>useSwgOverrideCfg</code> boolean in <code>ut.ini</code> toggles this.
+</p>
+
+<h3><code>swg/misc/tree_file.h</code> &mdash; <code>utinni::treefile</code></h3>
+
+<p>
+  Wraps SWG's <code>TreeFile</code> &mdash; the union-mounted virtual filesystem composed of
+  <code>.tre</code> archives. Detoured to record every filename ever resolved; the running
+  set is <code>getAllFilenames()</code>. The object browser uses this to enumerate
+  everything available without re-opening the archives ourselves.
+</p>
+
+<h3><code>swg/misc/network.h</code> &mdash; <code>utinni::Network</code></h3>
+
+<p>
+  <code>getObjectById(id)</code> for managed-side lookups of network objects (used by
+  <code>ImGuiCallbacks</code> to find what the gizmo is attached to).
+</p>
+
+<h3><code>swg/misc/swg_math.h</code>, <code>swg_string.h</code>, <code>swg_memory.h</code></h3>
+
+<p>
+  SWG's own math (<code>Vector</code>, <code>Matrix</code>, <code>Transform</code>), strings (<code>String</code>, <code>WString</code>,
+  <code>CrcString</code>), and allocator. Cleanly reflected through CppSharp.
+</p>
+
+<h3><code>swg/camera/debug_camera.h</code> &mdash; <code>utinni::debugCamera</code></h3>
+
+<p>
+  Free-fly camera (independent of player). Speed, FOV, drag-the-player toggle,
+  input event processing.
+</p>
+
+<h3><code>swg/appearance/skeleton.h</code> &mdash; <code>utinni::skeletalAppearance</code></h3>
+
+<p>
+  <code>setRenderSkeleton(bool)</code> &mdash; draws the bone hierarchy of every skeletal
+  appearance. Useful debug visual.
+</p>
+
+<h2>Plugin framework (C++)</h2>
+
+<p><code>UtinniCore/plugin_framework/utinni_plugin.h</code> defines the contract:</p>
+
+<pre><code>namespace utinni {
+struct UtinniPlugin {
+    struct Information {
+        const char* name;
+        const char* description;
+        const char* author;
+    };
+
+    virtual void init() {}
+    virtual const Information&amp; getInformation() = 0;
+};
+}
+
+#define UTINNI_PLUGIN extern "C" __declspec(dllexport) utinni::UtinniPlugin* createPlugin()</code></pre>
+
+<p>The plugin DLL exports one function: <code>createPlugin</code>. The example:</p>
+
+<pre><code>class ExampleUtinniPlugin : public utinni::UtinniPlugin {
+    Information information = { "Example Plugin", "...", "Author" };
+public:
+    void init() override {
+        utinni::CuiChatWindow::addCreateCommandParserCallback(
+            &amp;example::ExampleCommandParser::create);
+    }
+    const Information&amp; getInformation() override { return information; }
+};
+
+UTINNI_PLUGIN { return new ExampleUtinniPlugin(); }</code></pre>
+
+<h3>Discovery</h3>
+
+<p>
+  <code>PluginManager::loadPlugins()</code> reads <code>[Plugins] plugin_0</code>, <code>plugin_1</code>, &hellip; from
+  <code>ut.ini</code>. Each entry is <code>enabled,DirectoryName</code> (e.g. <code>true,MyPlugin</code>). For
+  each enabled entry:
+</p>
+
+<ol>
+  <li><code>LoadLibraryA("Plugins/&lt;DirectoryName&gt;/&lt;DirectoryName&gt;.dll")</code></li>
+  <li><code>GetProcAddress("createPlugin")</code> &rarr; call it to get the <code>UtinniPlugin*</code></li>
+  <li>Call <code>plugin-&gt;init()</code> after all plugins are loaded.</li>
+</ol>
+
+<p>Disabled plugins are <em>not</em> loaded &mdash; the DLL is never touched.</p>
+
+<h3>Public API for plugin authors</h3>
+
+<pre><code>const std::string&amp;        utinni::getPath();
+const std::string&amp;        utinni::getSwgCfgFilename();
+utinni::UtINI&amp;            utinni::getConfig();
+utinni::PluginManager&amp;    utinni::getPluginManager();</code></pre>
+
+<p>
+  &mdash; available by <code>#include "utinni.h"</code> (linked against <code>UtinniCore.lib</code> /
+  imported from <code>UtinniCore.dll</code>).
+</p>
+
+<h2>Utility layer</h2>
+
+<h3><code>utility/log.h</code></h3>
+
+<pre><code>utinni::log::info(const char* fmt, ...);
+utinni::log::warning(...);
+utinni::log::error(...);
+utinni::log::critical(...);
+utinni::log::debug(...);
+
+utinni::log::addOutputSinkCallback(std::function&lt;void(const std::string&amp;)&gt;);</code></pre>
+
+<p>
+  Backed by spdlog; the managed side registers a sink callback so .NET plugins
+  see the same log stream.
+</p>
+
+<h3><code>utility/memory.h</code></h3>
+
+<pre><code>// Pattern scan
+auto addr = utinni::memory::findPattern(start, length, pattern, mask);
+auto addr = utinni::memory::findPattern("kernel32.dll", pattern, mask);
+
+// Typed read/write
+T value     = utinni::memory::read&lt;T&gt;(address);
+T deref     = utinni::memory::read&lt;T&gt;(address, offset);
+utinni::memory::write&lt;T&gt;(address, value);
+
+// Manual JMP patching
+utinni::memory::createJMP(sourceAddr, targetAddr, byteCount);</code></pre>
+
+<p>These are how subsystems install their own ad-hoc patches outside of DetourXS.</p>
+
+<h3><code>utility/string_utility.h</code> / <code>utility.h</code></h3>
+
+<p>
+  Helpers for <code>WString</code> &harr; <code>std::wstring</code> &harr; <code>std::string</code>, path normalisation,
+  etc. Used internally; rarely needed from plugins.
+</p>
+
+<h2>ImGui + ImGuizmo</h2>
+
+<p>
+  <code>swg/ui/imgui_impl.cpp</code> hooks the D3D9 device's <code>BeginScene</code> / <code>EndScene</code> /
+  <code>Present</code>. ImGui is initialised against the device the first time we see it
+  after install. Two layers of UI:
+</p>
+
+<ul>
+  <li><strong>Internal UI</strong> &mdash; gated by <code>enableInternalUi</code>. Developer panels (log viewer,
+  resource browser).</li>
+  <li><strong>ImGuizmo</strong> &mdash; the 3D transform handles for snapshot-node manipulation.
+  Driven through <code>utinni::imgui_impl::Enable/Disable</code> and the managed
+  <code>ImGuiCallbacks</code> for position/rotation/enabled events.</li>
+</ul>
+
+<p>
+  See <a href="callbacks.html#imguicallbacks">Callbacks &mdash; ImGuiCallbacks</a> for the high-level
+  flow.
+</p>
+
+<h2>Build configuration</h2>
+
+<table>
+  <thead>
+    <tr><th>Property</th><th>Value</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Configuration type</td><td>DynamicLibrary (.dll)</td></tr>
+    <tr><td>Platform Toolset</td><td>v142 (VS 2019)</td></tr>
+    <tr><td>Character set</td><td>Multi-byte</td></tr>
+    <tr><td>C++ standard</td><td>C++17</td></tr>
+    <tr><td>Platform</td><td>Win32 (x86 only)</td></tr>
+    <tr><td>Output dir</td><td><code>bin/&lt;Config&gt;/UtinniCore.dll</code> (sibling: <code>UtinniCore.lib</code>, used by plugins)</td></tr>
+    <tr><td>Preprocessor</td><td><code>EXPORT_UTINNI</code> (toggles dllexport/dllimport on <code>UTINNI_API</code>), <code>SPDLOG_NO_EXCEPTIONS</code>, <code>_CRT_SECURE_NO_WARNINGS</code>, build-config DEBUG/NDEBUG</td></tr>
+    <tr><td>Includes</td><td><code>external/CppSharp/include</code>, <code>external/DetourXS</code>, <code>external/imgui</code>, <code>external/ImGuizmo</code>, <code>external/LeksysINI</code>, <code>external/spdlog/include</code>, <code>external/nvapi</code>, repo root</td></tr>
+    <tr><td>Post-build</td><td>Copy <code>data/</code> to output dir; run <code>UtinniCoreDotNetGen.exe</code> to regenerate <code>UtinniCoreDotNet/Generated/UtinniCore.cs</code></td></tr>
+  </tbody>
+</table>
+
+<p>
+  <code>RelWithDbgInfo</code> is the configuration most plugin authors will use against &mdash;
+  optimised but with PDBs.
+</p>
+
+<h2>Cross-references</h2>
+
+<ul>
+  <li><a href="internals.html">Internals</a> &mdash; the full RVA / patch / hook table.</li>
+  <li><a href="bridge.html">Bridge</a> &mdash; how the native API surfaces through CppSharp.</li>
+  <li><a href="../../swg-client/docs/client.html">swg-client/client.html</a> &mdash; what the
+  hooked client subsystems actually do.</li>
+</ul>
+
+</main>
+<footer>
+  Utinni &mdash; SWG client modding framework. Documentation for the fork at <code>D:/Code/Utinni</code>.
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>

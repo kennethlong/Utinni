@@ -1,7 +1,9 @@
 # Utinni
-Utinni is a client plugin and injection framework which aims to provide an easier access to client and content development for Pre-CU Star Wars Galaxies and more specifically [SWGEmu](https://github.com/swgemu). 
+Utinni is a client plugin and injection framework which aims to provide an easier access to client and content development for Pre-CU Star Wars Galaxies and more specifically [SWGEmu](https://github.com/swgemu).
 
 Official plugins can be found [here](https://github.com/ptklatt/UtinniPlugins).
+
+> **Documentation:** an interactive doc set lives in [`docs/index.html`](./docs/index.html) — open it locally for the navigable HTML site (architecture, injection, plugin framework, callbacks, UI, hotkeys, undo/redo, SDK, build, tutorial, internals, regenerating bindings, glossary). The same content is available as plain markdown for AI/grep tooling under [`docs/ai/`](./docs/ai/). The plugin reference docs live in the sibling repo at [`../UtinniPlugins/docs/`](../UtinniPlugins/docs/index.html).
 
 **Features**
 * Gizmo implementation via ImGuizmo

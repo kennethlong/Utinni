@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Plugin Framework — Utinni</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <h1><span class="accent">Utinni</span> — Plugin Framework</h1>
+  <div class="sub">IPlugin / IEditorPlugin contracts</div>
+</header>
+<nav class="top">
+  <a href="index.html">Overview</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="injection.html">Injection</a>
+  <a href="core.html">Native Core</a>
+  <a href="bridge.html">Managed Bridge</a>
+  <a href="plugin-framework.html" class="active">Plugin Framework</a>
+  <a href="callbacks.html">Callbacks</a>
+  <a href="ui-framework.html">UI</a>
+  <a href="hotkeys.html">Hotkeys</a>
+  <a href="undo-redo.html">Undo/Redo</a>
+  <a href="sdk.html">SDK</a>
+  <a href="build.html">Build</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="internals.html">Internals</a>
+  <a href="regen-bindings.html">Bindings</a>
+  <a href="glossary.html">Glossary</a>
+</nav>
+
+<main>
+
+<h1>Plugin framework</h1>
+
+<div class="callout info"><strong>Audience:</strong> all plugin authors. This is the <strong>contract</strong> &mdash; what your plugin implements, how Utinni discovers it, how it gets activated.</div>
+
+<p>There are two plugin worlds:</p>
+
+<ol>
+  <li><strong>C++ native plugins</strong> &mdash; DLLs loaded by <code>UtinniCore::PluginManager</code>. Run in the SWG client process, can do anything Utinni's native API allows, but no managed UI.</li>
+  <li><strong>.NET plugins</strong> &mdash; DLLs loaded by <code>UtinniCoreDotNet::PluginLoader</code> via MEF. Run inside the in-process CLR. Have access to WinForms, the editor shell, the undo/redo system, hotkeys, etc.</li>
+</ol>
+
+<p>You can ship both halves together (the Jawa Toolbox does &mdash; a tiny C++ DLL for slash-command integration and a much larger C# DLL for the editor surface).</p>
+
+<h2>.NET plugins</h2>
+
+<h3><code>IPlugin</code></h3>
+
+<p><code>UtinniCoreDotNet/PluginFramework/IPlugin.cs</code>:</p>
+
+<pre><code>[InheritedExport(typeof(IPlugin))]
+public interface IPlugin
+{
+    PluginInformation Information { get; }
+    UtINI GetConfig();
+}
+
+public class PluginInformation
+{
+    public string Name { get; }
+    public string Description { get; }
+    public string Author { get; }
+    public PluginInformation(string name, string desc, string author) { ... }
+}
+</code></pre>
+
+<p>Members:</p>
+
+<ul>
+  <li><strong><code>Information</code></strong> &mdash; display metadata. Surfaced in the editor's plugin list. Set this in your constructor.</li>
+  <li><strong><code>GetConfig()</code></strong> &mdash; return an instance of <code>UtinniCore.Utinni.UtINI</code> pointing at your plugin's <code>.ini</code> file, or <code>null</code> if you don't use config. Wraps the same INI library Utinni itself uses, so settings are visible to native code if you ever need it.</li>
+</ul>
+
+<p>The <code>[InheritedExport]</code> attribute is what makes MEF pick the class up. Don't add <code>[Export]</code> yourself &mdash; <code>[InheritedExport]</code> propagates to subclasses of the <em>interface</em>, so every <code>IPlugin</code> implementor is automatically discovered.</p>
+
+<h3><code>IEditorPlugin</code> (extends <code>IPlugin</code>)</h3>
+
+<p><code>UtinniCoreDotNet/PluginFramework/IEditorPlugin.cs</code>:</p>
+
+<pre><code>[InheritedExport(typeof(IEditorPlugin))]
+public interface IEditorPlugin : IPlugin
+{
+    EventHandler&lt;AddUndoCommandEventArgs&gt; AddUndoCommand { get; set; }
+
+    HotkeyManager GetHotkeyManager();
+    List&lt;IEditorForm&gt;         GetForms();
+    List&lt;SubPanelContainer&gt;   GetStandalonePanels();
+    List&lt;SubPanel&gt;            GetSubPanels();
+}
+
+public class AddUndoCommandEventArgs : EventArgs
+{
+    public IUndoCommand UndoCommand;
+    public AddUndoCommandEventArgs(IUndoCommand cmd) { UndoCommand = cmd; }
+}
+</code></pre>
+
+<p>Members:</p>
+
+<ul>
+  <li><strong><code>AddUndoCommand</code></strong> &mdash; an event you raise to push a command onto the editor's undo stack. <code>FormMain</code> subscribes its <code>UndoRedoManager.AddUndoCommand</code> method to your event during init.</li>
+  <li><strong><code>GetHotkeyManager()</code></strong> &mdash; return the plugin's <code>HotkeyManager</code> (or <code>null</code>). <code>FormMain.PanelGame.KeyDown</code> walks every plugin's manager and forwards keystrokes. Persistence is in <code>&lt;plugin-assembly-dir&gt;/input.ini</code>.</li>
+  <li><strong><code>GetForms()</code></strong> &mdash; return zero or more <code>IEditorForm</code>s. The editor opens them as separate child windows.</li>
+  <li><strong><code>GetStandalonePanels()</code></strong> &mdash; return zero or more <code>SubPanelContainer</code>s. Each becomes a tab in the right-rail's standalone-panel combo.</li>
+  <li><strong><code>GetSubPanels()</code></strong> &mdash; return zero or more <code>SubPanel</code>s. They dock inline in the editor's main right rail.</li>
+</ul>
+
+<p>Any of these methods may return <code>null</code> if you don't use them.</p>
+
+<h3><code>IEditorForm</code></h3>
+
+<pre><code>public interface IEditorForm
+{
+    string GetName();
+    Form Create(IEditorPlugin editorPlugin, List&lt;Form&gt; parentChildren);
+}
+</code></pre>
+
+<p>The <code>Create</code> method is called once when the editor opens; the form is then the plugin's to own (show/hide/dispose). The <code>parentChildren</code> list is the running collection of every editor-child form so plugins can coordinate (useful for "raise only one of these at a time" etc.).</p>
+
+<h3><code>PluginLoader</code></h3>
+
+<p><code>UtinniCoreDotNet/PluginFramework/PluginLoader.cs</code>:</p>
+
+<pre><code>public class PluginLoader
+{
+    [ImportMany(typeof(IPlugin))]
+    public IEnumerable&lt;IPlugin&gt; Plugins;
+
+    public PluginLoader() { Load(); }
+
+    public void Load()
+    {
+        Plugins = new List&lt;IPlugin&gt;();
+        var pluginDir = utinni.GetPath() + "/Plugins/";
+        var catalog   = new AggregateCatalog(new DirectoryCatalog(pluginDir));
+
+        var pluginManager = utinni.GetPluginManager();
+        var configs = new List&lt;PluginManager.PluginConfig&gt;();
+        for (int j = 0; j &lt; pluginManager.PluginConfigCount; j++)
+            configs.Add(pluginManager.GetPluginConfigAt(j));
+
+        foreach (var pc in configs)
+            if (pc.IsEnabled)
+                catalog.Catalogs.Add(new DirectoryCatalog(pluginDir + pc.DirectoryName + "/"));
+
+        var container = new CompositionContainer(catalog);
+        container.ComposeParts(this);
+
+        Log.Info(Plugins.Count() + " .NET Plugin(s) loaded");
+    }
+}
+</code></pre>
+
+<p>Two important details:</p>
+
+<ol>
+  <li><strong>The base <code>Plugins/</code> directory is always scanned.</strong> A loose DLL dropped directly in <code>Plugins/</code> will be picked up &mdash; useful for one-file plugins.</li>
+  <li><strong>Subdirectories are gated by <code>ut.ini &rarr; [Plugins]</code>.</strong> Only plugins listed there with <code>enabled=true</code> get their subdirectory added to the MEF catalog. The native <code>PluginManager</code> is the source of truth for both C++ and .NET plugin gating.</li>
+</ol>
+
+<h3>Activation lifecycle</h3>
+
+<div class="mermaid">
+sequenceDiagram
+  participant N as UtinniCore (native)
+  participant E as Startup.EntryPoint
+  participant L as PluginLoader
+  participant P as YourPlugin
+  participant F as FormMain
+
+  N->>E: ExecuteInDefaultAppDomain
+  E->>L: new PluginLoader()
+  L->>L: build AggregateCatalog from Plugins/* (config-gated)
+  L->>P: MEF composes — calls your parameterless ctor
+  P-->>L: instance returned, added to Plugins collection
+  E->>E: GameCallbacks.Initialize etc.
+  alt enableEditorMode == true
+    E->>F: new FormMain(pluginLoader)
+    F->>P: ((IEditorPlugin)p).GetHotkeyManager() → load input.ini
+    F->>P: GetForms() / GetStandalonePanels() / GetSubPanels()
+    F->>P: subscribe to p.AddUndoCommand
+    F->>F: Application.Run blocks until shutdown
+  end
+</div>
+
+<p>So <strong>your constructor runs on the CLR thread before the UI thread exists</strong>. If you want to wire callbacks that touch UI, do it in your constructor &mdash; by the time your UI is touched, the editor will have called <code>GetSubPanels</code> etc. on the UI thread.</p>
+
+<h3>Minimal <code>IPlugin</code> skeleton</h3>
+
+<pre><code>using UtinniCore.Utinni;
+using UtinniCoreDotNet.PluginFramework;
+using UtinniCoreDotNet.Utility;
+
+public class HelloPlugin : IPlugin
+{
+    public PluginInformation Information { get; }
+
+    public HelloPlugin()
+    {
+        Information = new PluginInformation("Hello", "Demo runtime plugin", "Me");
+        Log.Info("HelloPlugin constructed");
+    }
+
+    public UtINI GetConfig() =&gt; null;
+}
+</code></pre>
+
+<p>That's the entire plugin. Drop the built DLL into <code>Plugins/Hello/Hello.dll</code>, edit <code>ut.ini</code>:</p>
+
+<pre><code>[Plugins]
+plugin_0 = true,Hello
+</code></pre>
+
+<p>&hellip;and it loads on next launch. <code>Log.Info</code> calls are visible in <code>utinni.log</code>.</p>
+
+<h3>Minimal <code>IEditorPlugin</code> skeleton</h3>
+
+<pre><code>using System;
+using System.Collections.Generic;
+using UtinniCore.Utinni;
+using UtinniCoreDotNet.Hotkeys;
+using UtinniCoreDotNet.PluginFramework;
+using UtinniCoreDotNet.UI.Controls;
+using UtinniCoreDotNet.UI.Forms;
+
+public class HelloEditorPlugin : IEditorPlugin
+{
+    public PluginInformation Information { get; }
+    public EventHandler&lt;AddUndoCommandEventArgs&gt; AddUndoCommand { get; set; }
+
+    public HelloEditorPlugin()
+    {
+        Information = new PluginInformation("Hello Editor", "Demo editor plugin", "Me");
+    }
+
+    public UtINI GetConfig() =&gt; null;
+    public HotkeyManager GetHotkeyManager() =&gt; null;
+    public List&lt;IEditorForm&gt; GetForms() =&gt; null;
+    public List&lt;SubPanelContainer&gt; GetStandalonePanels() =&gt; null;
+    public List&lt;SubPanel&gt; GetSubPanels() =&gt; null;
+}
+</code></pre>
+
+<p>This produces an empty editor plugin &mdash; discoverable, gated, undo-event ready, but contributing nothing. The <a href="tutorial.html">tutorial</a> walks through adding a SubPanel, a hotkey, a callback, and an undo command.</p>
+
+<h2>C++ plugins</h2>
+
+<p><code>UtinniCore/plugin_framework/utinni_plugin.h</code>:</p>
+
+<pre><code>namespace utinni {
+struct UtinniPlugin {
+    struct Information {
+        const char* name;
+        const char* description;
+        const char* author;
+    };
+
+    virtual void init() {}
+    virtual const Information&amp; getInformation() = 0;
+};
+}
+
+#define UTINNI_PLUGIN extern "C" __declspec(dllexport) utinni::UtinniPlugin* createPlugin()
+</code></pre>
+
+<p>Each C++ plugin is a DLL that:</p>
+
+<ol>
+  <li>Subclasses <code>utinni::UtinniPlugin</code>.</li>
+  <li>Exports a <code>createPlugin()</code> factory via the <code>UTINNI_PLUGIN</code> macro.</li>
+</ol>
+
+<h3>Discovery</h3>
+
+<p><code>UtinniCore/plugin_framework/plugin_manager.cpp</code>:</p>
+
+<ol>
+  <li>Read <code>ut.ini &rarr; [Plugins]</code>. Each entry is <code>plugin_N = enabled,DirectoryName</code> (e.g. <code>plugin_0 = true,MyCppPlugin</code>).</li>
+  <li>For each <em>enabled</em> entry:
+    <ul>
+      <li><code>LoadLibraryA("Plugins/&lt;DirectoryName&gt;/&lt;DirectoryName&gt;.dll")</code></li>
+      <li><code>GetProcAddress("createPlugin")</code> and invoke.</li>
+      <li>Push the returned <code>UtinniPlugin*</code> into the manager's list.</li>
+    </ul>
+  </li>
+  <li>After all loaded &rarr; walk the list, call <code>init()</code> on each.</li>
+</ol>
+
+<p>The <code>PluginConfig</code> struct exposed back to managed code:</p>
+
+<pre><code>struct PluginConfig {
+    bool   IsEnabled;
+    char*  DirectoryName;
+    // (plus internal handle/library state)
+};
+</code></pre>
+
+<p>This is what <code>PluginLoader</code> reads to decide which subdirectories to add to the MEF catalog. <strong>The native config is the source of truth &mdash; disabling a plugin in <code>ut.ini</code> disables both its C++ and its .NET halves.</strong></p>
+
+<h3>Minimal C++ plugin</h3>
+
+<pre><code>// plugin.cpp
+#include "utinni.h"
+#include "swg/ui/cui_chat_window.h"
+#include "example_command_parser.h"   // your own
+
+class HelloCppPlugin : public utinni::UtinniPlugin
+{
+    Information info = { "Hello C++", "Demo native plugin", "Me" };
+
+public:
+    void init() override {
+        utinni::CuiChatWindow::addCreateCommandParserCallback(
+            &amp;hello::HelloCommandParser::create);
+    }
+
+    const Information&amp; getInformation() override { return info; }
+};
+
+UTINNI_PLUGIN { return new HelloCppPlugin(); }
+</code></pre>
+
+<p>Compile against <code>UtinniCore.lib</code>. Drop into <code>Plugins/HelloCpp/HelloCpp.dll</code>. Add <code>[Plugins] plugin_0 = true,HelloCpp</code> to <code>ut.ini</code>.</p>
+
+<h3>When to write C++ vs .NET</h3>
+
+<table>
+  <thead>
+    <tr><th>Use C++ when&hellip;</th><th>Use .NET when&hellip;</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>You need to detour a function Utinni doesn't already wrap (you'll add a new <code>swg/*</code> entry).</td><td>You need editor UI (forms, panels, controls, drag-drop).</td></tr>
+    <tr><td>You want to hook chat slash-commands at the lowest level.</td><td>You want hotkeys, undo/redo, theming.</td></tr>
+    <tr><td>Throughput matters (per-frame, per-particle, per-draw).</td><td>Productivity matters more than nanoseconds.</td></tr>
+    <tr><td>You're integrating an existing C++ codebase.</td><td>You want async work + WinForms idioms.</td></tr>
+  </tbody>
+</table>
+
+<p>A common composite: small C++ plugin for "register a chat command, raise a managed event" + larger .NET plugin that does the actual editor work.</p>
+
+<h2>Directory layout for a complete plugin</h2>
+
+<pre><code>SwgClientDir/
+├── SwgClient_r.exe                        ← the game
+└── (Utinni install)/
+    ├── Launcher.exe
+    ├── UtinniCore.dll
+    ├── UtinniCoreDotNet.dll
+    ├── ut.ini                              ← references [Plugins] plugin_0=true,MyPlugin
+    ├── utinni.cfg
+    └── Plugins/
+        └── MyPlugin/
+            ├── MyPlugin.dll                ← C++ side (optional)
+            ├── MyPluginDotNet.dll          ← .NET side (optional)
+            ├── settings.ini                ← created on first run if needed
+            ├── input.ini                   ← HotkeyManager persistence
+            └── (your own assets, icons, etc.)
+</code></pre>
+
+<h2>Glossary</h2>
+
+<table>
+  <thead>
+    <tr><th>Term</th><th>Meaning</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>runtime plugin</strong></td><td><code>IPlugin</code> implementation. Loaded headless &mdash; does its work via callbacks.</td></tr>
+    <tr><td><strong>editor plugin</strong></td><td><code>IEditorPlugin</code> implementation. Contributes UI to <code>FormMain</code>.</td></tr>
+    <tr><td><strong>SubPanel</strong></td><td>A WinForms panel that docks inline on the editor's right rail. Plugins author them as subclasses of <code>UtinniCoreDotNet.UI.Controls.SubPanel</code>.</td></tr>
+    <tr><td><strong>SubPanelContainer</strong></td><td>A floating-window/tab grouping of <code>SubPanel</code>s. Surfaced via <code>GetStandalonePanels</code>.</td></tr>
+    <tr><td><strong>IEditorForm</strong></td><td>A free-standing child window definition. Plugins return one or more.</td></tr>
+    <tr><td><strong>PluginInformation</strong></td><td>Name/description/author triple shown in the editor.</td></tr>
+    <tr><td><strong>PluginConfig</strong></td><td>Native struct (<code>enabled, directoryName</code>) read from <code>ut.ini &rarr; [Plugins]</code>.</td></tr>
+    <tr><td><strong>AddUndoCommand</strong></td><td>The plugin-side event you raise to push onto the editor's undo stack.</td></tr>
+  </tbody>
+</table>
+
+<h2>See also</h2>
+
+<ul>
+  <li><a href="callbacks.html">Callbacks reference</a> &mdash; what to subscribe to inside your constructor.</li>
+  <li><a href="ui-framework.html">UI framework</a> &mdash; how to author <code>SubPanel</code>s and <code>IEditorForm</code>s.</li>
+  <li><a href="hotkeys.html">Hotkeys</a>, <a href="undo-redo.html">Undo / Redo</a>.</li>
+  <li><a href="tutorial.html">Tutorial</a> &mdash; assemble all of the above in 30 minutes.</li>
+  <li><a href="sdk.html">SDK &amp; templates</a> &mdash; <code>dotnet new</code> / Visual Studio path.</li>
+</ul>
+
+</main>
+<footer>
+  Utinni &mdash; SWG client modding framework. Documentation for the fork at <code>D:/Code/Utinni</code>.
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>

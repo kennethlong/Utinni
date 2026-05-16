@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Hotkeys — Utinni</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <h1><span class="accent">Utinni</span> — Hotkeys</h1>
+  <div class="sub">Named, chord-capable, persistent bindings.</div>
+</header>
+<nav class="top">
+  <a href="index.html">Overview</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="injection.html">Injection</a>
+  <a href="core.html">Native Core</a>
+  <a href="bridge.html">Managed Bridge</a>
+  <a href="plugin-framework.html">Plugin Framework</a>
+  <a href="callbacks.html">Callbacks</a>
+  <a href="ui-framework.html">UI</a>
+  <a href="hotkeys.html" class="active">Hotkeys</a>
+  <a href="undo-redo.html">Undo/Redo</a>
+  <a href="sdk.html">SDK</a>
+  <a href="build.html">Build</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="internals.html">Internals</a>
+  <a href="regen-bindings.html">Bindings</a>
+  <a href="glossary.html">Glossary</a>
+</nav>
+<main>
+
+<h1>Hotkeys</h1>
+
+<div class="callout info"><strong>Audience:</strong> .NET editor plugin authors.</div>
+
+<p>The hotkey system gives plugins:</p>
+
+<ul>
+  <li>Named, chord-capable bindings (e.g. <code>Control + Shift + S</code>).</li>
+  <li>Per-plugin persistence to <code>&lt;plugin-dir&gt;/input.ini</code> — users can rebind.</li>
+  <li>Scope flags: only-when-game-has-focus, override-game-input.</li>
+  <li>Runtime enable/disable per hotkey ID for context-sensitive shortcuts.</li>
+</ul>
+
+<p>It lives in <code>UtinniCoreDotNet/Hotkeys/</code>.</p>
+
+<h2><code>Hotkey</code></h2>
+
+<pre><code>public class Hotkey
+{
+    public string Name;              // unique identifier (also the .ini key)
+    public string Text;              // human-readable label for the settings UI
+    public Keys   ModifierKeys;      // bitwise: Ctrl / Shift / Alt
+    public Keys   Key;               // main key
+    public Action OnDownCallback;    // invoked on key-down
+    public bool   OverrideGameInput; // if true, suspend native game input while dispatching
+    public bool   Enabled;           // can be flipped at runtime
+    public bool   OnGameFocusOnly;   // if true, only fires when PanelGame has focus
+}</code></pre>
+
+<p>The <code>Keys</code> enum is <code>System.Windows.Forms.Keys</code>. Modifiers are combined with
+<code>Keys.Control | Keys.Shift</code>.</p>
+
+<h2><code>HotkeyManager</code></h2>
+
+<pre><code>public class HotkeyManager
+{
+    public Dictionary&lt;string, Hotkey&gt; Hotkeys;
+
+    public HotkeyManager(bool onGameFocusOnly);
+    public void Add(Hotkey hotkey);
+    public void CreateSettings();            // seed defaults into the .ini if missing
+    public void Load();                       // read user-customised bindings from .ini
+    public void Save();
+    public void ProcessInput(Keys mods, Keys key, bool isGameFocused);
+}</code></pre>
+
+<h3>Lifecycle</h3>
+
+<div class="mermaid">
+sequenceDiagram
+  participant P as YourPlugin
+  participant H as HotkeyManager
+  participant F as FormMain
+  participant G as PanelGame
+  participant K as Windows key event
+
+  P->>H: new HotkeyManager(onGameFocusOnly: false)
+  P->>H: Add(new Hotkey { Name="SaveSnapshot", Key="S", ModifierKeys="Control", OnDownCallback=Save })
+  P->>H: CreateSettings()
+  Note over P,H: writes defaults to <plugin-dir>/input.ini if absent
+  F->>P: GetHotkeyManager() → H
+  F->>H: Load()
+  Note over H: read user rebinds, replace defaults
+
+  K->>G: KeyDown event (UI thread)
+  G->>H: for each plugin's manager: ProcessInput(mods, key, hasFocus)
+  H->>P: matched hotkey → OnDownCallback.Invoke()
+</div>
+
+<h3>Authoring pattern</h3>
+
+<pre><code>public class MyEditorPlugin : IEditorPlugin
+{
+    private readonly HotkeyManager hotkeys;
+
+    public MyEditorPlugin()
+    {
+        hotkeys = new HotkeyManager(onGameFocusOnly: true);
+
+        hotkeys.Add(new Hotkey
+        {
+            Name           = "ReloadScene",
+            Text           = "Reload current scene",
+            ModifierKeys   = Keys.Control | Keys.Shift,
+            Key            = Keys.R,
+            OnDownCallback = () =&gt; GameCallbacks.AddMainLoopCall(
+                                       () =&gt; GroundScene.Get().ReloadTerrain()),
+            OverrideGameInput = false,
+            Enabled        = true,
+            OnGameFocusOnly = true
+        });
+
+        hotkeys.Add(new Hotkey
+        {
+            Name           = "ToggleSnapshotEditing",
+            Text           = "Toggle snapshot node editing",
+            ModifierKeys   = Keys.None,
+            Key            = Keys.Oemtilde,    // the backtick / tilde key
+            OnDownCallback = ToggleNodeEditing,
+            OverrideGameInput = true,
+            Enabled        = true,
+            OnGameFocusOnly = false             // works whether or not the game panel has focus
+        });
+
+        hotkeys.CreateSettings();
+    }
+
+    public HotkeyManager GetHotkeyManager() =&gt; hotkeys;
+    // ...
+}</code></pre>
+
+<h3><code>OverrideGameInput</code></h3>
+
+<p>When a matched hotkey has <code>OverrideGameInput=true</code>, the dispatcher:</p>
+
+<ol>
+  <li>Queues a <code>GameCallbacks.AddPreMainLoopCall</code> that calls
+    <code>CuiIo.DisableKeyboard()</code>.</li>
+  <li>Queues the user callback to fire on the <em>next</em> main-loop tick.</li>
+  <li>Queues another pre-main-loop call to re-enable keyboard on the tick
+    after that.</li>
+</ol>
+
+<p>This indirection is a workaround — SWG processes the key before WinForms
+sees it, so we need a brief window where SWG ignores keyboard input. It is
+<strong>not frame-perfect</strong>; for tight grabs of a key, explicitly call
+<code>utinni.Client.SuspendInput()</code> / <code>ResumeInput()</code> around your section.</p>
+
+<h3>Dynamic enable/disable</h3>
+
+<pre><code>hotkeys.Hotkeys["SaveSnapshot"].Enabled = sceneIsLoaded;
+hotkeys.Hotkeys["SetGizmoTranslate"].Enabled = gizmoIsActive;</code></pre>
+
+<p>The Jawa Toolbox uses this heavily: it registers hotkeys once, then toggles
+their <code>Enabled</code> flag in response to scene-state and gizmo-state callbacks.</p>
+
+<h3>Persistence — <code>input.ini</code> format</h3>
+
+<p><code>HotkeyManager.Save()</code> writes a simple format:</p>
+
+<pre><code>[Hotkeys]
+ReloadScene           = Control + Shift + R
+ToggleSnapshotEditing = Oemtilde
+SaveSnapshot          = Control + S</code></pre>
+
+<p>…where the value is <code>[mod1 + mod2 + ...] + Key</code>. Modifier order is
+canonicalised by the manager. Users can hand-edit this file or use the
+in-editor settings UI to rebind.</p>
+
+<p><code>CreateSettings()</code> only adds an entry if absent — running it is idempotent.</p>
+
+<p><code>Load()</code> overrides in-memory defaults with whatever's on disk.</p>
+
+<h2>How dispatch works inside <code>PanelGame</code></h2>
+
+<p><code>UI/Controls/PanelGame.cs</code> registers <code>PanelGame_KeyDown</code>:</p>
+
+<pre><code>private void PanelGame_KeyDown(object sender, KeyEventArgs e)
+{
+    foreach (var plugin in pluginLoader.Plugins.OfType&lt;IEditorPlugin&gt;())
+    {
+        var hm = plugin.GetHotkeyManager();
+        if (hm == null) continue;
+        hm.ProcessInput(e.Modifiers, e.KeyCode, this.HasFocus);
+    }
+}</code></pre>
+
+<p>Inside <code>ProcessInput</code>:</p>
+
+<ol>
+  <li>For each <code>Hotkey</code> in <code>Hotkeys</code>:
+    <ul>
+      <li>Skip if <code>!Enabled</code>.</li>
+      <li>Skip if <code>OnGameFocusOnly &amp;&amp; !isGameFocused</code>.</li>
+      <li>Match modifier + key bitwise.</li>
+    </ul>
+  </li>
+  <li>On match → invoke <code>OnDownCallback</code>. If <code>OverrideGameInput</code>, wrap as
+    above.</li>
+</ol>
+
+<p>There is <strong>no priority ordering</strong> between plugins — if two plugins both
+register <code>Control+S</code>, both fire. Choose distinct hotkey names; consider
+using a plugin-prefix in the <code>Name</code> field (e.g. <code>MyPlugin.SaveScene</code>).</p>
+
+<h2>Concurrency gotchas</h2>
+
+<ul>
+  <li><strong><code>OnDownCallback</code> runs on the UI thread.</strong> Don't call game APIs
+    synchronously — marshal via <code>GameCallbacks.AddMainLoopCall</code>.</li>
+  <li><strong>Long handlers freeze WinForms input.</strong> If you need to compute, fork to
+    a <code>Task</code>.</li>
+  <li><strong>Holding a key</strong> fires multiple <code>OnDownCallback</code>s (one per autorepeat).
+    If you want edge-triggered semantics, track state with a boolean field.</li>
+</ul>
+
+<h2>Settings UI</h2>
+
+<p>The editor's hotkey-rebinding UI (a built-in form) presents every
+registered manager. The <code>Text</code> field is shown to the user; the <code>Name</code> field
+is the storage key. Both are required — don't leave <code>Text</code> empty or your
+hotkey shows up as "" in the rebinder.</p>
+
+<h2>See also</h2>
+
+<ul>
+  <li><a href="plugin-framework.html">Plugin framework</a> — <code>IEditorPlugin.GetHotkeyManager()</code>.</li>
+  <li><a href="callbacks.html">Callbacks reference</a> — what to chain to from a hotkey.</li>
+  <li><a href="bridge.html#threading-at-a-glance">Bridge — Threading</a>.</li>
+</ul>
+
+</main>
+<footer>
+  Utinni — SWG client modding framework. Documentation for the fork at <code>D:/Code/Utinni</code>.
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>

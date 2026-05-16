@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Utinni — Documentation Overview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <h1><span class="accent">Utinni</span> — Documentation overview</h1>
+  <div class="sub">A client plugin and injection framework for Pre-CU Star Wars Galaxies.</div>
+</header>
+<nav class="top">
+  <a href="index.html" class="active">Overview</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="injection.html">Injection</a>
+  <a href="core.html">Native Core</a>
+  <a href="bridge.html">Managed Bridge</a>
+  <a href="plugin-framework.html">Plugin Framework</a>
+  <a href="callbacks.html">Callbacks</a>
+  <a href="ui-framework.html">UI</a>
+  <a href="hotkeys.html">Hotkeys</a>
+  <a href="undo-redo.html">Undo/Redo</a>
+  <a href="sdk.html">SDK</a>
+  <a href="build.html">Build</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="internals.html">Internals</a>
+  <a href="regen-bindings.html">Bindings</a>
+  <a href="glossary.html">Glossary</a>
+</nav>
+
+<main>
+
+<h1>Utinni — documentation (AI-oriented)</h1>
+
+<div class="callout info">
+  <strong>For humans:</strong> open <a href="index.html"><code>docs/index.html</code></a> for the navigable HTML site.
+  This <code>ai/</code> directory carries the same content as plain markdown so it can be consumed by LLMs, grep, and scripted tooling.
+</div>
+
+<p>
+  Utinni is a <strong>client plugin and injection framework</strong> for Pre-CU Star Wars
+  Galaxies clients (specifically the SWGEmu / SWG-Source family of community
+  builds running on the 2010-era binary). It launches <code>SwgClient_r.exe</code> suspended,
+  patches its entry point to an infinite loop, injects <code>UtinniCore.dll</code> via
+  <code>CreateRemoteThread &rarr; LoadLibraryA</code>, then restores the entry point so the game
+  boots with detours and patches already in place.
+</p>
+
+<p>Once injected, Utinni:</p>
+
+<ol>
+  <li>Installs ~25 <code>DetourXS</code> hooks into game subsystems (<code>Client</code>, <code>Game</code>,
+   <code>GroundScene</code>, <code>CuiManager</code>, CUI subwindows, <code>Graphics</code>, <code>DirectX9</code>,
+   <code>TreeFile</code>, <code>Object</code>, <code>CreatureObject</code>, etc.).</li>
+  <li>Loads native C++ plugins from <code>Plugins/&lt;name&gt;/*.dll</code>.</li>
+  <li>Hosts the .NET v4.0.30319 CLR inside the SWG process and calls
+   <code>UtinniCoreDotNet.Startup.EntryPoint</code>.</li>
+  <li>The managed entry point initialises callback systems
+   (<code>GameCallbacks</code>, <code>GroundSceneCallbacks</code>, <code>ObjectCallbacks</code>,
+   <code>CuiCallbacks</code>), discovers .NET plugins via MEF (<code>[InheritedExport]</code>),
+   and &mdash; if <code>Editor.enableEditorMode=true</code> in <code>ut.ini</code> &mdash; spins up
+   <code>FormMain</code>, the WinForms editor that re-parents the SWG window inside a
+   <code>PanelGame</code>.</li>
+</ol>
+
+<p>
+  The result is a modding tool: write a C# (or C++) plugin, drop it in
+  <code>Plugins/&lt;your-name&gt;/</code>, and you get hotkey-bound, undo/redo-aware editor
+  panels that talk to the live SWG client.
+</p>
+
+<h2>Mental model</h2>
+
+<pre><code>Launcher.exe
+   &#x2502; CreateProcess(SwgClient_r.exe, CREATE_SUSPENDED)
+   &#x2502; patch EP &rarr; 0xEB 0xFE (jmp self)
+   &#x2502; ResumeThread, wait for EIP == EP
+   &#x2502; CreateRemoteThread &rarr; LoadLibraryA("UtinniCore.dll")
+   &#x2502; restore EP
+   &#x25BC;
+SwgClient_r.exe (+ UtinniCore.dll injected)
+   &#x2502; DllMain &rarr; CreateThread &rarr; utinni::main
+   &#x2502;   load ut.ini
+   &#x2502;   createDetours()         &larr; ~25 DetourXS hooks
+   &#x2502;   createPatches()         &larr; memory writes
+   &#x2502;   pluginManager.loadPlugins()   &larr; C++ plugins
+   &#x2502;   clr::load()             &larr; hosts .NET CLR v4
+   &#x25BC;
+UtinniCoreDotNet.dll (managed bridge)
+   &#x2502; Startup.EntryPoint
+   &#x2502;   Log.Setup()
+   &#x2502;   PluginLoader (MEF DirectoryCatalog of Plugins/*)
+   &#x2502;   GameCallbacks / GroundSceneCallbacks / ObjectCallbacks / CuiCallbacks
+   &#x2502;   if (Editor.enableEditorMode) Application.Run(new FormMain(...))
+   &#x25BC;
+.NET plugins (IPlugin / IEditorPlugin)
+   &#x2502; contribute SubPanels, IEditorForms, HotkeyManagers, undo commands
+   &#x2502; subscribe to Callbacks
+   &#x2502; talk to native via Generated/UtinniCore.cs (CppSharp P/Invoke)
+   &#x25BC;
+The Jawa Toolbox + your plugins</code></pre>
+
+<h2>Component map</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Project</th>
+      <th>Language</th>
+      <th>Output</th>
+      <th>Role</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>Launcher</code></td>
+      <td>C++</td>
+      <td><code>Launcher.exe</code></td>
+      <td>Suspended-process injector. Reads <code>ut.ini</code>, finds &amp; validates <code>SwgClient_r.exe</code>, injects <code>UtinniCore.dll</code>.</td>
+    </tr>
+    <tr>
+      <td><code>UtinniCore</code></td>
+      <td>C++ (<code>/clr</code> off)</td>
+      <td><code>UtinniCore.dll</code></td>
+      <td>Native runtime. DetourXS hooks, ImGui+ImGuizmo render pass, spdlog, INI, C++ plugin manager, CLR host.</td>
+    </tr>
+    <tr>
+      <td><code>UtinniCore-Symbols</code></td>
+      <td>C++ (static lib)</td>
+      <td><code>UtinniCore-Symbols.lib</code></td>
+      <td>Provides the symbol/PDB target used by CppSharp at bindgen time &mdash; see <a href="regen-bindings.html">Regenerating Bindings</a>.</td>
+    </tr>
+    <tr>
+      <td><code>UtinniCoreDotNet</code></td>
+      <td>C# (.NET 4.7.2, x86)</td>
+      <td><code>UtinniCoreDotNet.dll</code></td>
+      <td>Managed bridge. CppSharp-generated P/Invoke, callbacks, plugin loader (MEF), WinForms editor (<code>FormMain</code>), hotkey + undo/redo, theme.</td>
+    </tr>
+    <tr>
+      <td><code>UtinniCoreDotNetGen</code></td>
+      <td>C# (.NET 4.7.2)</td>
+      <td><code>UtinniCoreDotNetGen.exe</code></td>
+      <td>CppSharp driver that regenerates <code>UtinniCoreDotNet/Generated/UtinniCore.cs</code>.</td>
+    </tr>
+    <tr>
+      <td><code>UtINI</code> (project)</td>
+      <td>C++ (static lib)</td>
+      <td><code>UtINI.lib</code></td>
+      <td>A small INI library (LeksysINI under the hood). Used by Launcher and Core. <strong>Not</strong> the editor host &mdash; the editor is in <code>UtinniCoreDotNet</code>.</td>
+    </tr>
+    <tr>
+      <td><code>UtinniPlugins/</code></td>
+      <td>C++ + C#</td>
+      <td>per plugin</td>
+      <td>Companion repo. Houses the <strong>Jawa Toolbox</strong> reference editor plugin and Sytner's stub.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Where to dig in</h2>
+
+<div class="cards">
+  <a class="card" href="architecture.html">
+    <h3>Architecture</h3>
+    <p>Everyone &mdash; start here.</p>
+  </a>
+  <a class="card" href="injection.html">
+    <h3>Injection &amp; boot</h3>
+    <p>Core contributors, .NET plugin authors curious about lifecycle.</p>
+  </a>
+  <a class="card" href="core.html">
+    <h3>Native core (UtinniCore)</h3>
+    <p>C++ plugin authors, core contributors.</p>
+  </a>
+  <a class="card" href="bridge.html">
+    <h3>Managed bridge (UtinniCoreDotNet)</h3>
+    <p>.NET plugin authors.</p>
+  </a>
+  <a class="card" href="plugin-framework.html">
+    <h3>Plugin framework</h3>
+    <p>All plugin authors.</p>
+  </a>
+  <a class="card" href="callbacks.html">
+    <h3>Callbacks reference</h3>
+    <p>.NET plugin authors.</p>
+  </a>
+  <a class="card" href="ui-framework.html">
+    <h3>UI framework</h3>
+    <p>.NET <em>editor</em> plugin authors.</p>
+  </a>
+  <a class="card" href="hotkeys.html">
+    <h3>Hotkeys</h3>
+    <p>.NET editor plugin authors.</p>
+  </a>
+  <a class="card" href="undo-redo.html">
+    <h3>Undo / Redo</h3>
+    <p>.NET editor plugin authors.</p>
+  </a>
+  <a class="card" href="sdk.html">
+    <h3>SDK &amp; templates</h3>
+    <p>Anyone starting a new plugin.</p>
+  </a>
+  <a class="card" href="build.html">
+    <h3>Build &amp; run</h3>
+    <p>Everyone.</p>
+  </a>
+  <a class="card" href="tutorial.html">
+    <h3>Tutorial: your first editor plugin</h3>
+    <p>New plugin authors.</p>
+  </a>
+  <a class="card" href="internals.html">
+    <h3>Internals: hooks, RVAs, patches</h3>
+    <p>Core contributors, reversers.</p>
+  </a>
+  <a class="card" href="regen-bindings.html">
+    <h3>Regenerating bindings</h3>
+    <p>Core contributors.</p>
+  </a>
+  <a class="card" href="glossary.html">
+    <h3>Glossary</h3>
+    <p>Reference.</p>
+  </a>
+</div>
+
+<h2>Conventions in this docset</h2>
+
+<ul>
+  <li><strong>SDK</strong> badges / sections describe public surface &mdash; things plugin authors
+  call and consume.</li>
+  <li><strong>Internal</strong> badges / sections describe implementation &mdash; things plugin
+  authors should <em>not</em> depend on, and which may change between Utinni
+  builds. Core contributors maintain them.</li>
+  <li>All client-side hardcoded addresses are quoted with their RVA (e.g.
+  <code>0x00422E80</code>) and refer to the specific SWGEmu/SWG-Source binary Utinni
+  was built against. The corresponding source-level identifier (e.g.
+  <code>Game::install</code>) is from the <a href="../../swg-client">swg-client</a> tree.</li>
+</ul>
+
+<h2>License &amp; forks</h2>
+
+<p>
+  Utinni and UtinniPlugins are <strong>MIT-licensed forks</strong> of
+  <a href="https://github.com/ptklatt/Utinni">ptklatt/Utinni</a> and
+  <a href="https://github.com/ptklatt/UtinniPlugins">ptklatt/UtinniPlugins</a>. The
+  upstream repos appear dormant; our intent is to contribute improvements back
+  where practical and otherwise advance the forks.
+</p>
+
+<h2>Cross-references</h2>
+
+<ul>
+  <li><strong>SWG client source</strong>: <a href="../../swg-client/"><code>D:/Code/swg-client/</code></a> &mdash; the
+  2015 SOE source leak ("whitengold") which Utinni reverse-engineers
+  against. Its <a href="../../swg-client/docs/index.html"><code>docs/</code></a> covers the
+  client side in depth (boot sequence, animation, foliage, middleware,
+  build system); we cross-link rather than duplicate.</li>
+  <li><strong>Plugins</strong>: <a href="../../UtinniPlugins/docs/index.html"><code>D:/Code/UtinniPlugins/docs/</code></a>
+  documents the Jawa Toolbox as the canonical worked example.</li>
+</ul>
+
+</main>
+<footer>
+  Utinni &mdash; SWG client modding framework. Documentation for the fork at <code>D:/Code/Utinni</code>.
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>

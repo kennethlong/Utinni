@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Callbacks — Utinni</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <h1><span class="accent">Utinni</span> — Callbacks Reference</h1>
+  <div class="sub">Reacting to game events from C#</div>
+</header>
+<nav class="top">
+  <a href="index.html">Overview</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="injection.html">Injection</a>
+  <a href="core.html">Native Core</a>
+  <a href="bridge.html">Managed Bridge</a>
+  <a href="plugin-framework.html">Plugin Framework</a>
+  <a href="callbacks.html" class="active">Callbacks</a>
+  <a href="ui-framework.html">UI</a>
+  <a href="hotkeys.html">Hotkeys</a>
+  <a href="undo-redo.html">Undo/Redo</a>
+  <a href="sdk.html">SDK</a>
+  <a href="build.html">Build</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="internals.html">Internals</a>
+  <a href="regen-bindings.html">Bindings</a>
+  <a href="glossary.html">Glossary</a>
+</nav>
+
+<main>
+
+<h1>Callbacks reference</h1>
+
+<div class="callout info"><strong>Audience:</strong> .NET plugin authors. C++ plugin authors use the underlying <code>utinni::&lt;Subsystem&gt;::add*Callback()</code> C++ functions &mdash; same shape, fewer guardrails. See <a href="core.html">Native core</a>.</div>
+
+<p>Every Utinni callback fires on the <strong>game thread</strong>, never the UI thread. Read the threading note at the bottom before writing event handlers.</p>
+
+<p>There are five callback hubs:</p>
+
+<table>
+  <thead>
+    <tr><th>Hub</th><th>Fires on&hellip;</th><th>Use for&hellip;</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><a href="#gamecallbacks"><code>GameCallbacks</code></a></td><td>install, scene setup/cleanup, main loop</td><td>Anything related to engine lifecycle.</td></tr>
+    <tr><td><a href="#groundscenecallbacks"><code>GroundSceneCallbacks</code></a></td><td>per-frame update + draw, camera change</td><td>Per-frame work tied to the ground scene (the gameplay scene).</td></tr>
+    <tr><td><a href="#objectcallbacks"><code>ObjectCallbacks</code></a></td><td>target change</td><td>"Player just targeted something."</td></tr>
+    <tr><td><a href="#cuicallbacks"><code>CuiCallbacks</code></a></td><td>system messages</td><td>Chat-stream events.</td></tr>
+    <tr><td><a href="#imguicallbacks"><code>ImGuiCallbacks</code></a></td><td>gizmo enable / disable / move / rotate</td><td>Editor manipulation of objects.</td></tr>
+  </tbody>
+</table>
+
+<p>All five are static classes with a one-time <code>Initialize()</code> and a series of <code>Add*Callback</code>/<code>Add*Call</code> methods. There's no <code>Remove*</code> &mdash; callbacks live for the session.</p>
+
+<h2>Two registration patterns</h2>
+
+<p>Looking at the source you'll see two patterns:</p>
+
+<h3>Persistent (<code>SynchronizedCollection&lt;Action&gt;</code>)</h3>
+
+<pre><code>public static void AddInstallCallback(Action callback) =&gt; installCallbacks.Add(callback);
+
+private static void OnInstall()
+{
+    foreach (var cb in installCallbacks) cb.Invoke();
+}
+</code></pre>
+
+<p>Fires <strong>on every event</strong>. Use this for any callback you want to keep listening for the whole session.</p>
+
+<h3>One-shot (<code>ConcurrentQueue&lt;Action&gt;</code>)</h3>
+
+<pre><code>public static void AddMainLoopCall(Action call) =&gt; mainLoopCallQueue.Enqueue(call);
+
+private static void OnMainLoop()
+{
+    while (mainLoopCallQueue.TryDequeue(out var call)) call.Invoke();
+}
+</code></pre>
+
+<p>Fires <strong>once</strong> then drains. Use this to schedule a single piece of work to run on the game thread.</p>
+
+<p>This naming distinction (<code>Callback</code> = persistent, <code>Call</code> = one-shot) is inconsistent across files &mdash; the table below tells you which is which.</p>
+
+<h2 id="gamecallbacks"><code>GameCallbacks</code></h2>
+
+<p>Engine lifecycle.</p>
+
+<table>
+  <thead>
+    <tr><th>Method</th><th>Pattern</th><th>Fires&hellip;</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>AddInstallCallback(Action)</code></td><td>Persistent</td><td>Once, after <code>Game::install()</code> returns. Engine subsystems are now ready.</td></tr>
+    <tr><td><code>AddSetupSceneCall(Action)</code></td><td>Persistent</td><td>When a scene loads (<code>Game::setupScene</code>).</td></tr>
+    <tr><td><code>AddCleanupSceneCall(Action)</code></td><td>Persistent</td><td>When a scene unloads (<code>Game::cleanupScene</code>). <strong>Also clears the undo stack</strong> &mdash; <code>UndoRedoManager</code> subscribes here.</td></tr>
+    <tr><td><code>AddPreMainLoopCall(Action)</code></td><td>One-shot</td><td>Once on the next pre-main-loop tick.</td></tr>
+    <tr><td><code>AddMainLoopCall(Action)</code></td><td>One-shot</td><td>Once on the next main-loop tick.</td></tr>
+  </tbody>
+</table>
+
+<p>When to use which:</p>
+
+<ul>
+  <li><strong><code>AddInstallCallback</code></strong> &mdash; populate dropdowns / lists from the SWG repository (e.g. enumerate available terrains). Things you only need to read once at startup.</li>
+  <li><strong><code>AddSetupSceneCall</code> / <code>AddCleanupSceneCall</code></strong> &mdash; enable/disable your UI controls based on whether a scene is loaded.</li>
+  <li><strong><code>AddMainLoopCall</code></strong> &mdash; one-time game-thread work scheduled from the UI. Example: "user clicked Load Scene &rarr; enqueue <code>Game.LoadScene(...)</code> here."</li>
+</ul>
+
+<h3>Example</h3>
+
+<pre><code>public class MyPlugin : IEditorPlugin
+{
+    public MyPlugin()
+    {
+        // Persistent: stays for the session.
+        GameCallbacks.AddSetupSceneCall(() =&gt;
+            Log.Info("scene loaded — " + Game.GetGroundScene().GetName()));
+
+        GameCallbacks.AddCleanupSceneCall(() =&gt; Log.Info("scene unloaded"));
+    }
+
+    private void OnLoadButtonClicked(object sender, EventArgs e)
+    {
+        // One-shot: defer the actual game call to the next tick.
+        GameCallbacks.AddMainLoopCall(() =&gt;
+            Game.LoadScene("terrain/naboo.trn",
+                           "object/creature/player/shared_human_male.iff"));
+    }
+    // ...
+}
+</code></pre>
+
+<h2 id="groundscenecallbacks"><code>GroundSceneCallbacks</code></h2>
+
+<p>Per-frame, scoped to the ground scene (the gameplay scene &mdash; <em>not</em> the login screen / character select).</p>
+
+<table>
+  <thead>
+    <tr><th>Method</th><th>Pattern</th><th>Fires&hellip;</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>AddUpdateLoopCall(Action)</code></td><td>One-shot</td><td>Next <code>GroundScene::update</code>.</td></tr>
+    <tr><td><code>AddPreDrawLoopCall(Action)</code></td><td>One-shot</td><td>Next pre-draw (before <code>GroundScene::draw</code>).</td></tr>
+    <tr><td><code>AddPostDrawLoopCall(Action)</code></td><td>One-shot</td><td><strong>Bug &mdash; currently drains the pre-draw queue.</strong> Use the update loop instead until this is fixed.</td></tr>
+    <tr><td><code>AddCameraChangeCallback(Action)</code></td><td>Persistent</td><td>Camera index changed (e.g. free-cam toggled).</td></tr>
+  </tbody>
+</table>
+
+<h3>When to choose update vs pre-draw</h3>
+
+<table>
+  <thead>
+    <tr><th>Operation</th><th>Recommended hook</th><th>Why</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Move/rotate/spawn an object</td><td><code>AddUpdateLoopCall</code></td><td>Objects are touched as part of update; safe.</td></tr>
+    <tr><td>Toggle/configure ImGuizmo</td><td><code>AddPreDrawLoopCall</code></td><td>Gizmo state needs to be set before the draw uses it.</td></tr>
+    <tr><td>Read camera state, copy to UI</td><td><code>AddUpdateLoopCall</code></td><td>Camera is final by update time.</td></tr>
+    <tr><td>Heavy compute (&gt;1 ms)</td><td>Background <code>Task</code></td><td>Don't run on the game thread directly &mdash; marshal results.</td></tr>
+  </tbody>
+</table>
+
+<h3>Example</h3>
+
+<pre><code>public class FreeCamPanel : SubPanel
+{
+    private void btnTeleportToOrigin_Click(object sender, EventArgs e)
+    {
+        GroundSceneCallbacks.AddUpdateLoopCall(() =&gt;
+        {
+            var cam = GroundScene.Get().GetCurrentCamera();
+            cam.SetTransform(new Transform(Vector.Zero, Quaternion.Identity));
+        });
+    }
+}
+</code></pre>
+
+<h2 id="objectcallbacks"><code>ObjectCallbacks</code></h2>
+
+<p>Target-object tracking. Wraps <code>CreatureObject::setTarget</code>.</p>
+
+<table>
+  <thead>
+    <tr><th>Method</th><th>Pattern</th><th>Fires&hellip;</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>AddOnTargetCall(Action)</code></td><td>One-shot</td><td>Next target change.</td></tr>
+    <tr><td><code>AddOnTargetCallback(Action)</code></td><td>Persistent</td><td>Every target change for the session.</td></tr>
+  </tbody>
+</table>
+
+<p>Both fire <strong>after</strong> the target has been set; you read the current target via <code>Game.GetPlayerLookAtTargetObject()</code> or similar.</p>
+
+<h3>Example</h3>
+
+<pre><code>ObjectCallbacks.AddOnTargetCallback(() =&gt;
+{
+    var t = Game.GetPlayerLookAtTargetObject();
+    Log.Info("target → " + (t?.GetTemplateName() ?? "(none)"));
+});
+</code></pre>
+
+<h2 id="cuicallbacks"><code>CuiCallbacks</code></h2>
+
+<p>UI system events. Currently exposes the system-message stream.</p>
+
+<table>
+  <thead>
+    <tr><th>Method</th><th>Pattern</th><th>Fires&hellip;</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>AddOnReceiveSystemMessageCallback(Action&lt;string&gt;)</code></td><td>Persistent</td><td>On every system message (e.g. "You gain XP").</td></tr>
+  </tbody>
+</table>
+
+<h3>Example</h3>
+
+<pre><code>CuiCallbacks.AddOnReceiveSystemMessageCallback(msg =&gt;
+{
+    if (msg.Contains("XP"))
+        Log.Info("XP event: " + msg);
+});
+</code></pre>
+
+<h2 id="imguicallbacks"><code>ImGuiCallbacks</code></h2>
+
+<p>Editor manipulator events. Initialised lazily by <code>FormMain</code> &mdash; only active in editor mode.</p>
+
+<table>
+  <thead>
+    <tr><th>Method</th><th>Pattern</th><th>Fires&hellip;</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>AddOnEnabledCallback(Action)</code></td><td>Persistent</td><td>Gizmo turned on (via <code>imgui_impl.Enable(target)</code>).</td></tr>
+    <tr><td><code>AddOnDisabledCallback(Action)</code></td><td>Persistent</td><td>Gizmo turned off.</td></tr>
+    <tr><td><code>AddOnPositionChangedCallback(Action)</code></td><td>Persistent</td><td>User dragged the translate gizmo. New position is on the target object.</td></tr>
+    <tr><td><code>AddOnRotationChangedCallback(Action)</code></td><td>Persistent</td><td>User rotated via the gizmo.</td></tr>
+  </tbody>
+</table>
+
+<p>These fire on the game thread, inside the draw loop. Read state via <code>Network.GetObjectById(id)</code> or the target object directly.</p>
+
+<h3>Example: pushing undo commands on gizmo edits</h3>
+
+<pre><code>public class SnapshotImpl
+{
+    private Transform beforeTransform;
+
+    public SnapshotImpl(IEditorPlugin owner)
+    {
+        ImGuiCallbacks.AddOnEnabledCallback(() =&gt;
+        {
+            var obj = Game.GetPlayerLookAtTargetObject();
+            beforeTransform = obj.GetTransform();
+        });
+
+        ImGuiCallbacks.AddOnPositionChangedCallback(() =&gt;
+        {
+            var obj = Game.GetPlayerLookAtTargetObject();
+            var node = WorldSnapshot.GetNodeForObject(obj);
+            owner.AddUndoCommand?.Invoke(this,
+                new AddUndoCommandEventArgs(
+                    new WorldSnapshotNodePositionChangedCommand(
+                        node, beforeTransform, obj.GetTransform())));
+            beforeTransform = obj.GetTransform();
+        });
+    }
+}
+</code></pre>
+
+<h2>Threading discipline (the cheat sheet)</h2>
+
+<div class="mermaid">
+flowchart LR
+  classDef game fill:#28344a,stroke:#57c1ff,color:#d6e1ee
+  classDef ui   fill:#1d2a23,stroke:#6dd58c,color:#d6e1ee
+
+  subgraph T_Game["Game thread"]
+    Cb["Callbacks fire here"]:::game
+    NativeAPI["Calling utinni::* / UtinniCore.* native APIs"]:::game
+  end
+  subgraph T_UI["UI thread (STA)"]
+    Forms["WinForms control updates"]:::ui
+    Click["WinForms event handlers"]:::ui
+  end
+  Cb -. "Control.Invoke(...)" .-> Forms
+  Click -. "GameCallbacks.AddMainLoopCall(...)" .-> Cb
+</div>
+
+<p>Rules:</p>
+
+<ol>
+  <li><strong>From a callback</strong> &mdash; to update WinForms, marshal to UI: <code>myLabel.Invoke((MethodInvoker)(() =&gt; myLabel.Text = "..."))</code>.</li>
+  <li><strong>From a WinForms event handler</strong> &mdash; to call game APIs, enqueue: <code>GameCallbacks.AddMainLoopCall(() =&gt; Game.LoadScene(...))</code>.</li>
+  <li><strong>From a <code>Task.Run</code></strong> &mdash; do compute, then marshal to UI for display <em>or</em> enqueue a callback if you also need a game-thread effect.</li>
+  <li><strong>Avoid <code>Thread.Sleep</code></strong> in any callback. Avoid synchronous waits on anything that depends on the game thread (deadlock).</li>
+  <li><strong>Don't open modal dialogs</strong> from callbacks. <code>MessageBox.Show</code> will freeze the game while waiting for user input. Marshal to UI first, then show.</li>
+  <li><strong>Don't call <code>Application.DoEvents</code></strong> anywhere &mdash; it pumps message re-entrancy in ways that fight <code>PanelGame</code>'s WndProc forwarding.</li>
+</ol>
+
+<h2>Known issues</h2>
+
+<ul>
+  <li><strong><code>AddPostDrawLoopCall</code> is bugged.</strong> As of the surveyed source, it dequeues the <em>pre</em>-draw queue rather than the post-draw queue. Workaround: use <code>AddUpdateLoopCall</code> and accept one-frame latency, or fork and fix.</li>
+  <li><strong><code>ImGuiCallbacks</code> is initialised inside <code>FormMain</code></strong>, not in <code>Startup.EntryPoint</code>. Runtime plugins (no editor) won't see gizmo events because there's no gizmo without the editor.</li>
+  <li><strong>No <code>Remove*</code> for callbacks.</strong> Once subscribed, you're subscribed for the process lifetime. If you need a one-shot, use the queue-style <code>Add*Call</code>.</li>
+</ul>
+
+<h2>See also</h2>
+
+<ul>
+  <li><a href="bridge.html">Bridge</a> &mdash; where these systems sit in the broader managed surface.</li>
+  <li><a href="core.html">Native core &mdash; Game / GroundScene / SystemMessageManager</a> &mdash; the C++ side these wrap.</li>
+  <li><a href="tutorial.html">Tutorial</a> &mdash; uses every callback type at least once.</li>
+</ul>
+
+</main>
+<footer>
+  Utinni &mdash; SWG client modding framework. Documentation for the fork at <code>D:/Code/Utinni</code>.
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>

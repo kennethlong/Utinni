@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Tutorial — Utinni</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <h1><span class="accent">Utinni</span> — Build your first editor plugin</h1>
+  <div class="sub">A guided walk-through that hits every major Utinni system.</div>
+</header>
+<nav class="top">
+  <a href="index.html">Overview</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="injection.html">Injection</a>
+  <a href="core.html">Native Core</a>
+  <a href="bridge.html">Managed Bridge</a>
+  <a href="plugin-framework.html">Plugin Framework</a>
+  <a href="callbacks.html">Callbacks</a>
+  <a href="ui-framework.html">UI</a>
+  <a href="hotkeys.html">Hotkeys</a>
+  <a href="undo-redo.html">Undo/Redo</a>
+  <a href="sdk.html">SDK</a>
+  <a href="build.html">Build</a>
+  <a href="tutorial.html" class="active">Tutorial</a>
+  <a href="internals.html">Internals</a>
+  <a href="regen-bindings.html">Bindings</a>
+  <a href="glossary.html">Glossary</a>
+</nav>
+<main>
+
+<h1>Tutorial: your first editor plugin</h1>
+
+<div class="callout info">
+Audience: new .NET plugin authors. Reading time: ~30 minutes; with VS open,
+you'll have a working plugin in about that long.
+</div>
+
+<p>
+We'll build <strong><code>HelloEditorPlugin</code></strong> — a one-<code>SubPanel</code>, one-hotkey, one-undo
+plugin that:
+</p>
+
+<ol>
+  <li>Dock a panel on the editor right rail.</li>
+  <li>Show the current player position, updated each frame.</li>
+  <li>Add a button that teleports the player to the world origin <strong>with undo</strong>.</li>
+  <li>Bind <kbd>Ctrl</kbd>+<kbd>Home</kbd> as a hotkey for the same teleport.</li>
+  <li>Log a system message when the player targets something.</li>
+</ol>
+
+<p>
+By the end you'll have used every major Utinni system: <code>IEditorPlugin</code>,
+<code>SubPanel</code>, <code>GameCallbacks</code>, <code>ObjectCallbacks</code>, <code>GroundSceneCallbacks</code>,
+<code>HotkeyManager</code>, <code>IUndoCommand</code>, and <code>Log</code>.
+</p>
+
+<h2>Step 0 — prerequisites</h2>
+
+<ul>
+  <li>Utinni built and installed (see <a href="build.html">Build &amp; run</a>).</li>
+  <li><code>Plugins/</code> directory next to <code>Launcher.exe</code>.</li>
+  <li>VS 2019 with the <a href="sdk.html#install">VSIX templates</a> installed <em>or</em> a manual
+    project ready (see <a href="sdk.html#net-plugin-without-the-vsix">SDK — without the VSIX</a>).</li>
+  <li>Verified that <strong>TheJawaToolbox</strong> (or any working plugin) loads — gives you
+    a known-good baseline.</li>
+</ul>
+
+<h2>Step 1 — create the project</h2>
+
+<p><strong>File → New → Project → UtinniDotNetEditorPlugin</strong>.</p>
+
+<p>Project name: <code>HelloEditorPlugin</code>.</p>
+
+<p>The wizard creates <code>Plugin.cs</code>:</p>
+
+<pre><code>using System;
+using System.Collections.Generic;
+using UtinniCore.Utinni;
+using UtinniCoreDotNet.Hotkeys;
+using UtinniCoreDotNet.PluginFramework;
+using UtinniCoreDotNet.UI.Controls;
+using UtinniCoreDotNet.UI.Forms;
+using UtinniCoreDotNet.Utility;
+
+public class HelloEditorPlugin : IEditorPlugin
+{
+    public PluginInformation Information { get; }
+    public EventHandler&lt;AddUndoCommandEventArgs&gt; AddUndoCommand { get; set; }
+
+    public HelloEditorPlugin()
+    {
+        Information = new PluginInformation("HelloEditorPlugin",
+                                            "First-plugin tutorial",
+                                            "Your Name");
+    }
+
+    public UtINI GetConfig() =&gt; null;
+    public HotkeyManager GetHotkeyManager() =&gt; null;
+    public List&lt;IEditorForm&gt; GetForms() =&gt; null;
+    public List&lt;SubPanelContainer&gt; GetStandalonePanels() =&gt; null;
+    public List&lt;SubPanel&gt; GetSubPanels() =&gt; null;
+}
+</code></pre>
+
+<p>Build it once and copy the DLL to <code>Plugins/HelloEditorPlugin/</code>. Add to
+<code>ut.ini</code>:</p>
+
+<pre><code>[Plugins]
+plugin_0 = true,HelloEditorPlugin
+</code></pre>
+
+<p>Run <code>Launcher.exe</code>. The editor should open — your plugin is loaded but
+invisible (no UI yet). Check <code>logs/utinni.log</code> for "1 .NET Plugin(s) loaded"
+(or however many you have).</p>
+
+<h2>Step 2 — add a SubPanel</h2>
+
+<p>Create <code>HelloSubPanel.cs</code>:</p>
+
+<pre><code>using System;
+using System.Windows.Forms;
+using UtinniCore.Utinni;
+using UtinniCoreDotNet.Callbacks;
+using UtinniCoreDotNet.UI.Controls;
+using UtinniCoreDotNet.Utility;
+
+public class HelloSubPanel : SubPanel
+{
+    private readonly UtinniLabel  lblPos;
+    private readonly UtinniButton btnTeleport;
+
+    public HelloSubPanel(HelloEditorPlugin owner) : base("Hello", true)
+    {
+        lblPos = new UtinniLabel
+        {
+            Text = "player: (-)",
+            Dock = DockStyle.Top,
+            Height = 24
+        };
+        btnTeleport = new UtinniButton
+        {
+            Text = "Teleport to origin",
+            Dock = DockStyle.Top,
+            Height = 28,
+            Enabled = false       // turn on when a scene is loaded
+        };
+
+        Controls.Add(btnTeleport);
+        Controls.Add(lblPos);
+
+        GameCallbacks.AddSetupSceneCall(() =&gt;
+            this.Invoke((MethodInvoker)(() =&gt; btnTeleport.Enabled = true)));
+        GameCallbacks.AddCleanupSceneCall(() =&gt;
+            this.Invoke((MethodInvoker)(() =&gt; btnTeleport.Enabled = false)));
+    }
+}
+</code></pre>
+
+<p>Update <code>Plugin.cs</code>:</p>
+
+<pre><code>public override List&lt;SubPanel&gt; GetSubPanels()
+    =&gt; new List&lt;SubPanel&gt; { new HelloSubPanel(this) };
+</code></pre>
+
+<p>Rebuild, re-deploy, re-launch. You should see a "Hello" panel on the right
+rail. The button is disabled until you load a scene.</p>
+
+<h2>Step 3 — update the position label every frame</h2>
+
+<p>Inside <code>HelloSubPanel</code>'s constructor, after the existing handlers, add:</p>
+
+<pre><code>GroundSceneCallbacks.AddUpdateLoopCall(UpdateLoop);
+
+// re-arm after each fire — the queue-style API is one-shot
+void Rearm() =&gt; GroundSceneCallbacks.AddUpdateLoopCall(UpdateLoop);
+
+void UpdateLoop()
+{
+    try
+    {
+        var player = Game.GetPlayerCreatureObject();
+        if (player == null) return;
+        var pos = player.GetTransform().Position;
+
+        // Marshal to UI.
+        if (!IsDisposed)
+            this.BeginInvoke((MethodInvoker)(() =&gt;
+                lblPos.Text = $"player: ({pos.x:0.0}, {pos.y:0.0}, {pos.z:0.0})"));
+    }
+    finally
+    {
+        // re-enqueue so we fire again next frame
+        if (!IsDisposed) Rearm();
+    }
+}
+</code></pre>
+
+<p>Why re-enqueue? <code>AddUpdateLoopCall</code> is the <strong>one-shot</strong> queued pattern — fires
+once then drops the callback. Re-enqueueing each call turns it into a
+persistent per-frame hook. (You could also use the persistent-Action pattern
+some other callback hubs offer — <code>Add*Callback</code> — but the ground-scene
+update loop is queue-based.)</p>
+
+<p>Build, deploy, run, load a scene (e.g. <code>naboo.trn</code> with the avatar default).
+The label should update every frame with the player's position.</p>
+
+<h2>Step 4 — teleport, with undo</h2>
+
+<p>Add an <code>IUndoCommand</code>:</p>
+
+<pre><code>public class TeleportCommand : IUndoCommand
+{
+    private readonly Object       playerObj;
+    private readonly Transform    before;
+    private readonly Transform    after;
+
+    public TeleportCommand(Object player, Transform before, Transform after)
+    {
+        this.playerObj = player;
+        this.before    = before;
+        this.after     = after;
+    }
+
+    public string GetText() =&gt; $"Teleport to ({after.Position.x:0}, {after.Position.y:0}, {after.Position.z:0})";
+
+    public void Execute() =&gt; GroundSceneCallbacks.AddUpdateLoopCall(
+        () =&gt; playerObj.SetTransform(after));
+
+    public void Undo()    =&gt; GroundSceneCallbacks.AddUpdateLoopCall(
+        () =&gt; playerObj.SetTransform(before));
+
+    public bool AllowMerge() =&gt; false;
+    public bool Merge(IUndoCommand newCommand) =&gt; false;
+}
+</code></pre>
+
+<p>Wire the button:</p>
+
+<pre><code>btnTeleport.Click += (s, e) =&gt;
+{
+    GroundSceneCallbacks.AddUpdateLoopCall(() =&gt;
+    {
+        var player = Game.GetPlayerCreatureObject();
+        var before = player.GetTransform();
+        var after  = new Transform(new Vector(0, before.Position.y, 0),
+                                   before.Rotation);
+
+        var cmd = new TeleportCommand(player, before, after);
+        // Execute the change immediately
+        player.SetTransform(after);
+        // Push to undo stack
+        owner.AddUndoCommand?.Invoke(owner, new AddUndoCommandEventArgs(cmd));
+    });
+};
+</code></pre>
+
+<p><code>owner</code> is the <code>HelloEditorPlugin</code> instance you passed into the SubPanel
+constructor. Raising <code>AddUndoCommand</code> on it puts the command on the editor's
+undo stack — <code>FormMain</code> has already wired the event for you.</p>
+
+<p>Build, deploy, run, click <strong>Teleport to origin</strong>. The player teleports.
+Click the editor's title-bar Undo button (or use the history dropdown) —
+the player teleports back. Redo — forward again.</p>
+
+<h2>Step 5 — bind a hotkey</h2>
+
+<p>In <code>Plugin.cs</code>, add a hotkey manager:</p>
+
+<pre><code>private readonly HotkeyManager hotkeys;
+
+public HelloEditorPlugin()
+{
+    Information = new PluginInformation(...);
+
+    hotkeys = new HotkeyManager(onGameFocusOnly: false);
+
+    hotkeys.Add(new Hotkey
+    {
+        Name             = "HelloPlugin.TeleportHome",
+        Text             = "Teleport to origin",
+        ModifierKeys     = Keys.Control,
+        Key              = Keys.Home,
+        OnDownCallback   = TriggerTeleport,
+        OverrideGameInput = false,
+        Enabled          = true,
+        OnGameFocusOnly  = true
+    });
+
+    hotkeys.CreateSettings();
+}
+
+public override HotkeyManager GetHotkeyManager() =&gt; hotkeys;
+
+private void TriggerTeleport()
+{
+    GroundSceneCallbacks.AddUpdateLoopCall(() =&gt;
+    {
+        var player = Game.GetPlayerCreatureObject();
+        if (player == null) return;
+        var before = player.GetTransform();
+        var after  = new Transform(new Vector(0, before.Position.y, 0), before.Rotation);
+        var cmd    = new TeleportCommand(player, before, after);
+        player.SetTransform(after);
+        AddUndoCommand?.Invoke(this, new AddUndoCommandEventArgs(cmd));
+    });
+}
+</code></pre>
+
+<p>Refactor the SubPanel button to call <code>owner.TriggerTeleport()</code> instead of
+duplicating logic:</p>
+
+<pre><code>btnTeleport.Click += (s, e) =&gt; owner.TriggerTeleport();
+// (TriggerTeleport must be public or internal so the SubPanel can call it)
+</code></pre>
+
+<p>Build, deploy, run. <kbd>Ctrl</kbd>+<kbd>Home</kbd> in the game window now
+teleports too — and goes through the same undo path.</p>
+
+<p>Users can rebind in <code>Plugins/HelloEditorPlugin/input.ini</code>:</p>
+
+<pre><code>[Hotkeys]
+HelloPlugin.TeleportHome = Control + Home
+</code></pre>
+
+<p>…or via the in-editor settings UI.</p>
+
+<h2>Step 6 — react to target changes</h2>
+
+<p>Make the SubPanel log a system message when the player targets something:</p>
+
+<pre><code>public HelloSubPanel(HelloEditorPlugin owner) : base("Hello", true)
+{
+    // ...
+
+    ObjectCallbacks.AddOnTargetCallback(() =&gt;
+    {
+        var t = Game.GetPlayerLookAtTargetObject();
+        var name = t?.GetTemplateName() ?? "(none)";
+        Log.Info($"target → {name}");
+        SystemMessageManager.SendMessage($"target: {name}");
+    });
+}
+</code></pre>
+
+<p><code>Log.Info</code> writes to <code>utinni.log</code>. <code>SystemMessageManager.SendMessage</code> pops
+the message into the game's chat-style system-message stream.</p>
+
+<h2>Step 7 — package and ship</h2>
+
+<p>Final layout:</p>
+
+<pre><code>Plugins/HelloEditorPlugin/
+├── HelloEditorPlugin.dll
+└── input.ini          (created on first run with your default binding)
+</code></pre>
+
+<p><code>ut.ini</code>:</p>
+
+<pre><code>[Plugins]
+plugin_0 = true,HelloEditorPlugin
+</code></pre>
+
+<p>That's it. You've built a working editor plugin with UI, per-frame state,
+callbacks, hotkeys, and undo.</p>
+
+<h2>What to learn next</h2>
+
+<ul>
+  <li><strong>More callbacks</strong> — graphics begin/end-scene, post-processing
+    (<code>utinni::postProcessing::addPreSceneRenderCallback</code> ↔
+    <code>UtinniCore.Swg.Misc.postProcessing</code> via P/Invoke for advanced rendering work).</li>
+  <li><strong>Drag-drop from a <code>Form</code></strong> — see the Jawa Toolbox's <code>FormObjectBrowser</code>.</li>
+  <li><strong>Custom undo merge</strong> — collapse continuous slider drags into one
+    undo entry via <code>Merge()</code>.</li>
+  <li><strong>Gizmo integration</strong> — call <code>imgui_impl.Enable(targetObject)</code> and
+    subscribe to <code>ImGuiCallbacks</code> for translate/rotate.</li>
+  <li><strong>Your own command parser</strong> — add a C++ half to your plugin (see
+    <code>ExampleCppPlugin</code>) and expose <code>/hello</code> slash commands in chat.</li>
+</ul>
+
+<h2>Common mistakes</h2>
+
+<ol>
+  <li><strong>Touching WinForms from a callback</strong> without <code>Invoke</code> →
+    <code>InvalidOperationException</code>.</li>
+  <li><strong>Calling <code>Game.LoadScene()</code> from a button click</strong> without queueing →
+    crash or hang. Always wrap in <code>GameCallbacks.AddMainLoopCall</code>.</li>
+  <li><strong>Saving plugin state in static fields</strong> → state persists across plugin
+    reloads via debug-reattach. Use instance fields tied to your plugin object.</li>
+  <li><strong>Naming hotkeys without a prefix</strong> → collisions with other plugins.
+    Use <code>HelloPlugin.SomeBinding</code>.</li>
+  <li><strong>Calling <code>Log.Info</code> from inside a <code>Form.Paint</code></strong> → log sink callbacks
+    fire on whatever thread the log came from; if a UI paint logs and the
+    sink updates UI, you can recurse into paint. Log sparingly from UI hot
+    paths.</li>
+</ol>
+
+<h2>See also</h2>
+
+<ul>
+  <li><a href="plugin-framework.html">Plugin framework</a></li>
+  <li><a href="callbacks.html">Callbacks reference</a></li>
+  <li><a href="ui-framework.html">UI framework</a></li>
+  <li><a href="hotkeys.html">Hotkeys</a>, <a href="undo-redo.html">Undo / Redo</a></li>
+  <li>The Jawa Toolbox plugin source — the most complete worked example.</li>
+</ul>
+
+</main>
+<footer>
+  Utinni — SWG client modding framework. Documentation for the fork at <code>D:/Code/Utinni</code>.
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>

@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Regenerating Bindings — Utinni</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <h1><span class="accent">Utinni</span> — Regenerating Generated/UtinniCore.cs</h1>
+  <div class="sub">When and how to re-run CppSharp against UtinniCore's headers.</div>
+</header>
+<nav class="top">
+  <a href="index.html">Overview</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="injection.html">Injection</a>
+  <a href="core.html">Native Core</a>
+  <a href="bridge.html">Managed Bridge</a>
+  <a href="plugin-framework.html">Plugin Framework</a>
+  <a href="callbacks.html">Callbacks</a>
+  <a href="ui-framework.html">UI</a>
+  <a href="hotkeys.html">Hotkeys</a>
+  <a href="undo-redo.html">Undo/Redo</a>
+  <a href="sdk.html">SDK</a>
+  <a href="build.html">Build</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="internals.html">Internals</a>
+  <a href="regen-bindings.html" class="active">Bindings</a>
+  <a href="glossary.html">Glossary</a>
+</nav>
+<main>
+
+<h1>Regenerating bindings</h1>
+
+<div class="callout info">
+Audience: core contributors. Plugin authors don't run this — they consume
+the already-generated bindings via <code>UtinniCoreDotNet.dll</code>.
+</div>
+
+<p>
+<code>UtinniCoreDotNet/Generated/UtinniCore.cs</code> is produced by <strong>CppSharp</strong> —
+a Clang-frontend / C# code-emitter that parses C++ headers and writes
+managed wrappers around them. The driver lives in <code>UtinniCoreDotNetGen/</code>.
+</p>
+
+<p>You need to regenerate when:</p>
+
+<ol>
+  <li>You <strong>add a new public function or class</strong> to a header in <code>UtinniCore/</code>
+    that you want callable from managed code.</li>
+  <li>You <strong>change a signature</strong> of an existing public function.</li>
+  <li>You <strong>add a new header</strong> (and <code>Program.cs</code> has been updated to point to
+    it).</li>
+  <li>You <strong>upgrade CppSharp</strong> itself.</li>
+</ol>
+
+<p>You do <em>not</em> need to regenerate for:</p>
+
+<ul>
+  <li>Pure-implementation changes inside <code>.cpp</code> files.</li>
+  <li>Adding a new <code>*_callback</code> or <code>add*Callback</code> if its delegate signature was
+    already there.</li>
+  <li>Internal headers that nobody outside <code>UtinniCore</code> includes.</li>
+</ul>
+
+<h2>The generator</h2>
+
+<p>
+<code>UtinniCoreDotNetGen/Program.cs</code> defines a <code>Gen : ILibrary</code> class that
+CppSharp's <code>ConsoleDriver</code> invokes in four phases:
+</p>
+
+<h3>Setup</h3>
+
+<pre><code>public void Setup(Driver driver)
+{
+    string workingDir = AppDomain.CurrentDomain.BaseDirectory;
+    string slnDir     = /* walk up from bin/&lt;Config&gt;/ */;
+
+    var opts = driver.Options;
+    opts.TargetTriple    = "i686-pc-win32-msvc";
+    opts.UnityBuild      = true;
+    opts.EnableRTTI      = true;
+    opts.GeneratorKind   = GeneratorKind.CSharp;
+    opts.OutputDir       = slnDir + "UtinniCoreDotNet\\Generated\\";
+    opts.SymbolsLibraryName = "UtinniCore-Symbols";
+
+    var module = opts.AddModule("UtinniCore");
+    module.LibraryName = "UtinniCore";
+    module.LibraryDirs.Add(slnDir + "bin\\Release\\");
+
+    module.IncludeDirs.Add(slnDir);
+    module.IncludeDirs.Add(slnDir + "external");
+    module.IncludeDirs.Add(slnDir + "UtinniCore");
+
+    module.Headers.Add("utinni.h");
+    module.Headers.Add("utility/log.h");
+    module.Headers.Add("plugin_framework/plugin_manager.h");
+    module.Headers.Add("swg/appearance/skeleton.h");
+    module.Headers.Add("swg/client/client.h");
+    module.Headers.Add("swg/camera/debug_camera.h");
+    module.Headers.Add("swg/game/game.h");
+    module.Headers.Add("swg/graphics/directx9.h");
+    module.Headers.Add("swg/graphics/graphics.h");
+    module.Headers.Add("swg/misc/config.h");
+    module.Headers.Add("swg/misc/network.h");
+    module.Headers.Add("swg/misc/swg_math.h");
+    module.Headers.Add("swg/object/client_object.h");
+    module.Headers.Add("swg/object/creature_object.h");
+    module.Headers.Add("swg/object/player_object.h");
+    module.Headers.Add("swg/scene/ground_scene.h");
+    module.Headers.Add("swg/scene/terrain.h");
+    module.Headers.Add("swg/scene/render_world.h");
+    module.Headers.Add("swg/scene/world_snapshot.h");
+    module.Headers.Add("swg/ui/cui_chat_window.h");
+    module.Headers.Add("swg/ui/cui_hud.h");
+    module.Headers.Add("swg/ui/cui_io.h");
+    module.Headers.Add("swg/ui/cui_manager.h");
+    module.Headers.Add("swg/ui/cui_misc.h");
+    module.Headers.Add("swg/ui/imgui_impl.h");
+
+    opts.Defines.Add("SPDLOG_NO_EXCEPTIONS");
+    opts.Defines.Add("FMT_EXCEPTIONS=0");
+}
+</code></pre>
+
+<p>Things to know:</p>
+
+<ul>
+  <li><strong>Target triple <code>i686-pc-win32-msvc</code></strong> — Clang has to mimic MSVC's x86 ABI
+    for <code>__thiscall</code> / <code>__stdcall</code> / name mangling to come out right.</li>
+  <li><strong><code>SymbolsLibraryName = "UtinniCore-Symbols"</code></strong> — CppSharp will P/Invoke
+    against mangled symbols that live in this lib. The <code>UtinniCore-Symbols</code>
+    project exists solely so the symbols are exported in a form CppSharp can
+    reference.</li>
+  <li><strong>Headers list is explicit.</strong> Anything not listed here is invisible to
+    the generator. If you add a new public header, add it.</li>
+</ul>
+
+<h3>SetupPasses / Postprocess</h3>
+
+<p>
+Both empty in current source — no custom AST transformations are run. If
+you ever need to rename a generated symbol or strip a class wholesale, add
+a CppSharp <code>TranslationUnitPass</code> here.
+</p>
+
+<h3>Preprocess</h3>
+
+<pre><code>public void Preprocess(Driver driver, ASTContext ctx)
+{
+    ctx.IgnoreHeadersWithName("spdlog");
+    ctx.IgnoreHeadersWithName("detourxs");
+    ctx.IgnoreHeadersWithName("ADE32");
+}
+</code></pre>
+
+<p>
+Filters out third-party headers we don't want to expose to managed code.
+Add to this list if a new vendor lib leaks into the public surface.
+</p>
+
+<h2>Running the generator</h2>
+
+<h3>From Visual Studio</h3>
+
+<ol>
+  <li>Build <code>UtinniCore</code> in <strong><code>Release</code></strong> (the generator looks under
+    <code>bin\Release\</code> for <code>UtinniCore.dll</code>).</li>
+  <li>Set <code>UtinniCoreDotNetGen</code> as the startup project.</li>
+  <li><strong>Debug → Start Without Debugging</strong> (Ctrl+F5).</li>
+</ol>
+
+<p>
+The generator prints CppSharp's parse progress, then writes
+<code>UtinniCoreDotNet/Generated/UtinniCore.cs</code>.
+</p>
+
+<h3>From the command line</h3>
+
+<pre><code>cd UtinniCoreDotNetGen\bin\Release
+UtinniCoreDotNetGen.exe
+</code></pre>
+
+<p>
+The post-build event copies CppSharp's lib folder next to the exe so this
+works after a clean build.
+</p>
+
+<h3>As a <code>UtinniCore</code> post-build step</h3>
+
+<p>
+<code>UtinniCore.vcxproj</code>'s post-build step runs the generator automatically when
+configured. The hand-edited <code>StdEdited.cs</code> is <strong>not</strong> touched.
+</p>
+
+<h2>Output</h2>
+
+<p>
+After a successful run, <code>UtinniCoreDotNet/Generated/UtinniCore.cs</code> is
+overwritten. The file is ~5000+ lines of:
+</p>
+
+<ul>
+  <li>One C# <code>namespace</code> per native namespace (e.g. <code>UtinniCore.Utinni</code>,
+    <code>UtinniCore.Swg.Math</code>, <code>UtinniCore.ImguiGizmo</code>).</li>
+  <li>One <code>public unsafe partial class &lt;Name&gt; : IDisposable</code> per native class
+    exposed.</li>
+  <li>One <code>internal partial struct __Internal { /* P/Invokes */ }</code> inside each
+    class.</li>
+  <li>A <code>ConcurrentDictionary&lt;IntPtr, T&gt;</code> named <code>NativeToManagedMap</code> for
+    identity-preserving wrappers.</li>
+  <li>Marshaled call sites that build/teardown native instances around each
+    method.</li>
+</ul>
+
+<p>
+The generator marks the file with the standard <code>&lt;auto-generated&gt;</code> comment
+and a CppSharp version line — don't edit by hand.
+</p>
+
+<h2>The hand-edited <code>StdEdited.cs</code></h2>
+
+<p>
+<code>UtinniCoreDotNet/Generated/StdEdited.cs</code> is <em>not</em> regenerated. It contains
+~800 lines of hand-tuned wrappers around <code>std::basic_string</code>,
+<code>std::allocator</code>, <code>std::char_traits</code>, etc. CppSharp's auto-generated STL
+wrappers don't match MSVC's STL layout precisely enough to round-trip
+strings safely, so this file overrides them.
+</p>
+
+<p>Top-of-file directive:</p>
+
+<pre><code>[assembly: InternalsVisibleTo("UtinniCore")]
+</code></pre>
+
+<p>…and then the specialized:</p>
+
+<pre><code>public unsafe partial class BasicString&lt;_Elem, _Traits, _Alloc&gt; : IDisposable
+{
+    // hand-written __CopyValue, constructor specialization checks, Dispose...
+}
+</code></pre>
+
+<p>
+If you upgrade CppSharp or MSVC's STL layout shifts, you may need to
+re-derive these — but <strong>don't regenerate them automatically</strong>. They're
+maintained alongside CppSharp upgrades.
+</p>
+
+<h2>Validating a regen</h2>
+
+<ol>
+  <li><strong>Rebuild <code>UtinniCoreDotNet</code></strong> — the easiest smoke test. Compile errors
+    typically point at:
+    <ul>
+      <li>Mismatched generics on STL types — likely <code>StdEdited.cs</code> is stale.</li>
+      <li>Missing entry points — symbol exports in <code>UtinniCore-Symbols</code> need
+        refreshing.</li>
+      <li>Renamed types — hand-written managed code that calls into the bindings
+        needs to update.</li>
+    </ul>
+  </li>
+  <li><strong>Diff the file.</strong> A clean regen against unchanged headers should be
+    identical (modulo version strings). A semantic regen should show only
+    the lines for the symbols you added/changed.</li>
+  <li><strong>Launch the editor with at least one known-good plugin loaded.</strong> If
+    plugins now fail to compose, you regressed a public type.</li>
+  <li><strong>Run a smoke scenario.</strong> Load a scene → free-cam toggle → move an
+    object via gizmo → undo. Hits the bulk of the bindings.</li>
+</ol>
+
+<h2>Adding a new function (worked example)</h2>
+
+<p>
+You want to expose <code>utinni::GroundScene::setTimeOfDay(float t)</code> so .NET can
+call it.
+</p>
+
+<ol>
+  <li><strong>Declare in the header</strong>:
+
+    <pre><code>// swg/scene/ground_scene.h
+UTINNI_API void setTimeOfDay(float timeOfDay);
+</code></pre>
+  </li>
+
+  <li><strong>Implement in the .cpp</strong>:
+
+    <pre><code>// swg/scene/ground_scene.cpp
+void setTimeOfDay(float t) {
+    swg::groundScene::setTimeOfDay(get(), t);   // call into SWG
+}
+</code></pre>
+  </li>
+
+  <li><strong>(No header list change needed)</strong> because <code>ground_scene.h</code> is already
+    in <code>Program.cs</code>'s <code>module.Headers</code>.</li>
+  <li><strong>Build <code>UtinniCore</code> Release</strong>.</li>
+  <li><strong>Run <code>UtinniCoreDotNetGen.exe</code></strong> — verify <code>Generated/UtinniCore.cs</code> now
+    has <code>UtinniCore.Utinni.GroundScene.SetTimeOfDay(float)</code>.</li>
+  <li><strong>Rebuild <code>UtinniCoreDotNet</code></strong> — verify it compiles.</li>
+  <li><strong>Use it from C#</strong>:
+
+    <pre><code>GroundScene.Get().SetTimeOfDay(0.5f);
+</code></pre>
+  </li>
+</ol>
+
+<h2>Adding a new header</h2>
+
+<ol>
+  <li>Place the header somewhere under <code>UtinniCore/</code> and <code>#include</code> it from
+    anything that needs it on the C++ side.</li>
+  <li>Add to <code>Program.cs</code>:
+
+    <pre><code>module.Headers.Add("my_subsystem/my_header.h");
+</code></pre>
+  </li>
+  <li>Regenerate.</li>
+</ol>
+
+<h2>Common regen failures</h2>
+
+<table>
+  <thead>
+    <tr><th>Symptom</th><th>Cause / fix</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>"Couldn't find UtinniCore.dll" at generator runtime</td><td>You haven't built <code>UtinniCore</code> Release. Build it first.</td></tr>
+    <tr><td>Generator crashes on a header</td><td>Clang couldn't parse it — usually a missing include path or an MSVC-only construct. Wrap in <code>#ifndef CPPSHARP</code> if necessary.</td></tr>
+    <tr><td>Generated file has <code>Type&lt;UNRESOLVED&gt;</code> placeholders</td><td>Forward declarations CppSharp couldn't resolve. Either include the defining header or add a <code>ctx.IgnoreClassWithName(...)</code> in <code>Preprocess</code>.</td></tr>
+    <tr><td><code>UtinniCoreDotNet</code> compile errors after regen</td><td>Most often a renamed type / removed function. Fix the hand-written managed call sites.</td></tr>
+    <tr><td>Strings round-trip as garbage</td><td><code>StdEdited.cs</code> is stale. Manually re-derive against the current STL.</td></tr>
+  </tbody>
+</table>
+
+<h2>See also</h2>
+
+<ul>
+  <li><a href="bridge.html">Bridge</a> — what the generator output looks like in use.</li>
+  <li><a href="core.html">Native core</a> — what's exposed in the C++ headers.</li>
+  <li><a href="internals.html">Internals</a> — the RVAs that ultimately back each generated
+    P/Invoke.</li>
+  <li><a href="https://github.com/mono/CppSharp">CppSharp project</a> — upstream docs.</li>
+</ul>
+
+</main>
+<footer>
+  Utinni — SWG client modding framework. Documentation for the fork at <code>D:/Code/Utinni</code>.
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Injection &amp; Boot — Utinni</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <h1><span class="accent">Utinni</span> — Injection &amp; Boot</h1>
+  <div class="sub">From launcher to managed startup.</div>
+</header>
+<nav class="top">
+  <a href="index.html">Overview</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="injection.html" class="active">Injection</a>
+  <a href="core.html">Native Core</a>
+  <a href="bridge.html">Managed Bridge</a>
+  <a href="plugin-framework.html">Plugin Framework</a>
+  <a href="callbacks.html">Callbacks</a>
+  <a href="ui-framework.html">UI</a>
+  <a href="hotkeys.html">Hotkeys</a>
+  <a href="undo-redo.html">Undo/Redo</a>
+  <a href="sdk.html">SDK</a>
+  <a href="build.html">Build</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="internals.html">Internals</a>
+  <a href="regen-bindings.html">Bindings</a>
+  <a href="glossary.html">Glossary</a>
+</nav>
+
+<main>
+
+<h1>Injection &amp; Boot</h1>
+
+<div class="callout info">
+  <strong>Audience:</strong> core contributors and curious plugin authors. This page covers
+  the <strong>launch &rarr; injection &rarr; DllMain &rarr; CLR</strong> sequence in detail. If you only
+  want to write a plugin, skip to <a href="plugin-framework.html">Plugin framework</a>.
+</div>
+
+<h2>Why injection (vs. modifying the binary)</h2>
+
+<p>
+  SWG's <code>SwgClient_r.exe</code> is a closed-source ~2010 SOE binary. The community
+  runs it unmodified &mdash; patching the EXE on disk would break update workflows and
+  many shards refuse to authenticate modified clients. Utinni's solution is the
+  classical injector pattern:
+</p>
+
+<ol>
+  <li>Spawn the target process <strong>suspended</strong> so it hasn't executed a single
+   instruction yet.</li>
+  <li>Force it to load <code>UtinniCore.dll</code> <em>before</em> <code>WinMain</code> runs, so our detours
+   are in place before any client code touches the functions we want to hook.</li>
+  <li>Release the process and let it run normally.</li>
+</ol>
+
+<p>
+  The two pieces are <code>Launcher/main.cpp</code> (out-of-process) and
+  <code>UtinniCore/utinni.cpp::main()</code> (in-process, runs after injection).
+</p>
+
+<h2>The launcher</h2>
+
+<h3>Inputs</h3>
+
+<ul>
+  <li><strong><code>ut.ini</code></strong> in the same directory as <code>Launcher.exe</code>. Specifically
+  <code>[Launcher] swgClientPath=</code> and <code>swgClientName=</code>.</li>
+  <li><strong>Command-line args</strong> &mdash; anything after <code>--</code> is forwarded to the client as
+  config overrides (see <a href="#command-line-passthrough">Command-line passthrough</a>).</li>
+</ul>
+
+<h3>Target discovery &amp; validation</h3>
+
+<p><code>Launcher/main.cpp::getSwgClientFilename()</code>:</p>
+
+<ol>
+  <li>Read <code>swgClientPath</code> and <code>swgClientName</code> from <code>ut.ini</code>.</li>
+  <li>If either is empty, the wrong extension, or the file doesn't exist &mdash;
+   pop a <code>GetOpenFileName</code> dialog asking the user to point at their client.
+   Persist the answer back to <code>ut.ini</code>.</li>
+  <li>Read the file's <code>VERSIONINFO</code> resource and check <code>ProductName == "Star
+   Wars Galaxies"</code>. If not, clear the cached path and bail with a message
+   box. This is the <strong>only</strong> guard that the user picked a real SWG client.</li>
+</ol>
+
+<pre><code>// From Launcher/main.cpp
+if (VerQueryValue(targetVersionInfo, "...ProductName", ..., &amp;verInfoSize) &amp;&amp;
+    strcmp(targetProductName, "Star Wars Galaxies") != 0)
+{
+    throwError("[ERROR] Target client is not a valid SWG client.");
+}</code></pre>
+
+<h3>The injection dance</h3>
+
+<p><code>Launcher/main.cpp::loadDll()</code>:</p>
+
+<div class="mermaid">
+sequenceDiagram
+  participant L as Launcher
+  participant K as Kernel32
+  participant S as SwgClient_r.exe
+
+  L->>K: CreateProcess(swgClientFilename, cmdLine, CREATE_SUSPENDED)
+  K->>S: process created, main thread suspended at EP
+  L->>S: CreateFileMapping + MapViewOfFile on EXE on disk
+  L->>S: read OptionalHeader.AddressOfEntryPoint, compute entry RVA + ImageBase
+  L->>S: ReadProcessMemory(entry, 2 bytes) → save oep
+  L->>S: WriteProcessMemory(entry, [0xEB, 0xFE]) → patch with "jmp self"
+  L->>S: ResumeThread(procInfo.hThread)
+  loop up to 50 × 100 ms
+    L->>S: GetThreadContext (CONTEXT_CONTROL)
+    Note over L,S: keep polling until context.Eip == entry
+  end
+  L->>S: VirtualAllocEx + WriteProcessMemory(L"UtinniCore.dll")
+  L->>S: CreateRemoteThread → LoadLibraryA on the remote string
+  L->>L: WaitForSingleObject(hThread) — wait for LoadLibrary to return
+  L->>S: GetExitCodeThread → DLL HMODULE (non-zero on success)
+  L->>S: SuspendThread, WriteProcessMemory(entry, oep) → restore EP
+  L->>S: ResumeThread
+  Note over S: client begins WinMain() with UtinniCore already loaded and detours installed
+</div>
+
+<h3>Why <code>0xEB 0xFE</code>?</h3>
+
+<p>
+  <code>EB FE</code> is the x86 instruction <code>jmp $</code> &mdash; branch to the byte you're standing
+  on, i.e. an infinite-tight-loop. Used here as a <strong>synchronization primitive</strong>:
+</p>
+
+<ul>
+  <li>We can't rely on <code>CREATE_SUSPENDED</code> keeping the thread suspended forever
+  while we inject &mdash; the launcher needs the thread alive so <code>CreateRemoteThread</code>
+  has a worker.</li>
+  <li>After <code>ResumeThread</code>, the main thread will run loader code, fix up imports,
+  initialise the CRT, and arrive at the entry point. We don't know exactly
+  when that happens &mdash; but if we've patched the EP with <code>EB FE</code>, we know
+  the thread will <em>stop spinning at exactly that location</em> and be safe to
+  inject into. Polling <code>EIP == entry</code> confirms we're there.</li>
+</ul>
+
+<h3 id="command-line-passthrough">Command-line passthrough</h3>
+
+<p>
+  The launcher concatenates everything after <code>argv[0]</code> into one string and feeds
+  it to <code>CreateProcess</code> as the command line. Inside SWG client, the config
+  override system (which Utinni further detours) accepts a documented format:
+</p>
+
+<pre><code>Launcher.exe -- -s ClientGame loginClientID=Local groundScene=terrain/lok.trn -s ClientUserInterface splashTimeoutSeconds=0</code></pre>
+
+<p>
+  <code>-s &lt;section&gt;</code> switches the current section; the following <code>key=value</code> pairs
+  are written into that section. Sections correspond to <code>[ClientGame]</code>,
+  <code>[ClientUserInterface]</code>, etc. inside <code>client.cfg</code> / <code>utinni.cfg</code>. This is
+  documented in the comments at the top of <code>Launcher/main.cpp::main()</code>.
+</p>
+
+<h2>The injected DLL</h2>
+
+<h3>DllMain</h3>
+
+<p>
+  <code>UtinniCore/utinni.cpp::DllMain</code> is intentionally tiny &mdash; Windows loader-lock
+  rules forbid most of what we want to do here, so it just spawns a worker
+  thread:
+</p>
+
+<pre><code>case DLL_PROCESS_ATTACH:
+    CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)main, nullptr, 0, nullptr);
+    return true;</code></pre>
+
+<h3><code>utinni::main</code></h3>
+
+<p><code>UtinniCore/utinni.cpp::main()</code> is the real init function. In order:</p>
+
+<ol>
+  <li><strong>Figure out our own DLL path.</strong> <code>GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, &amp;createDetours, &amp;handle)</code> followed by <code>GetModuleFileNameA</code> &mdash; passing the address of an own function ensures we get our own HMODULE even though we don't have one cached. The directory of that path becomes the global <code>utinni::path</code>, used by <code>getPath()</code> everywhere downstream.</li>
+  <li><strong><code>utinni::log::create()</code></strong> &mdash; initialise spdlog (file sink + ring buffer for the in-game console + slot for managed callback sinks).</li>
+  <li><strong>Load <code>ut.ini</code>.</strong> <code>ini.createUtinniSettings()</code> seeds defaults if the file is fresh; <code>ini.load(path + "ut.ini")</code> reads it.</li>
+  <li><strong>Configure two booleans:</strong>
+    <ul>
+      <li><code>utinni::Client::setEditorMode(ini.getBool("Editor", "enableEditorMode"))</code> &mdash; passed to the <code>Client</code> shim so that hooks know whether to suppress window creation, route input, etc.</li>
+      <li><code>imgui_impl::enableInternalUi(ini.getBool("UtinniCore", "enableInternalUi"))</code> &mdash; toggles the developer ImGui panels (resource panel, log panel, etc.).</li>
+    </ul>
+  </li>
+  <li><strong><code>createDetours()</code></strong> &mdash; the master detour list. Each subsystem's <code>detour()</code> registers DetourXS hooks against hard-coded RVAs. See <a href="internals.html">Internals</a> for the full table; the call site is:
+<pre><code>void createDetours() {
+    swg::config::detour();
+    utinni::Client::detour();
+    utinni::clientWorld::detour();
+    utinni::creatureObject::detour();
+    utinni::CuiChatWindow::detour();
+    utinni::CuiManager::detour();
+    utinni::cuiHud::detour();
+    utinni::cuiIo::detour();
+    utinni::cuiMenu::detour();
+    utinni::cuiRadialMenuManager::detour();
+    utinni::cuiLoginScreen::detour();
+    utinni::debugCamera::detour();
+    utinni::Game::detour();
+    utinni::GroundScene::detour();
+    utinni::Graphics::detour();
+    utinni::ParticleEffectAppearance::detour();
+    utinni::report::detour();
+    utinni::skeletalAppearance::detour();
+    utinni::SystemMessageManager::detour();
+    utinni::treefile::detour();
+    utinni::renderWorld::detour();
+    utinni::shaderPrimitiveSorter::detour();
+    utinni::IoWin::detour();
+    utinni::postProcessing::detour();
+}</code></pre>
+  </li>
+  <li><strong><code>createPatches()</code></strong> &mdash; non-detour memory writes (e.g. JMP injection at <code>swg::cuiMisc::patch()</code>, <code>swg::debugCamera::patch()</code>).</li>
+  <li><strong><code>pluginManager.loadPlugins()</code></strong> &mdash; discovers <code>Plugins/&lt;name&gt;/</code> directories, calls <code>createPlugin()</code> on each enabled native DLL, then <code>init()</code>. See <a href="plugin-framework.html#c-plugins">Plugin framework &mdash; C++ plugins</a>.</li>
+  <li><strong><code>CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED)</code></strong> &mdash; for COM types used by the editor (drag-drop and any OLE-flavoured WinForms behaviour).</li>
+  <li><strong><code>clr::load()</code></strong> &mdash; bring up the CLR.</li>
+</ol>
+
+<p>
+  By the time <code>clr::load()</code> finishes, <strong>all detours are already armed</strong>.
+  <code>SwgClient_r.exe</code>'s main thread is still spinning on the <code>EB FE</code> infinite
+  loop. The launcher then restores the EP and the client begins running with
+  Utinni already woven through it.
+</p>
+
+<h3>Where does <code>WinMain</code> actually start?</h3>
+
+<p>
+  Once the launcher restores the EP, <code>SwgClient_r.exe</code>'s main thread proceeds
+  into the CRT bootstrap &rarr; <code>WinMain</code> &rarr; engine init. Critically, Utinni's
+  <code>utinni::Client::setupStartDataInstall</code> detour (RVA <code>0x00A9F970</code>) is one of
+  the first hooks to fire; this is where editor-mode HWND/HINSTANCE handoff
+  happens before the SWG window is created.
+</p>
+
+<p>
+  See <a href="../../swg-client/docs/boot-sequence.html">swg-client/docs/boot-sequence.html</a>
+  for the 17-phase walkthrough of what SWG itself does after this point.
+</p>
+
+<h2>The CLR host</h2>
+
+<p><code>UtinniCore/clr.cpp</code> is small. Three functions:</p>
+
+<h3><code>clr::start()</code></h3>
+
+<pre><code>CLRCreateInstance(CLSID_CLRMetaHost, IID_ICLRMetaHost, &amp;pClrMetaHost);
+pClrMetaHost-&gt;GetRuntime(L"v4.0.30319", IID_PPV_ARGS(&amp;pClrRuntimeInfo));
+pClrRuntimeInfo-&gt;IsLoadable(&amp;isLoadable);
+pClrRuntimeInfo-&gt;GetInterface(CLSID_CLRRuntimeHost, IID_PPV_ARGS(&amp;pClrRuntimeHost));
+pClrRuntimeHost-&gt;Start();</code></pre>
+
+<p>
+  CLR v4.0.30319 is the .NET Framework 4 runtime. <code>UtinniCoreDotNet</code> is built
+  against .NET Framework 4.7.2 which is binary-compatible. <strong>The CLR is hosted
+  inside the SWG process</strong>, sharing memory and threads &mdash; there is no IPC
+  boundary.
+</p>
+
+<h3><code>clr::load()</code></h3>
+
+<pre><code>HRESULT hr = pClrRuntimeHost-&gt;ExecuteInDefaultAppDomain(
+    (utinni::getPath() + L"UtinniCoreDotNet.dll").c_str(),
+    L"UtinniCoreDotNet.Startup",
+    L"EntryPoint",
+    L"",            // args
+    &amp;result);</code></pre>
+
+<p>
+  This is the bridge crossing. Once <code>ExecuteInDefaultAppDomain</code> returns, the
+  managed side is set up; it stays in the process for the lifetime of the
+  client. If the call <strong>fails</strong>, Utinni calls <code>Game::quit()</code> and tears down
+  the CLR &mdash; there's no graceful fallback because the editor depends on it.
+</p>
+
+<h3><code>clr::stop()</code></h3>
+
+<p>Called from <code>DllMain(DLL_PROCESS_DETACH)</code>. Releases the three CLR interfaces.</p>
+
+<h2>Managed startup</h2>
+
+<p><code>UtinniCoreDotNet/main.cs</code> &mdash; <code>UtinniCoreDotNet.Startup.EntryPoint(string args)</code>:</p>
+
+<pre><code>[STAThread]
+private static int EntryPoint(string args)
+{
+    if (initialized) return 0;
+    initialized = true;
+
+    Application.EnableVisualStyles();
+    Log.Setup();
+
+    PluginLoader pluginLoader = new PluginLoader();   // MEF discovery + compose
+
+    GameCallbacks.Initialize();
+    GroundSceneCallbacks.Initialize();
+    ObjectCallbacks.Initialize();
+    CuiCallbacks.Initialize();
+
+    if (UtinniCore.Utinni.utinni.GetConfig().GetBool("Editor", "enableEditorMode"))
+    {
+        Application.Run(new FormMain(pluginLoader));
+    }
+
+    return 0;
+}</code></pre>
+
+<p>The interesting bits:</p>
+
+<ul>
+  <li><strong><code>[STAThread]</code>.</strong> Required for WinForms and OLE drag-drop. The thread
+  <code>clr::load</code> calls into becomes the UI thread for the rest of the session.</li>
+  <li><strong><code>initialized</code> guard.</strong> <code>ExecuteInDefaultAppDomain</code> should only be called
+  once, but the guard is defensive.</li>
+  <li><strong><code>PluginLoader()</code> runs <code>Load()</code> in its constructor</strong> &mdash; see
+  <a href="plugin-framework.html#net-plugins">Plugin framework &mdash; .NET plugins</a>.</li>
+  <li><strong><code>Callbacks/*.Initialize()</code> register native-side callback shims</strong>
+  (<code>UtinniCore</code> calls back into managed delegates from the game thread).</li>
+  <li><strong><code>Application.Run(new FormMain(pluginLoader))</code> blocks</strong> for the rest of
+  the client's lifetime, draining the message pump. Returning from
+  <code>EntryPoint</code> would end up <em>back in clr.cpp</em>, so we never return until
+  shutdown.</li>
+</ul>
+
+<p>
+  When <code>enableEditorMode=false</code>, <code>Application.Run</code> is never called &mdash; the UI
+  thread returns immediately, no editor window is created, and the only managed
+  work happening per-frame is whatever <code>Callbacks</code> plugins registered.
+</p>
+
+<h2>Cleanup</h2>
+
+<p><code>DllMain(DLL_PROCESS_DETACH)</code>:</p>
+
+<pre><code>case DLL_PROCESS_DETACH:
+    directX::cleanup();   // release any extra D3D resources we created (depth texture, ImGui)
+    clr::stop();          // release CLR interfaces
+    return true;</code></pre>
+
+<p>
+  There is no attempt to <strong>un-detour</strong> functions: the DLL just rides the process
+  to its grave.
+</p>
+
+<h2>Failure modes you'll meet</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Symptom</th>
+      <th>Likely cause</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>"Target client is not a valid SWG client."</td><td>The selected .exe doesn't have <code>ProductName=Star Wars Galaxies</code> in its version info. Use the unmodded SWGEmu client.</td></tr>
+    <tr><td>Launcher hangs at "Timed out trying to reach the entry point"</td><td>Anti-virus is stalling the suspended process. Add an exclusion for the install folder.</td></tr>
+    <tr><td><code>LoadLibraryA couldn't inject dll.</code></td><td>Bitness mismatch (you have a 64-bit <code>UtinniCore.dll</code>?), or <code>UtinniCore.dll</code> missing dependencies (e.g. wrong VC redist). Check <code>Dependency Walker</code>.</td></tr>
+    <tr><td>Client launches but no editor window</td><td><code>ut.ini &rarr; [UtinniCore] enableEditorMode=true</code>?</td></tr>
+    <tr><td>Managed side never starts (no <code>FormMain</code>, no <code>[Log] Setup</code> output)</td><td><code>UtinniCoreDotNet.dll</code> missing from install dir, or .NET Framework 4.7.2 not installed.</td></tr>
+    <tr><td>Editor window appears, plugins not visible</td><td><code>Plugins/&lt;name&gt;/</code> not enabled in <code>ut.ini &rarr; [Plugins] plugin_0=true,&lt;name&gt;</code>.</td></tr>
+    <tr><td>Crash in <code>swg::*::detour</code> on first launch</td><td>Your <code>SwgClient_r.exe</code> is a <em>different build</em> &mdash; the hard-coded RVAs are wrong. See <a href="internals.html">Internals</a>.</td></tr>
+  </tbody>
+</table>
+
+<h2>See also</h2>
+
+<ul>
+  <li><a href="internals.html">Internals</a> &mdash; every RVA and patch.</li>
+  <li><a href="plugin-framework.html">Plugin framework</a> &mdash; what gets discovered after CLR start.</li>
+  <li><a href="build.html">Build &amp; run</a> &mdash; environment setup.</li>
+  <li><a href="../../swg-client/docs/boot-sequence.html">swg-client/boot-sequence.html</a>
+  &mdash; what the client itself does once we hand control back.</li>
+</ul>
+
+</main>
+<footer>
+  Utinni &mdash; SWG client modding framework. Documentation for the fork at <code>D:/Code/Utinni</code>.
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>

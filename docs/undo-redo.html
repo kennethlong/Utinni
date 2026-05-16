@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Undo / Redo — Utinni</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <h1><span class="accent">Utinni</span> — Undo / Redo</h1>
+  <div class="sub">Event-driven undo / redo stack.</div>
+</header>
+<nav class="top">
+  <a href="index.html">Overview</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="injection.html">Injection</a>
+  <a href="core.html">Native Core</a>
+  <a href="bridge.html">Managed Bridge</a>
+  <a href="plugin-framework.html">Plugin Framework</a>
+  <a href="callbacks.html">Callbacks</a>
+  <a href="ui-framework.html">UI</a>
+  <a href="hotkeys.html">Hotkeys</a>
+  <a href="undo-redo.html" class="active">Undo/Redo</a>
+  <a href="sdk.html">SDK</a>
+  <a href="build.html">Build</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="internals.html">Internals</a>
+  <a href="regen-bindings.html">Bindings</a>
+  <a href="glossary.html">Glossary</a>
+</nav>
+<main>
+
+<h1>Undo / Redo</h1>
+
+<div class="callout info"><strong>Audience:</strong> .NET editor plugin authors.</div>
+
+<p>Utinni provides a small, event-driven undo/redo system. Plugins <strong>raise an
+event</strong> to push a command; they never directly touch the stacks. The host
+manages the stacks, the merge logic, the redo invalidation, and the
+scene-cleanup reset.</p>
+
+<h2>Surface</h2>
+
+<p><code>UndoRedo/IUndoCommand.cs</code>:</p>
+
+<pre><code>public interface IUndoCommand
+{
+    string GetText();                         // user-visible label in history list
+    void   Execute();                          // redo — apply
+    void   Undo();                             // reverse
+    bool   AllowMerge();                       // can next command absorb into this?
+    bool   Merge(IUndoCommand newCommand);     // returns true if absorbed
+}</code></pre>
+
+<p><code>UndoRedo/UndoRedoManager.cs</code>:</p>
+
+<pre><code>public class UndoRedoManager
+{
+    public Stack&lt;IUndoCommand&gt; UndoCommands;
+    public Stack&lt;IUndoCommand&gt; RedoCommands;
+
+    public UndoRedoManager(Action onUpdate, Action undoCb, Action redoCb);
+
+    public void AddUndoCommand(IEditorPlugin editorPlugin);
+    public void Undo(int count = 1);
+    public void Redo(int count = 1);
+}</code></pre>
+
+<p><code>PluginFramework/IEditorPlugin.cs</code>:</p>
+
+<pre><code>public class AddUndoCommandEventArgs : EventArgs
+{
+    public IUndoCommand UndoCommand;
+    public AddUndoCommandEventArgs(IUndoCommand cmd) { UndoCommand = cmd; }
+}
+
+public interface IEditorPlugin : IPlugin
+{
+    EventHandler&lt;AddUndoCommandEventArgs&gt; AddUndoCommand { get; set; }
+    // ...
+}</code></pre>
+
+<h2>Lifecycle</h2>
+
+<div class="mermaid">
+sequenceDiagram
+  participant Plugin
+  participant Mgr as UndoRedoManager
+  participant FormMain
+  participant Host as GameCallbacks
+
+  FormMain->>Mgr: new UndoRedoManager(onUpdate=RefreshDropdown, undoCb, redoCb)
+  Mgr->>Host: GameCallbacks.AddCleanupSceneCall(() => clear stacks)
+  loop for each IEditorPlugin
+    FormMain->>Mgr: Mgr.AddUndoCommand(plugin)
+    Note over Mgr,Plugin: plugin.AddUndoCommand += Mgr.HandleAdd
+  end
+
+  Plugin->>Plugin: state changes (gizmo, button, etc.)
+  Plugin->>Mgr: AddUndoCommand?.Invoke(plugin, new AddUndoCommandEventArgs(cmd))
+  Mgr->>Mgr: RedoStack.Clear()
+  alt UndoStack non-empty and top.AllowMerge() and top.Merge(cmd)
+    Note over Mgr: absorbed; no push
+  else
+    Mgr->>Mgr: UndoStack.Push(cmd)
+  end
+  Mgr->>FormMain: onUpdate() — refresh title-bar dropdown
+</div>
+
+<h2>Pushing a command (the only thing plugins write)</h2>
+
+<pre><code>AddUndoCommand?.Invoke(this,
+    new AddUndoCommandEventArgs(
+        new WorldSnapshotNodePositionChangedCommand(
+            node, oldTransform, newTransform)));</code></pre>
+
+<p>This event invocation is the <strong>entire</strong> plugin-side API. <code>FormMain</code> wires
+your <code>AddUndoCommand</code> event to <code>UndoRedoManager.HandleAdd</code> once, during
+init. You raise; the manager handles.</p>
+
+<h2>Built-in commands</h2>
+
+<p><code>Commands/WorldSnapshotCommands.cs</code>:</p>
+
+<table>
+  <thead>
+    <tr><th>Command</th><th>What it captures</th><th>Merge?</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>AddWorldSnapshotNodeCommand(node)</code></td><td>A node about to be added.</td><td>No</td></tr>
+    <tr><td><code>RemoveWorldSnapshotNodeCommand(node)</code></td><td>A node about to be removed (stores a deep copy for re-add).</td><td>No</td></tr>
+    <tr><td><code>WorldSnapshotNodePositionChangedCommand(node, before, after)</code></td><td>Two <code>Transform</code>s.</td><td>No</td></tr>
+    <tr><td><code>WorldSnapshotNodeRotationChangedCommand(node, before, after)</code></td><td>Two <code>Transform</code>s.</td><td>No</td></tr>
+  </tbody>
+</table>
+
+<p>All four use <code>GroundSceneCallbacks.AddUpdateLoopCall</code> inside <code>Execute()</code> /
+<code>Undo()</code> so the actual native mutation happens on the game thread — you can
+fire the event from a UI handler without breaking thread discipline.</p>
+
+<h2>Writing your own <code>IUndoCommand</code></h2>
+
+<pre><code>public class SetTimeOfDayCommand : IUndoCommand
+{
+    private readonly float before;
+    private readonly float after;
+
+    public SetTimeOfDayCommand(float before, float after)
+    {
+        this.before = before;
+        this.after  = after;
+    }
+
+    public string GetText() =&gt; $"Set time-of-day to {after:0.00}";
+
+    public void Execute() =&gt;
+        GameCallbacks.AddMainLoopCall(() =&gt; Terrain.Get().SetTimeOfDay(after));
+
+    public void Undo() =&gt;
+        GameCallbacks.AddMainLoopCall(() =&gt; Terrain.Get().SetTimeOfDay(before));
+
+    public bool AllowMerge() =&gt; true;
+
+    public bool Merge(IUndoCommand newCommand)
+    {
+        // Merge consecutive "Set time-of-day" actions so a slider drag becomes one entry.
+        if (newCommand is SetTimeOfDayCommand other)
+        {
+            // Keep our "before", adopt their "after".
+            // (immutable fields → we'd need to re-design slightly; this is illustrative)
+            return false;
+        }
+        return false;
+    }
+}</code></pre>
+
+<h3>Merge semantics</h3>
+
+<p><code>UndoRedoManager.HandleAdd</code>:</p>
+
+<pre><code>if UndoStack non-empty and UndoStack.Peek().AllowMerge():
+    if UndoStack.Peek().Merge(newCommand):
+        return    // absorbed — do not push
+UndoStack.Push(newCommand)</code></pre>
+
+<p>So merging is <strong>destination-eats-source</strong>: the existing top-of-stack command
+gets to adjust itself based on the incoming one. If it returns <code>true</code>, the
+new command is dropped on the floor.</p>
+
+<p>Typical merge use cases:</p>
+
+<ul>
+  <li>Slider drag — collapse N "set value to X" commands into one "set value to
+    final-X" command.</li>
+  <li>Mouse-drag gizmo — collapse a stream of position deltas into a single
+    before/after move.</li>
+</ul>
+
+<p>If merging is fiddly to get right, return <code>AllowMerge() =&gt; false</code> and push
+distinct commands. Users have an editor option to undo/redo multiple steps at
+once.</p>
+
+<h2>Undo / Redo invocation</h2>
+
+<p>The editor wires three sources to the manager:</p>
+
+<table>
+  <thead>
+    <tr><th>Source</th><th>Calls</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Title-bar Undo button click</td><td><code>manager.Undo(1)</code></td></tr>
+    <tr><td>Title-bar Redo button click</td><td><code>manager.Redo(1)</code></td></tr>
+    <tr><td><code>UndoRedoListDropDown</code> "undo through this row"</td><td><code>manager.Undo(N)</code> / <code>manager.Redo(N)</code></td></tr>
+    <tr><td>(Optional) plugin-defined hotkey</td><td><code>manager.Undo()</code> / <code>manager.Redo()</code> — but plugins normally don't reach into the manager directly; rebind the title-bar buttons via the editor's standard <code>Ctrl+Z</code> if needed.</td></tr>
+  </tbody>
+</table>
+
+<h2>Scene-cleanup reset</h2>
+
+<p><code>UndoRedoManager</code>'s constructor registers
+<code>GameCallbacks.AddCleanupSceneCall(() =&gt; { UndoCommands.Clear(); RedoCommands.Clear(); ... })</code>.</p>
+
+<p>This is intentional: world-snapshot identities don't survive a scene unload,
+and resurrecting them on undo would either crash or silently no-op. <strong>Plugin
+authors should not expect undo history to persist across scene changes.</strong></p>
+
+<h2>Patterns</h2>
+
+<h3>Capture before + after at the right moment</h3>
+
+<p>For continuous edits (gizmo, slider) the natural pattern is:</p>
+
+<pre><code>// 1. On "start of edit" (gizmo enabled, slider focus, etc.):
+beforeT = obj.GetTransform();
+
+// 2. On every change:
+obj.SetTransform(newT);   // already happens via the gizmo / slider
+
+// 3. On "end of edit" (gizmo disabled, slider blur, mouse-up):
+AddUndoCommand?.Invoke(this, new AddUndoCommandEventArgs(
+    new WorldSnapshotNodePositionChangedCommand(node, beforeT, obj.GetTransform())));</code></pre>
+
+<p>Capturing <em>before</em> at the start and pushing once at the end gives you a clean
+single-step undo without merge gymnastics.</p>
+
+<h3>Always update via the same path that Execute uses</h3>
+
+<p>Bad:</p>
+
+<pre><code>// Live edit
+obj.SetTransform(newT);
+
+// Undo command
+public void Execute() { obj.SetTransform(after); }
+public void Undo()    { obj.SetTransform(before); }</code></pre>
+
+<p>— the live edit isn't routed through <code>Execute</code>, so any side-effects
+<code>Execute</code> does (refresh detail level, notify renderer) won't happen on the
+initial change. <strong>Push the live edit through the same <code>Execute()</code> path,</strong>
+or factor that into a shared helper.</p>
+
+<h3>Compose multi-step edits as a single command</h3>
+
+<p>If a single user action results in multiple object mutations, capture them
+all in one <code>IUndoCommand</code> with internal lists:</p>
+
+<pre><code>public class BatchMoveCommand : IUndoCommand
+{
+    private readonly List&lt;(Object obj, Transform before, Transform after)&gt; moves;
+
+    public void Execute() { foreach (var m in moves) m.obj.SetTransform(m.after); }
+    public void Undo()    { foreach (var m in moves) m.obj.SetTransform(m.before); }
+    public string GetText() =&gt; $"Move {moves.Count} object(s)";
+    public bool AllowMerge() =&gt; false;
+    public bool Merge(IUndoCommand newCommand) =&gt; false;
+}</code></pre>
+
+<h2>Things to watch out for</h2>
+
+<ul>
+  <li><strong>Stale references.</strong> If you store a <code>Node</code> and the user later deletes it
+    by other means, your <code>Undo()</code> will operate on a freed pointer. The
+    built-in <code>RemoveWorldSnapshotNodeCommand</code> works around this by storing a
+    <em>copy</em> of the node, not a reference.</li>
+  <li><strong>Redo invalidation.</strong> Any push clears the redo stack. Plugins that emit
+    many tiny commands "behind the scenes" (e.g. an auto-correct routine) can
+    unintentionally trash the user's redo history. Either merge aggressively
+    or don't emit commands for non-user-initiated edits.</li>
+  <li><strong>Threading.</strong> The event invocation can happen on either thread; the
+    manager doesn't lock. Pushing from two threads simultaneously is
+    undefined.</li>
+</ul>
+
+<h2>See also</h2>
+
+<ul>
+  <li><a href="plugin-framework.html">Plugin framework</a> — <code>AddUndoCommand</code> event.</li>
+  <li><a href="callbacks.html">Callbacks reference</a> — <code>AddCleanupSceneCall</code> is what
+    clears the stack.</li>
+  <li><a href="bridge.html#built-in-commands">Bridge — Commands/WorldSnapshotCommands</a> —
+    the four built-in implementations.</li>
+</ul>
+
+</main>
+<footer>
+  Utinni — SWG client modding framework. Documentation for the fork at <code>D:/Code/Utinni</code>.
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>

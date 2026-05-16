@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Glossary — Utinni</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <h1><span class="accent">Utinni</span> — Terms</h1>
+  <div class="sub">Utinni-specific and SWG-specific terminology used in the docs.</div>
+</header>
+<nav class="top">
+  <a href="index.html">Overview</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="injection.html">Injection</a>
+  <a href="core.html">Native Core</a>
+  <a href="bridge.html">Managed Bridge</a>
+  <a href="plugin-framework.html">Plugin Framework</a>
+  <a href="callbacks.html">Callbacks</a>
+  <a href="ui-framework.html">UI</a>
+  <a href="hotkeys.html">Hotkeys</a>
+  <a href="undo-redo.html">Undo/Redo</a>
+  <a href="sdk.html">SDK</a>
+  <a href="build.html">Build</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="internals.html">Internals</a>
+  <a href="regen-bindings.html">Bindings</a>
+  <a href="glossary.html" class="active">Glossary</a>
+</nav>
+<main>
+
+<h1>Glossary</h1>
+
+<p>
+A reference of Utinni-specific and SWG-specific terms used throughout the
+docs.
+</p>
+
+<h2>Utinni terms</h2>
+
+<table>
+  <thead>
+    <tr><th>Term</th><th>Meaning</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>CppSharp</strong></td><td>The Mono project's C++ → C# binding generator. Used to produce <code>Generated/UtinniCore.cs</code>.</td></tr>
+    <tr><td><strong>DetourXS</strong></td><td>A small x86 function-detour library used by <code>UtinniCore</code> to hook SWG client functions.</td></tr>
+    <tr><td><strong>detour</strong></td><td>A function-pointer redirection. In Utinni: <code>swg/&lt;subsystem&gt;/&lt;file&gt;.cpp::detour()</code> installs the hooks for that subsystem.</td></tr>
+    <tr><td><strong>EditorPlugin</strong></td><td>A managed plugin implementing <code>IEditorPlugin</code> — contributes UI to <code>FormMain</code>.</td></tr>
+    <tr><td><strong><code>EB FE</code></strong></td><td>The x86 byte sequence for <code>jmp $</code> (jump to self). Used by <code>Launcher.exe</code> to keep the SWG main thread parked at the entry point during injection.</td></tr>
+    <tr><td><strong><code>FormMain</code></strong></td><td>The WinForms editor shell (<code>UtinniCoreDotNet.UI.Forms.FormMain</code>). Embeds the SWG window via <code>PanelGame</code>.</td></tr>
+    <tr><td><strong>Hotkey</strong></td><td>A named, persistent key binding with an <code>OnDownCallback</code>. Lives in a <code>HotkeyManager</code> per plugin.</td></tr>
+    <tr><td><strong><code>IEditorForm</code></strong></td><td>A plugin-provided free-standing tool window definition. Returned from <code>IEditorPlugin.GetForms()</code>.</td></tr>
+    <tr><td><strong><code>IEditorPlugin</code></strong></td><td>The editor-plugin contract. Extends <code>IPlugin</code>.</td></tr>
+    <tr><td><strong>ImGui</strong> / <strong>dearImgui</strong></td><td>The immediate-mode UI library Utinni overlays on the D3D9 device.</td></tr>
+    <tr><td><strong>ImGuizmo</strong></td><td>The 3D translate/rotate/scale gizmo, an extension of ImGui.</td></tr>
+    <tr><td><strong>injection</strong></td><td>Loading a DLL into another process. Utinni uses suspended-process injection via <code>CreateRemoteThread</code> + <code>LoadLibraryA</code>.</td></tr>
+    <tr><td><strong><code>IPlugin</code></strong></td><td>The runtime-plugin contract. The baseline interface; an <code>IEditorPlugin</code> is also an <code>IPlugin</code>.</td></tr>
+    <tr><td><strong>MEF</strong></td><td>Microsoft's Managed Extensibility Framework. <code>PluginLoader</code> uses <code>DirectoryCatalog</code> + <code>[InheritedExport]</code> for plugin discovery.</td></tr>
+    <tr><td><strong><code>PanelGame</code></strong></td><td>The <code>Panel</code> subclass in <code>UtinniCoreDotNet.UI.Controls</code> that re-parents the SWG client window into the editor UI.</td></tr>
+    <tr><td><strong><code>PluginConfig</code></strong></td><td>The native struct (<code>{IsEnabled, DirectoryName}</code>) read from <code>ut.ini → [Plugins]</code>. Source of truth for both C++ and .NET plugin gating.</td></tr>
+    <tr><td><strong><code>PluginLoader</code></strong></td><td>The managed plugin discovery class. Composes everything in <code>Plugins/&lt;enabled-dirs&gt;/</code> via MEF.</td></tr>
+    <tr><td><strong>RVA</strong></td><td>Relative Virtual Address — an offset within a PE file. Utinni's hooks reference hard-coded RVAs into <code>SwgClient_r.exe</code>.</td></tr>
+    <tr><td><strong><code>SubPanel</code></strong></td><td>A WinForms <code>UserControl</code> subclass that docks inline on the editor's right rail. Plugins return them from <code>IEditorPlugin.GetSubPanels()</code>.</td></tr>
+    <tr><td><strong><code>SubPanelContainer</code></strong></td><td>A grouping of <code>SubPanel</code>s; surfaced via <code>IEditorPlugin.GetStandalonePanels()</code>.</td></tr>
+    <tr><td><strong><code>UtinniCore</code></strong></td><td>The native (C++) DLL. Hosts the hooks, ImGui, spdlog, plugin manager, CLR.</td></tr>
+    <tr><td><strong><code>UtinniCoreDotNet</code></strong></td><td>The managed (C# .NET 4.7.2 x86) DLL. CppSharp bindings + plugin framework + editor.</td></tr>
+    <tr><td><strong><code>UtinniCoreDotNetGen</code></strong></td><td>The CppSharp driver that generates <code>UtinniCoreDotNet/Generated/UtinniCore.cs</code>.</td></tr>
+    <tr><td><strong><code>UtinniCore-Symbols</code></strong></td><td>A separate library project providing the mangled-symbol target for CppSharp's P/Invoke.</td></tr>
+    <tr><td><strong><code>UtinniPlugin</code></strong></td><td>The C++ plugin base class (<code>utinni::UtinniPlugin</code>).</td></tr>
+    <tr><td><strong>VSIX</strong></td><td>A Visual Studio extension. <code>sdk/UtinniPluginTemplates/Vsix/</code> packages the .NET plugin templates.</td></tr>
+    <tr><td><strong><code>ut.ini</code></strong></td><td>Utinni's master config. Lives next to <code>Launcher.exe</code> / <code>UtinniCore.dll</code>.</td></tr>
+    <tr><td><strong><code>utinni.cfg</code></strong></td><td>Utinni's override for SWG's own <code>client.cfg</code>. Loaded by hooking <code>loadOverrideConfig</code>.</td></tr>
+    <tr><td><strong><code>input.ini</code></strong></td><td>Per-plugin (or per-form) hotkey-binding persistence. Written by <code>HotkeyManager.Save()</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2>SWG-specific terms (Utinni-relevant subset)</h2>
+
+<p>
+For comprehensive SWG terminology see <a href="../../swg-client/docs/glossary.html">swg-client/docs/glossary.html</a>.
+</p>
+
+<table>
+  <thead>
+    <tr><th>Term</th><th>Meaning</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong><code>Appearance</code></strong></td><td>The visual representation of an <code>Object</code> (mesh, texture, animation set). Loaded from a TRE asset.</td></tr>
+    <tr><td><strong>CRC string</strong></td><td>A 32-bit hash + string-pool index. SWG uses these everywhere for object names, animation IDs, etc.</td></tr>
+    <tr><td><strong><code>CreatureObject</code></strong></td><td>SWG's class for animated, AI-driven, or player entities. Subclass of <code>Object</code>.</td></tr>
+    <tr><td><strong>CUI</strong></td><td>"Client UI" — SWG's in-game UI library. <code>CuiManager</code>, <code>CuiHud</code>, <code>CuiChatWindow</code>, <code>CuiRadialMenuManager</code>, etc.</td></tr>
+    <tr><td><strong><code>DebugCamera</code></strong></td><td>SWG's free-fly camera. Utinni exposes it as "free-cam" with controls in the editor.</td></tr>
+    <tr><td><strong>detail level</strong></td><td>LOD (level-of-detail) selection within an <code>Appearance</code>. After a transform change, <code>DetailLevelChanged()</code> re-evaluates which LOD to draw.</td></tr>
+    <tr><td><strong><code>Extent</code></strong></td><td>The bounding shape / collision volume of an object. <code>Graphics::drawExtent</code> visualises it.</td></tr>
+    <tr><td><strong><code>Game</code></strong></td><td>The SWG client's top-level game-loop manager. <code>Game::install</code>, <code>Game::setupScene</code>, etc.</td></tr>
+    <tr><td><strong><code>Graphics</code></strong></td><td>SWG's wrapper around the D3D9 device + render-loop scaffolding.</td></tr>
+    <tr><td><strong><code>GroundScene</code></strong></td><td>A <code>NetworkScene</code> subclass that runs the player-on-a-planet gameplay scene. Distinct from <code>SpaceScene</code>.</td></tr>
+    <tr><td><strong>IFF</strong></td><td>"Interchange File Format" — the binary container most SWG asset files use (e.g. <code>.iff</code>, <code>.trn</code>, <code>.app</code>, <code>.ws</code>).</td></tr>
+    <tr><td><strong><code>Network</code></strong></td><td>The client object-repository singleton. <code>getObjectById(id)</code> returns a network-replicated object.</td></tr>
+    <tr><td><strong><code>Object</code></strong></td><td>Base of SWG's runtime object hierarchy. Every world-object is an <code>Object</code> or subclass.</td></tr>
+    <tr><td><strong><code>ObjectTemplate</code></strong></td><td>Static description of an object kind: appearance filename, slots, type. Loaded by template-list lookups.</td></tr>
+    <tr><td><strong>NGE</strong></td><td>"New Game Experience" — the post-2005 revamp of SWG's gameplay. Pre-CU = pre-Combat Upgrade, the SWGEmu/SWG-Source target.</td></tr>
+    <tr><td><strong><code>PortalLayout</code></strong></td><td>The interior layout of a building object (cells, portals between them). Used during render culling.</td></tr>
+    <tr><td><strong>Pre-CU</strong></td><td>The pre-2005 game state Utinni targets.</td></tr>
+    <tr><td><strong>scene</strong></td><td>A loaded planet (or space zone) with its terrain, world snapshot, and dynamic objects. <code>Game::setupScene</code> / <code>cleanupScene</code> are the lifecycle hooks.</td></tr>
+    <tr><td><strong><code>SharedObjectTemplate</code></strong></td><td>The shared (client+server) half of an <code>ObjectTemplate</code>. Holds <code>appearanceFilename</code>, <code>portalLayoutFilename</code>, etc.</td></tr>
+    <tr><td><strong><code>SkeletalAppearance</code></strong></td><td>An <code>Appearance</code> driven by a skeleton/animation system (creatures, players).</td></tr>
+    <tr><td><strong>system message</strong></td><td>A chat-stream message originating from the engine (e.g. "You gain some experience."). Routed via <code>SystemMessageManager</code>.</td></tr>
+    <tr><td><strong>template</strong></td><td>See <code>ObjectTemplate</code>.</td></tr>
+    <tr><td><strong>Terrain</strong></td><td>The procedural terrain system. <code>.trn</code> describes a planet's terrain.</td></tr>
+    <tr><td><strong>TRE</strong></td><td>The pack-file format SWG ships assets in (<code>*.tre</code>). Mounted in a search order by <code>TreeFile</code>.</td></tr>
+    <tr><td><strong><code>TreeFile</code></strong></td><td>SWG's union-mounted virtual file system over <code>.tre</code> archives. Every asset request goes through <code>TreeFile::searchTree</code>.</td></tr>
+    <tr><td><strong><code>WorldSnapshot</code></strong></td><td>A <code>.ws</code> placement record: positions/rotations of static objects for a planet. Edited by the Jawa Toolbox.</td></tr>
+    <tr><td><strong><code>WorldSnapshotReaderWriter</code></strong></td><td>The runtime save/load of <code>.ws</code> files.</td></tr>
+  </tbody>
+</table>
+
+<h2>Visual Studio / build terms</h2>
+
+<table>
+  <thead>
+    <tr><th>Term</th><th>Meaning</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong><code>Directory.Build.props</code></strong></td><td>MSBuild file auto-imported into every project under a directory. Used by the VSIX wizard to inject <code>PluginOutputDir</code> / <code>UtinniCoreDotNetPath</code>.</td></tr>
+    <tr><td><strong><code>PlatformToolset=v142</code></strong></td><td>Visual Studio 2019's C++ toolchain. Utinni pins to this.</td></tr>
+    <tr><td><strong><code>RelWithDbgInfo</code></strong></td><td>A custom configuration: optimised like Release, but with PDBs. Recommended for plugin development.</td></tr>
+    <tr><td><strong>VSIX wizard</strong></td><td>The <code>IWizard</code> implementation that runs when a project is created from a template. <code>DotNetSolutionWizard.cs</code> writes the Directory.Build.props.</td></tr>
+  </tbody>
+</table>
+
+<h2>See also</h2>
+
+<ul>
+  <li><a href="../../swg-client/docs/glossary.html">swg-client/docs/glossary.html</a> for a
+    much larger SWG-side glossary.</li>
+</ul>
+
+</main>
+<footer>
+  Utinni — SWG client modding framework. Documentation for the fork at <code>D:/Code/Utinni</code>.
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>

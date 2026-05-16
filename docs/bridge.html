@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Managed Bridge — Utinni</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <h1><span class="accent">Utinni</span> — Managed Bridge</h1>
+  <div class="sub">.NET surface — UtinniCoreDotNet.dll</div>
+</header>
+<nav class="top">
+  <a href="index.html">Overview</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="injection.html">Injection</a>
+  <a href="core.html">Native Core</a>
+  <a href="bridge.html" class="active">Managed Bridge</a>
+  <a href="plugin-framework.html">Plugin Framework</a>
+  <a href="callbacks.html">Callbacks</a>
+  <a href="ui-framework.html">UI</a>
+  <a href="hotkeys.html">Hotkeys</a>
+  <a href="undo-redo.html">Undo/Redo</a>
+  <a href="sdk.html">SDK</a>
+  <a href="build.html">Build</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="internals.html">Internals</a>
+  <a href="regen-bindings.html">Bindings</a>
+  <a href="glossary.html">Glossary</a>
+</nav>
+
+<main>
+
+<h1>Managed bridge (UtinniCoreDotNet)</h1>
+
+<div class="callout info"><strong>Audience:</strong> .NET plugin authors (this is your primary surface) and core contributors.</div>
+
+<p><code>UtinniCoreDotNet.dll</code> is the <strong>only</strong> assembly a managed plugin needs to reference. Inside, it stitches together:</p>
+
+<ul>
+  <li><strong><code>Generated/</code></strong> &mdash; CppSharp-output P/Invoke wrappers over every C++ type/function the SDK exposes.</li>
+  <li><strong><code>Callbacks/</code></strong> &mdash; managed delegates fired from the game thread by the native side.</li>
+  <li><strong><code>PluginFramework/</code></strong> &mdash; <code>IPlugin</code> / <code>IEditorPlugin</code> contracts and the MEF-based <code>PluginLoader</code>.</li>
+  <li><strong><code>Hotkeys/</code> &middot; <code>UndoRedo/</code> &middot; <code>Commands/</code></strong> &mdash; first-class editor primitives.</li>
+  <li><strong><code>UI/</code></strong> &mdash; <code>FormMain</code>, <code>PanelGame</code>, themed WinForms controls, drag-drop bridge.</li>
+  <li><strong><code>Utility/</code></strong> &mdash; <code>Log</code> (with class/function-name reflection) and <code>Native</code> (Win32 helpers).</li>
+</ul>
+
+<p>Target framework: <strong>.NET Framework 4.7.2, x86, C# 7.3, <code>AllowUnsafeBlocks=true</code></strong>. The <code>x86</code> platform target is <strong>non-negotiable</strong> &mdash; the host SWG process is 32-bit, so the CLR loaded into it is 32-bit, and your DLLs must be too.</p>
+
+<h2>Top-level structure</h2>
+
+<pre><code>UtinniCoreDotNet/
+├── main.cs                                ← Startup.EntryPoint (called by clr.cpp)
+├── UtinniCoreDotNet.csproj                ← .NET 4.7.2 / x86 / unsafe
+│
+├── Generated/                             ← AUTO-GENERATED — do not edit by hand
+│   ├── UtinniCore.cs                      ← ~5000+ lines, CppSharp P/Invoke output
+│   └── StdEdited.cs                       ← hand-edited std::basic_string wrappers
+│
+├── Callbacks/
+│   ├── GameCallbacks.cs                   ← install / setup-scene / cleanup-scene / pre-main / main loop
+│   ├── GroundSceneCallbacks.cs            ← update / pre-draw / post-draw / camera-change
+│   ├── ObjectCallbacks.cs                 ← on-target (both queued and persistent)
+│   ├── CuiCallbacks.cs                    ← system messages
+│   └── ImGuiCallbacks.cs                  ← gizmo enabled/disabled/position-changed/rotation-changed
+│
+├── PluginFramework/
+│   ├── IPlugin.cs                         ← interface + PluginInformation
+│   ├── IEditorPlugin.cs                   ← extends IPlugin with editor primitives
+│   └── PluginLoader.cs                    ← MEF discovery, gated by ut.ini [Plugins]
+│
+├── Hotkeys/
+│   ├── Hotkey.cs                          ← Name / ModifierKeys / Key / OnDown / scoping flags
+│   └── HotkeyManager.cs                   ← Add / Load / Save / ProcessInput
+│
+├── UndoRedo/
+│   ├── IUndoCommand.cs                    ← Execute / Undo / GetText / merge support
+│   └── UndoRedoManager.cs                 ← stacks + scene-cleanup wiring
+│
+├── Commands/
+│   └── WorldSnapshotCommands.cs           ← Add / Remove / PositionChanged / RotationChanged
+│
+├── UI/
+│   ├── Forms/
+│   │   ├── FormMain.cs                    ← the editor shell, embeds the SWG window
+│   │   └── IEditorForm.cs
+│   ├── Controls/
+│   │   ├── PanelGame.cs                   ← hosts SwgClient_r HWND, forwards WndProc, routes hotkeys
+│   │   ├── SubPanel.cs / SubPanelContainer.cs
+│   │   ├── UtinniButton, UtinniToggleButton, UtinniToggle
+│   │   ├── UtinniComboBox, UtinniTextbox, UtinniNumericUpDown, UtinniSlider
+│   │   ├── UtinniLabel, UtinniContextMenuStrip
+│   │   ├── UndoRedoListDropDown, UndoRedoTitlebarButton
+│   │   └── UtinniTitlebarButton, UtinniTitlebarDropDownButton, UtinniTitlebarToggleButton
+│   ├── Theme/  (Colors.cs, ThemeUtility.cs)
+│   └── GameDragDropEventHandlers.cs       ← static handler hooks for the embedded game window
+│
+├── Utility/
+│   ├── Log.cs                             ← .Info / .Warning / .Error / .Critical / .Debug with class/method prefix
+│   └── Native.cs                          ← user32 P/Invokes for WndProc forwarding
+│
+├── Properties/AssemblyInfo.cs
+└── Resources/                             ← icons used by built-in title-bar buttons
+</code></pre>
+
+<h2><code>Generated/UtinniCore.cs</code> and <code>StdEdited.cs</code></h2>
+
+<p><code>UtinniCoreDotNet/Generated/UtinniCore.cs</code> is the output of <code>UtinniCoreDotNetGen</code> (CppSharp). It is <strong>5000+ lines</strong> of generated P/Invoke wrappers around the native C++ surface. Key shape:</p>
+
+<pre><code>namespace UtinniCore.Utinni
+{
+    public unsafe partial class Game : IDisposable
+    {
+        public partial struct __Internal
+        {
+            [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+                EntryPoint = "?install@Game@utinni@@SAXXZ",   // mangled C++ symbol
+                ExactSpelling = true)]
+            internal static extern void Install();
+            // ...
+        }
+
+        public IntPtr __Instance { get; protected set; }
+        internal static ConcurrentDictionary&lt;IntPtr, Game&gt; NativeToManagedMap = new ...;
+
+        public static void Install() { __Internal.Install(); }
+        // ...
+    }
+}
+</code></pre>
+
+<p>Things to know:</p>
+
+<ul>
+  <li><strong>Every public C++ function in the parsed headers has a P/Invoke wrapper.</strong> The mangled entry points come from a per-build symbol library called <code>UtinniCore-Symbols</code> (a separate project just for this).</li>
+  <li><strong>Pointer ownership is tracked</strong> via <code>NativeToManagedMap</code> per type, so the same native instance always projects to the same managed wrapper.</li>
+  <li><strong>STL types are wrapped in <code>Std.BasicString&lt;T,_Traits,_Alloc&gt;</code> etc.</strong> &mdash; this is what <code>StdEdited.cs</code> covers, and it's hand-edited because CppSharp's generic generation isn't quite right for SWG's STL layout.</li>
+</ul>
+
+<p>You generally don't read <code>Generated/UtinniCore.cs</code> directly. Instead, the <strong>canonical entry-point types</strong> plugins call are:</p>
+
+<table>
+  <thead>
+    <tr><th>Type</th><th>Use</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>UtinniCore.Utinni.utinni</code></td><td><code>GetConfig()</code>, <code>GetPath()</code>, <code>GetPluginManager()</code>.</td></tr>
+    <tr><td><code>UtinniCore.Utinni.UtINI</code></td><td>Read/write <code>.ini</code> files via the native wrapper.</td></tr>
+    <tr><td><code>UtinniCore.Utinni.Game</code></td><td>Scene loading, queries (player, target, camera).</td></tr>
+    <tr><td><code>UtinniCore.Utinni.GroundScene</code></td><td>Free-cam toggle, terrain reload, current camera, scene-local actions.</td></tr>
+    <tr><td><code>UtinniCore.Utinni.Client</code></td><td>Editor mode + input suspend/resume + HWND.</td></tr>
+    <tr><td><code>UtinniCore.Utinni.WorldSnapshot</code> / <code>WorldSnapshotReaderWriter</code></td><td>World object placement records.</td></tr>
+    <tr><td><code>UtinniCore.Utinni.CreatureObject.creature_object</code></td><td>Player object + target-change hook.</td></tr>
+    <tr><td><code>UtinniCore.Utinni.SystemMessageManager</code></td><td>Send / receive system messages.</td></tr>
+    <tr><td><code>UtinniCore.Utinni.Network</code></td><td><code>GetObjectById</code> for managed-side lookups.</td></tr>
+    <tr><td><code>UtinniCore.Utinni.CuiIo</code></td><td>Suspend/resume keyboard input across the SWG/UI boundary.</td></tr>
+    <tr><td><code>UtinniCore.ImguiImpl.imgui_impl</code></td><td>Gizmo on/off/mode/operation/snap.</td></tr>
+    <tr><td><code>UtinniCore.ImguiGizmo</code></td><td>Gizmo data types.</td></tr>
+    <tr><td><code>UtinniCore.DirectX.directx9</code></td><td>D3D9 device handle, wireframe toggle, depth texture.</td></tr>
+    <tr><td><code>UtinniCore.Swg.Math.{Transform, Vector, Quaternion}</code></td><td>Math types &mdash; most plugin code goes through these directly.</td></tr>
+    <tr><td><code>UtinniCore.Delegates</code></td><td>Function-pointer types used by callback registrations.</td></tr>
+    <tr><td><code>UtinniCore.Std.BasicString*</code> etc.</td><td>Only if you're crossing through manually.</td></tr>
+  </tbody>
+</table>
+
+<p>See <a href="plugin-framework.html">Plugin framework</a> for how a plugin actually opts into these.</p>
+
+<h2><code>Startup.EntryPoint</code> (one-shot init)</h2>
+
+<p>Already covered in <a href="injection.html#managed-startup">Injection &amp; boot</a> &mdash; read that for the full flow. Summary:</p>
+
+<ol>
+  <li><code>Application.EnableVisualStyles()</code></li>
+  <li><code>Log.Setup()</code> &mdash; sets up the bridge sink so native log lines flow into the managed log.</li>
+  <li><code>new PluginLoader()</code> &mdash; discovers, gates by <code>[Plugins]</code> in <code>ut.ini</code>, composes via MEF.</li>
+  <li><code>GameCallbacks/GroundSceneCallbacks/ObjectCallbacks/CuiCallbacks.Initialize()</code> &mdash; register the C# delegates with the native side. Note that <code>ImGuiCallbacks.Initialize()</code> is <strong>not</strong> called here &mdash; it's only initialised lazily when the editor opens, since gizmo events only flow when the editor is up.</li>
+  <li>If <code>Editor.enableEditorMode=true</code>, <code>Application.Run(new FormMain(pluginLoader))</code>.</li>
+</ol>
+
+<h2><code>FormMain</code> &mdash; the editor shell</h2>
+
+<p><code>UI/Forms/FormMain.cs</code> is the host window:</p>
+
+<ul>
+  <li><strong>Custom chrome.</strong> No native title bar; a <code>UtinniTitlebar</code> row with min/max/close + plugin-added title-bar buttons. Drag-move via <code>WM_NCHITTEST</code> forwarding.</li>
+  <li><strong><code>PanelGame</code></strong> in the centre re-parents the SWG window into a WinForms Panel:
+    <ul>
+      <li>Forwards every <code>WndProc</code> message to SWG's window proc (address <code>0x00AA0970</code> is hardcoded &mdash; patched at install time).</li>
+      <li>Tracks focus to drive <code>OnGameFocusOnly</code> hotkeys.</li>
+      <li>On mouse-enter resumes input; on mouse-leave suspends. Cursor visibility is reference-counted (Windows <code>Cursor.Show()</code> semantics make this necessary).</li>
+    </ul>
+  </li>
+  <li><strong>Right rail</strong> hosts <code>SubPanel</code>s contributed by <code>IEditorPlugin.GetSubPanels()</code>.</li>
+  <li><strong>Top of right rail</strong> has a combo selector for <code>IEditorPlugin.GetStandalonePanels()</code> &mdash; each plugin's standalone panels become entries.</li>
+  <li><strong>Title-bar undo/redo buttons</strong> wired to the <code>UndoRedoManager</code>.</li>
+  <li><strong>Drag-drop</strong> routed via <code>GameDragDropEventHandlers</code> &mdash; see below.</li>
+</ul>
+
+<p><code>FormMain</code> instantiates <strong>one <code>UndoRedoManager</code></strong> for the whole editor and subscribes each editor plugin's <code>AddUndoCommand</code> event to it.</p>
+
+<h2><code>PanelGame</code> &mdash; embedding the live game</h2>
+
+<pre><code>public class PanelGame : Panel
+{
+    public PanelGame() {
+        GameDragDropEventHandlers.Initialize(this);  // route DragEnter/Over/Drop to static handlers
+    }
+
+    protected override void WndProc(ref Message m)
+    {
+        // Forward EVERY message to the SWG window proc first.
+        IntPtr swgWndProc = new IntPtr(0x00AA0970);
+        Native.CallWindowProc(swgWndProc, m.HWnd, m.Msg, m.WParam, m.LParam);
+        base.WndProc(ref m);
+    }
+}
+</code></pre>
+
+<p>The <code>0x00AA0970</code> is the SWG client's <code>WndProc</code> &mdash; same RVA used by <code>utinni::Client::detour()</code>. After UtinniCore reparents the SWG HWND into this panel (via <code>Client::setHwnd</code>), every Windows message reaching the panel goes to SWG, and the panel then runs WinForms processing on the same message. This is how mouse and keyboard get into both.</p>
+
+<h2>Callbacks &mdash; what fires where</h2>
+
+<p>See <a href="callbacks.html">Callbacks reference</a> for full per-API detail. One-paragraph summary:</p>
+
+<ul>
+  <li><strong>Native-side</strong>: <code>utinni::Game::addMainLoopCallback(fn)</code> etc. take <code>std::function&lt;void()&gt;</code>. The managed side passes a delegate down through P/Invoke, marshals it into a function pointer, and stores it on the C++ side.</li>
+  <li><strong>Thread</strong>: every callback fires on the <strong>game thread</strong>, <em>not</em> the UI thread. You must marshal to UI via <code>Control.Invoke</code> if you want to touch WinForms. Conversely, if a UI handler wants to call game APIs, it should enqueue via <code>GameCallbacks.AddMainLoopCall(...)</code> or <code>GroundSceneCallbacks.AddUpdateLoopCall(...)</code>.</li>
+  <li><strong>Two patterns</strong> exist depending on the callback file: <code>SynchronizedCollection</code> (persistent &mdash; fired every event) or <code>ConcurrentQueue</code> (one-shot &mdash; fired once then drained).</li>
+</ul>
+
+<h2>Hotkeys</h2>
+
+<p><code>Hotkeys/Hotkey.cs</code>:</p>
+
+<pre><code>public class Hotkey
+{
+    public string Name;
+    public string Text;
+    public Keys ModifierKeys;     // Ctrl/Shift/Alt
+    public Keys Key;
+    public Action OnDownCallback;
+    public bool OverrideGameInput;
+    public bool Enabled;
+    public bool OnGameFocusOnly;
+}
+</code></pre>
+
+<p><code>HotkeyManager.cs</code>:</p>
+
+<pre><code>public class HotkeyManager
+{
+    public Dictionary&lt;string, Hotkey&gt; Hotkeys;
+    public HotkeyManager(bool onGameFocusOnly);
+
+    public void Add(Hotkey hotkey);
+    public void CreateSettings();       // seed defaults
+    public void Load();                  // input.ini
+    public void Save();
+    public void ProcessInput(Keys mods, Keys key, bool isGameFocused);
+}
+</code></pre>
+
+<p>Wiring: each plugin returns its own <code>HotkeyManager</code> from <code>IEditorPlugin.GetHotkeyManager()</code>. <code>FormMain</code> registers a key-down handler on <code>PanelGame</code> that calls <code>ProcessInput</code> on every plugin's manager. Hotkeys with <code>OnGameFocusOnly=true</code> fire only when <code>PanelGame</code> has focus; ones with <code>OverrideGameInput=true</code> suspend native keyboard input during dispatch.</p>
+
+<p>Persistence: <code>Load()</code> reads <code>&lt;plugin-assembly-dir&gt;/input.ini</code>. <code>Save()</code> writes it back. Users can rebind via the editor's settings UI.</p>
+
+<h2>Undo / Redo</h2>
+
+<p><code>UndoRedo/IUndoCommand.cs</code>:</p>
+
+<pre><code>public interface IUndoCommand
+{
+    string GetText();              // human label, shown in dropdown list
+    void Execute();                // redo: apply
+    void Undo();                   // reverse
+    bool AllowMerge();
+    bool Merge(IUndoCommand newCommand);  // attempt to absorb the next command
+}
+</code></pre>
+
+<p><code>UndoRedo/UndoRedoManager.cs</code>:</p>
+
+<pre><code>public class UndoRedoManager
+{
+    public Stack&lt;IUndoCommand&gt; UndoCommands;
+    public Stack&lt;IUndoCommand&gt; RedoCommands;
+
+    public UndoRedoManager(Action onUpdate, Action undo, Action redo);
+    public void AddUndoCommand(IEditorPlugin editorPlugin);   // wires event
+    public void Undo(int count = 1);
+    public void Redo(int count = 1);
+}
+</code></pre>
+
+<p>Plugin pattern:</p>
+
+<pre><code>// Inside an IEditorPlugin implementation
+AddUndoCommand?.Invoke(this, new AddUndoCommandEventArgs(
+    new WorldSnapshotNodePositionChangedCommand(node, oldT, newT)));
+</code></pre>
+
+<p>The manager:</p>
+
+<ol>
+  <li>Clears the redo stack (forward edits invalidate redo).</li>
+  <li>If the top of the undo stack is <code>AllowMerge</code>-able with the new command and <code>Merge()</code> returns true &rarr; the new command was absorbed.</li>
+  <li>Otherwise &rarr; push.</li>
+</ol>
+
+<p><code>AddUndoCommand</code> is wired by <code>FormMain</code> once per plugin. The manager itself also subscribes to <code>GameCallbacks.AddCleanupSceneCall</code> to clear both stacks when the scene unloads &mdash; undo history doesn't survive a scene change.</p>
+
+<h2>Built-in commands</h2>
+
+<p><code>Commands/WorldSnapshotCommands.cs</code> ships four <code>IUndoCommand</code> implementations that the Jawa Toolbox uses out-of-the-box:</p>
+
+<table>
+  <thead>
+    <tr><th>Command</th><th>Execute</th><th>Undo</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>AddWorldSnapshotNodeCommand</code></td><td><code>WorldSnapshot.AddNode(node)</code></td><td>Remove node by <code>ParentId</code></td></tr>
+    <tr><td><code>RemoveWorldSnapshotNodeCommand</code></td><td>Remove node</td><td>Re-add stored copy</td></tr>
+    <tr><td><code>WorldSnapshotNodePositionChangedCommand</code></td><td>Set object position, refresh + DetailLevelChanged</td><td>Restore original position</td></tr>
+    <tr><td><code>WorldSnapshotNodeRotationChangedCommand</code></td><td>Set object rotation</td><td>Restore original rotation</td></tr>
+  </tbody>
+</table>
+
+<p>All four use <code>GroundSceneCallbacks.AddUpdateLoopCall</code> internally so that the actual native mutation happens on the game thread, even if you fire them from a UI event handler.</p>
+
+<h2>UI theme</h2>
+
+<p><code>UI/Theme/Colors.cs</code>:</p>
+
+<pre><code>public static class Colors
+{
+    public enum Themes { Custom, Dark, Light }
+    public static Themes Theme = Themes.Dark;
+
+    public const float DisabledScalar  = 0.8f;
+    public const float HighlightScalar = 1.25f;
+    public const float PressedScalar   = 1.5f;
+
+    public static Color Primary()      =&gt; Dark ? Argb(40,40,40)   : Argb(238,238,238);
+    public static Color Secondary()    =&gt; Argb(0,122,204);
+    public static Color Font()         =&gt; Dark ? WhiteSmoke       : Argb(238,238,238);
+    public static Color FontDisabled() =&gt; /* ... */;
+    public static Color ControlBorder() =&gt; /* ... */;
+}
+</code></pre>
+
+<p><code>UI/Theme/ThemeUtility.cs</code>:</p>
+
+<pre><code>public static Bitmap UpdateImageColor(Bitmap, Color old, Color @new);
+public static Color  ScaleColor(Color, float scalar);
+</code></pre>
+
+<p>The themed controls (<code>UtinniButton</code>, <code>UtinniToggleButton</code>, etc.) query these at paint time rather than caching, so changing <code>Colors.Theme</code> repaints everything automatically.</p>
+
+<h2>Drag-drop bridge</h2>
+
+<p><code>UI/GameDragDropEventHandlers.cs</code>:</p>
+
+<pre><code>public static class GameDragDropEventHandlers
+{
+    public static DragEventHandler OnDragDrop;
+    public static DragEventHandler OnDragEnter;
+    public static EventHandler     OnDragLeave;
+    public static DragEventHandler OnDragOver;
+
+    public static void Initialize(Control gamePanel) { /* wire to .DragXxx */ }
+}
+</code></pre>
+
+<p>This is the gateway for "drag from a WinForms tree-view, drop into the live game world." The object browser in Jawa Toolbox uses this &mdash; see <a href="../../UtinniPlugins/docs/">UtinniPlugins/docs</a> for the implementation.</p>
+
+<h2>Utility &mdash; <code>Log</code> and <code>Native</code></h2>
+
+<p><code>Utility/Log.cs</code>:</p>
+
+<pre><code>Log.Info("hello");          // prefixed with [Class][Method] if ut.ini → [Log] enables them
+Log.Warning(...);
+Log.Error(...);
+Log.Critical(...);
+Log.Debug(...);
+
+Log.InfoSimple(...);        // unprefixed
+
+Log.AddOuputSinkCallback(s =&gt; textBox.AppendText(s));
+</code></pre>
+
+<p>Implementation: introspects the call stack with <code>StackTrace</code> to find the caller's class/method names; reads <code>ut.ini &rarr; [Log] writeClassName / writeFunctionName</code> to decide whether to prepend; delegates to the native <code>utinni::log::*</code>.</p>
+
+<p><code>Utility/Native.cs</code>: <code>WM_SYSCOMMAND</code>, <code>WM_NCHITTEST</code>, <code>WM_MOUSEMOVE</code>, <code>SC_DRAGMOVE</code>/<code>MINIMIZE</code>/<code>MAXIMIZE</code>/<code>RESTORE</code>, <code>HT*</code> enum, and P/Invokes for <code>user32.dll!ReleaseCapture</code>, <code>SendMessage</code>, <code>GetAsyncKeyState</code>, <code>CallWindowProc</code>. Used by the custom title bar and <code>PanelGame</code>'s WndProc forwarding.</p>
+
+<h2>Threading at a glance</h2>
+
+<div class="mermaid">
+flowchart LR
+  classDef ui fill:#1d2a23,stroke:#6dd58c,color:#d6e1ee
+  classDef game fill:#28344a,stroke:#57c1ff,color:#d6e1ee
+
+  subgraph U["UI thread (STA)"]
+    FormMain[FormMain]:::ui
+    Panels[SubPanels + Forms]:::ui
+    HK[HotkeyManager.ProcessInput]:::ui
+  end
+
+  subgraph G["Game thread"]
+    Hooks[Native detours fire]:::game
+    Cb[Callback delegates fire]:::game
+    Imgui[ImGui render pass]:::game
+  end
+
+  Cb -. "Control.Invoke" .-> Panels
+  HK -. "GameCallbacks.AddMainLoopCall" .-> Cb
+  Imgui -. ImGuiCallbacks .-> Cb
+</div>
+
+<p>Things that look easy but aren't:</p>
+
+<ul>
+  <li><strong>Don't open a <code>MessageBox</code> from a callback.</strong> Modal dialogs on the game thread freeze rendering. Either <code>Control.Invoke</code> to UI or set a flag and show the dialog later.</li>
+  <li><strong>WinForms timers fire on the UI thread</strong>, but the work they do may want to read game state. Read it through callbacks (queued) and let the timer paint results.</li>
+  <li><strong>Long-running background work belongs in <code>Task.Run</code></strong>, with results marshalled back via <code>Control.Invoke</code> or via <code>*Callbacks.Add*Call</code>. The Jawa Toolbox object browser uses this pattern when it scans the <code>object/</code> tree.</li>
+</ul>
+
+<h2>Known sharp edges in the bridge</h2>
+
+<ol>
+  <li><strong><code>GroundSceneCallbacks.DequeuePostDrawLoopCalls</code> dequeues the <em>pre</em>-draw queue.</strong> Bug on line ~99 of the file. If you queue something for after the draw, it currently fires <em>before</em>. Workaround: queue to the update loop instead.</li>
+  <li><strong><code>OverrideGameInput</code> hotkeys</strong> use a multi-stage queue dance to suspend game input; not frame-perfect. If you need a tight grab of a key, prefer suspending input explicitly via <code>utinni.Client.SuspendInput()</code> / <code>ResumeInput()</code>.</li>
+  <li><strong>MEF composition order is filesystem-order</strong>, i.e. effectively undefined. Don't write plugins that depend on another plugin's constructor having already run.</li>
+  <li><strong>Cursor visibility uses a counter hack</strong> because <code>Cursor.Hide()</code> / <code>Cursor.Show()</code> don't have predictable nesting.</li>
+  <li><strong><code>PanelGame</code> forwards WndProc with a hardcoded SWG WndProc address (<code>0x00AA0970</code>).</strong> That's pinned to the same client build as all the other RVAs.</li>
+</ol>
+
+<h2>See also</h2>
+
+<ul>
+  <li><a href="plugin-framework.html">Plugin framework</a></li>
+  <li><a href="callbacks.html">Callbacks reference</a></li>
+  <li><a href="ui-framework.html">UI framework</a></li>
+  <li><a href="hotkeys.html">Hotkeys</a> &middot; <a href="undo-redo.html">Undo / Redo</a></li>
+  <li><a href="regen-bindings.html">Regenerating bindings</a> &mdash; when and how to re-run <code>UtinniCoreDotNetGen</code>.</li>
+</ul>
+
+</main>
+<footer>
+  Utinni &mdash; SWG client modding framework. Documentation for the fork at <code>D:/Code/Utinni</code>.
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>

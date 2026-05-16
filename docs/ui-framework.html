@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>UI Framework — Utinni</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <h1><span class="accent">Utinni</span> — UI Framework</h1>
+  <div class="sub">FormMain, SubPanels, themed controls</div>
+</header>
+<nav class="top">
+  <a href="index.html">Overview</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="injection.html">Injection</a>
+  <a href="core.html">Native Core</a>
+  <a href="bridge.html">Managed Bridge</a>
+  <a href="plugin-framework.html">Plugin Framework</a>
+  <a href="callbacks.html">Callbacks</a>
+  <a href="ui-framework.html" class="active">UI</a>
+  <a href="hotkeys.html">Hotkeys</a>
+  <a href="undo-redo.html">Undo/Redo</a>
+  <a href="sdk.html">SDK</a>
+  <a href="build.html">Build</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="internals.html">Internals</a>
+  <a href="regen-bindings.html">Bindings</a>
+  <a href="glossary.html">Glossary</a>
+</nav>
+
+<main>
+
+<h1>UI framework</h1>
+
+<div class="callout info"><strong>Audience:</strong> .NET editor plugin authors.</div>
+
+<p>Utinni's UI is <strong>WinForms</strong> with a custom dark theme, custom title bar, and a purpose-built panel layout for embedding the live SWG client. Everything is in the <code>UtinniCoreDotNet.UI</code> namespace.</p>
+
+<h2><code>FormMain</code> &mdash; the editor shell</h2>
+
+<p><code>UI/Forms/FormMain.cs</code> is the editor window. It has:</p>
+
+<ul>
+  <li><strong>Custom (frameless) chrome.</strong> No native window title bar; instead, a <code>UtinniTitlebar</code> at the top with min/max/close and configurable buttons (e.g. undo/redo). Drag-to-move is implemented by sending <code>WM_NCLBUTTONDOWN</code> with <code>SC_DRAGMOVE</code> (see <code>Native.cs</code>).</li>
+  <li><strong>Centre: <code>PanelGame</code>.</strong> Hosts the embedded SWG client window. Handles game input plumbing and forwards <code>WndProc</code> to SWG's window proc.</li>
+  <li><strong>Right rail:</strong>
+    <ul>
+      <li>A combo at the top selects from <code>IEditorPlugin.GetStandalonePanels()</code> &mdash; each entry is a <code>SubPanelContainer</code> (multi-tab/grouped panels).</li>
+      <li>Below it, every <code>IEditorPlugin.GetSubPanels()</code> <code>SubPanel</code> is docked inline.</li>
+    </ul>
+  </li>
+  <li><strong>Bottom rail:</strong> log viewer (driven by <code>Log.AddOuputSinkCallback</code>).</li>
+</ul>
+
+<p><code>FormMain</code>'s lifecycle:</p>
+
+<div class="mermaid">
+sequenceDiagram
+  participant E as Startup.EntryPoint
+  participant F as FormMain
+  participant P as IEditorPlugin
+  participant U as UndoRedoManager
+  participant H as HotkeyManager
+
+  E->>F: new FormMain(pluginLoader)
+  F->>F: BuildChrome / BuildPanelGame / BuildRightRail / BuildLog
+  F->>F: ImGuiCallbacks.Initialize()  (now editor exists)
+  F->>U: new UndoRedoManager(onUpdate, undoCb, redoCb)
+  F->>U: AddCleanupSceneCall(() => clear stacks)
+  loop for each plugin in pluginLoader.Plugins where plugin is IEditorPlugin
+    F->>U: U.AddUndoCommand(plugin)   // subscribes manager.HandleAdd to plugin.AddUndoCommand
+    F->>P: GetHotkeyManager() → H
+    F->>H: H.Load()  // from <plugin-dir>/input.ini
+    F->>P: GetForms() → instantiate IEditorForm.Create(plugin, ...)
+    F->>P: GetStandalonePanels() → append to combo
+    F->>P: GetSubPanels() → dock on right rail
+  end
+  F->>F: Application.Run(this) — blocks until shutdown
+</div>
+
+<h2><code>PanelGame</code></h2>
+
+<p><code>UI/Controls/PanelGame.cs</code>. Re-parents SWG's window into a WinForms panel.</p>
+
+<pre><code>protected override void WndProc(ref Message m)
+{
+    // Forward to SWG's window proc first (address from utinni::Client).
+    IntPtr swgWndProc = new IntPtr(0x00AA0970);
+    Native.CallWindowProc(swgWndProc, m.HWnd, m.Msg, m.WParam, m.LParam);
+    // Then run WinForms processing (focus, input routing, etc.).
+    base.WndProc(ref m);
+}
+</code></pre>
+
+<p>Responsibilities beyond message forwarding:</p>
+
+<ul>
+  <li><strong>Drag-drop wiring.</strong> Calls <code>GameDragDropEventHandlers.Initialize(this)</code> &mdash; see below.</li>
+  <li><strong>Focus tracking.</strong> Updates a <code>HasFocus</code> flag used by <code>OnGameFocusOnly</code> hotkeys.</li>
+  <li><strong>Cursor visibility.</strong> Reference-counted via <code>cursorHideCount</code>.</li>
+  <li><strong>Input suspension.</strong> On mouse-enter resumes game input; on mouse-leave suspends it. ImGui hover state also counts as "not in game" for this purpose (so dragging an ImGuizmo handle doesn't also feed the game).</li>
+  <li><strong>Key dispatch.</strong> <code>PanelGame_KeyDown</code> iterates every plugin's <code>HotkeyManager</code> and calls <code>ProcessInput(modifierKeys, key, hasFocus)</code>.</li>
+</ul>
+
+<h2><code>SubPanel</code> and <code>SubPanelContainer</code></h2>
+
+<p><code>SubPanel</code> (subclass of WinForms <code>UserControl</code>) is the fundamental docking unit for editor plugin UI:</p>
+
+<ul>
+  <li>Width is normalised to 417px (the right-rail width).</li>
+  <li>Inherits a <code>UtinniLabel</code> header with collapse/expand behaviour.</li>
+  <li>Applies the active theme automatically &mdash; children should use <code>Utinni*</code> controls rather than vanilla WinForms ones.</li>
+</ul>
+
+<p><code>SubPanelContainer</code> is a vertical stack of <code>SubPanel</code>s &mdash; used when a plugin wants to publish a grouped panel under the standalone-panels combo.</p>
+
+<h3>Authoring a <code>SubPanel</code></h3>
+
+<pre><code>using System;
+using System.Windows.Forms;
+using UtinniCoreDotNet.UI.Controls;
+using UtinniCoreDotNet.Callbacks;
+using UtinniCore.Utinni;
+
+public class HelloSubPanel : SubPanel
+{
+    private readonly UtinniLabel lbl;
+    private readonly UtinniButton btn;
+
+    public HelloSubPanel() : base("Hello", expanded: true)   // header text + initial state
+    {
+        lbl = new UtinniLabel { Text = "scene: (none)", Dock = DockStyle.Top };
+        btn = new UtinniButton { Text = "Print player position", Dock = DockStyle.Top };
+
+        Controls.Add(btn);
+        Controls.Add(lbl);
+
+        btn.Click += (s, e) =&gt;
+        {
+            GroundSceneCallbacks.AddUpdateLoopCall(() =&gt;
+            {
+                var pos = Game.GetPlayer().GetTransform().Position;
+                // marshal back to UI
+                lbl.Invoke((MethodInvoker)(() =&gt;
+                    lbl.Text = $"player: ({pos.x:0.0}, {pos.y:0.0}, {pos.z:0.0})"));
+            });
+        };
+
+        GameCallbacks.AddSetupSceneCall(() =&gt;
+            this.Invoke((MethodInvoker)(() =&gt;
+                lbl.Text = "scene: " + GroundScene.Get().GetName())));
+    }
+}
+</code></pre>
+
+<p>Return from your plugin:</p>
+
+<pre><code>public List&lt;SubPanel&gt; GetSubPanels() =&gt; new List&lt;SubPanel&gt; { new HelloSubPanel() };
+</code></pre>
+
+<h2>Themed controls</h2>
+
+<p><code>UI/Controls/</code>:</p>
+
+<table>
+  <thead>
+    <tr><th>Control</th><th>Used for</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>UtinniButton</code></td><td>Standard button. Honours theme + state scalars.</td></tr>
+    <tr><td><code>UtinniToggleButton</code>, <code>UtinniToggle</code></td><td>Toggle/checkbox-style toggles with sticky visual state.</td></tr>
+    <tr><td><code>UtinniComboBox</code></td><td>Dropdown.</td></tr>
+    <tr><td><code>UtinniTextbox</code></td><td>Text input.</td></tr>
+    <tr><td><code>UtinniNumericUpDown</code></td><td>Numeric editor with up/down spinners.</td></tr>
+    <tr><td><code>UtinniSlider</code></td><td>Horizontal slider.</td></tr>
+    <tr><td><code>UtinniLabel</code></td><td>Static text + section header (used inside <code>SubPanel</code>).</td></tr>
+    <tr><td><code>UtinniContextMenuStrip</code></td><td>Context menu, themed.</td></tr>
+    <tr><td><code>UtinniTitlebarButton</code>, <code>UtinniTitlebarDropDownButton</code>, <code>UtinniTitlebarToggleButton</code></td><td>Buttons that live in <code>FormMain</code>'s custom title bar.</td></tr>
+    <tr><td><code>UndoRedoListDropDown</code>, <code>UndoRedoTitlebarButton</code></td><td>The combined undo/redo button + history dropdown shown in the title bar.</td></tr>
+  </tbody>
+</table>
+
+<p>All of these read live colours from <code>UI/Theme/Colors.cs</code>:</p>
+
+<pre><code>public static class Colors
+{
+    public enum Themes { Custom, Dark, Light }
+    public static Themes Theme = Themes.Dark;
+
+    public const float DisabledScalar  = 0.8f;
+    public const float HighlightScalar = 1.25f;
+    public const float PressedScalar   = 1.5f;
+
+    public static Color Primary();
+    public static Color Secondary();
+    public static Color Font();
+    public static Color FontDisabled();
+    public static Color ControlBorder();
+}
+</code></pre>
+
+<p>To recolour the whole UI, set <code>Colors.Theme = Themes.Light</code> (or <code>Custom</code> and override the methods). The controls don't cache colours &mdash; every paint re-reads, so the change is immediate.</p>
+
+<p><code>UI/Theme/ThemeUtility.cs</code>:</p>
+
+<pre><code>ThemeUtility.UpdateImageColor(bitmap, oldColor, newColor);  // recolour an icon to fit the theme
+ThemeUtility.ScaleColor(c, scalar);                          // multiply RGB
+ThemeUtility.ClampColor(int v, int max = 255);
+</code></pre>
+
+<h2>Drag-drop bridge</h2>
+
+<p><code>UI/GameDragDropEventHandlers.cs</code> exposes four static delegates that any code can subscribe to. They fire when something is dragged into / over / out of / dropped on the embedded <code>PanelGame</code>:</p>
+
+<pre><code>public static class GameDragDropEventHandlers
+{
+    public static DragEventHandler OnDragDrop;
+    public static DragEventHandler OnDragEnter;
+    public static EventHandler     OnDragLeave;
+    public static DragEventHandler OnDragOver;
+
+    public static void Initialize(Control gamePanel);   // called by PanelGame
+}
+</code></pre>
+
+<p>A plugin that wants to enable drag-from-list-to-world subscribes inside its own handler:</p>
+
+<pre><code>GameDragDropEventHandlers.OnDragEnter += MyBrowser_HandleDragEnter;
+GameDragDropEventHandlers.OnDragOver  += MyBrowser_HandleDragOver;
+GameDragDropEventHandlers.OnDragDrop  += MyBrowser_HandleDragDrop;
+</code></pre>
+
+<p>The Jawa Toolbox's <code>FormObjectBrowser</code> uses this to spawn temporary objects in the live world as the user drags from the object list. See <a href="../../UtinniPlugins/docs/jawa-toolbox.html#object-browser">UtinniPlugins/docs/jawa-toolbox.md</a>.</p>
+
+<h2>Standalone panels and <code>IEditorForm</code>s</h2>
+
+<p><code>IEditorForm</code> is for free-standing tool windows (modeless dialogs). The Jawa Toolbox uses it for the Object Browser:</p>
+
+<pre><code>public class FormObjectBrowserDef : IEditorForm
+{
+    public string GetName() =&gt; "Object Browser";
+
+    public Form Create(IEditorPlugin editorPlugin, List&lt;Form&gt; parentChildren)
+    {
+        var form = new FormObjectBrowser(editorPlugin);
+        parentChildren.Add(form);
+        return form;
+    }
+}
+
+public class MyPlugin : IEditorPlugin
+{
+    public List&lt;IEditorForm&gt; GetForms() =&gt;
+        new List&lt;IEditorForm&gt; { new FormObjectBrowserDef() };
+}
+</code></pre>
+
+<p><code>SubPanelContainer</code> is for grouped right-rail tabs:</p>
+
+<pre><code>public List&lt;SubPanelContainer&gt; GetStandalonePanels()
+{
+    var container = new SubPanelContainer("Controls");
+    container.Add(new ScenePanel());
+    container.Add(new SnapshotPanel());
+    return new List&lt;SubPanelContainer&gt; { container };
+}
+</code></pre>
+
+<h2>Anatomy of a custom title bar</h2>
+
+<p>If you want to add a button to <code>FormMain</code>'s title bar from a plugin, you have two options:</p>
+
+<ol>
+  <li><strong>Title-bar dropdown</strong> &mdash; return <code>UtinniTitlebarDropDownButton</code>s from your plugin (currently this is plumbed via the standalone-panels mechanism; see <code>FormMain</code> for the exact attachment point).</li>
+  <li><strong>Roll your own form chrome</strong> &mdash; for <code>IEditorForm</code>-returned windows, you can opt into the same headless-chrome pattern by implementing <code>WndProc</code> similarly to <code>FormMain</code>. See <code>Native.cs</code> for the constants:</li>
+</ol>
+
+<pre><code>protected override void WndProc(ref Message m)
+{
+    if (m.Msg == Native.WM_NCHITTEST)
+    {
+        var p = PointToClient(Cursor.Position);
+        if (p.Y &lt; titleBarHeight) { m.Result = (IntPtr)Native.WM_HitTests.HTCAPTION; return; }
+    }
+    base.WndProc(ref m);
+}
+</code></pre>
+
+<h2>Patterns</h2>
+
+<h3>Async UI updates without blocking the game</h3>
+
+<pre><code>private async Task PollViewAsync()
+{
+    while (!IsDisposed)
+    {
+        await Task.Delay(100);   // 10 Hz UI refresh
+
+        // Pull state on the game thread...
+        var tcs = new TaskCompletionSource&lt;float&gt;();
+        GroundSceneCallbacks.AddUpdateLoopCall(() =&gt;
+            tcs.SetResult(Terrain.Get().GetTimeOfDay()));
+        var tod = await tcs.Task;
+
+        // ...then push to UI.
+        this.Invoke((MethodInvoker)(() =&gt; lblTod.Text = $"ToD: {tod:0.00}"));
+    }
+}
+</code></pre>
+
+<h3>Enabling/disabling controls per game state</h3>
+
+<pre><code>public HelloSubPanel()
+{
+    btn.Enabled = false;
+    GameCallbacks.AddSetupSceneCall(() =&gt;
+        this.Invoke((MethodInvoker)(() =&gt; btn.Enabled = true)));
+    GameCallbacks.AddCleanupSceneCall(() =&gt;
+        this.Invoke((MethodInvoker)(() =&gt; btn.Enabled = false)));
+}
+</code></pre>
+
+<h3>Reading from <code>ut.ini</code> for plugin settings</h3>
+
+<pre><code>var ini = new UtINI("settings.ini");          // resolves relative to plugin assembly dir
+ini.AddSetting("UI", "panelWidth", "417", UtINI.Value.Types.VtInt);
+ini.Load();
+int w = ini.GetInt("UI", "panelWidth");
+</code></pre>
+
+<h2>Don'ts</h2>
+
+<ul>
+  <li><strong>Don't use vanilla WinForms controls</strong> (<code>Button</code>, <code>TextBox</code>, etc.) in Utinni UI &mdash; they ignore the theme and look out of place. Use <code>Utinni*</code>.</li>
+  <li><strong>Don't anchor controls expecting flexible width.</strong> The right rail is a fixed 417 px; anchor <code>Left</code>/<code>Right</code> instead of <code>Fill</code>.</li>
+  <li><strong>Don't call <code>MessageBox.Show</code> from a game-thread callback.</strong> Marshal first.</li>
+  <li><strong>Don't open <code>Application.OpenForms</code> from a constructor</strong> &mdash; <code>FormMain</code> isn't built yet at that point.</li>
+</ul>
+
+<h2>See also</h2>
+
+<ul>
+  <li><a href="bridge.html">Bridge</a> &mdash; where <code>UI/</code> sits in the broader picture.</li>
+  <li><a href="plugin-framework.html">Plugin framework</a> &mdash; how <code>GetSubPanels()</code> / <code>GetForms()</code> / <code>GetStandalonePanels()</code> are consumed by <code>FormMain</code>.</li>
+  <li><a href="hotkeys.html">Hotkeys</a>, <a href="undo-redo.html">Undo / Redo</a>.</li>
+  <li>The Jawa Toolbox's panels are the canonical worked example: <a href="../../UtinniPlugins/docs/jawa-toolbox.html">UtinniPlugins/docs/jawa-toolbox.md</a>.</li>
+</ul>
+
+</main>
+<footer>
+  Utinni &mdash; SWG client modding framework. Documentation for the fork at <code>D:/Code/Utinni</code>.
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>

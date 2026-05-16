@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Architecture — Utinni</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <h1><span class="accent">Utinni</span> — Architecture</h1>
+  <div class="sub">How the pieces fit together.</div>
+</header>
+<nav class="top">
+  <a href="index.html">Overview</a>
+  <a href="architecture.html" class="active">Architecture</a>
+  <a href="injection.html">Injection</a>
+  <a href="core.html">Native Core</a>
+  <a href="bridge.html">Managed Bridge</a>
+  <a href="plugin-framework.html">Plugin Framework</a>
+  <a href="callbacks.html">Callbacks</a>
+  <a href="ui-framework.html">UI</a>
+  <a href="hotkeys.html">Hotkeys</a>
+  <a href="undo-redo.html">Undo/Redo</a>
+  <a href="sdk.html">SDK</a>
+  <a href="build.html">Build</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="internals.html">Internals</a>
+  <a href="regen-bindings.html">Bindings</a>
+  <a href="glossary.html">Glossary</a>
+</nav>
+
+<main>
+
+<h1>Architecture</h1>
+
+<div class="callout info">
+  <strong>Audience:</strong> everyone. This is the orientation page &mdash; read it first.
+</div>
+
+<p>
+  Utinni's job is to put <strong>arbitrary user code inside a running SWG client</strong> &mdash;
+  both unmanaged C++ and managed .NET &mdash; and give that code (a) the ability to
+  react to game events, (b) a UI it can draw, (c) a way to package itself as a
+  plugin, and (d) an editor host that re-parents the game window. It does this by
+  combining four classic techniques:
+</p>
+
+<ol>
+  <li><strong>Suspended-process injection</strong> &mdash; <code>Launcher.exe</code> starts <code>SwgClient_r.exe</code>
+   with <code>CREATE_SUSPENDED</code>, patches the entry point with <code>EB FE</code> (jump-to-self),
+   resumes the thread, waits for <code>EIP</code> to land on the EP, calls
+   <code>CreateRemoteThread(LoadLibraryA, "UtinniCore.dll")</code>, restores the EP.</li>
+  <li><strong>Function detouring</strong> &mdash; <code>UtinniCore.dll</code>'s <code>DllMain</code> spawns a thread that
+   uses <a href="https://github.com/DarthTon/DetourXS">DetourXS</a> to install ~25 hooks
+   at hard-coded RVAs that correspond to known SWG client functions
+   (<code>Game::install</code>, <code>GroundScene::draw</code>, <code>CuiManager::render</code>, etc.).</li>
+  <li><strong>In-process CLR hosting</strong> &mdash; once detours and C++ plugins are loaded,
+   <code>clr::load()</code> calls <code>CLRCreateInstance</code> / <code>ICLRRuntimeHost::Start</code> to bring
+   up the .NET v4.0.30319 runtime, then <code>ExecuteInDefaultAppDomain</code> invokes
+   <code>UtinniCoreDotNet.Startup.EntryPoint</code>.</li>
+  <li><strong>MEF plugin discovery</strong> &mdash; managed <code>PluginLoader</code> scans <code>Plugins/*</code> via
+   <code>DirectoryCatalog</code>, MEF composes anything implementing <code>IPlugin</code> /
+   <code>IEditorPlugin</code>, and <code>FormMain</code> wires the plugin-contributed
+   <code>SubPanel</code>s, forms, hotkeys, and undo-event handlers into the editor.</li>
+</ol>
+
+<h2>High-level topology</h2>
+
+<div class="mermaid">
+flowchart TB
+  classDef external fill:#231720,stroke:#ff7676,color:#d6e1ee
+  classDef launcher fill:#2b231a,stroke:#ffb338,color:#d6e1ee
+  classDef native   fill:#28344a,stroke:#57c1ff,color:#d6e1ee
+  classDef managed  fill:#1d2a23,stroke:#6dd58c,color:#d6e1ee
+  classDef plugin   fill:#2a1d2b,stroke:#cc7be0,color:#d6e1ee
+
+  User["User double-clicks<br/>Launcher.exe (+ cmd args)"]:::external
+
+  subgraph LauncherProc["Launcher process"]
+    Launcher["Launcher.exe<br/>· read ut.ini<br/>· locate SwgClient_r.exe<br/>· validate ProductName='Star Wars Galaxies'<br/>· CreateProcess(suspended)<br/>· patch EP, inject, restore"]:::launcher
+  end
+
+  subgraph SWGProc["SwgClient_r.exe (after injection)"]
+    direction TB
+    SWG["SwgClient_r.exe<br/>(DirectX 9, 32-bit)"]:::external
+    Core["UtinniCore.dll<br/>· ~25 DetourXS hooks<br/>· ImGui + ImGuizmo<br/>· spdlog<br/>· UtINI (ut.ini, utinni.cfg)<br/>· C++ PluginManager<br/>· CLR host"]:::native
+    DotNet["UtinniCoreDotNet.dll<br/>· Startup.EntryPoint<br/>· PluginLoader (MEF)<br/>· Callbacks (Game/GroundScene/Object/Cui/ImGui)<br/>· FormMain (editor)<br/>· HotkeyManager · UndoRedoManager<br/>· WinForms controls + theme"]:::managed
+    CppPlugins["C++ Plugins<br/>Plugins/&lt;name&gt;/*.dll"]:::plugin
+    NetPlugins[".NET Plugins<br/>Plugins/&lt;name&gt;/*.dll<br/>IPlugin / IEditorPlugin"]:::plugin
+  end
+
+  User --> Launcher
+  Launcher -- CreateRemoteThread\nLoadLibraryA --> Core
+  Core -- detours --> SWG
+  Core -- C++ PluginManager loads --> CppPlugins
+  Core -- CLR host\nExecuteInDefaultAppDomain --> DotNet
+  DotNet -- MEF DirectoryCatalog --> NetPlugins
+  CppPlugins -- "utinni::*" --> Core
+  NetPlugins -- "UtinniCore.* (P/Invoke)" --> Core
+  NetPlugins -- "Callbacks / UI / Undo" --> DotNet
+  DotNet -- "P/Invoke (CppSharp)" --> Core
+</div>
+
+<h2>Layered view</h2>
+
+<div class="mermaid">
+flowchart TB
+  classDef game fill:#231720,stroke:#ff7676,color:#d6e1ee
+  classDef nativeShim fill:#28344a,stroke:#57c1ff,color:#d6e1ee
+  classDef nativeCore fill:#1c2935,stroke:#57c1ff,color:#d6e1ee
+  classDef gen fill:#2a1d2b,stroke:#cc7be0,color:#d6e1ee
+  classDef managed fill:#1d2a23,stroke:#6dd58c,color:#d6e1ee
+  classDef plugin fill:#2b231a,stroke:#ffb338,color:#d6e1ee
+
+  Game["SwgClient_r.exe — DirectX 9 native, ~2010 SOE/SWGEmu binary"]:::game
+
+  subgraph N["UtinniCore (native, C++17, /clr off)"]
+    Shim["swg/*  — per-subsystem shim files<br/>(client, game, scene, graphics, object, ui, misc, camera, appearance)<br/>each declares native pointers + detour() + patch() + utinni:: API"]:::nativeShim
+    Cb["Native callbacks<br/>(addInstallCallback, addMainLoopCallback,<br/>addSetSceneCallback, addOnReceiveSystemMessageCallback, …)"]:::nativeShim
+    PM["plugin_framework / PluginManager<br/>(loads Plugins/*/*.dll, calls createPlugin())"]:::nativeShim
+    Util["utility/  log · memory · string · utility<br/>imgui_impl, imgui_gizmo (in swg/ui)"]:::nativeShim
+    Host["CLR host (mscoree, ICLRRuntimeHost) — clr.cpp"]:::nativeCore
+  end
+
+  Game <-- DetourXS hooks at hard-coded RVAs --> Shim
+
+  subgraph G["Generated bindings (CppSharp)"]
+    GenCs["UtinniCoreDotNet/Generated/UtinniCore.cs<br/>(P/Invoke to mangled native symbols)"]:::gen
+    Edited["Generated/StdEdited.cs (hand-edited std::basic_string wrapper)"]:::gen
+  end
+
+  Shim -. parsed by CppSharp .-> GenCs
+
+  subgraph M["UtinniCoreDotNet (managed, C# 7.3, .NET 4.7.2 x86)"]
+    Entry["Startup.EntryPoint  (called by clr.cpp)"]:::managed
+    CbMgd["Callbacks/<br/>· GameCallbacks · GroundSceneCallbacks<br/>· ObjectCallbacks · CuiCallbacks · ImGuiCallbacks"]:::managed
+    PF["PluginFramework/<br/>· IPlugin · IEditorPlugin · PluginLoader (MEF)"]:::managed
+    UI["UI/  Controls · Forms (FormMain · PanelGame) · Theme · DragDrop"]:::managed
+    HK["Hotkeys/  Hotkey · HotkeyManager (.ini persisted)"]:::managed
+    UR["UndoRedo/  IUndoCommand · UndoRedoManager"]:::managed
+    Cmds["Commands/  WorldSnapshotCommands (4 built-in)"]:::managed
+    UtilM["Utility/  Log · Native"]:::managed
+  end
+
+  Host -- ExecuteInDefaultAppDomain --> Entry
+  Entry --> CbMgd & PF & UI & HK & UR
+  GenCs --> CbMgd
+  GenCs --> M
+
+  subgraph P["Plugins"]
+    CppP["C++ plugins<br/>UtinniPlugin subclass +<br/>UTINNI_PLUGIN factory"]:::plugin
+    NetP[".NET runtime plugins (IPlugin)<br/>.NET editor plugins (IEditorPlugin)"]:::plugin
+  end
+
+  PM --> CppP
+  PF --> NetP
+</div>
+
+<h2>The eight things Utinni <em>is</em></h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Capability</th>
+      <th>Where it lives</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>1</td><td>Suspended-process injector with target validation</td><td><code>Launcher/main.cpp</code></td></tr>
+    <tr><td>2</td><td>DetourXS-based hook installer for ~25 client functions</td><td><code>UtinniCore/swg/*</code> + <code>utinni.cpp::createDetours()</code></td></tr>
+    <tr><td>3</td><td>Memory patcher (e.g. <code>EB FE</code> infinite-loop trick, JMP injection)</td><td><code>UtinniCore/utility/memory.h</code> + <code>swg/*::patch()</code></td></tr>
+    <tr><td>4</td><td>dearImgui + ImGuizmo overlay piggy-backing on the D3D9 device</td><td><code>UtinniCore/swg/ui/imgui_impl.*</code></td></tr>
+    <tr><td>5</td><td>spdlog-backed logging, with managed sink callbacks</td><td><code>UtinniCore/utility/log.*</code> + <code>UtinniCoreDotNet/Utility/Log.cs</code></td></tr>
+    <tr><td>6</td><td>In-process CLR host</td><td><code>UtinniCore/clr.cpp</code></td></tr>
+    <tr><td>7</td><td>C++ plugin model: subclass <code>UtinniPlugin</code>, export <code>createPlugin()</code></td><td><code>UtinniCore/plugin_framework/</code></td></tr>
+    <tr><td>8</td><td>.NET plugin model: implement <code>IPlugin</code> / <code>IEditorPlugin</code>, MEF discovery</td><td><code>UtinniCoreDotNet/PluginFramework/</code></td></tr>
+  </tbody>
+</table>
+
+<h2>The four things Utinni <em>gives plugin authors</em></h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Capability</th>
+      <th>Touch point</th>
+      <th>Audience</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>React to game lifecycle / scene / target / messages</td><td><code>Callbacks/*.cs</code> (.NET) or <code>swg/*/add*Callback</code> (C++)</td><td>All plugin authors</td></tr>
+    <tr><td>Draw editor UI (panels, forms, themed controls)</td><td><code>UI/Controls/*</code>, <code>UI/Forms/IEditorForm</code></td><td>.NET editor plugins</td></tr>
+    <tr><td>Bind hotkeys (with chord, scope, INI persistence)</td><td><code>Hotkeys/HotkeyManager</code></td><td>.NET editor plugins</td></tr>
+    <tr><td>Push reversible edits onto an undo stack</td><td><code>IEditorPlugin.AddUndoCommand</code> event + <code>IUndoCommand</code></td><td>.NET editor plugins</td></tr>
+  </tbody>
+</table>
+
+<h2>Process lifecycle in one timeline</h2>
+
+<div class="mermaid">
+sequenceDiagram
+  autonumber
+  participant U as User
+  participant L as Launcher.exe
+  participant S as SwgClient_r.exe
+  participant C as UtinniCore.dll
+  participant N as UtinniCoreDotNet.dll
+  participant P as Plugins
+
+  U->>L: launch (with optional cmd-line cfg args)
+  L->>L: load ut.ini, validate ProductName == "Star Wars Galaxies"
+  L->>S: CreateProcess(CREATE_SUSPENDED)
+  L->>S: patch EP with 0xEB 0xFE (jmp self)
+  L->>S: ResumeThread, poll until EIP==EP
+  L->>S: CreateRemoteThread(LoadLibraryA, "UtinniCore.dll")
+  S->>C: DllMain(DLL_PROCESS_ATTACH) → CreateThread(utinni::main)
+  C->>C: load ut.ini
+  C->>C: createDetours()  ← ~25 DetourXS hooks
+  C->>C: createPatches()  ← memory writes (e.g. midPopCell JMP)
+  C->>C: pluginManager.loadPlugins()
+  C->>P: createPlugin() + init()   [native plugins]
+  C->>C: CoInitializeEx + clr::load()
+  C->>N: ICLRRuntimeHost::ExecuteInDefaultAppDomain("UtinniCoreDotNet.Startup.EntryPoint")
+  N->>N: Application.EnableVisualStyles + Log.Setup
+  N->>N: new PluginLoader()  → MEF DirectoryCatalog over Plugins/*
+  N->>P: compose IPlugin / IEditorPlugin parts
+  N->>N: GameCallbacks/GroundSceneCallbacks/ObjectCallbacks/CuiCallbacks Initialize()
+  L-->>S: restore original EP bytes, ResumeThread (main thread proceeds)
+  S->>S: SwgClient WinMain() runs — but detours are already live
+  N-->>N: if Editor.enableEditorMode → Application.Run(new FormMain(...))
+  N->>P: FormMain consumes IEditorPlugin.GetForms / GetSubPanels / GetStandalonePanels
+  S-->>U: editor window with embedded game appears
+</div>
+
+<h2>Threading model (the part that bites plugin authors)</h2>
+
+<p>There are <strong>three threads of consequence</strong>:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Thread</th>
+      <th>Owned by</th>
+      <th>Runs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Game thread</strong></td><td>SWG</td><td>The main game loop. All native detours fire here. All callback delegates fire here.</td></tr>
+    <tr><td><strong>UI thread</strong> (STA)</td><td>UtinniCoreDotNet</td><td><code>FormMain</code> and every WinForms control. Created when <code>Application.Run(new FormMain())</code> blocks.</td></tr>
+    <tr><td><strong>Native init thread</strong></td><td>UtinniCore</td><td><code>utinni::main()</code> itself runs on a thread spawned by <code>DllMain</code>; it's done after init.</td></tr>
+  </tbody>
+</table>
+
+<p>Plugin authors must respect this division:</p>
+
+<ul>
+  <li><strong>Callbacks fire on the game thread.</strong> Touching WinForms directly from inside
+  a callback throws <code>InvalidOperationException</code>. Marshal with <code>Control.Invoke</code>
+  or queue work back into a callback the UI can drain.</li>
+  <li><strong>WinForms input</strong> (key/mouse on <code>PanelGame</code>) fires on the UI thread; if it
+  needs to call into the game engine, it should enqueue via
+  <code>GameCallbacks.AddMainLoopCall(...)</code> or <code>GroundSceneCallbacks.AddUpdateLoopCall(...)</code>.</li>
+  <li><strong>Long work blocks the game.</strong> A <code>Thread.Sleep</code> inside a callback freezes
+  rendering. Move work to a background <code>Task</code> and re-marshal results.</li>
+</ul>
+
+<p>See <a href="callbacks.html">Callbacks</a> for the per-callback threading guarantees.</p>
+
+<h2>Configuration files</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>File</th>
+      <th>Owner</th>
+      <th>Purpose</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><code>ut.ini</code></td><td>UtinniCore + Launcher</td><td>Master settings. Sections: <code>[Launcher]</code> (swgClientPath/Name), <code>[UtinniCore]</code> (enableEditorMode, enableInternalUi, useSwgOverrideCfg, autoLoadScene), <code>[Log]</code>, <code>[Plugins]</code> (<code>plugin_0=true,MyPlugin</code>).</td></tr>
+    <tr><td><code>utinni.cfg</code></td><td>UtinniCore</td><td>Replacement for SWG's own <code>client.cfg</code>. Loaded by the override-detour on <code>0x00401000</code>. Lets Utinni dictate <code>loginServerPort0/Address0</code>, <code>groundScene</code>, <code>freeChaseCameraMaximumZoom</code>, <code>splashTimeoutSeconds=0</code>, etc.</td></tr>
+    <tr><td><code>&lt;plugin&gt;/settings.ini</code></td><td>per plugin</td><td>Plugin-defined; managed via the <code>UtINI</code> native wrapper from C#.</td></tr>
+    <tr><td><code>&lt;plugin&gt;/input.ini</code></td><td><code>HotkeyManager</code></td><td>Rebound hotkeys (per plugin or per form).</td></tr>
+    <tr><td><code>logs/utinni.log</code> (default)</td><td>spdlog</td><td>All native + managed log output (sink callbacks merge them).</td></tr>
+  </tbody>
+</table>
+
+<h2>Trust boundaries and what can break</h2>
+
+<div class="mermaid">
+flowchart LR
+  classDef stable fill:#1d2a23,stroke:#6dd58c,color:#d6e1ee
+  classDef wobbly fill:#2b231a,stroke:#ffb338,color:#d6e1ee
+  classDef fragile fill:#231720,stroke:#ff7676,color:#d6e1ee
+
+  Plugin["Your plugin"]:::stable
+  Cb["Callbacks API"]:::stable
+  Bridge["Managed bridge<br/>(typed P/Invoke wrappers)"]:::stable
+  Gen["Generated/UtinniCore.cs<br/>(CppSharp output)"]:::wobbly
+  Shim["UtinniCore swg/* shims"]:::wobbly
+  RVA["Hard-coded RVAs"]:::fragile
+  SWG["SWG client binary"]:::fragile
+
+  Plugin --> Cb --> Bridge --> Gen --> Shim --> RVA --> SWG
+</div>
+
+<ul>
+  <li><strong>Stable surface (green):</strong> the curated managed bridge &mdash; <code>Callbacks/*</code>,
+  <code>PluginFramework/*</code>, <code>UI/*</code>, <code>Hotkeys/*</code>, <code>UndoRedo/*</code>, <code>Commands/*</code>. These
+  are the things plugins should depend on.</li>
+  <li><strong>Wobbly (yellow):</strong> the auto-generated bindings and the C++ shim layer.
+  Public API there is mostly stable, but exact mangled entry points change
+  if the headers change.</li>
+  <li><strong>Fragile (red):</strong> the hard-coded RVAs in <code>swg/*/*.cpp</code>. They are pinned to
+  a specific SWG build. A different <code>SwgClient_r.exe</code> will need new
+  addresses &mdash; see <a href="internals.html">Internals</a>.</li>
+</ul>
+
+<h2>What's <em>not</em> in Utinni</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Out of scope</th>
+      <th>Why / where it lives instead</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>Server-side modding</td><td>This is <em>client</em> injection. Use SWG-Source/swg-main for server mods.</td></tr>
+    <tr><td>Asset extraction (.tre browsing as a CLI)</td><td>Utinni reads from the running client. Use <code>TreeFileExtractor.exe</code> (in swg-client/tools) for offline.</td></tr>
+    <tr><td>Client <em>source</em> changes</td><td>Out of scope; Utinni works with stock binaries. See <a href="../../swg-client/docs/index.html">swg-client</a> for source-level work.</td></tr>
+    <tr><td>Updates for non-Pre-CU builds (NGE-only, …)</td><td>The hard-coded RVAs are pinned to the SWGEmu Pre-CU client.</td></tr>
+    <tr><td>Anti-cheat circumvention against live shards</td><td>Out of scope and not what this tool is for.</td></tr>
+  </tbody>
+</table>
+
+<h2>Next</h2>
+
+<p>Continue with one of:</p>
+
+<ul>
+  <li><a href="injection.html">Injection &amp; boot</a> &mdash; the suspended-process technique and DllMain dance.</li>
+  <li><a href="core.html">Native core</a> &mdash; the C++ shim catalog.</li>
+  <li><a href="bridge.html">Managed bridge</a> &mdash; CppSharp output, FormMain wiring.</li>
+  <li><a href="plugin-framework.html">Plugin framework</a> &mdash; <code>IPlugin</code> / <code>IEditorPlugin</code> contracts.</li>
+  <li><a href="tutorial.html">Tutorial</a> &mdash; build a hello-world editor plugin.</li>
+</ul>
+
+</main>
+<footer>
+  Utinni &mdash; SWG client modding framework. Documentation for the fork at <code>D:/Code/Utinni</code>.
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>

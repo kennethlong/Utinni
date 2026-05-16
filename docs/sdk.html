@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>SDK &amp; templates — Utinni</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <h1><span class="accent">Utinni</span> — SDK &amp; templates</h1>
+  <div class="sub">Templates, examples, and the VSIX.</div>
+</header>
+<nav class="top">
+  <a href="index.html">Overview</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="injection.html">Injection</a>
+  <a href="core.html">Native Core</a>
+  <a href="bridge.html">Managed Bridge</a>
+  <a href="plugin-framework.html">Plugin Framework</a>
+  <a href="callbacks.html">Callbacks</a>
+  <a href="ui-framework.html">UI</a>
+  <a href="hotkeys.html">Hotkeys</a>
+  <a href="undo-redo.html">Undo/Redo</a>
+  <a href="sdk.html" class="active">SDK</a>
+  <a href="build.html">Build</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="internals.html">Internals</a>
+  <a href="regen-bindings.html">Bindings</a>
+  <a href="glossary.html">Glossary</a>
+</nav>
+<main>
+
+<h1>SDK &amp; templates</h1>
+
+<div class="callout info"><strong>Audience:</strong> anyone starting a new plugin.</div>
+
+<p>Utinni ships first-party project templates and example plugins under
+<a href="../../sdk/"><code>sdk/</code></a>. Two delivery paths:</p>
+
+<ul>
+  <li><strong>Visual Studio templates via a VSIX</strong> — <code>sdk/UtinniPluginTemplates/Vsix/</code>
+    packages a project-template extension that adds <em>UtinniDotNetPlugin</em> and
+    <em>UtinniDotNetEditorPlugin</em> entries to the New Project dialog. Recommended
+    for .NET plugin authors.</li>
+  <li><strong>Copy-from-template</strong> — the <code>sdk/UtinniCppPluginTemplate/</code> and
+    <code>sdk/examples/*</code> directories are full projects you can clone. Required for
+    native C++ plugins (no VSIX for those).</li>
+</ul>
+
+<h2>What's in <code>sdk/</code></h2>
+
+<pre><code>sdk/
+├── UtinniCppPluginTemplate/
+│   ├── UtinniCppPlugin.props        ← shared MSBuild props for C++ plugins
+│   ├── UtinniCppPluginTemplate.sln
+│   └── UtinniCppPluginTemplate/
+│       ├── UtinniCppPluginTemplate.vcxproj
+│       ├── plugin.cpp                ← minimal subclass of utinni::UtinniPlugin
+│       ├── UtinniPlugin.rc + resource.h
+│
+├── UtinniPluginTemplates/
+│   ├── DotNetPluginTemplate/         ← runtime-plugin (.IPlugin) starter
+│   │   ├── DotNetPluginTemplate.csproj      (template-source project)
+│   │   ├── DotNetPluginTemplate.vstemplate  (manifest)
+│   │   ├── ProjectTemplate.csproj           ← the actual instantiated csproj
+│   │   ├── Plugin.cs                         ← Plugin class with $projectname$ tokens
+│   │   ├── AssemblyInfo.cs
+│   │   └── TJT.ico
+│   ├── DotNetEditorPluginTemplate/   ← editor-plugin (IEditorPlugin) starter
+│   │   └── (same shape, with extra UI/Forms + UI/SubPanels folders)
+│   └── Vsix/                          ← packages both into a VS extension
+│       ├── Vsix.csproj
+│       ├── PluginTemplateWizardPackage.cs
+│       ├── source.extension.vsixmanifest
+│       ├── Wizards/DotNetSolutionWizard.cs    ← runs at New Project time
+│       ├── Utility/Props.cs                    ← writes Directory.Build.props
+│       └── key.snk
+│
+└── examples/
+    ├── ExampleCppPlugin/             ← fully-built native plugin
+    │   ├── ExampleCppPlugin.vcxproj
+    │   ├── plugin.cpp
+    │   └── example_command_parser.h / .cpp
+    └── ExampleEditorPlugin/          ← fully-built editor plugin
+        ├── ExampleEditorPlugin.csproj
+        ├── ExampleEditorPlugin.cs
+        ├── ExampleEditorSubPanel.cs
+        ├── ExampleEditorSubPanel.Designer.cs
+        ├── ExampleEditorSubPanel.resx
+        └── Properties/AssemblyInfo.cs</code></pre>
+
+<h2>.NET plugin via VSIX (recommended)</h2>
+
+<h3>Install</h3>
+
+<ol>
+  <li>Open <code>sdk/UtinniPluginTemplates/Vsix/Vsix.csproj</code> in Visual Studio 2019
+    (the manifest currently targets <code>[16.0,17.0)</code>).</li>
+  <li>Build → produces <code>bin/Release/Vsix.vsix</code>.</li>
+  <li>Double-click the <code>.vsix</code> → installer adds the templates.</li>
+</ol>
+
+<p>After install, <strong>File → New → Project</strong> offers:</p>
+
+<ul>
+  <li><strong>UtinniDotNetPlugin</strong> — runtime plugin (<code>IPlugin</code>).</li>
+  <li><strong>UtinniDotNetEditorPlugin</strong> — editor plugin (<code>IEditorPlugin</code>).</li>
+</ul>
+
+<h3>What the wizard does</h3>
+
+<p><code>Wizards/DotNetSolutionWizard.cs</code> runs on project creation:</p>
+
+<ol>
+  <li><strong>First-project guard.</strong> Detects whether the new project will live in an
+    existing solution or a fresh one.</li>
+  <li><strong><code>Props.CreateDotNetDirectoryProps()</code></strong> — writes (or updates)
+    <code>Directory.Build.props</code> at the solution root, defining:
+    <ul>
+      <li><code>$(PluginOutputDir)</code> — <code>$(SolutionDir)\bin\$(Configuration)\Plugins\$(ProjectName)\</code></li>
+      <li><code>$(UtinniCoreDotNetPath)</code> — relative path the user must edit to point at
+        the built <code>UtinniCoreDotNet.dll</code>.</li>
+      <li>Per-config property groups for Debug / Release / RelWithDbgInfo, each
+        pinned to <code>x86</code> and <code>LangVersion=7.3</code>.</li>
+    </ul>
+  </li>
+  <li><strong>RelWithDbgInfo.</strong> Adds the configuration to the new solution if it's
+    not already there.</li>
+</ol>
+
+<h3>Token substitution</h3>
+
+<p><code>ProjectTemplate.csproj</code> and <code>Plugin.cs</code> use VSTemplate placeholders:</p>
+
+<table>
+  <thead>
+    <tr><th>Placeholder</th><th>Substitution</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>$guid1$</code></td><td>new project GUID</td></tr>
+    <tr><td><code>$safeprojectname$</code></td><td>project name with bad characters stripped</td></tr>
+    <tr><td><code>$projectname$</code></td><td>project name as typed</td></tr>
+    <tr><td><code>$targetframeworkversion$</code></td><td>matches the user's selected .NET target</td></tr>
+  </tbody>
+</table>
+
+<p>After instantiation, <code>Plugin.cs</code> has e.g. <code>MyAwesomePlugin</code> everywhere
+<code>$projectname$</code> appeared.</p>
+
+<h2>.NET plugin without the VSIX</h2>
+
+<p>If you don't want to install the extension, copy the relevant <code>Plugin.cs</code> and
+<code>.csproj</code> content into your own project and reference <code>UtinniCoreDotNet.dll</code>
+with <code>HintPath</code>:</p>
+
+<pre><code>&lt;ItemGroup&gt;
+  &lt;Reference Include="UtinniCoreDotNet"&gt;
+    &lt;HintPath&gt;$(UtinniCoreDotNetPath)UtinniCoreDotNet.dll&lt;/HintPath&gt;
+    &lt;Private&gt;False&lt;/Private&gt;
+  &lt;/Reference&gt;
+  &lt;Reference Include="System.Windows.Forms" /&gt;
+  &lt;Reference Include="System.Drawing" /&gt;
+&lt;/ItemGroup&gt;</code></pre>
+
+<p>Key project properties:</p>
+
+<pre><code>&lt;TargetFrameworkVersion&gt;v4.7.2&lt;/TargetFrameworkVersion&gt;
+&lt;PlatformTarget&gt;x86&lt;/PlatformTarget&gt;
+&lt;OutputType&gt;Library&lt;/OutputType&gt;
+&lt;LangVersion&gt;7.3&lt;/LangVersion&gt;
+&lt;AllowUnsafeBlocks&gt;true&lt;/AllowUnsafeBlocks&gt;</code></pre>
+
+<p>Configure your output to write into <code>bin/&lt;Config&gt;/Plugins/&lt;PluginName&gt;/</code>
+either via <code>OutputPath</code> or a <code>Directory.Build.props</code> like the wizard's.</p>
+
+<h2>C++ plugin</h2>
+
+<ol>
+  <li>Copy <code>sdk/UtinniCppPluginTemplate/</code> somewhere — typically into the same
+    solution that builds <code>UtinniCore</code> so the project reference resolves.</li>
+  <li>Rename the folder, <code>.sln</code>, <code>.vcxproj</code>, and any internal class/file names
+    from <code>UtinniCppPluginTemplate</code> to your name.</li>
+  <li>Edit <code>plugin.cpp</code> — set <code>Information { name, description, author }</code> and
+    anything you want to run in <code>init()</code>.</li>
+  <li>Build.</li>
+</ol>
+
+<p>The shared <code>UtinniCppPlugin.props</code>:</p>
+
+<pre><code>&lt;PropertyGroup&gt;
+  &lt;OutDir&gt;$(SolutionDir)bin\$(Configuration)\Plugins\$(ProjectName)\&lt;/OutDir&gt;
+  &lt;IntDir&gt;$(ProjectDir)obj\$(Configuration)\&lt;/IntDir&gt;
+&lt;/PropertyGroup&gt;
+&lt;ItemDefinitionGroup&gt;
+  &lt;ClCompile&gt;
+    &lt;PreprocessorDefinitions&gt;SPDLOG_NO_EXCEPTIONS;$(Configuration)=DEBUG;%(Preproc...)&lt;/PreprocessorDefinitions&gt;
+    &lt;LanguageStandard&gt;stdcpp17&lt;/LanguageStandard&gt;
+    &lt;AdditionalIncludeDirectories&gt;...UtinniCore;...external;%(...)&lt;/AdditionalIncludeDirectories&gt;
+  &lt;/ClCompile&gt;
+  &lt;Link&gt;
+    &lt;AdditionalDependencies&gt;UtinniCore.lib;%(AdditionalDependencies)&lt;/AdditionalDependencies&gt;
+  &lt;/Link&gt;
+&lt;/ItemDefinitionGroup&gt;</code></pre>
+
+<p>so any <code>.vcxproj</code> that <code>&lt;Import&gt;</code>s this props file inherits the right
+defines, include paths, and link line. Adapt for your own plugin if you
+move the project tree.</p>
+
+<h2>Example plugins</h2>
+
+<h3><code>examples/ExampleCppPlugin</code></h3>
+
+<pre><code>class ExampleUtinniPlugin : public utinni::UtinniPlugin
+{
+    Information info = { "Example C++ Plugin",
+                         "Adds 'example' slash command",
+                         "ptklatt" };
+public:
+    void init() override {
+        utinni::CuiChatWindow::addCreateCommandParserCallback(
+            &amp;example::ExampleCommandParser::create);
+    }
+    const Information&amp; getInformation() override { return info; }
+};
+
+UTINNI_PLUGIN { return new ExampleUtinniPlugin(); }</code></pre>
+
+<p><code>example_command_parser.{h,cpp}</code> subclasses <code>utinni::CommandParser</code> to add a
+single command. Read these for the canonical "add a slash command" pattern.</p>
+
+<h3><code>examples/ExampleEditorPlugin</code></h3>
+
+<p>The most useful reference for new .NET editor plugin authors:</p>
+
+<ul>
+  <li><strong><code>ExampleEditorPlugin.cs</code></strong> — implements <code>IEditorPlugin</code>, returns a single
+    <code>SubPanel</code> from <code>GetSubPanels()</code>, logs a creation message.</li>
+  <li><strong><code>ExampleEditorSubPanel.cs</code></strong> — a WinForms <code>UserControl</code> (technically a
+    <code>SubPanel</code>) that:
+    <ul>
+      <li>Subscribes to <code>ObjectCallbacks.AddOnTargetCallback</code>, displays the
+        targeted object's filename in a label.</li>
+      <li>Subscribes to <code>ImGuiCallbacks.AddOnPositionChangedCallback</code> and
+        <code>AddOnRotationChangedCallback</code>, displays current position.</li>
+      <li>Has buttons to add / remove a world-snapshot node at the targeted
+        object's position, demonstrating undo command emission.</li>
+      <li>Uses <code>GroundSceneCallbacks.AddUpdateLoopCall</code> to read state per-frame
+        and marshal to UI via async <code>Task.Delay</code> loop.</li>
+    </ul>
+  </li>
+</ul>
+
+<p>Reading this end-to-end is the fastest way to understand "what does a
+working editor plugin look like."</p>
+
+<h2>Build outputs (final layout)</h2>
+
+<p>A built install ready for the SWG client folder:</p>
+
+<pre><code>&lt;install&gt;/
+├── Launcher.exe
+├── UtinniCore.dll
+├── UtinniCoreDotNet.dll
+├── ut.ini
+├── utinni.cfg
+└── Plugins/
+    ├── ExampleCppPlugin/
+    │   └── ExampleCppPlugin.dll
+    ├── ExampleEditorPlugin/
+    │   └── ExampleEditorPlugin.dll
+    └── TheJawaToolbox/
+        ├── TheJawaToolbox.dll
+        ├── TheJawaToolboxDotNet.dll
+        ├── settings.ini       (created on first run)
+        └── input.ini          (HotkeyManager)</code></pre>
+
+<p>Followed by the line in <code>ut.ini</code>:</p>
+
+<pre><code>[Plugins]
+plugin_0 = true,ExampleCppPlugin
+plugin_1 = true,ExampleEditorPlugin
+plugin_2 = true,TheJawaToolbox</code></pre>
+
+<h2>See also</h2>
+
+<ul>
+  <li><a href="tutorial.html">Tutorial</a> — step-by-step from VSIX install to first SubPanel.</li>
+  <li><a href="build.html">Build &amp; run</a> — get a usable <code>UtinniCore.dll</code> /
+    <code>UtinniCoreDotNet.dll</code> first.</li>
+  <li><a href="regen-bindings.html">Regenerating bindings</a> — only relevant if you change
+    the C++ public headers.</li>
+  <li>The Jawa Toolbox as a complete worked example:
+    <a href="../../UtinniPlugins/docs/jawa-toolbox.html">UtinniPlugins/docs/jawa-toolbox.html</a>.</li>
+</ul>
+
+</main>
+<footer>
+  Utinni — SWG client modding framework. Documentation for the fork at <code>D:/Code/Utinni</code>.
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>
