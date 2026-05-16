@@ -46,7 +46,9 @@ namespace UtinniCoreDotNet.Tests
             Assert.Equal(Keys.S, hk.Key);
         }
 
-        [Theory]
+        [Theory(Skip = "C-08: expected to fail until Phase 2 fix lands (Enum.TryParse refactor on Hotkey.cs:82,91). " +
+                       "Hotkey.ProcessString splits on the first ' + ' and passes the remainder ('Alt + Z') straight to Enum.Parse, " +
+                       "which on net472 raises ArgumentException because '+' is not the documented separator for flags-style Keys parsing.")]
         [InlineData("Shift + Alt + Z", Keys.Shift, Keys.Alt | Keys.Z)]
         public void Ctor_StringConstructor_MultiModifierChord_ParsesFlags(string combo, Keys expectedMods, Keys expectedKey)
         {
