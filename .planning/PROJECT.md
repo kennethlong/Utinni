@@ -26,7 +26,7 @@ Stability work sequences before plugin work per vision.md's "What that means for
 
 <!-- Shipped and confirmed valuable. -->
 
-(None yet — V1 is the first GSD-managed milestone)
+- [x] **TEST-01 (Tier 1 C# scaffold + CI green on master)** — Validated in Phase 1: GitHub Actions `windows-2022` workflow builds `Utinni.sln /p:Configuration=Release /p:Platform=x86` and runs `dotnet test` on every push/PR to master; CON-T-01 post-build chain (`xcopy data\` + `UtinniCoreDotNetGen.exe`) confirmed firing under CI; xUnit smoke project `UtinniCoreDotNet.Tests` discovers and runs `HotkeyTests.cs`; test-the-tester procedure exercised on throwaway PR proving red-on-failure surfaces and master badge stays green. Foundation enabling every subsequent phase's "gate on green pipeline" contract.
 
 ### Active
 
@@ -122,4 +122,4 @@ Eight inherited open questions (CON-O-01..CON-O-08 from assessment.md) plus thre
 Additional non-locked candidate decisions (D-02 foundations-before-features, D-05 wave-1-plugin-set, D-07 CI-before-anything-else-strategic, D-09 ~6–8 person-week effort estimate) are encoded as **roadmap phase ordering** in ROADMAP.md rather than as ADRs. D-03 (sovereign fork) and D-06 (Jawa Toolbox `*Impl` separation as canonical) are captured here as the Sovereign-Fork Stance section above and as CON-T-05 respectively.
 
 ---
-*Last updated: 2026-05-16 — initial creation via `/gsd:new-project` after `/gsd:ingest-docs` synthesis of vision.md + assessment.md + test-harness-plan.md.*
+*Last updated: 2026-05-16 — Phase 1 complete (CI + Tier 1 C# scaffold). Initial creation via `/gsd:new-project` after `/gsd:ingest-docs` synthesis of vision.md + assessment.md + test-harness-plan.md.*
