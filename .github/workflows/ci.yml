@@ -32,6 +32,42 @@ jobs:
           restore-keys: |
             nuget-${{ runner.os }}-
 
+      # UtinniCore.vcxproj hard-codes the default DXSDK (June 2010) include/lib paths.
+      # windows-2022 runners don't ship d3dx9.h (removed from Win10 SDK), so install the
+      # legacy SDK once and cache the install directory to keep cold-cache CI tolerable.
+      - name: Cache DirectX SDK (June 2010)
+        id: cache-dxsdk
+        uses: actions/cache@v4
+        with:
+          path: C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)
+          key: dxsdk-jun2010-v1
+
+      - name: Install DirectX SDK (June 2010)
+        if: steps.cache-dxsdk.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          # S1023 workaround: the June 2010 installer fails when a newer VC++ 2010 SP1
+          # runtime (x86 or x64) is already installed. windows-2022 ships both; uninstall
+          # them before invoking DXSETUP. See https://support.microsoft.com/help/2728613.
+          $vc2010 = @(
+            '{1F1C2DFC-2D24-3E06-BCB8-725134ADF989}',  # x86 SP1
+            '{1D8E6291-B0D5-35EC-8441-6616F567A0F7}'   # x64 SP1
+          )
+          foreach ($code in $vc2010) {
+            Start-Process msiexec.exe -ArgumentList '/x', $code, '/quiet', '/norestart' -Wait -NoNewWindow
+          }
+          # Official direct download from Microsoft, ~600 MB.
+          $url = 'https://download.microsoft.com/download/a/e/7/ae743f1f-632b-4809-87a9-aa1bb3458e31/DXSDK_Jun10.exe'
+          $exe = Join-Path $env:RUNNER_TEMP 'DXSDK_Jun10.exe'
+          Invoke-WebRequest -Uri $url -OutFile $exe -UseBasicParsing
+          # /U triggers the InstallShield unattended path; default install location is
+          # C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\ which matches
+          # the absolute paths UtinniCore.vcxproj already references.
+          Start-Process $exe -ArgumentList '/U' -Wait -NoNewWindow
+          if (-not (Test-Path 'C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include\d3dx9.h')) {
+            throw 'DXSDK install completed but d3dx9.h was not found at the expected default path.'
+          }
+
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
         # windows-2022 has VS 2022 with v142 toolset preinstalled
