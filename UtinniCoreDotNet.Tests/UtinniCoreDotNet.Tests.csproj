@@ -4,9 +4,9 @@
     <PlatformTarget>x86</PlatformTarget>
     <Platforms>x86</Platforms>
     <!-- Without this, SDK-style emits to bin\x86\Release\net472\ when built via
-         msbuild /p:Platform=x86, but `dotnet test --no-build` probes bin\Release\net472\.
-         Forcing the path to omit Platform keeps the build output and the test
-         discovery in sync. -->
+         msbuild /p:Platform=x86, but `dotnet test` (with the no-build flag)
+         probes bin\Release\net472\. Omitting Platform from the path keeps the
+         build output and the test discovery in sync. -->
     <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
     <LangVersion>7.3</LangVersion>
     <IsPackable>false</IsPackable>
