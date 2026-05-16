@@ -705,27 +705,27 @@ Utinni is a client plugin and injection framework which aims to provide an easie
 
 **If this table seems short, that's because almost everything in the research is either VERIFIED via tools (NuGet registry, repo file reads, GH runner image readme) or CITED from authoritative sources (xunit.net docs, GitHub Actions docs, setup-msbuild README). The assumptions above are the genuine gaps.**
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Is `Microsoft.NET.Test.Sdk 17.13.0` or 17.14.x the right pin for our combo?**
    - What we know: xunit.net official docs cite 17.13.0 + xunit 2.9.3 + xunit.runner.visualstudio 3.1.1. We're going slightly newer on the runner (3.1.5). 17.14.x has been published since but isn't yet cited in any official xunit.net doc we found.
    - What's unclear: whether 17.14.x adds anything we want or removes anything we need. Latest is 18.5.1 per NuGet but jumping to 18.x is more speculative.
-   - Recommendation: Pin `17.13.0` matching the documented combo. Revisit on first CI failure or in Phase 4 when the CLI shim adds more tests.
+   - **RESOLVED:** Pin `17.13.0` matching the documented combo (implemented in Plan 01-01 Task 2). Revisit on first CI failure or in Phase 4 when the CLI shim adds more tests.
 
 2. **Should the badge link target the `actions/workflows/ci.yml` URL (badge-as-deep-link) or just the badge URL inline?**
    - What we know: GitHub docs show both patterns; the deep-link variant (badge wrapped in `[...](url)`) is more common in OSS projects.
    - What's unclear: maintainer preference.
-   - Recommendation: Use the wrapped-deep-link variant per OSS convention (Example 4 above).
+   - **RESOLVED:** Use the wrapped-deep-link variant per OSS convention (implemented in Plan 01-02 Task 2; see Example 4 above).
 
 3. **Does the planner need a separate task to verify the CON-T-01 chain runs on CI before adding the test step?**
    - What we know: The chain is verified to be in place; environmental risk is MEDIUM-LOW.
    - What's unclear: whether the planner wants a one-iteration "build only, no test" CI run first to validate the chain, then a second iteration to add the test step.
-   - Recommendation: Don't bother — the chain and the test are independent. If the chain fails, the test step won't run; if the test fails, the chain succeeded. Single-iteration delivery is fine.
+   - **RESOLVED:** Single-iteration delivery — the chain and the test are independent. If the chain fails, the test step won't run; if the test fails, the chain succeeded. (Implemented as Plan 01-02 Task 1's single CI workflow with msbuild + dotnet test in one job.)
 
 4. **Should the workflow also lint the `.editorconfig` itself?**
    - What we know: There's no standard CI step for `.editorconfig` linting; the rules just apply during build to files VS opens.
    - What's unclear: whether the planner wants a `dotnet format --verify-no-changes` step to fail the build on style violations.
-   - Recommendation: NOT this phase. `dotnet format` requires SDK-style csproj on all targeted projects (we have only one). Defer to Phase 6 when the analyzer-rule .editorconfig lands.
+   - **RESOLVED:** NOT this phase. `dotnet format` requires SDK-style csproj on all targeted projects (we have only one). Deferred to Phase 6 when the analyzer-rule `.editorconfig` lands.
 
 ## Environment Availability
 
