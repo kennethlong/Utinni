@@ -549,7 +549,7 @@ doc in sync so future sessions (human or AI) can see what's done.
 
 | ID    | Item                                              | Status     | Notes |
 | ----- | ------------------------------------------------- | ---------- | ----- |
-| C-01  | DllMain loader-lock                               | open       |       |
+| C-01  | DllMain loader-lock                               | done       | b2f5c16 — fix(C-01): utinni_init exported + DllMain slim + Launcher second CreateRemoteThread (path a); harness scaffolding: 0d56d93; live-SWG human-verify: pending (Task 3 checkpoint) |
 | C-02  | Cross-CRT delete[] in config                      | done       | 8e88879 — Phase 2 Plan 02-02 Task 2 (delete[] removed; TreeFile dtor owns buffer per CON-B-04) |
 | C-03  | `Network::cast` returns uninitialized             | done       | 70038a9 — Phase 2 Plan 02-02 Task 3 (networkId=0; OUT param returned; double-semicolon typo removed) |
 | C-04  | DequeuePostDrawLoopCalls wrong queue              | done       | 9aa0eb9 — Phase 2 Plan 02-01 Task 2 (Drain helper, closes CON-O-02 per D-12) |
