@@ -22,6 +22,11 @@ using System.Runtime.InteropServices;
 // The following GUID is for the ID of the typelib if this project is exposed to COM
 [assembly: Guid("39ab8a43-b916-4c6e-87dd-928b438cae68")]
 
+// Phase 2 (02-01 / Task 1): give the test assembly access to `internal` members
+// so the C-04 regression test in GroundSceneCallbacksTests can invoke the
+// shared `Drain(ConcurrentQueue<Action>)` helper without reflection.
+[assembly: InternalsVisibleTo("UtinniCoreDotNet.Tests")]
+
 // Version information for an assembly consists of the following four values:
 //
 //      Major Version

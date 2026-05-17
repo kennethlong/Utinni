@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <PlatformTarget>x86</PlatformTarget>
+    <Platforms>x86</Platforms>
+    <!-- Phase-1 precedent: prevent SDK-style csproj from emitting to bin\x86\Release\net472\
+         so the test code can resolve the DLL path from AppContext.BaseDirectory via a
+         simple relative walk. -->
+    <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
+    <LangVersion>7.3</LangVersion>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>UtinniCoreDotNet.Tests.Fixtures.BrokenPlugin</RootNamespace>
+    <AssemblyName>BrokenPlugin</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Reference UtinniCoreDotNet for IPlugin / PluginInformation, but do NOT bundle
+         UtinniCoreDotNet.dll alongside the fixture output - the C-06 test loads this
+         fixture DLL standalone via DirectoryCatalog, and we don't want the fixture's
+         output dir to shadow the test runner's UtinniCoreDotNet.dll. -->
+    <ProjectReference Include="..\..\..\UtinniCoreDotNet\UtinniCoreDotNet.csproj">
+      <Private>False</Private>
+    </ProjectReference>
+  </ItemGroup>
+</Project>
