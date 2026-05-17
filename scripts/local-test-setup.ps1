@@ -47,21 +47,37 @@ verify against your Core3 bin\conf\config.lua `LoginPort`).
 .PARAMETER Configuration
 Build configuration. Default: Release.
 
-.EXAMPLE
-.\scripts\local-test-setup.ps1
-Standard run: verify DXSDK, build, seed bin\Release\utinni.cfg if needed.
+.PARAMETER WithPlugins
+After Utinni builds, also build The Jawa Toolbox from the sibling UtinniPlugins
+repo. TJT is configured (via ..\..\..\Utinni\bin\<Config>\Plugins\... in its
+.vcxproj/.csproj OutDir/OutputPath) to drop its build output directly into
+bin\<Config>\Plugins\TheJawaToolbox\, so no staging copy is needed. Required
+to give the Phase 02 C-01 manual UAT a real "plugin loaded" signal — without
+it, the Launcher logs "TheJawaToolbox failed to load" (isolated by Phase 02
+C-06, non-fatal) and the editor comes up with zero plugins.
+
+.PARAMETER PluginsRepoPath
+Path to the sibling UtinniPlugins clone. Default: ..\UtinniPlugins (relative
+to this repo). Only consulted when -WithPlugins is set. TJT's project files
+hard-code the reverse path (..\..\..\Utinni\bin\<Config>\Plugins\...), so
+the two repos must be siblings under a shared parent directory for the
+output paths to resolve correctly.
 
 .EXAMPLE
-.\scripts\local-test-setup.ps1 -Launch
-Build, seed, launch Launcher.exe.
+.\scripts\local-test-setup.ps1
+Standard run: verify DXSDK, build Utinni, seed bin\Release\utinni.cfg if needed.
+
+.EXAMPLE
+.\scripts\local-test-setup.ps1 -WithPlugins -Launch
+Build Utinni + The Jawa Toolbox, seed cfg, launch.
 
 .EXAMPLE
 .\scripts\local-test-setup.ps1 -Reseed -LoginPort 44455
 Force-rewrite the release cfg for a non-default Core3 port.
 
 .EXAMPLE
-.\scripts\local-test-setup.ps1 -InstallDxsdk
-First-time setup: install DXSDK June 2010 before building.
+.\scripts\local-test-setup.ps1 -InstallDxsdk -WithPlugins -Launch
+First-time setup end-to-end: install DXSDK, build everything, launch.
 #>
 
 [CmdletBinding()]
@@ -69,6 +85,8 @@ param(
   [switch]$Launch,
   [switch]$Reseed,
   [switch]$InstallDxsdk,
+  [switch]$WithPlugins,
+  [string]$PluginsRepoPath = '',
   [string]$LoginAddress = '127.0.0.1',
   [int]$LoginPort = 44453,
   [ValidateSet('Debug','Release','RelWithDbgInfo')]
@@ -79,12 +97,19 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
+# Default PluginsRepoPath to ..\UtinniPlugins (sibling clone) if user didn't override.
+if (-not $PluginsRepoPath) {
+  $PluginsRepoPath = Join-Path $repoRoot '..\UtinniPlugins'
+}
+
+$totalSteps = if ($WithPlugins) { 5 } else { 4 }
+
 function Step($n, $total, $msg) {
   Write-Host ""
   Write-Host "[$n/$total] $msg" -ForegroundColor Cyan
 }
 
-Step 1 4 "Checking DXSDK June 2010..."
+Step 1 $totalSteps "Checking DXSDK June 2010..."
 $dxsdkRoot = "C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)"
 $dxsdkHeader = Join-Path $dxsdkRoot 'Include\d3dx9.h'
 if (Test-Path $dxsdkHeader) {
@@ -126,7 +151,7 @@ If installation fails with S1023, uninstall VC++ 2010 SP1 redistributables first
   Write-Host "  OK: DXSDK June 2010 installed."
 }
 
-Step 2 4 "Locating MSBuild..."
+Step 2 $totalSteps "Locating MSBuild..."
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 if (-not (Test-Path $vswhere)) {
   Write-Error "vswhere.exe not found at $vswhere. Visual Studio 2019+ with C++ + .NET workloads required."
@@ -140,7 +165,7 @@ if (-not $msbuild) {
 }
 Write-Host "  Using $msbuild"
 
-Step 3 4 "Building Utinni.sln $Configuration|x86..."
+Step 3 $totalSteps "Building Utinni.sln $Configuration|x86..."
 & $msbuild Utinni.sln /m /restore /p:Configuration=$Configuration /p:Platform=x86 /v:minimal /nologo
 $buildExit = $LASTEXITCODE
 if ($buildExit -ne 0) {
@@ -149,7 +174,7 @@ if ($buildExit -ne 0) {
 }
 Write-Host "  OK: Build succeeded."
 
-Step 4 4 "Seeding bin\$Configuration\utinni.cfg..."
+Step 4 $totalSteps "Seeding bin\$Configuration\utinni.cfg..."
 $srcCfg = Join-Path $repoRoot 'data\utinni.cfg'
 $dstCfg = Join-Path $repoRoot "bin\$Configuration\utinni.cfg"
 
@@ -197,6 +222,52 @@ bin\$Configuration\utinni.cfg has loginServer settings that differ from
 -LoginAddress=$LoginAddress / -LoginPort=$LoginPort. Leaving alone.
 Pass -Reseed to overwrite.
 "@
+}
+
+if ($WithPlugins) {
+  Step 5 $totalSteps "Building UtinniPlugins (The Jawa Toolbox)..."
+  if (-not (Test-Path $PluginsRepoPath)) {
+    Write-Error @"
+UtinniPlugins repo not found at $PluginsRepoPath.
+
+TJT's project files hard-code the reverse path (..\..\..\Utinni\bin\<Config>\Plugins\)
+so the two repos must be siblings under a shared parent. Clone via:
+
+  git clone https://github.com/kennethlong/UtinniPlugins '$PluginsRepoPath'
+
+Or pass -PluginsRepoPath to point at an existing clone. Remove -WithPlugins
+to skip the plugin build entirely (the editor will come up with 0 plugins
+loaded — Phase 02 C-06 isolates the missing-plugin case).
+"@
+    exit 1
+  }
+  $pluginsRepo = (Resolve-Path $PluginsRepoPath).Path
+  $tjtSln = Join-Path $pluginsRepo 'The Jawa Toolbox\TheJawaToolbox.sln'
+  if (-not (Test-Path $tjtSln)) {
+    Write-Error "The Jawa Toolbox solution not found at $tjtSln. Verify the UtinniPlugins clone is complete."
+    exit 1
+  }
+  Write-Host "  Building $tjtSln $Configuration|x86..."
+  & $msbuild $tjtSln /m /restore /p:Configuration=$Configuration /p:Platform=x86 /v:minimal /nologo
+  $tjtExit = $LASTEXITCODE
+  if ($tjtExit -ne 0) {
+    Write-Error "TJT MSBuild failed with exit code $tjtExit. See output above."
+    exit $tjtExit
+  }
+  $tjtDll = Join-Path $repoRoot "bin\$Configuration\Plugins\TheJawaToolbox\TheJawaToolboxDotNet.dll"
+  if (Test-Path $tjtDll) {
+    Write-Host "  OK: TJT staged at bin\$Configuration\Plugins\TheJawaToolbox\"
+  } else {
+    Write-Warning @"
+TJT build reported success but $tjtDll is missing.
+
+This usually means the TJT projects' OutDir/OutputPath does not resolve to
+this repo's bin\. Expected layout: $repoRoot and $pluginsRepo are siblings.
+If your clone layout is different, the relative path ..\..\..\Utinni\bin\
+inside TheJawaToolbox.vcxproj/.csproj won't land here. Either symlink or
+manually copy the build output to bin\$Configuration\Plugins\TheJawaToolbox\.
+"@
+  }
 }
 
 Write-Host ""
