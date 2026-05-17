@@ -55,9 +55,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. CI (from Phase 1) stays green across the burn-down; each fix lands behind a green build.
   3. `data/utinni.cfg` ships with blank server host/port per CON-D-01 (C-14 fix).
   4. DllMain no longer does heavy startup per CON-H-01 (C-01 fix); CLR bring-up is deferred to a safe initialization point.
-**Plans**: TBD (likely 4–6 plans grouping the 15 fixes by week 1–3 sequencing from assessment.md: triage trivial criticals → single-file criticals → architectural criticals).
-**Plans (placeholder)**:
-- [ ] 02-01: TBD
+**Plans**: 4 plans
+**Plans**:
+- [ ] 02-01-PLAN.md — Trivial criticals (Wave 1): C-04 queue drain, C-06 plugin loader isolation, C-08 Hotkey TryParse, C-12 VSIX VS 2022 widening, C-13 TJT Debug path (cross-repo), C-14 utinni.cfg blank login
+- [ ] 02-02-PLAN.md — Single-file criticals (Wave 2): C-02 cross-CRT delete, C-03 Network::cast uninit, C-05 drag-drop static field, C-07 UndoRedoManager + Phase-1 D-06 testability seam, C-10 clr::stop null deref, C-11 DirectX findPattern null check, C-15 CppSharp slnDir, C-16 GameCallbacks delegate-pinning audit, KB-05 isSafeToUse && operator
+- [ ] 02-03-PLAN.md — Architectural C-01 (Wave 3): DllMain loader-lock — utinni_init export + launcher CreateRemoteThread (path a per RESEARCH); Utinni.LoaderLockHarness sibling project
+- [ ] 02-04-PLAN.md — Architectural C-09 (Wave 3): UI/game-thread busy-wait deadlock — Win32 CreateEvent + EventWaitHandle signaller
 
 ### Phase 3: Strategic reworks (R-A..R-H)
 **Goal**: All 8 strategic reworks from assessment.md land. Plugin authoring is "genuinely pleasant"; native code grows the testable seams that Phase 5 (C++ unit tests) and Phase 4 (CLI shim) depend on.
