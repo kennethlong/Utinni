@@ -307,4 +307,12 @@ bool Game::isSafeToUse()
     return memory::read<bool>(0x01908858) || memory::read<bool>(0x01919410);
 }
 
+void Game::triggerInstallCallbacks()
+{
+    for (const auto& func : installCallbacks)
+    {
+        func();
+    }
+}
+
 }
