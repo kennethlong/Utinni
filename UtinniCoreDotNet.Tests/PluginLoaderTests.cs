@@ -102,7 +102,7 @@ namespace UtinniCoreDotNet.Tests
             }
             finally
             {
-                Directory.Delete(tempDir, recursive: true);
+                TryDeleteDir(tempDir);
             }
         }
 
@@ -123,7 +123,7 @@ namespace UtinniCoreDotNet.Tests
             }
             finally
             {
-                Directory.Delete(tempDir, recursive: true);
+                TryDeleteDir(tempDir);
             }
         }
 
@@ -133,15 +133,26 @@ namespace UtinniCoreDotNet.Tests
             var tempDir = MakeTempDir();
             try
             {
-                var loader = new PluginLoader();
+                // autoLoad: false skips LoadFromPluginManager which P/Invokes into
+                // UtinniCore.dll (not deployed alongside the test runner in CI).
+                var loader = new PluginLoader(autoLoad: false);
                 var ex = Record.Exception(() => loader.Load(tempDir));
                 Assert.Null(ex);
                 Assert.Equal(0, loader.Plugins.Count());
             }
             finally
             {
-                Directory.Delete(tempDir, recursive: true);
+                TryDeleteDir(tempDir);
             }
+        }
+
+        // DirectoryCatalog loads each fixture DLL into the test AppDomain; the file
+        // stays locked until the process exits. Cleanup is best-effort.
+        private static void TryDeleteDir(string dir)
+        {
+            try { Directory.Delete(dir, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
         }
     }
 }
