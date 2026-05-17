@@ -548,7 +548,7 @@ doc in sync so future sessions (human or AI) can see what's done.
 | C-12  | VSIX pinned to VS 2019                            | done       | 88b5b6b — Phase 2 Plan 02-01 Task 5 (SDK + BuildTools bumped to 17.x; resolves CON-O-04 per D-12; IDE-install verification = Task 6 human-verify) |
 | C-13  | TJT Debug path extra ..\                          | done       | UtinniPlugins@1c1eb0a (cross-repo) — Phase 2 Plan 02-01 Task 8 |
 | C-14  | utinni.cfg login.swgemu.com default               | done       | e7c6699 — Phase 2 Plan 02-01 Task 7 (CON-D-01 blank-login default) |
-| C-15  | CppSharp slnDir brittle                           | open       |       |
+| C-15  | CppSharp slnDir brittle                           | done       | (02-02 Task 8) — ResolveSlnDir pure function with args[0]/walkup/env-var modes; vcxproj post-build passes "$(SolutionDir)"; 4 tests in CppSharpSlnDirTests.cs |
 | R-A   | Symmetric Add/Remove for callbacks                | open       |       |
 | R-B   | Plugin lifecycle contract                         | open       |       |
 | R-C   | Single source of truth for RVAs                   | open       |       |
