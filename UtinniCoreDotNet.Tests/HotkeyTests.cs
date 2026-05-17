@@ -46,10 +46,8 @@ namespace UtinniCoreDotNet.Tests
             Assert.Equal(Keys.S, hk.Key);
         }
 
-        [Theory(Skip = "C-08: expected to fail until Phase 2 fix lands (Enum.TryParse refactor on Hotkey.cs:82,91). " +
-                       "Hotkey.ProcessString splits on the first ' + ' and passes the remainder ('Alt + Z') straight to Enum.Parse, " +
-                       "which on net472 raises ArgumentException because '+' is not the documented separator for flags-style Keys parsing.")]
-        [InlineData("Shift + Alt + Z", Keys.Shift, Keys.Alt | Keys.Z)]
+        [Theory]
+        [InlineData("Shift + Alt + Z", Keys.Shift | Keys.Alt, Keys.Z)]
         public void Ctor_StringConstructor_MultiModifierChord_ParsesFlags(string combo, Keys expectedMods, Keys expectedKey)
         {
             var hk = new Hotkey("test", "test", combo, () => { }, overrideGameInput: false);
@@ -57,12 +55,29 @@ namespace UtinniCoreDotNet.Tests
             Assert.Equal(expectedKey, hk.Key);
         }
 
-        [Fact(Skip = "C-08: expected to fail until Phase 2 fix lands (Enum.TryParse refactor on Hotkey.cs:82,91). " +
-                      "When unskipped, this asserts that malformed input like 'Ctrl + T' (note 'Ctrl' is not a valid Keys enum name - should be 'Control') is gracefully handled instead of throwing ArgumentException.")]
+        [Fact]
         public void Ctor_StringConstructor_MalformedInput_DoesNotThrow()
         {
-            var ex = Record.Exception(() => new Hotkey("test", "test", "Ctrl + T", () => { }, overrideGameInput: false));
+            // C-08 regression: malformed input like 'Ctrl + T' ('Ctrl' is not a valid
+            // Keys enum name — should be 'Control') previously threw ArgumentException
+            // out of Hotkey.ProcessString. Post-fix it warns-and-disables.
+            Hotkey hk = null;
+            var ex = Record.Exception(() => hk = new Hotkey("test", "test", "Ctrl + T", () => { }, overrideGameInput: false));
             Assert.Null(ex);
+            Assert.NotNull(hk);
+            Assert.False(hk.Enabled);
+        }
+
+        [Fact]
+        public void Ctor_StringConstructor_MalformedModifier_DoesNotThrow_DisablesHotkey()
+        {
+            // C-08 regression: malformed modifier ('Garbage' is not a valid Keys enum
+            // name) should warn-and-disable, not throw.
+            Hotkey hk = null;
+            var ex = Record.Exception(() => hk = new Hotkey("test", "test", "Garbage + S", () => { }, overrideGameInput: false));
+            Assert.Null(ex);
+            Assert.NotNull(hk);
+            Assert.False(hk.Enabled);
         }
     }
 }

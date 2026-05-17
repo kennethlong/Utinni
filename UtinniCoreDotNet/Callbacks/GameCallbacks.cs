@@ -99,23 +99,22 @@ namespace UtinniCoreDotNet.Callbacks
 
         private static void DequeuePreMainLoopCalls()
         {
-            while (preMainLoopCallQueue.Count > 0)
-            {
-                if (preMainLoopCallQueue.TryDequeue(out var func))
-                {
-                    func();
-                }
-            }
+            Drain(preMainLoopCallQueue);
         }
 
         private static void DequeueMainLoopCalls()
         {
-            while (mainLoopCallQueue.Count > 0)
+            Drain(mainLoopCallQueue);
+        }
+
+        // See GroundSceneCallbacks.Drain for the C-04 rationale. Duplicated per file
+        // intentionally (Phase 2 scope) — a cross-file shared helper is R-A territory
+        // (Phase 3 strategic rework).
+        internal static void Drain(ConcurrentQueue<Action> queue)
+        {
+            while (queue.TryDequeue(out var func))
             {
-                if (mainLoopCallQueue.TryDequeue(out var func))
-                {
-                    func();
-                }
+                func();
             }
         }
 

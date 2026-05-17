@@ -71,8 +71,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="16.0.206" ExcludeAssets="runtime" />
-    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="16.8.3038" />
+    <!-- C-12: bumped from 16.0.206 / 16.8.3038 to the 17.0 stable line so the VSIX
+         InstallationTarget [16.0,18.0) range can install into both VS 2019 and
+         VS 2022. Both packages are first-party Microsoft (publisher: microsoft). -->
+    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.0.32112.339" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.0.5241" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\DotNetEditorPluginTemplate\DotNetEditorPluginTemplate.csproj">

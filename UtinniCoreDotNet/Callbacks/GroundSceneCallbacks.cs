@@ -74,35 +74,20 @@ namespace UtinniCoreDotNet.Callbacks
 
         private static void DequeueUpdateLoopCalls(IntPtr pGroundScene, float elapsedTime)
         {
-            while (updateLoopCallQueue.Count > 0)
-            {
-                if (updateLoopCallQueue.TryDequeue(out var func))
-                {
-                    func();
-                }
-            }
+            Drain(updateLoopCallQueue);
         }
 
         private static void DequeuePreDrawLoopCalls(IntPtr pGroundScene)
         {
-            while (preDrawLoopCallQueue.Count > 0)
-            {
-                if (preDrawLoopCallQueue.TryDequeue(out var func))
-                {
-                    func();
-                }
-            }
+            Drain(preDrawLoopCallQueue);
         }
 
         private static void DequeuePostDrawLoopCalls(IntPtr pGroundScene)
         {
-            while (preDrawLoopCallQueue.Count > 0)
-            {
-                if (preDrawLoopCallQueue.TryDequeue(out var func))
-                {
-                    func();
-                }
-            }
+            // C-04: this previously drained preDrawLoopCallQueue (typo). The Drain helper
+            // makes the queue-vs-method correspondence explicit so this class of bug
+            // cannot recur.
+            Drain(postDrawLoopCallQueue);
         }
 
         private static void CallCameraChangeCallbacks()
@@ -110,6 +95,19 @@ namespace UtinniCoreDotNet.Callbacks
             foreach (Action callback in cameraChangeCallbacks)
             {
                 callback();
+            }
+        }
+
+        // Shared drain helper introduced for C-04 (CON-O-02 default-fallback per D-12):
+        // a single TryDequeue loop pattern that every queue-drain call site reuses. The
+        // outer Count > 0 check from the original code was dropped because TryDequeue
+        // already returns false on an empty queue, and the Count read was racey under
+        // concurrent producers anyway.
+        internal static void Drain(ConcurrentQueue<Action> queue)
+        {
+            while (queue.TryDequeue(out var func))
+            {
+                func();
             }
         }
 
