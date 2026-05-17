@@ -65,30 +65,79 @@ namespace UtinniCoreDotNet.Hotkeys
 
         private void ProcessString(string keyComboStr)
         {
+            // C-08 fix: Enum.Parse throws ArgumentException on any unrecognized name
+            // (e.g. 'Ctrl' instead of 'Control', or any typo in input.ini). Pre-fix,
+            // a single bad hotkey aborted Hotkey.UpdateKeys → HotkeyManager.Load and
+            // surfaced as a C-06 cascading failure. Replaced with Enum.TryParse +
+            // warn-and-disable. Also fix the multi-modifier case: 'Shift + Alt + Z'
+            // previously kept ModifierKeys='Shift' and passed 'Alt + Z' to Enum.Parse
+            // (ArgumentException on net472); now the first N-1 segments are OR'd as
+            // modifiers and the last segment is the single key.
             if (String.IsNullOrEmpty(keyComboStr))
             {
-                Log.Warning("Hotkey " + Name + " failed to process empty key combo string.");
+                TryLogWarning("Hotkey " + Name + " failed to process empty key combo string; disabling.");
+                Enabled = false;
                 return;
             }
 
-            string key;
-
-            int i = keyComboStr.IndexOf('+');
-            if (i != -1)
+            var segments = keyComboStr.Split('+');
+            for (int i = 0; i < segments.Length; i++)
             {
-                key = keyComboStr.Substring(i + 1).Trim();
-
-                string modifiers = keyComboStr.Substring(0, i).Trim();
-                ModifierKeys = (Keys)Enum.Parse(typeof(Keys), modifiers, true);
+                segments[i] = segments[i].Trim();
             }
-            else
+
+            if (segments.Length == 1)
             {
-                key = keyComboStr.Trim();
+                if (!Enum.TryParse<Keys>(segments[0], true, out var single))
+                {
+                    TryLogWarning("Hotkey " + Name + " has unrecognized key '" + segments[0] + "'; disabling.");
+                    Enabled = false;
+                    return;
+                }
 
                 ModifierKeys = Keys.None;
+                Key = single;
+                return;
             }
 
-            Key = (Keys)Enum.Parse(typeof(Keys), key, true);
+            // First N-1 segments combine as modifiers; last segment is the single key.
+            Keys mods = Keys.None;
+            for (int i = 0; i < segments.Length - 1; i++)
+            {
+                if (!Enum.TryParse<Keys>(segments[i], true, out var m))
+                {
+                    TryLogWarning("Hotkey " + Name + " has unrecognized modifier '" + segments[i] + "'; disabling.");
+                    Enabled = false;
+                    return;
+                }
+
+                mods |= m;
+            }
+
+            if (!Enum.TryParse<Keys>(segments[segments.Length - 1], true, out var keyOnly))
+            {
+                TryLogWarning("Hotkey " + Name + " has unrecognized key '" + segments[segments.Length - 1] + "'; disabling.");
+                Enabled = false;
+                return;
+            }
+
+            ModifierKeys = mods;
+            Key = keyOnly;
+        }
+
+        // The native log sink is not initialized in unit-test mode; route warnings
+        // through a try/catch so test-mode parse-failure paths do not throw out of
+        // the Hotkey ctor (which would re-introduce a C-08-shaped failure).
+        private static void TryLogWarning(string msg)
+        {
+            try
+            {
+                Log.Warning(msg);
+            }
+            catch
+            {
+                // Test-mode: log subsystem not initialized.
+            }
         }
 
         public void UpdateKeys(string keyComboStr)
