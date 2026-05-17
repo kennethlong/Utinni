@@ -32,6 +32,26 @@
 #include "depth_texture.h"
 #include "graphics.h"
 
+// C-09: Win32 manual-reset event signaller for UI/game-thread synchronization.
+// The managed FormMain.WndProc waits on this event instead of spinning on IsPresentBlocked().
+// ownsHandle: false on the managed SafeWaitHandle wrapper — native owns the lifetime.
+// CON-N-01: no new Detour::Create calls; this is additive signal plumbing only.
+// CON-N-04: memory::copy (VirtualProtect bracket) NOT touched.
+static HANDLE hPresentBlockedEvent = nullptr;
+
+// getPresentBlockedEvent — production export consumed by FormMain.cs via P/Invoke.
+// Lazy-initialized on first call; subsequent calls return the same HANDLE.
+// extern "C" + __cdecl ensures the symbol is unmangled so DllImport resolves it directly.
+extern "C" __declspec(dllexport) HANDLE __cdecl getPresentBlockedEvent()
+{
+    if (!hPresentBlockedEvent)
+    {
+        // TRUE = manual-reset; FALSE = initially non-signalled.
+        hPresentBlockedEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+    }
+    return hPresentBlockedEvent;
+}
+
 namespace directX
 {
 LPDIRECT3DDEVICE9 pDirectXDevice = nullptr;
@@ -223,6 +243,12 @@ HRESULT __stdcall hkPresent(LPDIRECT3DDEVICE9 pDevice, const RECT* pSourceRect, 
 	 else
 	 {
 		  isPresenting = false;
+		  // C-09: Signal the UI thread waiting in WaitForPresentBlock. The managed
+		  // EventWaitHandle wraps this HANDLE via SafeWaitHandle(ownsHandle: false).
+		  if (hPresentBlockedEvent)
+		  {
+			  SetEvent(hPresentBlockedEvent);
+		  }
 	 }
 	
 	 if (depthTexture == nullptr)
@@ -371,7 +397,12 @@ void toggleWireframe()
 
 void blockPresent(bool value)
 {
-	 blockPresentCall = value;
+    blockPresentCall = value;
+    if (!value && hPresentBlockedEvent)
+    {
+        // C-09: Re-arm the event for the next minimize cycle when Present is re-enabled.
+        ResetEvent(hPresentBlockedEvent);
+    }
 }
 
 bool isPresentBlocked()
