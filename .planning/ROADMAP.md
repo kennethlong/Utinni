@@ -62,6 +62,16 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 02-03-PLAN.md — Architectural C-01 (Wave 3): DllMain loader-lock — utinni_init export + launcher CreateRemoteThread (path a per RESEARCH); Utinni.LoaderLockHarness sibling project
 - [x] 02-04-PLAN.md — Architectural C-09 (Wave 3): UI/game-thread busy-wait deadlock — Win32 CreateEvent + EventWaitHandle signaller
 
+### Phase 02.1: Phase 02 gap closure — critical correctness + harness quality from 02-REVIEW.md (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 2
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 02.1 to break down)
+
 ### Phase 3: Strategic reworks (R-A..R-H)
 **Goal**: All 8 strategic reworks from assessment.md land. Plugin authoring is "genuinely pleasant"; native code grows the testable seams that Phase 5 (C++ unit tests) and Phase 4 (CLI shim) depend on.
 **Depends on**: Phase 2 (criticals must close first so reworks aren't reworking around live bugs).

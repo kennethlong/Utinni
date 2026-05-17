@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
+status: planning
 stopped_at: Phase 2 context gathered
-last_updated: "2026-05-17T12:37:44.129Z"
+last_updated: "2026-05-17T14:39:15.247Z"
 last_activity: 2026-05-17 -- Phase 02 marked complete
 progress:
-  total_phases: 11
+  total_phases: 12
   completed_phases: 2
   total_plans: 6
   completed_plans: 6
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 
 ## Current Position
 
-Phase: 02 — COMPLETE
-Plan: 1 of 4
-Status: Phase 02 complete
+Phase: 02.1 — NOT STARTED
+Plan: 0 of TBD
+Status: Phase 02.1 ready to plan
 Last activity: 2026-05-17 -- Phase 02 marked complete
-Next action: `/gsd:plan-phase 1`
+Next action: `/gsd:discuss-phase 02.1` or `/gsd:plan-phase 02.1`
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -56,6 +56,10 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 02.1 inserted after Phase 2: Phase 02 gap closure — critical correctness + harness quality from 02-REVIEW.md (URGENT)
 
 ### Decisions
 
