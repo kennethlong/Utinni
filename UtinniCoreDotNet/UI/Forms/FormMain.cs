@@ -24,9 +24,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Security.Permissions;
 using System.Threading;
 using System.Windows.Forms;
+using Microsoft.Win32.SafeHandles;
 using UtinniCoreDotNet.Callbacks;
 using UtinniCoreDotNet.Hotkeys;
 using UtinniCoreDotNet.PluginFramework;
@@ -41,6 +43,32 @@ namespace UtinniCoreDotNet.UI.Forms
 {
     public partial class FormMain : UtinniForm
     {
+        // C-09: P/Invoke for the native Win32 event handle exported by UtinniCore.dll.
+        // The unmangled symbol name matches the extern "C" __cdecl export in directx9.cpp.
+        [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+            EntryPoint = "getPresentBlockedEvent")]
+        private static extern IntPtr GetPresentBlockedEvent();
+
+        // C-09: Lazy-initialized managed wrapper around the native Win32 HANDLE.
+        // ownsHandle: false — the native side (directx9.cpp static HANDLE) owns the lifetime.
+        // The Lazy resolves once; subsequent calls to WaitForPresentBlock use the cached handle.
+        // NOTE: In test scenarios, WaitForPresentBlock checks TestSignaller first and bypasses
+        // this Lazy entirely, so the Lazy is never initialized during test execution.
+        private static readonly Lazy<EventWaitHandle> presentBlockedSignal =
+            new Lazy<EventWaitHandle>(() =>
+            {
+                IntPtr h = GetPresentBlockedEvent();
+                var ewh = new EventWaitHandle(false, EventResetMode.ManualReset);
+                ewh.SafeWaitHandle = new SafeWaitHandle(h, ownsHandle: false);
+                return ewh;
+            });
+
+        // C-09: Test-only injection seam. Tests set this to a mock EventWaitHandle before
+        // calling WaitForPresentBlock; WaitForPresentBlock checks this field directly on each
+        // invocation (bypassing the Lazy) to support per-test mock substitution.
+        // Production code never sets this field (default null → native Lazy path).
+        internal static EventWaitHandle TestSignaller = null;
+
         private readonly PanelGame game;
         private readonly UndoRedoManager undoRedoManager;
         private readonly HotkeyManager formHotkeyManager = new HotkeyManager(true);
@@ -53,6 +81,20 @@ namespace UtinniCoreDotNet.UI.Forms
         private readonly List<SubPanelContainer> subContainers = new List<SubPanelContainer>();
         private readonly List<Form> formChildren = new List<Form>();
 
+        // C-09: Wait up to `timeout` for the native hkPresent detour to signal that Present
+        // is blocked. Returns true if signalled within the timeout, false on timeout.
+        // Extracted as `internal static` so InternalsVisibleTo(UtinniCoreDotNet.Tests) can
+        // invoke it directly without constructing a FormMain instance (which requires the
+        // native CLR bridge and UtinniCore.dll to be initialized).
+        // Timeout policy: 100 ms per CONTEXT.md D-05. Minimize/restore is best-effort —
+        // if the game thread never signals, the UI thread falls through without deadlocking.
+        internal static bool WaitForPresentBlock(TimeSpan timeout)
+        {
+            // Use TestSignaller if set (test-only seam); otherwise use the native-backed Lazy.
+            EventWaitHandle handle = TestSignaller ?? presentBlockedSignal.Value;
+            return handle.WaitOne(timeout);
+        }
+
         [SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
         protected override void WndProc(ref Message m)
         {
@@ -64,13 +106,10 @@ namespace UtinniCoreDotNet.UI.Forms
                 {
                     UtinniCore.DirectX.directx9.BlockPresent(true);
 
-                    // Due to SWG's thread and this one not being in sync, we need to wait until Present is actually blocked.
-                    // ToDo: Find better solution in the future
-                    while (!UtinniCore.DirectX.directx9.IsPresentBlocked())
-                    {
-                        Thread.Sleep(1);
-                    }
-
+                    // C-09: Wait up to 100 ms for the game thread to confirm Present is blocked.
+                    // If it never signals (game thread is wedged), fall through — minimize/restore
+                    // is best-effort, not a correctness gate. Replaces the pre-fix busy-wait spin.
+                    WaitForPresentBlock(TimeSpan.FromMilliseconds(100));
                 }
             }
 

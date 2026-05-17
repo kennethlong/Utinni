@@ -557,7 +557,7 @@ doc in sync so future sessions (human or AI) can see what's done.
 | C-06  | PluginLoader swallows exceptions                  | done       | efdb80b — Phase 2 Plan 02-01 Task 3 (per-plugin try/catch + LoadErrors surface) |
 | C-07  | UndoRedoManager thread-safety + AllowMerge        | done       | 1a8ff42 — Phase 2 Plan 02-02 Task 5 (lock(syncRoot); AllowMerge gate; RedoCommands.Clear ordering TD-29; D-06 testability seam; 5 tests) |
 | C-08  | Hotkey.ProcessString throws                       | done       | c6879b5 — Phase 2 Plan 02-01 Task 4 (Enum.TryParse + multi-segment split; both Phase-1 skips removed) |
-| C-09  | UI/game thread busy-wait deadlock                 | open       |       |
+| C-09  | UI/game thread busy-wait deadlock                 | done       | c3ba6fd — Phase 2 Plan 02-04 Task 1 (getPresentBlockedEvent export + SetEvent in hkPresent + ResetEvent in blockPresent(false); FormMain.WndProc busy-wait replaced with EventWaitHandle.WaitOne(100ms); 3 mock-signaller tests; CON-N-01+CON-N-04 preserved; live SWG verification: Task 2 human-verify pending) |
 | C-10  | clr::stop null deref                              | done       | eabc0d2 — Phase 2 Plan 02-02 Task 6 (null-checked Release + nullptr; idempotent double-call harness) |
 | C-11  | DirectX9 findPattern no null check                | done       | ba1402a — Phase 2 Plan 02-02 Task 7 (getVtbl null-checks GetModuleHandle + findPattern; log::critical; CON-N-04 preserved; 3 tests) |
 | C-12  | VSIX pinned to VS 2019                            | done       | 88b5b6b — Phase 2 Plan 02-01 Task 5 (SDK + BuildTools bumped to 17.x; resolves CON-O-04 per D-12; IDE-install verification = Task 6 human-verify) |
