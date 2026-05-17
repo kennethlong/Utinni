@@ -36,6 +36,10 @@ namespace UtinniCoreDotNet.Callbacks
         private static readonly ConcurrentQueue<Action> preMainLoopCallQueue = new ConcurrentQueue<Action>();
         private static readonly ConcurrentQueue<Action> mainLoopCallQueue = new ConcurrentQueue<Action>();
 
+        // C-16 (resolves CON-O-03 2026-Q2): The static field acts as a GC root for the
+        // delegate passed to native via Add*Callback. Without it, the GC can collect the
+        // managed delegate while native still holds its stub, causing AVs on later callback
+        // dispatch. See https://docs.microsoft.com/dotnet/standard/native-interop/best-practices#function-pointers
         private static UtinniCore.Delegates.Action_ callInstallCallbacksAction;
         private static UtinniCore.Delegates.Action_ callSetupSceneCallbacksAction;
         private static UtinniCore.Delegates.Action_ callCleanupSceneCallbacksAction;
@@ -43,7 +47,6 @@ namespace UtinniCoreDotNet.Callbacks
         private static UtinniCore.Delegates.Action_ dequeueMainLoopCallsAction;
         public static void Initialize()
         {
-            // Storing this in a variable is somehow needed to prevent corruption on WinForms resize. Very odd bug that I still don't fully understand.
             callInstallCallbacksAction = CallInstallCallbacks;
             callSetupSceneCallbacksAction = CallSetupSceneCallbacks;
             callCleanupSceneCallbacksAction = CallCleanupSceneCallbacks;

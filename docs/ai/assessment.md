@@ -439,6 +439,15 @@ These need someone-who-was-there to answer:
    GC-collected delegate being passed to unmanaged without `GCHandle.Alloc`.
    Knowing the original repro would let us confirm the right fix is
    `GCHandle.Alloc`.
+
+   **Resolved 2026-Q2 (CON-O-03, Phase 2 Plan 02-02 Task 9):** Audit of all
+   `Add*Callback` delegate-passing sites in `GameCallbacks.cs`, `ObjectCallbacks.cs`,
+   and `GroundSceneCallbacks.cs` confirms the existing static-field approach IS a valid
+   GC root — no unanchored inline delegates found. The misleading "Very odd bug" comment
+   was replaced with a precise CLR P/Invoke delegate-marshalling explanation. A GC-survival
+   regression test (`GameCallbacksTests.RegisterCallback_ForceGCCollect_CallbackStillFiresWithoutAV`)
+   was added to `UtinniCoreDotNet.Tests`. The correct fix is the static-field approach
+   (not `GCHandle.Alloc`) — the static field is the GC root that keeps the delegate alive.
 4. **VS 2019 pin** — was there a real reason (compiler bug with x86 + CLR
    hosting?) or just history?
 
@@ -549,6 +558,7 @@ doc in sync so future sessions (human or AI) can see what's done.
 | C-13  | TJT Debug path extra ..\                          | done       | UtinniPlugins@1c1eb0a (cross-repo) — Phase 2 Plan 02-01 Task 8 |
 | C-14  | utinni.cfg login.swgemu.com default               | done       | e7c6699 — Phase 2 Plan 02-01 Task 7 (CON-D-01 blank-login default) |
 | C-15  | CppSharp slnDir brittle                           | done       | (02-02 Task 8) — ResolveSlnDir pure function with args[0]/walkup/env-var modes; vcxproj post-build passes "$(SolutionDir)"; 4 tests in CppSharpSlnDirTests.cs |
+| C-16  | GameCallbacks delegate-pinning (CON-O-03)         | done       | (02-02 Task 9) — misleading comment replaced with precise GC-root explanation; GC-survival regression test added; CON-O-03 resolved |
 | R-A   | Symmetric Add/Remove for callbacks                | open       |       |
 | R-B   | Plugin lifecycle contract                         | open       |       |
 | R-C   | Single source of truth for RVAs                   | open       |       |

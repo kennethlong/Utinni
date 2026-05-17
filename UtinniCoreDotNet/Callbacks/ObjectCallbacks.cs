@@ -33,10 +33,14 @@ namespace UtinniCoreDotNet.Callbacks
         private static readonly SynchronizedCollection<Action> onTargetCallbacks = new SynchronizedCollection<Action>();
         private static readonly ConcurrentQueue<Action> onTargetCallQueue = new ConcurrentQueue<Action>();
 
+        // C-16 (resolves CON-O-03 2026-Q2): The static field acts as a GC root for the
+        // delegate passed to native via Add*Callback. Without it, the GC can collect the
+        // managed delegate while native still holds its stub, causing AVs on later callback
+        // dispatch. See https://docs.microsoft.com/dotnet/standard/native-interop/best-practices#function-pointers
         private static UtinniCore.Delegates.Action_IntPtr_C dequeueOnTargetCallsAction;
         public static void Initialize()
         {
-            dequeueOnTargetCallsAction = DequeueOnTargetCalls; // Storing this in a variable is somehow needed to prevent corruption on WinForms resize. Very odd bug that I still don't fully understand.
+            dequeueOnTargetCallsAction = DequeueOnTargetCalls;
             UtinniCore.Utinni.CreatureObject.creature_object.AddOnTargetCallback(dequeueOnTargetCallsAction);
         }
 

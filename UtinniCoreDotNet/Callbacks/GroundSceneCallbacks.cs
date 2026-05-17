@@ -35,6 +35,10 @@ namespace UtinniCoreDotNet.Callbacks
         private static readonly ConcurrentQueue<Action> postDrawLoopCallQueue = new ConcurrentQueue<Action>();
         private static readonly SynchronizedCollection<Action> cameraChangeCallbacks = new SynchronizedCollection<Action>();
 
+        // C-16 (resolves CON-O-03 2026-Q2): The static field acts as a GC root for the
+        // delegate passed to native via Add*Callback. Without it, the GC can collect the
+        // managed delegate while native still holds its stub, causing AVs on later callback
+        // dispatch. See https://docs.microsoft.com/dotnet/standard/native-interop/best-practices#function-pointers
         private static UtinniCore.Delegates.Action_IntPtr_float dequeueUpdateLoopCallsAction;
         private static UtinniCore.Delegates.Action_IntPtr_C dequeuePreDrawLoopCallsAction;
         private static UtinniCore.Delegates.Action_IntPtr_C dequeuePostDrawLoopCallsAction;
