@@ -524,7 +524,7 @@ doc in sync so future sessions (human or AI) can see what's done.
 | C-10  | clr::stop null deref                              | open       |       |
 | C-11  | DirectX9 findPattern no null check                | open       |       |
 | C-12  | VSIX pinned to VS 2019                            | open       |       |
-| C-13  | TJT Debug path extra ..\                          | open       |       |
+| C-13  | TJT Debug path extra ..\                          | done       | UtinniPlugins@1c1eb0a (cross-repo) — Phase 2 Plan 02-01 Task 8 |
 | C-14  | utinni.cfg login.swgemu.com default               | open       |       |
 | C-15  | CppSharp slnDir brittle                           | open       |       |
 | R-A   | Symmetric Add/Remove for callbacks                | open       |       |
