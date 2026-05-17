@@ -536,7 +536,7 @@ doc in sync so future sessions (human or AI) can see what's done.
 | ----- | ------------------------------------------------- | ---------- | ----- |
 | C-01  | DllMain loader-lock                               | open       |       |
 | C-02  | Cross-CRT delete[] in config                      | done       | (02-02 Task 2) — delete[] removed; TreeFile dtor owns buffer (CON-B-04); partial-proof P/Invoke harness in ConfigBufferFreeTests.cs |
-| C-03  | `Network::cast` returns uninitialized             | open       |       |
+| C-03  | `Network::cast` returns uninitialized             | done       | (02-02 Task 3) — networkId initialized to 0; OUT param returned; double-semicolon typo removed; partial-proof harness in NetworkCastTests.cs |
 | C-04  | DequeuePostDrawLoopCalls wrong queue              | done       | 9aa0eb9 — Phase 2 Plan 02-01 Task 2 (Drain helper, closes CON-O-02 per D-12) |
 | C-05  | GameDragDropEventHandlers static-field            | open       |       |
 | C-06  | PluginLoader swallows exceptions                  | done       | efdb80b — Phase 2 Plan 02-01 Task 3 (per-plugin try/catch + LoadErrors surface) |
