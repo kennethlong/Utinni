@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MIT License
  *
  * Copyright (c) 2020 Philip Klatt
@@ -22,10 +22,13 @@
  * SOFTWARE.
 **/
 
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.ComponentModel.Composition.Hosting;
-using System.Linq;
+using System.ComponentModel.Composition.Primitives;
+using System.IO;
+using System.Reflection;
 using UtinniCore.Utinni;
 using UtinniCoreDotNet.Utility;
 
@@ -33,43 +36,183 @@ namespace UtinniCoreDotNet.PluginFramework
 {
     public class PluginLoader
     {
-        [ImportMany(typeof(IPlugin))] // Import all IPlugin interfaces
         public IEnumerable<IPlugin> Plugins;
+
+        // C-06 testability surface: per-plugin failure descriptions are appended here
+        // in addition to being routed through Log.Error. Lets tests assert that the
+        // broken plugin's name surfaced without needing to hook the native log sink
+        // (which requires the full UtinniCore CLR bridge to be initialized).
+        public IList<string> LoadErrors { get; } = new List<string>();
 
         public PluginLoader()
         {
             Load();
         }
 
-        public void Load()
+        // C-06 testability seam: skip the auto-Load from the production-style ctor so
+        // tests can construct a loader without invoking the native PluginManager.
+        // `autoLoad` is the friendly false sentinel; tests follow with Load(pluginDir).
+        public PluginLoader(bool autoLoad)
         {
-            Plugins = new List<IPlugin>();
+            if (autoLoad)
+            {
+                Load();
+            }
+        }
 
-            var pluginDir = utinni.GetPath() + "/Plugins/";
-            var catalog = new AggregateCatalog(new DirectoryCatalog(pluginDir));
+        // C-06 fix: per-plugin try/catch isolation. The previous single AggregateCatalog
+        // + ComposeParts collapsed every plugin's load failure into one exception,
+        // tearing down the editor for ALL plugins when ANY single plugin's [Export] or
+        // ctor threw.
+        //
+        // Testability seam (pluginDir parameter): in production (no arg) we use
+        // utinni.GetPath() + "/Plugins/" + the PluginManager's enabled plugin configs;
+        // in tests we point at an explicit directory containing fixture DLLs and bypass
+        // PluginManager entirely.
+        public void Load(string pluginDir = null)
+        {
+            var loaded = new List<IPlugin>();
+            LoadErrors.Clear();
 
-            // Get the plugin configs from UtinniCore
+            if (pluginDir == null)
+            {
+                LoadFromPluginManager(loaded);
+            }
+            else
+            {
+                LoadFromDirectory(pluginDir, loaded);
+            }
+
+            Plugins = loaded;
+            Info(loaded.Count + " .NET Plugin(s) loaded");
+        }
+
+        // Production path: enumerate enabled plugins from the native PluginManager and
+        // load each one's subdirectory as a separate isolated DirectoryCatalog.
+        private void LoadFromPluginManager(List<IPlugin> loaded)
+        {
+            var pluginsRoot = utinni.GetPath() + "/Plugins/";
             var pluginManager = utinni.GetPluginManager();
-            List<PluginManager.PluginConfig> pluginConfigs = new List<PluginManager.PluginConfig>();
+
             for (int j = 0; j < pluginManager.PluginConfigCount; j++)
             {
-                pluginConfigs.Add(pluginManager.GetPluginConfigAt(j));
-            }
-
-            foreach (PluginManager.PluginConfig pluginConfig in pluginConfigs)
-            {
-                if (pluginConfig.IsEnabled)
+                var cfg = pluginManager.GetPluginConfigAt(j);
+                if (!cfg.IsEnabled)
                 {
-                    // if it the plugin is enabled, add it to the Catalog that will be scanned to find IPlugin .DLL entries
-                    catalog.Catalogs.Add(new DirectoryCatalog(pluginDir + pluginConfig.DirectoryName + "/"));
+                    continue;
+                }
+
+                var subDir = pluginsRoot + cfg.DirectoryName + "/";
+                try
+                {
+                    LoadCatalog(new DirectoryCatalog(subDir), cfg.DirectoryName, loaded);
+                }
+                catch (Exception ex)
+                {
+                    // Catalog construction itself can throw (missing dir, etc.).
+                    Error("PluginLoader: failed to scan '" + cfg.DirectoryName + "': "
+                        + ex.GetType().Name + ": " + ex.Message);
                 }
             }
+        }
 
-            // Loads all found plugins
-            var container = new CompositionContainer(catalog);
-            container.ComposeParts(this);
+        // Test path: load every *.dll in the given directory as its own per-DLL
+        // DirectoryCatalog (via searchPattern), so one bad DLL does not poison the rest.
+        private void LoadFromDirectory(string pluginDir, List<IPlugin> loaded)
+        {
+            if (!Directory.Exists(pluginDir))
+            {
+                return;
+            }
 
-            Log.Info(Plugins.Count() +  " .NET Plugin(s) loaded");
+            foreach (var dllPath in Directory.GetFiles(pluginDir, "*.dll"))
+            {
+                var dllName = Path.GetFileName(dllPath);
+                try
+                {
+                    LoadCatalog(new DirectoryCatalog(pluginDir, dllName), dllName, loaded);
+                }
+                catch (Exception ex)
+                {
+                    Error("PluginLoader: failed to scan '" + dllName + "': "
+                        + ex.GetType().Name + ": " + ex.Message);
+                }
+            }
+        }
+
+        private void LoadCatalog(ComposablePartCatalog catalog, string label, List<IPlugin> loaded)
+        {
+            try
+            {
+                var container = new CompositionContainer(catalog);
+                var perPluginLoader = new PerPluginLoader();
+                container.ComposeParts(perPluginLoader);
+
+                if (perPluginLoader.Plugins != null)
+                {
+                    foreach (var p in perPluginLoader.Plugins)
+                    {
+                        loaded.Add(p);
+                    }
+                }
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                Error("PluginLoader: ReflectionTypeLoadException loading '" + label + "':");
+                if (ex.LoaderExceptions != null)
+                {
+                    foreach (var le in ex.LoaderExceptions)
+                    {
+                        if (le != null)
+                        {
+                            Error("  " + le.GetType().Name + ": " + le.Message);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Error("PluginLoader: failed to load '" + label + "': "
+                    + ex.GetType().Name + ": " + ex.Message);
+            }
+        }
+
+        // Routes a single error message through both LoadErrors (test visibility) and
+        // Log.Error (production logging). Wrapped in try/catch so unit-test mode — where
+        // the native log sink may not be initialized — does not throw out of Load.
+        private void Error(string msg)
+        {
+            LoadErrors.Add(msg);
+            try
+            {
+                Log.Error(msg);
+            }
+            catch
+            {
+                // Log sink not initialized (unit-test mode). LoadErrors retains the
+                // message for assertions.
+            }
+        }
+
+        private static void Info(string msg)
+        {
+            try
+            {
+                Log.Info(msg);
+            }
+            catch
+            {
+                // Log sink not initialized (unit-test mode).
+            }
+        }
+
+        // Private nested holder for [ImportMany] composition. One instance per isolated
+        // catalog so a throwing constructor in one plugin can't contaminate sibling
+        // plugins' Plugins collection.
+        private class PerPluginLoader
+        {
+            [ImportMany(typeof(IPlugin))]
+            public IEnumerable<IPlugin> Plugins { get; set; }
         }
     }
 }
