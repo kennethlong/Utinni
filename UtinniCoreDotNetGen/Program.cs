@@ -47,9 +47,9 @@ namespace UtinniCoreDotNetGen
                 string buildMode = new DirectoryInfo(workingDir).Name;
                 // C-15: replaced brittle Substring(0, workingDir.LastIndexOf("\\bin\\"))
                 // which threw InvalidOperationException when \bin\ was not in the path
-                // (e.g. CI runner output paths, env-var fallback). ResolveSlnDir supports
+                // (e.g. CI runner output paths, env-var fallback). SlnDirResolver supports
                 // three resolution modes: args[0], walk-up to Utinni.sln, UTINNI_SLN_DIR env var.
-                string slnDir = ResolveSlnDir(workingDir, _args);
+                string slnDir = SlnDirResolver.Resolve(workingDir, _args);
 
                 driver.ParserOptions.TargetTriple = "i686-pc-win32-msvc"; // Generates x86 EntryPoints
 
@@ -121,45 +121,6 @@ namespace UtinniCoreDotNetGen
             public void Postprocess(Driver driver, ASTContext ctx)
             {
             }
-        }
-
-        /// <summary>
-        /// C-15: Resolves the Utinni solution root directory using three resolution modes:
-        /// 1. args[0] / $(SolutionDir) — explicit arg passed by the post-build event.
-        /// 2. Walk-up from workingDir until a directory containing Utinni.sln is found.
-        /// 3. UTINNI_SLN_DIR environment variable fallback.
-        /// Throws InvalidOperationException if none of the modes succeed.
-        /// </summary>
-        public static string ResolveSlnDir(string workingDir, string[] args)
-        {
-            // Preference 1: explicit arg (e.g. $(SolutionDir) from post-build event)
-            if (args != null && args.Length > 0 && Directory.Exists(args[0]))
-            {
-                return args[0].TrimEnd('\\', '/') + "\\";
-            }
-
-            // Preference 2: walk up from workingDir looking for Utinni.sln
-            var dir = new DirectoryInfo(workingDir);
-            while (dir != null)
-            {
-                if (File.Exists(Path.Combine(dir.FullName, "Utinni.sln")))
-                {
-                    return dir.FullName.TrimEnd('\\', '/') + "\\";
-                }
-                dir = dir.Parent;
-            }
-
-            // Preference 3: UTINNI_SLN_DIR environment variable
-            string envDir = Environment.GetEnvironmentVariable("UTINNI_SLN_DIR");
-            if (!string.IsNullOrEmpty(envDir) && Directory.Exists(envDir))
-            {
-                return envDir.TrimEnd('\\', '/') + "\\";
-            }
-
-            throw new InvalidOperationException(
-                "Could not resolve Utinni solution directory. " +
-                "Pass $(SolutionDir) as args[0], run from a build output directory inside " +
-                "the solution tree, or set UTINNI_SLN_DIR.");
         }
 
         static void Main(string[] args)

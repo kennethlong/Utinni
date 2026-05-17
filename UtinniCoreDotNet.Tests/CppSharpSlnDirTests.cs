@@ -30,7 +30,7 @@ using Xunit;
 namespace UtinniCoreDotNet.Tests
 {
     /// <summary>
-    /// C-15 regression tests for UtinniCoreDotNetGen.Program.ResolveSlnDir().
+    /// C-15 regression tests for UtinniCoreDotNetGen.SlnDirResolver.Resolve().
     /// Three resolution modes: args[0]/$(SolutionDir), walk-up to Utinni.sln, UTINNI_SLN_DIR env var.
     /// </summary>
     public class CppSharpSlnDirTests : IDisposable
@@ -59,7 +59,7 @@ namespace UtinniCoreDotNet.Tests
                 string someWorkingDir = Path.GetTempPath();
 
                 // Act
-                string result = Program.ResolveSlnDir(someWorkingDir, new[] { tempDir });
+                string result = SlnDirResolver.Resolve(someWorkingDir, new[] { tempDir });
 
                 // Assert: returned path is args[0] with trailing backslash
                 Assert.Equal(tempDir.TrimEnd('\\') + "\\", result);
@@ -92,7 +92,7 @@ namespace UtinniCoreDotNet.Tests
                 Environment.SetEnvironmentVariable("UTINNI_SLN_DIR", null);
 
                 // Act
-                string result = Program.ResolveSlnDir(workingDir, new string[0]);
+                string result = SlnDirResolver.Resolve(workingDir, new string[0]);
 
                 // Assert: walk-up should find slnDir
                 Assert.Equal(slnDir.TrimEnd('\\') + "\\", result);
@@ -113,7 +113,7 @@ namespace UtinniCoreDotNet.Tests
 
             // Act & Assert
             Assert.Throws<InvalidOperationException>(
-                () => Program.ResolveSlnDir(workingDir, new string[0]));
+                () => SlnDirResolver.Resolve(workingDir, new string[0]));
         }
 
         [Fact]
@@ -129,7 +129,7 @@ namespace UtinniCoreDotNet.Tests
                 string workingDir = Path.GetTempPath();
 
                 // Act
-                string result = Program.ResolveSlnDir(workingDir, new string[0]);
+                string result = SlnDirResolver.Resolve(workingDir, new string[0]);
 
                 // Assert: env var value used
                 Assert.Equal(envDir.TrimEnd('\\') + "\\", result);
