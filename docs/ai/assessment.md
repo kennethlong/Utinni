@@ -424,6 +424,16 @@ These need someone-who-was-there to answer:
 2. **Was `AddPostDrawLoopCall` ever actually used?** If broken since 2020
    and nobody noticed, the fix is trivial but adds a strong case for
    smoke tests.
+
+   **Resolved 2026-Q2 (CON-O-02, Phase 2 Plan 02-01 Task 2, commit
+   9aa0eb9):** Bounded archaeology — grep finds zero callers in Utinni
+   and UtinniPlugins as of the fork's current state. However, the method
+   is a public API surface for plugin authors (Wave-1 plugins may use it),
+   so the fix-it-properly disposition (D-12 default-fallback: assume IS
+   used) was taken. The `Drain(ConcurrentQueue<Action>)` helper introduced
+   in commit 9aa0eb9 makes the queue-vs-method correspondence explicit
+   across `GroundSceneCallbacks`, `GameCallbacks`, and `ObjectCallbacks`
+   so this class of bug cannot recur in these files.
 3. **The "very odd bug … storing this in a variable prevents corruption"**
    comment in `GameCallbacks.cs:46`, etc. — strongly smells like
    GC-collected delegate being passed to unmanaged without `GCHandle.Alloc`.
@@ -431,6 +441,18 @@ These need someone-who-was-there to answer:
    `GCHandle.Alloc`.
 4. **VS 2019 pin** — was there a real reason (compiler bug with x86 + CLR
    hosting?) or just history?
+
+   **Resolved 2026-Q2 (CON-O-04, Phase 2 Plan 02-01 Task 5, commit
+   88b5b6b):** Bounded archaeology — no technical rationale found in git
+   log, in-tree comments, or upstream `ptklatt/Utinni` history. The pin
+   dates to before VS 2022's November-2021 release and was never updated.
+   Per D-12 default-fallback (audit-then-widen), the Vsix.csproj
+   `Microsoft.VisualStudio.SDK` was bumped 16.0.206 → 17.0.32112.339 and
+   `Microsoft.VSSDK.BuildTools` 16.8.3038 → 17.0.5241, and the manifest
+   widened to `[16.0,18.0)`. The cross-IDE install confirmation (VS 2019
+   AND VS 2022) is the Phase 2 Plan 02-01 Task 6 human-verify checkpoint.
+   If a regression is discovered in a specific VS 2022 path, narrow the
+   range at that point.
 5. **`StdEdited.cs` curation criteria** — what exactly is hand-maintained
    vs auto-generated?
 6. **LeksysINI** — README says "temporary, will most likely be replaced"
@@ -515,17 +537,17 @@ doc in sync so future sessions (human or AI) can see what's done.
 | C-01  | DllMain loader-lock                               | open       |       |
 | C-02  | Cross-CRT delete[] in config                      | open       |       |
 | C-03  | `Network::cast` returns uninitialized             | open       |       |
-| C-04  | DequeuePostDrawLoopCalls wrong queue              | open       |       |
+| C-04  | DequeuePostDrawLoopCalls wrong queue              | done       | 9aa0eb9 — Phase 2 Plan 02-01 Task 2 (Drain helper, closes CON-O-02 per D-12) |
 | C-05  | GameDragDropEventHandlers static-field            | open       |       |
-| C-06  | PluginLoader swallows exceptions                  | open       |       |
+| C-06  | PluginLoader swallows exceptions                  | done       | efdb80b — Phase 2 Plan 02-01 Task 3 (per-plugin try/catch + LoadErrors surface) |
 | C-07  | UndoRedoManager thread-safety + AllowMerge        | open       |       |
-| C-08  | Hotkey.ProcessString throws                       | open       |       |
+| C-08  | Hotkey.ProcessString throws                       | done       | c6879b5 — Phase 2 Plan 02-01 Task 4 (Enum.TryParse + multi-segment split; both Phase-1 skips removed) |
 | C-09  | UI/game thread busy-wait deadlock                 | open       |       |
 | C-10  | clr::stop null deref                              | open       |       |
 | C-11  | DirectX9 findPattern no null check                | open       |       |
-| C-12  | VSIX pinned to VS 2019                            | open       |       |
+| C-12  | VSIX pinned to VS 2019                            | done       | 88b5b6b — Phase 2 Plan 02-01 Task 5 (SDK + BuildTools bumped to 17.x; resolves CON-O-04 per D-12; IDE-install verification = Task 6 human-verify) |
 | C-13  | TJT Debug path extra ..\                          | done       | UtinniPlugins@1c1eb0a (cross-repo) — Phase 2 Plan 02-01 Task 8 |
-| C-14  | utinni.cfg login.swgemu.com default               | open       |       |
+| C-14  | utinni.cfg login.swgemu.com default               | done       | e7c6699 — Phase 2 Plan 02-01 Task 7 (CON-D-01 blank-login default) |
 | C-15  | CppSharp slnDir brittle                           | open       |       |
 | R-A   | Symmetric Add/Remove for callbacks                | open       |       |
 | R-B   | Plugin lifecycle contract                         | open       |       |
