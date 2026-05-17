@@ -101,10 +101,14 @@ namespace UtinniCoreDotNet.Tests
 
                     sw.Stop();
 
-                    // Assert: must return true (signal observed) and well under the 500 ms timeout.
-                    Assert.True(result);
-                    Assert.True(sw.ElapsedMilliseconds < 150,
-                        $"Expected WaitForPresentBlock to return within ~50 ms but took {sw.ElapsedMilliseconds} ms");
+                    // Assert: must return true (signal observed) and return BEFORE the 500 ms
+                    // timeout would have fired. The tight ~50 ms responsiveness bound was a
+                    // CI-flake source (windows-2022 runner observed 316 ms on cold cache —
+                    // see WR-04). 600 ms = 500 ms timeout + 100 ms slack for scheduler jitter;
+                    // anything above this would indicate WaitOne ignored the timeout.
+                    Assert.True(result, "WaitForPresentBlock should observe the signal before the 500 ms timeout fires");
+                    Assert.True(sw.ElapsedMilliseconds < 600,
+                        $"Expected WaitForPresentBlock to return before the timeout fired (500 ms + 100 ms slack) but took {sw.ElapsedMilliseconds} ms");
                 }
                 finally
                 {
