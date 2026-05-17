@@ -421,6 +421,12 @@ These need someone-who-was-there to answer:
 
 1. **`isSafeToUse`** — code uses `||` (`game.cpp:307`), doc says `&&`.
    Which is correct?
+
+   **Resolved 2026-Q2 (CON-O-01, Phase 2 Plan 02-02 Task 10 KB-05):** D-12
+   default-fallback: docs/ai/internals.md:218-231 is the source of truth ("AND ... Both
+   must be true"). Changed `game.cpp:307` from `||` to `&&`. Risk: if internals.md is
+   wrong and `||` was intentional, `&&` blocks legitimate isSafeToUse=true cases. Live
+   SWG verification (Tier-4 manual) will surface any regression.
 2. **Was `AddPostDrawLoopCall` ever actually used?** If broken since 2020
    and nobody noticed, the fix is trivial but adds a strong case for
    smoke tests.
@@ -439,6 +445,15 @@ These need someone-who-was-there to answer:
    GC-collected delegate being passed to unmanaged without `GCHandle.Alloc`.
    Knowing the original repro would let us confirm the right fix is
    `GCHandle.Alloc`.
+
+   **Resolved 2026-Q2 (CON-O-03, Phase 2 Plan 02-02 Task 9):** Audit of all
+   `Add*Callback` delegate-passing sites in `GameCallbacks.cs`, `ObjectCallbacks.cs`,
+   and `GroundSceneCallbacks.cs` confirms the existing static-field approach IS a valid
+   GC root — no unanchored inline delegates found. The misleading "Very odd bug" comment
+   was replaced with a precise CLR P/Invoke delegate-marshalling explanation. A GC-survival
+   regression test (`GameCallbacksTests.RegisterCallback_ForceGCCollect_CallbackStillFiresWithoutAV`)
+   was added to `UtinniCoreDotNet.Tests`. The correct fix is the static-field approach
+   (not `GCHandle.Alloc`) — the static field is the GC root that keeps the delegate alive.
 4. **VS 2019 pin** — was there a real reason (compiler bug with x86 + CLR
    hosting?) or just history?
 
@@ -535,20 +550,21 @@ doc in sync so future sessions (human or AI) can see what's done.
 | ID    | Item                                              | Status     | Notes |
 | ----- | ------------------------------------------------- | ---------- | ----- |
 | C-01  | DllMain loader-lock                               | open       |       |
-| C-02  | Cross-CRT delete[] in config                      | open       |       |
-| C-03  | `Network::cast` returns uninitialized             | open       |       |
+| C-02  | Cross-CRT delete[] in config                      | done       | 8e88879 — Phase 2 Plan 02-02 Task 2 (delete[] removed; TreeFile dtor owns buffer per CON-B-04) |
+| C-03  | `Network::cast` returns uninitialized             | done       | 70038a9 — Phase 2 Plan 02-02 Task 3 (networkId=0; OUT param returned; double-semicolon typo removed) |
 | C-04  | DequeuePostDrawLoopCalls wrong queue              | done       | 9aa0eb9 — Phase 2 Plan 02-01 Task 2 (Drain helper, closes CON-O-02 per D-12) |
-| C-05  | GameDragDropEventHandlers static-field            | open       |       |
+| C-05  | GameDragDropEventHandlers static-field            | done       | 5fd0dac — Phase 2 Plan 02-02 Task 4 (static events + forwarder lambdas; Initialize accepts Panel; 4 tests) |
 | C-06  | PluginLoader swallows exceptions                  | done       | efdb80b — Phase 2 Plan 02-01 Task 3 (per-plugin try/catch + LoadErrors surface) |
-| C-07  | UndoRedoManager thread-safety + AllowMerge        | open       |       |
+| C-07  | UndoRedoManager thread-safety + AllowMerge        | done       | 1a8ff42 — Phase 2 Plan 02-02 Task 5 (lock(syncRoot); AllowMerge gate; RedoCommands.Clear ordering TD-29; D-06 testability seam; 5 tests) |
 | C-08  | Hotkey.ProcessString throws                       | done       | c6879b5 — Phase 2 Plan 02-01 Task 4 (Enum.TryParse + multi-segment split; both Phase-1 skips removed) |
 | C-09  | UI/game thread busy-wait deadlock                 | open       |       |
-| C-10  | clr::stop null deref                              | open       |       |
-| C-11  | DirectX9 findPattern no null check                | open       |       |
+| C-10  | clr::stop null deref                              | done       | eabc0d2 — Phase 2 Plan 02-02 Task 6 (null-checked Release + nullptr; idempotent double-call harness) |
+| C-11  | DirectX9 findPattern no null check                | done       | ba1402a — Phase 2 Plan 02-02 Task 7 (getVtbl null-checks GetModuleHandle + findPattern; log::critical; CON-N-04 preserved; 3 tests) |
 | C-12  | VSIX pinned to VS 2019                            | done       | 88b5b6b — Phase 2 Plan 02-01 Task 5 (SDK + BuildTools bumped to 17.x; resolves CON-O-04 per D-12; IDE-install verification = Task 6 human-verify) |
 | C-13  | TJT Debug path extra ..\                          | done       | UtinniPlugins@1c1eb0a (cross-repo) — Phase 2 Plan 02-01 Task 8 |
 | C-14  | utinni.cfg login.swgemu.com default               | done       | e7c6699 — Phase 2 Plan 02-01 Task 7 (CON-D-01 blank-login default) |
-| C-15  | CppSharp slnDir brittle                           | open       |       |
+| C-15  | CppSharp slnDir brittle                           | done       | 8a4d7f9 — Phase 2 Plan 02-02 Task 8 (ResolveSlnDir 3-mode function; post-build passes $(SolutionDir); 4 tests) |
+| C-16  | GameCallbacks delegate-pinning (CON-O-03)         | done       | bfddf7d — Phase 2 Plan 02-02 Task 9 (comment audit + GC-survival regression test; CON-O-03 resolved) |
 | R-A   | Symmetric Add/Remove for callbacks                | open       |       |
 | R-B   | Plugin lifecycle contract                         | open       |       |
 | R-C   | Single source of truth for RVAs                   | open       |       |

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MIT License
  *
  * Copyright (c) 2020 Philip Klatt
@@ -24,23 +24,30 @@
 
 using System;
 using System.Windows.Forms;
-using UtinniCoreDotNet.UI.Controls;
 
 namespace UtinniCoreDotNet.UI
 {
     public static class GameDragDropEventHandlers
     {
-        public static DragEventHandler OnDragDrop;
-        public static DragEventHandler OnDragEnter;
-        public static EventHandler OnDragLeave;
-        public static DragEventHandler OnDragOver;
+        // C-05: converted from static fields to static events. The original pattern
+        // captured the (null) field value at Initialize() time and wired that snapshot
+        // to the panel — subsequent += on the static field never reached the panel.
+        // The static event + forwarder lambda pattern captures the live event symbol,
+        // so any handler added after Initialize() still receives events.
+        public static event DragEventHandler OnDragDrop;
+        public static event DragEventHandler OnDragEnter;
+        public static event EventHandler OnDragLeave;
+        public static event DragEventHandler OnDragOver;
 
-        public static void Initialize(PanelGame panelGame)
+        // Accept Panel (base class) so unit tests can pass a lightweight TestPanel
+        // without the PanelGame P/Invoke ctor. Production call site (PanelGame.cs:68)
+        // passes 'this' (a PanelGame, which derives from Panel) — still type-compatible.
+        public static void Initialize(Panel panelGame)
         {
-            panelGame.DragDrop += OnDragDrop;
-            panelGame.DragEnter += OnDragEnter;
-            panelGame.DragLeave += OnDragLeave;
-            panelGame.DragOver += OnDragOver;
+            panelGame.DragDrop += (s, e) => OnDragDrop?.Invoke(s, e);
+            panelGame.DragEnter += (s, e) => OnDragEnter?.Invoke(s, e);
+            panelGame.DragLeave += (s, e) => OnDragLeave?.Invoke(s, e);
+            panelGame.DragOver += (s, e) => OnDragOver?.Invoke(s, e);
         }
     }
 }

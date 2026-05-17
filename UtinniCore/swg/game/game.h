@@ -62,5 +62,8 @@ public:
 
     static bool isSafeToUse();
 
+    // Test-only: fires all registered install callbacks (used by utinni_triggerInstallCallbacks).
+    static void triggerInstallCallbacks();
+
 };
 }

@@ -64,8 +64,11 @@ Object* Network::getCachedObjectById(swgptr pCachedNetworkId)
 
 int64_t Network::cast(int id)
 {
-    swgptr networkId; // This is broken
-    return swg::network::cast(&networkId, id, (id >> 32));;
+    // C-03: networkId must be initialized; SWG cast writes through &networkId; the function's
+    // int64_t return is unreliable per CONCERNS.md TD-03 — read networkId after the call.
+    swgptr networkId = 0;
+    swg::network::cast(&networkId, id, (id >> 32));
+    return networkId;
 }
 
 

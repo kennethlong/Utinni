@@ -92,13 +92,12 @@ void start()
 
 void stop()
 {
-    pClrRuntimeHost->Release();
-    pClrRuntimeInfo->Release();
-    pClrMetaHost->Release();
-
-    pClrRuntimeHost = nullptr;
-    pClrRuntimeInfo = nullptr;
-    pClrMetaHost = nullptr;
+    // C-10: Idempotent shutdown. start() may have failed before allocating each pointer;
+    // detatch() (DLL_PROCESS_DETACH) calls stop() unconditionally so the body must handle
+    // null and survive multiple calls without AV.
+    if (pClrRuntimeHost) { pClrRuntimeHost->Release(); pClrRuntimeHost = nullptr; }
+    if (pClrRuntimeInfo) { pClrRuntimeInfo->Release(); pClrRuntimeInfo = nullptr; }
+    if (pClrMetaHost) { pClrMetaHost->Release(); pClrMetaHost = nullptr; }
 }
 
 void load()

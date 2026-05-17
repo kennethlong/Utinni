@@ -92,7 +92,7 @@
     <PostBuildEvent />
     <PostBuildEvent>
       <Command>xcopy /E /Y "$(SolutionDir)data" "$(TargetDir)" /d
-$(SolutionDir)UtinniCoreDotNetGen\bin\$(Configuration)\UtinniCoreDotNetGen.exe</Command>
+$(SolutionDir)UtinniCoreDotNetGen\bin\$(Configuration)\UtinniCoreDotNetGen.exe "$(SolutionDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -123,7 +123,7 @@ $(SolutionDir)UtinniCoreDotNetGen\bin\$(Configuration)\UtinniCoreDotNetGen.exe</
     <PostBuildEvent />
     <PostBuildEvent>
       <Command>xcopy /E /Y "$(SolutionDir)data" "$(TargetDir)" /d
-$(SolutionDir)UtinniCoreDotNetGen\bin\$(Configuration)\UtinniCoreDotNetGen.exe</Command>
+$(SolutionDir)UtinniCoreDotNetGen\bin\$(Configuration)\UtinniCoreDotNetGen.exe "$(SolutionDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDbgInfo|Win32'">
@@ -155,7 +155,7 @@ $(SolutionDir)UtinniCoreDotNetGen\bin\$(Configuration)\UtinniCoreDotNetGen.exe</
     <PostBuildEvent />
     <PostBuildEvent>
       <Command>xcopy /E /Y "$(SolutionDir)data" "$(TargetDir)" /d
-$(SolutionDir)UtinniCoreDotNetGen\bin\$(Configuration)\UtinniCoreDotNetGen.exe</Command>
+$(SolutionDir)UtinniCoreDotNetGen\bin\$(Configuration)\UtinniCoreDotNetGen.exe "$(SolutionDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -227,6 +227,7 @@ $(SolutionDir)UtinniCoreDotNetGen\bin\$(Configuration)\UtinniCoreDotNetGen.exe</
     <ClCompile Include="swg\scene\scene.cpp" />
     <ClCompile Include="swg\scene\ground_scene.cpp" />
     <ClCompile Include="swg\game\game.cpp" />
+    <ClCompile Include="test_exports.cpp" />
     <ClCompile Include="utinni.cpp" />
     <ClCompile Include="swg\misc\swg_math.cpp" />
     <ClCompile Include="swg\misc\swg_utility.cpp" />

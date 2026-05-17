@@ -296,15 +296,36 @@ HRESULT __stdcall hkD3DXCompileShader(LPCSTR pSrcData, UINT srcDataLen, LPVOID* 
 
 swgptr* getVtbl()
 {
-	 swgptr* vtbl = nullptr;
-	 auto pDevice = (LPDIRECT3DDEVICE9)memory::findPattern((swgptr)GetModuleHandle("d3d9.dll"), 0x128000, "\xC7\x06\x00\x00\x00\x00\x89\x86\x00\x00\x00\x00\x89\x86", "xx????xx????xx");
-	 memcpy(&vtbl, (void*)(((swgptr)pDevice) + 2), 4);
-	 return vtbl;
+    // C-11: null-check GetModuleHandle + findPattern before memcpy.
+    // CON-N-04: memory::copy (VirtualProtect bracket) is NOT touched here —
+    // only memory::findPattern (pure read) is used.
+    HMODULE hD3d9 = GetModuleHandle("d3d9.dll");
+    if (hD3d9 == nullptr)
+    {
+        utinni::log::critical("DirectX9 hook installation failed: d3d9.dll not loaded yet");
+        return nullptr;
+    }
+
+    auto pDevice = (LPDIRECT3DDEVICE9)memory::findPattern((swgptr)hD3d9, 0x128000,
+        "\xC7\x06\x00\x00\x00\x00\x89\x86\x00\x00\x00\x00\x89\x86", "xx????xx????xx");
+    if (pDevice == nullptr)
+    {
+        utinni::log::critical("DirectX9 hook installation failed: vtable pattern not found in d3d9.dll");
+        return nullptr;
+    }
+
+    swgptr* vtbl = nullptr;
+    memcpy(&vtbl, (void*)(((swgptr)pDevice) + 2), 4);
+    return vtbl;
 }
 
 void detour()
 {
     auto vtbl = getVtbl();
+    if (vtbl == nullptr)
+    {
+        return;
+    }
 
 	 swgptr BeginSceneAddress = Detour::CheckPointer(vtbl[d3di_BeginScene_Index]);
     beginScene = (pBeginScene)Detour::Create((LPVOID)BeginSceneAddress, hkBeginScene, DETOUR_TYPE_PUSH_RET);

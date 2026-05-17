@@ -32,7 +32,10 @@ namespace UtinniCoreDotNet.UndoRedo
         void Execute();
         // Undos the command
         void Undo();
-        // allows commands to situationally allow or disallow merging of commands 
+        // Returns true if this command may absorb the next command into itself via Merge().
+        // Per docs/ai/undo-redo.html §AllowMerge, called by UndoRedoManager.AddUndoCommand
+        // BEFORE Merge() to gate cheap merging of e.g. time-of-day slider drags.
+        // C-07 disposition: KEEP this method — documented contract in undo-redo.html:54-55,184-185.
         bool AllowMerge();
         // Returns true if the merge was successful
         bool Merge(IUndoCommand newCommand);
