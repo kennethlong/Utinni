@@ -5,6 +5,12 @@ Debug/
 RelWithDbgInfo/
 tmp/
 bin/
+# `bin/` above already excludes bin/Release/utinni.cfg and bin/Release/ut.ini
+# (the build outputs that hold local-machine config: SWGEmu client path, login
+# server host/port). data/utinni.cfg MUST ship blank per CON-D-01 (C-14 fix in
+# Phase 02; verified by 02-VERIFICATION.md SC #3). Never check in localhost
+# login settings — they belong only in the build-output copies. See
+# scripts/local-test-setup.ps1 for the seeded-bin/Release pattern.
 obj/
 ipch/
 .vs/
