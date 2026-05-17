@@ -31,14 +31,13 @@ namespace UtinniCoreDotNet.Tests
 {
     public class LoaderLockHarnessTests
     {
-        // Resolve the harness exe path relative to the test output directory.
-        // Test bin is at bin/Release/net472/ (AppendPlatformToOutputPath=false).
-        // Harness builds to $(SolutionDir)bin/Release/Utinni.LoaderLockHarness.exe.
-        // Walking up 2 levels from net472/ reaches bin/Release/ where the harness lives.
+        // The harness exe (and UtinniCore.dll it loads) are copied next to the test
+        // assembly by Tests.csproj's CopyNativeArtifactsForTests target. This keeps the
+        // path stable regardless of how `dotnet test` is invoked (sln-relative or
+        // csproj-relative working directory).
         private static string GetHarnessPath()
         {
-            return Path.GetFullPath(
-                Path.Combine(AppContext.BaseDirectory, "..", "..", "Utinni.LoaderLockHarness.exe"));
+            return Path.Combine(AppContext.BaseDirectory, "Utinni.LoaderLockHarness.exe");
         }
 
         [Fact]

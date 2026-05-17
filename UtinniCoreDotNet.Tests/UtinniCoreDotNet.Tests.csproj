@@ -30,4 +30,21 @@
          mirroring the production UtinniCoreDotNet.csproj which also declares this reference. -->
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
+
+  <!-- Phase 2 CI fix: P/Invoke tests load UtinniCore.dll (the native DLL produced by
+       UtinniCore.vcxproj at $(SolutionDir)bin\$(Configuration)\). DllImport probes the
+       test-process directory first, which is $(TargetDir) here — so copy the native
+       artifacts next to the test assembly. LoaderLockHarnessTests also runs
+       Utinni.LoaderLockHarness.exe via Process.Start; co-locating it ensures the
+       harness finds UtinniCore.dll in its own directory (Win32 LoadLibrary search). -->
+  <Target Name="CopyNativeArtifactsForTests" AfterTargets="Build">
+    <ItemGroup>
+      <_NativeTestArtifacts Include="$(SolutionDir)bin\$(Configuration)\UtinniCore.dll" />
+      <_NativeTestArtifacts Include="$(SolutionDir)bin\$(Configuration)\Utinni.LoaderLockHarness.exe" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_NativeTestArtifacts)"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('%(_NativeTestArtifacts.Identity)')" />
+  </Target>
 </Project>
