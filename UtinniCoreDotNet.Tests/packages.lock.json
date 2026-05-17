@@ -99,6 +99,9 @@
       },
       "utinnicoredotnet": {
         "type": "Project"
+      },
+      "utinnicoredotnetgen": {
+        "type": "Project"
       }
     }
   }

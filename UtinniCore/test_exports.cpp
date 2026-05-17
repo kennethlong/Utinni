@@ -68,7 +68,7 @@ extern "C" __declspec(dllexport) uintptr_t __cdecl utinni_findPattern(
 // ---------------------------------------------------------------------------
 extern "C" __declspec(dllexport) uintptr_t __cdecl utinni_getVtbl()
 {
-    directX::swgptr* vtbl = directX::getVtbl();
+    swgptr* vtbl = directX::getVtbl();
     if (vtbl == nullptr)
     {
         return 0;
