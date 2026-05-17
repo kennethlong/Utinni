@@ -96,7 +96,10 @@ void createPatches()
     utinni::debugCamera::patch();
 }
 
-void main()
+// C-01: utinni_init runs synchronously on the launcher-spawned thread.
+// Launcher's WaitForSingleObject blocks until this returns. Synchronous startup
+// is easier to debug than fire-and-forget; bring-up is bounded (CLR init + plugin load).
+extern "C" __declspec(dllexport) DWORD WINAPI utinni_init(LPVOID lpThreadParam)
 {
     char dllPathbuffer[MAX_PATH];
     HMODULE handle = nullptr;
@@ -127,6 +130,8 @@ void main()
     utinni::log::info("Loading .NET plugins");
     // Load the clr and UtinniCoreDotNet
     clr::load();
+
+    return 0;
 }
 
 void detatch()
@@ -135,19 +140,22 @@ void detatch()
     clr::stop();
 }
 
+// C-01: DllMain MUST complete in microseconds. Heavy startup (CLR + plugin load) moved
+// to utinni_init, fired by the launcher via a second CreateRemoteThread after this DLL
+// is loaded. DllMain does ONLY DisableThreadLibraryCalls + return TRUE on attach.
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
     switch (fdwReason)
     {
     case DLL_PROCESS_ATTACH:
-        CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)main, nullptr, 0, nullptr);
-        return true;
+        DisableThreadLibraryCalls(hinstDLL);
+        return TRUE;
 
     case DLL_PROCESS_DETACH:
         detatch();
-        return true;
+        return TRUE;
     }
-    return false;
+    return TRUE;
 }
 
 namespace utinni

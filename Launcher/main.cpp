@@ -207,6 +207,34 @@ void inject(PROCESS_INFORMATION procInfo)
     {
         throwError("[ERROR] LoadLibraryA couldn't inject dll.");
     }
+
+    // C-01: After LoadLibraryA returns, fire utinni_init on a fresh remote thread.
+    // The local LoadLibrary is used only to resolve the export offset via GetProcAddress;
+    // it is freed immediately after. The remote address is computed via the standard
+    // DLL-injection idiom: local GetProcAddress offset + remote hDll base.
+    HMODULE localCore = LoadLibraryA(dllFilename.c_str());
+    if (!localCore)
+    {
+        throwError("[ERROR] Local LoadLibraryA(UtinniCore.dll) failed for utinni_init resolution.");
+    }
+    FARPROC localInit = GetProcAddress(localCore, "utinni_init");
+    if (!localInit)
+    {
+        FreeLibrary(localCore);
+        throwError("[ERROR] utinni_init export not found in UtinniCore.dll.");
+    }
+    SIZE_T initOffset = (BYTE*)localInit - (BYTE*)localCore;
+    FreeLibrary(localCore);
+
+    FARPROC remoteInit = (FARPROC)((BYTE*)hDll + initOffset);
+    HANDLE hInitThread = CreateRemoteThread(procInfo.hProcess, nullptr, 0,
+                                             (LPTHREAD_START_ROUTINE)remoteInit, nullptr, 0, nullptr);
+    if (!hInitThread)
+    {
+        throwError("[ERROR] Couldn't open utinni_init remote thread.");
+    }
+    WaitForSingleObject(hInitThread, INFINITE);
+    CloseHandle(hInitThread);
 }
 
 std::string swgClientPath;
