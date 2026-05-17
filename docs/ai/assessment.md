@@ -421,6 +421,12 @@ These need someone-who-was-there to answer:
 
 1. **`isSafeToUse`** — code uses `||` (`game.cpp:307`), doc says `&&`.
    Which is correct?
+
+   **Resolved 2026-Q2 (CON-O-01, Phase 2 Plan 02-02 Task 10 KB-05):** D-12
+   default-fallback: docs/ai/internals.md:218-231 is the source of truth ("AND ... Both
+   must be true"). Changed `game.cpp:307` from `||` to `&&`. Risk: if internals.md is
+   wrong and `||` was intentional, `&&` blocks legitimate isSafeToUse=true cases. Live
+   SWG verification (Tier-4 manual) will surface any regression.
 2. **Was `AddPostDrawLoopCall` ever actually used?** If broken since 2020
    and nobody noticed, the fix is trivial but adds a strong case for
    smoke tests.

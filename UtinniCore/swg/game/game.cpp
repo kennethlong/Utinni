@@ -304,7 +304,12 @@ const Camera* Game::getConstCamera()
 
 bool Game::isSafeToUse()
 {
-    return memory::read<bool>(0x01908858) || memory::read<bool>(0x01919410);
+    // Returns true only when both SWG-internal safety flags are set. Per docs/ai/internals.md:218-231,
+    // "AND ... Both must be true" — the operator was previously || (logical-OR), which returned true
+    // when only one flag was set, allowing world-snapshot mutations during scene transitions that the
+    // second flag would have blocked. CON-O-01 disposition: docs/ai/internals.md is the source of truth;
+    // the operator is &&. See assessment.md Open Questions §1.
+    return memory::read<bool>(0x01908858) && memory::read<bool>(0x01919410);
 }
 
 void Game::triggerInstallCallbacks()
