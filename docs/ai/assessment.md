@@ -543,7 +543,7 @@ doc in sync so future sessions (human or AI) can see what's done.
 | C-07  | UndoRedoManager thread-safety + AllowMerge        | done       | (02-02 Task 5) — lock(syncRoot) on all mutations; AllowMerge() gate before Merge(); RedoCommands.Clear() after merge check (TD-29); Phase-1 D-06 testability seam; 5 tests in UndoRedoManagerTests.cs |
 | C-08  | Hotkey.ProcessString throws                       | done       | c6879b5 — Phase 2 Plan 02-01 Task 4 (Enum.TryParse + multi-segment split; both Phase-1 skips removed) |
 | C-09  | UI/game thread busy-wait deadlock                 | open       |       |
-| C-10  | clr::stop null deref                              | open       |       |
+| C-10  | clr::stop null deref                              | done       | (02-02 Task 6) — each Release() null-checked; pointer set to nullptr after release; idempotent double-call harness in Clr10HarnessTests.cs |
 | C-11  | DirectX9 findPattern no null check                | open       |       |
 | C-12  | VSIX pinned to VS 2019                            | done       | 88b5b6b — Phase 2 Plan 02-01 Task 5 (SDK + BuildTools bumped to 17.x; resolves CON-O-04 per D-12; IDE-install verification = Task 6 human-verify) |
 | C-13  | TJT Debug path extra ..\                          | done       | UtinniPlugins@1c1eb0a (cross-repo) — Phase 2 Plan 02-01 Task 8 |
