@@ -79,20 +79,36 @@ namespace UtinniCoreDotNet.Tests
         [Fact]
         public void WaitForPresentBlock_SignalFires_ReturnsImmediately()
         {
-            // Arrange: create an unsignalled event; signal it asynchronously after 10 ms.
+            // Arrange: create an unsignalled event; signal it asynchronously after a short
+            // pre-sleep. Use a dedicated Thread (starts in single-digit ms) rather than
+            // Task.Run (threadpool — first-spin can take hundreds of ms on cold-cache CI
+            // VMs, observed 498 ms on windows-2022 which exhausted the prior 500 ms test
+            // timeout). The point of the test is "signal observed before timeout fires",
+            // not "signal observed within N ms", so generous timeout slack is correct.
             using (var mockSignal = new EventWaitHandle(false, EventResetMode.ManualReset))
+            using (var signallerReady = new ManualResetEventSlim(false))
             {
                 FormMain.TestSignaller = mockSignal;
+                Thread signaller = null;
                 try
                 {
-                    var timeout = TimeSpan.FromMilliseconds(500);
+                    var timeout = TimeSpan.FromMilliseconds(5000);
 
-                    // Signal the event after 10 ms on a background thread.
-                    Task.Run(() =>
+                    signaller = new Thread(() =>
                     {
+                        signallerReady.Set();   // prove the thread actually started
                         Thread.Sleep(10);
                         mockSignal.Set();
-                    });
+                    })
+                    {
+                        IsBackground = true,
+                        Name = "FormMainSignallerTests-Signaller"
+                    };
+                    signaller.Start();
+
+                    // Make sure the signaller thread is running before we start timing
+                    // — otherwise we're measuring thread-start latency, not WaitOne behavior.
+                    Assert.True(signallerReady.Wait(2000), "Signaller thread failed to start within 2 s");
 
                     var sw = Stopwatch.StartNew();
 
@@ -101,18 +117,18 @@ namespace UtinniCoreDotNet.Tests
 
                     sw.Stop();
 
-                    // Assert: must return true (signal observed) and return BEFORE the 500 ms
-                    // timeout would have fired. The tight ~50 ms responsiveness bound was a
-                    // CI-flake source (windows-2022 runner observed 316 ms on cold cache —
-                    // see WR-04). 600 ms = 500 ms timeout + 100 ms slack for scheduler jitter;
-                    // anything above this would indicate WaitOne ignored the timeout.
-                    Assert.True(result, "WaitForPresentBlock should observe the signal before the 500 ms timeout fires");
-                    Assert.True(sw.ElapsedMilliseconds < 600,
-                        $"Expected WaitForPresentBlock to return before the timeout fired (500 ms + 100 ms slack) but took {sw.ElapsedMilliseconds} ms");
+                    // Assert: must return true (signal observed) and return well BEFORE the
+                    // 5000 ms timeout would have fired. 4000 ms = timeout - 1 s headroom;
+                    // anything above this would indicate WaitOne is honoring the timeout
+                    // rather than waking on the signal (a real bug).
+                    Assert.True(result, "WaitForPresentBlock should observe the signal before the 5 s timeout fires");
+                    Assert.True(sw.ElapsedMilliseconds < 4000,
+                        $"Expected WaitForPresentBlock to wake on the signal (well under the 5 s timeout) but took {sw.ElapsedMilliseconds} ms");
                 }
                 finally
                 {
                     FormMain.TestSignaller = null;
+                    signaller?.Join();
                 }
             }
         }
