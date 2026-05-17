@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MIT License
  *
  * Copyright (c) 2020 Philip Klatt
@@ -31,6 +31,13 @@ namespace UtinniCoreDotNet.UndoRedo
 {
     public class UndoRedoManager
     {
+        // C-07: lock-object for thread-safety. All stack mutations (AddUndoCommand, Undo,
+        // Redo, OnCleanupCallback) acquire syncRoot before touching UndoCommands or
+        // RedoCommands. The lock is released BEFORE calling external callbacks (cmd.Undo,
+        // cmd.Execute, onUpdateCommandsCallback) to avoid re-entrancy deadlock through
+        // GroundSceneCallbacks.AddUpdateLoopCall (T-02-10 mitigation).
+        private readonly object syncRoot = new object();
+
         private readonly Action onUpdateCommandsCallback;
         private readonly Action undoCallback;
         private readonly Action redoCallback;
@@ -38,7 +45,11 @@ namespace UtinniCoreDotNet.UndoRedo
         public readonly Stack<IUndoCommand> UndoCommands;
         public readonly Stack<IUndoCommand> RedoCommands;
 
-        public UndoRedoManager(Action onUpdateCommandsCallback, Action undoCallback, Action redoCallback)
+        // C-07 + Phase-1 D-06 testability seam: registerCleanupCallback defaults to
+        // GameCallbacks.AddCleanupSceneCall (production behavior preserved). Tests pass
+        // a no-op lambda (_ => {}) to avoid invoking the native GameCallbacks bridge.
+        public UndoRedoManager(Action onUpdateCommandsCallback, Action undoCallback, Action redoCallback,
+            Action<Action> registerCleanupCallback = null)
         {
             UndoCommands = new Stack<IUndoCommand>();
             RedoCommands = new Stack<IUndoCommand>();
@@ -47,13 +58,18 @@ namespace UtinniCoreDotNet.UndoRedo
             this.undoCallback = undoCallback;
             this.redoCallback = redoCallback;
 
-            GameCallbacks.AddCleanupSceneCall(OnCleanupCallback);
+            (registerCleanupCallback ?? GameCallbacks.AddCleanupSceneCall)(OnCleanupCallback);
         }
 
+        // CON-M-05 preservation: cleanup-on-scene-cleanup behavior is preserved verbatim —
+        // both stacks are cleared and the UI update callback fires. Only wrapped in lock.
         private void OnCleanupCallback()
         {
-            UndoCommands.Clear();
-            RedoCommands.Clear();
+            lock (syncRoot)
+            {
+                UndoCommands.Clear();
+                RedoCommands.Clear();
+            }
             onUpdateCommandsCallback();
         }
 
@@ -61,28 +77,47 @@ namespace UtinniCoreDotNet.UndoRedo
         {
             editorPlugin.AddUndoCommand += (sender, args) =>
             {
-                RedoCommands.Clear();
-                if (UndoCommands.Count > 0 && UndoCommands.Peek().Merge(args.UndoCommand))
+                bool merged;
+                lock (syncRoot)
                 {
-                    return;
+                    // C-07: call AllowMerge() BEFORE Merge() to gate cheap merging.
+                    // TD-29 sub-bug: RedoCommands.Clear() now happens AFTER the merge check —
+                    // clearing redo is only correct when a new command is actually being pushed.
+                    if (UndoCommands.Count > 0
+                        && UndoCommands.Peek().AllowMerge()
+                        && UndoCommands.Peek().Merge(args.UndoCommand))
+                    {
+                        merged = true;
+                    }
+                    else
+                    {
+                        merged = false;
+                        RedoCommands.Clear();
+                        UndoCommands.Push(args.UndoCommand);
+                    }
                 }
-
-                UndoCommands.Push(args.UndoCommand);
-
-                onUpdateCommandsCallback();
+                if (!merged)
+                {
+                    onUpdateCommandsCallback();
+                }
             };
         }
 
         public void Undo()
         {
-            if (UndoCommands.Count == 0)
+            IUndoCommand cmd;
+            lock (syncRoot)
             {
-                return;
+                if (UndoCommands.Count == 0)
+                {
+                    return;
+                }
+                cmd = UndoCommands.Pop();
+                RedoCommands.Push(cmd);
             }
-
-            IUndoCommand cmd = UndoCommands.Pop();
+            // Release lock before calling cmd.Undo() + undoCallback() to avoid
+            // re-entrancy deadlock (T-02-10 mitigation).
             cmd.Undo();
-            RedoCommands.Push(cmd);
             undoCallback();
         }
 
@@ -96,14 +131,18 @@ namespace UtinniCoreDotNet.UndoRedo
 
         public void Redo()
         {
-            if (RedoCommands.Count == 0)
+            IUndoCommand cmd;
+            lock (syncRoot)
             {
-                return;
+                if (RedoCommands.Count == 0)
+                {
+                    return;
+                }
+                cmd = RedoCommands.Pop();
+                UndoCommands.Push(cmd);
             }
-
-            IUndoCommand cmd = RedoCommands.Pop();
+            // Release lock before calling cmd.Execute() + redoCallback().
             cmd.Execute();
-            UndoCommands.Push(cmd);
             redoCallback();
         }
 
@@ -114,6 +153,5 @@ namespace UtinniCoreDotNet.UndoRedo
                 Redo();
             }
         }
-
     }
 }

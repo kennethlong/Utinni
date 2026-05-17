@@ -540,7 +540,7 @@ doc in sync so future sessions (human or AI) can see what's done.
 | C-04  | DequeuePostDrawLoopCalls wrong queue              | done       | 9aa0eb9 — Phase 2 Plan 02-01 Task 2 (Drain helper, closes CON-O-02 per D-12) |
 | C-05  | GameDragDropEventHandlers static-field            | done       | (02-02 Task 4) — static fields → static events; forwarder lambdas; Initialize accepts Panel base; 4 regression tests in GameDragDropEventHandlersTests.cs |
 | C-06  | PluginLoader swallows exceptions                  | done       | efdb80b — Phase 2 Plan 02-01 Task 3 (per-plugin try/catch + LoadErrors surface) |
-| C-07  | UndoRedoManager thread-safety + AllowMerge        | open       |       |
+| C-07  | UndoRedoManager thread-safety + AllowMerge        | done       | (02-02 Task 5) — lock(syncRoot) on all mutations; AllowMerge() gate before Merge(); RedoCommands.Clear() after merge check (TD-29); Phase-1 D-06 testability seam; 5 tests in UndoRedoManagerTests.cs |
 | C-08  | Hotkey.ProcessString throws                       | done       | c6879b5 — Phase 2 Plan 02-01 Task 4 (Enum.TryParse + multi-segment split; both Phase-1 skips removed) |
 | C-09  | UI/game thread busy-wait deadlock                 | open       |       |
 | C-10  | clr::stop null deref                              | open       |       |
