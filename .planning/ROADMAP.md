@@ -58,7 +58,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 4 plans
 **Plans**:
 - [x] 02-01-PLAN.md — Trivial criticals (Wave 1): C-04 queue drain, C-06 plugin loader isolation, C-08 Hotkey TryParse, C-12 VSIX VS 2022 widening, C-13 TJT Debug path (cross-repo), C-14 utinni.cfg blank login
-- [ ] 02-02-PLAN.md — Single-file criticals (Wave 2): C-02 cross-CRT delete, C-03 Network::cast uninit, C-05 drag-drop static field, C-07 UndoRedoManager + Phase-1 D-06 testability seam, C-10 clr::stop null deref, C-11 DirectX findPattern null check, C-15 CppSharp slnDir, C-16 GameCallbacks delegate-pinning audit, KB-05 isSafeToUse && operator
+- [x] 02-02-PLAN.md — Single-file criticals (Wave 2): C-02 cross-CRT delete, C-03 Network::cast uninit, C-05 drag-drop static field, C-07 UndoRedoManager + Phase-1 D-06 testability seam, C-10 clr::stop null deref, C-11 DirectX findPattern null check, C-15 CppSharp slnDir, C-16 GameCallbacks delegate-pinning audit, KB-05 isSafeToUse && operator
 - [ ] 02-03-PLAN.md — Architectural C-01 (Wave 3): DllMain loader-lock — utinni_init export + launcher CreateRemoteThread (path a per RESEARCH); Utinni.LoaderLockHarness sibling project
 - [ ] 02-04-PLAN.md — Architectural C-09 (Wave 3): UI/game-thread busy-wait deadlock — Win32 CreateEvent + EventWaitHandle signaller
 
