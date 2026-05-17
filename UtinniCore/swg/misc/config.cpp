@@ -68,7 +68,8 @@ int __cdecl hkLoadOverrideConfig()
         int length = (*(int(__thiscall**)(int))(*(swgptr*)pFile + 8))(pFile);
         byte* data = (byte*)(*(int(__thiscall**)(int))(*(swgptr*)pFile + 36))(pFile);
         loadConfigFileBuffer(data, length);
-        delete[] data;
+        // C-02: Do NOT delete[] data here — buffer is owned by the SWG TreeFile (allocated with SWG's CRT).
+        // The file dtor below (vtable slot 0 call) releases it. Per CON-B-04 cross-CRT discipline.
         pFile = (**(int(__thiscall***)(swgptr, swgptr))pFile)(pFile, 1);
     }
 
