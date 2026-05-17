@@ -36,9 +36,11 @@ namespace UtinniCoreDotNet.Tests
     /// because the installCallbacks SynchronizedCollection (a static field on GameCallbacks)
     /// holds a reference to it.
     ///
-    /// The P/Invoke path (utinni_triggerInstallCallbacks -> Game::triggerInstallCallbacks)
-    /// requires UtinniCore.dll; if the DLL is not loaded the test falls back to verifying
-    /// managed-side GC-survival via CallInstallCallbacks reflection invocation.
+    /// GC-survival is a purely managed-side property — invoked via reflection on
+    /// CallInstallCallbacks regardless of native availability. The P/Invoke to
+    /// Game::triggerInstallCallbacks is a separate "doesn't AV at the native boundary"
+    /// probe; it is allowed to be unavailable (no UtinniCore.dll, local dev environment)
+    /// or to be a no-op in the test process (no native callback list populated).
     /// </summary>
     public class GameCallbacksTests
     {
@@ -67,27 +69,22 @@ namespace UtinniCoreDotNet.Tests
             GC.WaitForPendingFinalizers();
             GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true);
 
-            // Act: trigger all install callbacks via the P/Invoke test export
-            // (requires UtinniCore.dll to be loaded; on CI it is; locally it may not be)
+            // Probe 1: native trigger must not AV (proves the native side is callable and
+            // does not crash from any pinned-but-collected delegate hazard). The native
+            // function iterates a NATIVE callback list, not the managed installCallbacks —
+            // so it is not expected to fire our managed delegate. We just want "no AV".
+            // If UtinniCore.dll is unavailable (local dev), skip the native probe.
             Exception ex = Record.Exception(() => NativeBridge.Utinni_TriggerInstallCallbacks());
-
-            // If UtinniCore.dll is not available (local dev without DXSDK build),
-            // the P/Invoke will throw a DllNotFoundException. In that case, verify
-            // via managed-side invocation using reflection on the internal collection.
-            if (ex is DllNotFoundException || ex is EntryPointNotFoundException)
+            if (!(ex is DllNotFoundException || ex is EntryPointNotFoundException))
             {
-                // Managed-side verification: the callback is still in the collection
-                // (i.e. has not been GC'd). Invoke it manually.
-                fired = false;
-                InvokeCallbacksViaManagedReflection();
-            }
-            else
-            {
-                // P/Invoke succeeded; no AV = the GC root preserved the delegate
                 Assert.Null(ex);
             }
 
-            // In both paths the callback must have fired
+            // Probe 2: managed-side GC-survival — invoke the managed iteration path
+            // via reflection. This is what actually proves the installCallbacks static
+            // field kept the delegate alive across GC.Collect.
+            InvokeCallbacksViaManagedReflection();
+
             Assert.True(fired, "Callback should still be alive after GC.Collect (static field is GC root).");
         }
 

@@ -21,9 +21,16 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\UtinniCoreDotNet\UtinniCoreDotNet.csproj" />
-    <!-- C-15: reference UtinniCoreDotNetGen (AnyCPU exe) so CppSharpSlnDirTests can
-         call Program.ResolveSlnDir(). AnyCPU is compatible with x86 consumer. -->
-    <ProjectReference Include="..\UtinniCoreDotNetGen\UtinniCoreDotNetGen.csproj" />
+  </ItemGroup>
+
+  <!-- C-15 tests target SlnDirResolver, a pure-function helper. We CANNOT take a
+       ProjectReference to UtinniCoreDotNetGen.csproj because that project must build
+       AnyCPU/x64 (its CppSharp deps are AMD64), and the Tests project runs x86 —
+       loading the x64 exe into an x86 process throws BadImageFormatException at
+       JIT time. Linking the .cs file compiles SlnDirResolver directly into
+       UtinniCoreDotNet.Tests.dll so the test sees its own bitness-matched copy. -->
+  <ItemGroup>
+    <Compile Include="..\UtinniCoreDotNetGen\SlnDirResolver.cs" Link="SlnDirResolver.cs" />
   </ItemGroup>
   <ItemGroup>
     <!-- HotkeyTests.cs uses Keys enum and key chord syntax from System.Windows.Forms,
