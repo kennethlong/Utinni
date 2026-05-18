@@ -32,6 +32,7 @@
 #include "swg/misc/config.h"
 #include "swg/misc/network.h"
 #include "swg/game/game.h"
+#include "swg/graphics/directx9.h"
 
 namespace directX
 {
@@ -39,6 +40,10 @@ namespace directX
     // in directx9.h (it is an internal function not exported via UTINNI_API).
     swgptr* getVtbl();
 }
+
+// getPresentBlockedEvent is a C-linkage file-scope export in directx9.cpp.
+// Declared here for same-TU use — no dllimport needed (same DLL).
+extern "C" HANDLE __cdecl getPresentBlockedEvent();
 
 // ---------------------------------------------------------------------------
 // C-10: clr::stop — idempotent CLR shutdown
@@ -131,4 +136,58 @@ extern "C" __declspec(dllexport) int64_t __cdecl utinni_test_networkCast(int id)
 extern "C" __declspec(dllexport) void __cdecl utinni_triggerInstallCallbacks()
 {
     utinni::Game::triggerInstallCallbacks();
+}
+
+// ---------------------------------------------------------------------------
+// CR-04: hPresentBlockedEvent eager-init test exports (Concern B fix from PLAN-CHECK.md)
+//
+// utinni_test_initPresentBlockedEvent — directly calls directX::initPresentBlockedEvent()
+//   and returns the resulting HANDLE as uintptr_t. Non-zero if CreateEvent succeeded.
+//   The xUnit test calls this export + asserts non-zero, then calls
+//   utinni_test_getPresentBlockedEvent + asserts the same non-zero value.
+//   This test WOULD FAIL if initPresentBlockedEvent() were reverted to a lazy no-op
+//   (the first call would return zero), meeting D-04.
+//
+// utinni_test_getPresentBlockedEvent — returns the current hPresentBlockedEvent HANDLE
+//   as uintptr_t. Non-zero after utinni_test_initPresentBlockedEvent() has been called.
+//   In production, utinni_init calls directX::initPresentBlockedEvent() before detours
+//   arm. In the test process (utinni_init not run), zero until the test-init export runs.
+//
+// __cdecl (not WINAPI) — avoids the C-01 export-decoration class of bug.
+// ---------------------------------------------------------------------------
+extern "C" __declspec(dllexport) uintptr_t __cdecl utinni_test_initPresentBlockedEvent()
+{
+    directX::initPresentBlockedEvent();
+    return (uintptr_t)getPresentBlockedEvent();
+}
+
+extern "C" __declspec(dllexport) uintptr_t __cdecl utinni_test_getPresentBlockedEvent()
+{
+    return (uintptr_t)getPresentBlockedEvent();
+}
+
+// ---------------------------------------------------------------------------
+// WR-03: depthTexture eager-init test exports (Concern B fix from PLAN-CHECK.md)
+//
+// utinni_test_initDepthTexture — directly calls directX::initDepthTexture() and
+//   returns the resulting DepthTexture pointer as uintptr_t. Non-zero if allocation
+//   succeeded. The xUnit test calls this export + asserts non-zero, then calls
+//   utinni_test_getDepthTexturePtr + asserts the same non-zero value.
+//   This test WOULD FAIL if initDepthTexture() were reverted to a lazy no-op
+//   (the first call would return zero), meeting D-04.
+//
+// utinni_test_getDepthTexturePtr — returns the current depthTexture pointer.
+//   Non-zero after utinni_test_initDepthTexture() has been called.
+//
+// __cdecl (not WINAPI) — avoids the C-01 export-decoration class of bug.
+// ---------------------------------------------------------------------------
+extern "C" __declspec(dllexport) uintptr_t __cdecl utinni_test_initDepthTexture()
+{
+    directX::initDepthTexture();
+    return (uintptr_t)(void*)directX::getDepthTexture();
+}
+
+extern "C" __declspec(dllexport) uintptr_t __cdecl utinni_test_getDepthTexturePtr()
+{
+    return (uintptr_t)(void*)directX::getDepthTexture();
 }
