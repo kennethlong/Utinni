@@ -20,11 +20,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 4: Tier 2 CLI shim + golden fixtures** — Build `utinni-cli` against the same core libs as WinForms; convert ~60–70% of manual verify loops to unattended CI runs.
 - [ ] **Phase 5: Tier 1 C++ unit tests** — Wire Catch2 through CI against the refactored UtinniCore seams produced in Phase 3.
 - [ ] **Phase 6: Cleanups, dep bumps, open questions, Tier 4 doc, 1.0 cut** — Final framework sweep: ~30 cleanups, modernise deps, answer or defer the 8 open questions, document Tier 4 residual, tag 1.0.
-- [ ] **Phase 7: Wave-1 plugin — TRE Browser (read-only)** — First plugin against the stabilised framework; lowest-risk read-only surface; proves the plugin pipeline end-to-end.
-- [ ] **Phase 8: Wave-1 plugin — IFF Editor (read + write)** — Foundational read/write plugin that downstream Wave-1 plugins layer on.
-- [ ] **Phase 9: Wave-1 plugin — Datatable Editor (`.tab`)** — Tabular data editor on top of IFF foundation.
-- [ ] **Phase 10: Wave-1 plugin — String-table Editor (`.stf`)** — Localised-text editor on top of IFF foundation.
-- [ ] **Phase 11: Wave-1 plugin — Object Template Editor** — Object-template editor; the final V1 plugin; "Demo + CI green" milestone closure.
+- [ ] **Phase 7: TJT subpanel — TRE Browser (read-only)** — First Wave-1 editor; lowest-risk read-only surface; proves the subpanel pattern within TJT and exercises the framework plugin pipeline end-to-end. Per DEC-C4, ships as an `IEditorPlugin` subpanel inside The Jawa Toolbox, not as a standalone plugin.
+- [ ] **Phase 8: TJT subpanel — IFF Editor (read + write)** — Foundational read/write subpanel; ships IFF chunk read/write primitives in `TheJawaToolboxDotNet`/`TheJawaToolbox` so Phases 9-11 layer on the same shared code. Per DEC-C4, ships as a TJT subpanel.
+- [ ] **Phase 9: TJT subpanel — Datatable Editor (`.tab`)** — Tabular data editor on top of Phase 8's IFF foundation. Per DEC-C4, ships as a TJT subpanel.
+- [ ] **Phase 10: TJT subpanel — String-table Editor (`.stf`)** — Localised-text editor on top of Phase 8's IFF foundation. Per DEC-C4, ships as a TJT subpanel.
+- [ ] **Phase 11: TJT subpanel — Object Template Editor** — Object-template editor; the final V1 subpanel; "Demo + CI green" milestone closure. Per DEC-C4, ships as a TJT subpanel.
 
 ## Phase Details
 
@@ -133,46 +133,50 @@ Plans:
 **Plans (placeholder)**:
 - [ ] 06-01: TBD
 
-### Phase 7: Wave-1 plugin — TRE Browser (read-only)
-**Goal**: First plugin against the stabilised 1.0 framework. Read-only browser over the `.tre` virtual filesystem; surfaces every IFF, datatable, template, UI page, shader, and string-table entry the running client can load (proves PROD-01 end-to-end). Replaces SOE-era `TreeFileExtractor`.
+### Phase 7: TJT subpanel — TRE Browser (read-only)
+**Architecture (DEC-C4):** Ships as an `IEditorPlugin` subpanel INSIDE The Jawa Toolbox plugin in the `UtinniPlugins` repo. NOT a standalone plugin. Distribution: users install Utinni + TJT as a pair.
+**Goal**: First Wave-1 editor against the stabilised 1.0 framework. Read-only browser over the `.tre` virtual filesystem; surfaces every IFF, datatable, template, UI page, shader, and string-table entry the running client can load (proves PROD-01 end-to-end). Replaces SOE-era `TreeFileExtractor`. Proves the subpanel pattern within TJT — the `IEditorPlugin` MEF export + dockable `UserControl` shape that Phases 8-11 will repeat.
 **Depends on**: Phase 6 (needs 1.0 framework — stable plugin lifecycle, single-source RVAs, CI gate); Phase 4 (CLI shim covers `parse-tre` / `list-objects` for golden testing).
 **Requirements**: PROD-W1-TRE, PROD-01
 **Open questions to resolve**: None — all are resolved by Phase 6.
-**Preservation guard-rails**: Plugin must conform to CON-M-01/02 (IPlugin/IEditorPlugin SPI) and the canonical Jawa Toolbox `*Impl` separation pattern (CON-T-05). Uses the existing `treefile::getAllFilenames` hook (CON-N-02 thin-wrapper surface) without modifying the native hook.
+**Preservation guard-rails**: Subpanel must conform to CON-M-01/02 (IPlugin/IEditorPlugin SPI) and the canonical Jawa Toolbox `*Impl` separation pattern (CON-T-05). Uses the existing `treefile::getAllFilenames` hook (CON-N-02 thin-wrapper surface) without modifying the native hook.
 **Success Criteria** (what must be TRUE):
-  1. TRE Browser plugin loads in the editor host against a live SWG client.
+  1. TRE Browser subpanel loads inside TJT in the editor host against a live SWG client.
   2. User can navigate the full `.tre` mount set, expand subtrees, and view individual file metadata.
   3. The browse surface covers every asset class PROD-01 lists (IFF, datatable, template, UI page, shader, string-table entry).
-  4. `utinni-cli parse-tre` / `list-objects` golden tests (from Phase 4) cover the same code paths the plugin uses for browse.
+  4. `utinni-cli parse-tre` / `list-objects` golden tests (from Phase 4) cover the same code paths the subpanel uses for browse.
 **Plans**: TBD
 **UI hint**: yes
 **Plans (placeholder)**:
 - [ ] 07-01: TBD
 
-### Phase 8: Wave-1 plugin — IFF Editor (read + write)
-**Goal**: Foundational read/write editor over IFF chunks across the client's IFF surface. Replaces SOE-era `IFFEditor`. Most-leveraged Wave-1 plugin — Phases 9, 10, 11 all layer on IFF read/write.
-**Depends on**: Phase 7 (TRE Browser proves plugin pipeline; IFF Editor builds on the same browse surface for "open from TRE").
+### Phase 8: TJT subpanel — IFF Editor (read + write)
+**Architecture (DEC-C4):** Ships as an `IEditorPlugin` subpanel inside TJT. IFF chunk read/write primitives (`Iff::read`, `Iff::write`, FORM/PROP semantics, BLOB streams) ship in `TheJawaToolboxDotNet` and `TheJawaToolbox` (sibling classes to the panel) so Phases 9-11 layer on the same shared code WITHIN TJT — no inter-plugin coupling, no library-version surface.
+**Goal**: Foundational read/write subpanel over IFF chunks across the client's IFF surface. Replaces SOE-era `IFFEditor`. Most-leveraged Wave-1 subpanel — Phases 9, 10, 11 all consume the IFF primitives that ship here.
+**Depends on**: Phase 7 (TRE Browser proves subpanel pattern; IFF Editor builds on the same browse surface for "open from TRE").
 **Requirements**: PROD-W1-IFF; contributes to PROD-02 aggregate.
 **Open questions to resolve**: None.
 **Preservation guard-rails**: Conforms to CON-M-01/02 SPI and CON-T-05 `*Impl` separation. Save paths must not break CON-M-05 (UndoRedoManager scene-cleanup contract) or CON-N-04 (memory write VirtualProtect bracket — if IFF writes touch any mapped client memory).
 **Success Criteria** (what must be TRUE):
-  1. IFF Editor plugin loads in the editor host against a live SWG client.
-  2. User can open an IFF file (via TRE Browser or file picker), view chunk hierarchy, edit chunk content, and save modifications back to a file the live client reloads correctly.
-  3. `utinni-cli inspect-iff` golden test (from Phase 4) covers the same read path the plugin uses.
+  1. IFF Editor subpanel loads inside TJT in the editor host against a live SWG client.
+  2. User can open an IFF file (via TRE Browser subpanel or file picker), view chunk hierarchy, edit chunk content, and save modifications back to a file the live client reloads correctly.
+  3. `utinni-cli inspect-iff` golden test (from Phase 4) covers the same read path the subpanel uses.
   4. Edits survive a save → reload round trip without corrupting unedited chunks.
+  5. IFF primitives are exported from `TheJawaToolboxDotNet` such that Phases 9-11 subpanels can consume them via direct same-assembly reference, no public-API versioning concern.
 **Plans**: TBD
 **UI hint**: yes
 **Plans (placeholder)**:
 - [ ] 08-01: TBD
 
-### Phase 9: Wave-1 plugin — Datatable Editor (`.tab`)
+### Phase 9: TJT subpanel — Datatable Editor (`.tab`)
+**Architecture (DEC-C4):** Ships as an `IEditorPlugin` subpanel inside TJT. Reuses the IFF primitives that Phase 8 shipped in `TheJawaToolboxDotNet` — same-assembly reference, no public-API contract.
 **Goal**: View and edit `.tab` datatables (tabular client data). Replaces SOE-era `SwgDataTableTool`. Layers on Phase 8's IFF read/write where `.tab` is IFF-backed.
-**Depends on**: Phase 8 (IFF read/write foundation).
+**Depends on**: Phase 8 (IFF read/write primitives in TJT).
 **Requirements**: PROD-W1-DT; contributes to PROD-02 aggregate.
 **Open questions to resolve**: None.
 **Preservation guard-rails**: Conforms to CON-M-01/02 SPI and CON-T-05 `*Impl` separation.
 **Success Criteria** (what must be TRUE):
-  1. Datatable Editor plugin loads in the editor host against a live SWG client.
+  1. Datatable Editor subpanel loads inside TJT in the editor host against a live SWG client.
   2. User can open a `.tab` file, view rows and columns, edit cell values, and save back.
   3. The live SWG client picks up the edit on the relevant reload path for the datatable in question.
   4. Edits preserve schema (column types, foreign-key-style references) without silent corruption.
@@ -181,14 +185,15 @@ Plans:
 **Plans (placeholder)**:
 - [ ] 09-01: TBD
 
-### Phase 10: Wave-1 plugin — String-table Editor (`.stf`)
+### Phase 10: TJT subpanel — String-table Editor (`.stf`)
+**Architecture (DEC-C4):** Ships as an `IEditorPlugin` subpanel inside TJT. Reuses Phase 8 IFF primitives.
 **Goal**: View and edit `.stf` string tables (localised in-game text). Replaces SOE-era `SwgStringEditor`. Layers on Phase 8's IFF read/write.
-**Depends on**: Phase 8 (IFF read/write foundation).
+**Depends on**: Phase 8 (IFF read/write primitives in TJT).
 **Requirements**: PROD-W1-STF; contributes to PROD-02 aggregate.
 **Open questions to resolve**: None.
 **Preservation guard-rails**: Conforms to CON-M-01/02 SPI and CON-T-05 `*Impl` separation. Unicode handling must preserve the typo-fix policy from STAB-03 (e.g. `Jo�o → João` — string editor itself must not regress encoded text on round-trip).
 **Success Criteria** (what must be TRUE):
-  1. String-table Editor plugin loads in the editor host against a live SWG client.
+  1. String-table Editor subpanel loads inside TJT in the editor host against a live SWG client.
   2. User can open a `.stf` file, view string entries (with localisation keys), edit text, and save back.
   3. The live SWG client renders edited strings on reload.
   4. Edits round-trip cleanly for non-ASCII characters (e.g. `João`).
@@ -197,17 +202,18 @@ Plans:
 **Plans (placeholder)**:
 - [ ] 10-01: TBD
 
-### Phase 11: Wave-1 plugin — Object Template Editor
-**Goal**: Edit object templates (the `.iff`-based template hierarchy driving in-world object behaviour and appearance). Final V1 plugin; this phase closes the "Demo + CI green" milestone.
-**Depends on**: Phase 10 (sequence-end position; benefits from all four prior Wave-1 plugins being demoable).
+### Phase 11: TJT subpanel — Object Template Editor
+**Architecture (DEC-C4):** Ships as an `IEditorPlugin` subpanel inside TJT. Reuses Phase 8 IFF primitives. Final V1 subpanel.
+**Goal**: Edit object templates (the `.iff`-based template hierarchy driving in-world object behaviour and appearance). Final V1 subpanel; this phase closes the "Demo + CI green" milestone.
+**Depends on**: Phase 10 (sequence-end position; benefits from all four prior Wave-1 subpanels being demoable).
 **Requirements**: PROD-W1-OT; contributes to PROD-02 aggregate. **V1 closure: at this phase's success, V1 ships.**
 **Open questions to resolve**: None.
 **Preservation guard-rails**: Conforms to CON-M-01/02 SPI and CON-T-05 `*Impl` separation. Save path must not break CON-M-05 (UndoRedoManager on scene cleanup) since object templates can affect live-scene objects.
 **Success Criteria** (what must be TRUE):
-  1. Object Template Editor plugin loads in the editor host against a live SWG client.
+  1. Object Template Editor subpanel loads inside TJT in the editor host against a live SWG client.
   2. User can open an object template, view inherited fields, edit overrideable fields, and save back.
   3. The live SWG client reflects the edit when the object respawns or reloads.
-  4. **V1 release gate met**: all 15 critical bugs are closed, Tier 1 + Tier 2 CI is green on `main`, and all five Wave-1 plugins (TRE Browser, IFF Editor, Datatable Editor, String-table Editor, Object Template Editor) demo end-to-end against a live SWG client. Tag V1.
+  4. **V1 release gate met**: all 15 critical bugs are closed, Tier 1 + Tier 2 CI is green on `main`, and all five Wave-1 subpanels (TRE Browser, IFF Editor, Datatable Editor, String-table Editor, Object Template Editor) demo end-to-end inside TJT against a live SWG client. Tag V1.
 **Plans**: TBD
 **UI hint**: yes
 **Plans (placeholder)**:
@@ -218,11 +224,12 @@ Plans:
 Explicitly deferred to V2; called out here so the V1 boundary is clear:
 
 - **Tier 3 mock-D3D9 + recorded fixtures** (REQ-V2-tier-3-mock-d3d9) — V1 covers the D3D9 detour regression surface via the documented Tier 4 manual residual (TEST-04). Tier 3 is a separate V2 effort.
-- **Wave-2 plugins** (REQ-V2-wave-2-plugins) — Conversation, Quest, Buildout, Particle, UI Page, Shader.
-- **Wave-3 plugins** (REQ-V2-wave-3-plugins) — Mod Manager, Packager, Community Hub, Asset Diff.
-- **Broader live-preview reload paths** (REQ-V2-live-preview-edits) — V1 piggybacks on whatever reload paths Wave-1 plugins need; broader live-preview is V2.
+- **Wave-2 plugins** (REQ-V2-wave-2-plugins) — Conversation, Quest, Buildout, Particle, UI Page, Shader. **MAY ship as standalone plugins (not TJT subpanels);** DEC-C4's "subpanel inside TJT" choice is V1-scoped. If a third-party plugin ecosystem develops, V2 re-opens the subpanel-vs-standalone call per plugin and likely moves IFF primitives from TJT into UtinniCore so cross-plugin code-sharing stops being a TJT internal concern.
+- **Wave-3 plugins** (REQ-V2-wave-3-plugins) — Mod Manager, Packager, Community Hub, Asset Diff. **Same subpanel-vs-standalone re-open as Wave-2.**
+- **Broader live-preview reload paths** (REQ-V2-live-preview-edits) — V1 piggybacks on whatever reload paths Wave-1 subpanels need; broader live-preview is V2.
 - **Author-new-content workflow** (REQ-V2-author-new-content) — V2+.
-- **One-click packaging + community hub** (REQ-V2-one-click-package, REQ-V2-share-to-hub) — Wave-3 plugin work, V2+.
+- **One-click packaging + community hub** (REQ-V2-one-click-package, REQ-V2-share-to-hub) — Wave-3 work, V2+.
+- **Promote IFF primitives from TJT to UtinniCore framework** (REQ-V2-iff-framework-promotion, derived from DEC-C4 V1 scope-fence) — Phase 8 ships IFF read/write inside `TheJawaToolboxDotNet`/`TheJawaToolbox`. If V2 introduces third-party plugins that need IFF parsing, promote those primitives up into UtinniCore so they're not buried inside TJT. Pure code-motion refactor at that point; the V1 subpanels just rebase their `using` directives.
 
 ## Open-Question → Phase Mapping
 
