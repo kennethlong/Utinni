@@ -33,6 +33,8 @@
 #include "swg/misc/network.h"
 #include "swg/game/game.h"
 #include "swg/graphics/directx9.h"
+// Note: windows.h (GetModuleHandleA, GetProcAddress) is available transitively via
+// directx9.h -> <d3d9.h> -> <windows.h>. No explicit include needed.
 
 namespace directX
 {
@@ -253,4 +255,78 @@ extern "C" __declspec(dllexport) uintptr_t __cdecl utinni_test_initDepthTexture(
 extern "C" __declspec(dllexport) uintptr_t __cdecl utinni_test_getDepthTexturePtr()
 {
     return (uintptr_t)(void*)directX::getDepthTexture();
+}
+
+// ---------------------------------------------------------------------------
+// NEW (Plan 02.1-03): Export-decoration resolution harness
+//
+// Background: C-01 live UAT (2026-05-18) caught that utinni_init exported as
+// _utinni_init@4 (decorated stdcall name on x86) while Launcher's GetProcAddress
+// used the undecorated name "utinni_init". The LoaderLockHarness only timed
+// LoadLibrary — it never resolved exports. The /EXPORT linker pragma in utinni.cpp
+// fixes C-01's specific case, but any future __stdcall/__WINAPI export without a
+// matching /EXPORT alias would reintroduce the gap silently.
+//
+// This export probes GetProcAddress for every documented C-linkage export by its
+// UNDECORATED name and returns the count of successful resolutions (all or nothing
+// for the xUnit assertion). Uses GetModuleHandleA (not LoadLibrary) because we are
+// already executing inside UtinniCore.dll — the module is already loaded.
+//
+// Expected exports (12 total as of Plan 02.1-03):
+//   utinni_init               (decorated stdcall; resolved via /EXPORT alias)
+//   utinni_findPattern        (cdecl — no decoration on x86)
+//   utinni_getVtbl            (cdecl)
+//   utinni_test_freeConfigBuffer (cdecl)
+//   utinni_test_networkCast   (cdecl)
+//   utinni_clr_stop           (cdecl)
+//   utinni_triggerInstallCallbacks (cdecl)
+//   utinni_test_initPresentBlockedEvent (cdecl)
+//   utinni_test_getPresentBlockedEvent  (cdecl)
+//   utinni_test_initDepthTexture        (cdecl)
+//   utinni_test_getDepthTexturePtr      (cdecl)
+//   getPresentBlockedEvent    (file-scope C-linkage cdecl in directx9.cpp)
+//
+// Returns: count of exports successfully resolved (max 12).
+// The xUnit test asserts count == 12.
+// ---------------------------------------------------------------------------
+extern "C" __declspec(dllexport) int __cdecl utinni_test_resolveExports()
+{
+    // We are executing inside UtinniCore.dll — GetModuleHandleA avoids a
+    // reference-count bump (no paired FreeLibrary needed).
+    HMODULE hSelf = GetModuleHandleA("UtinniCore.dll");
+    if (hSelf == nullptr)
+    {
+        // Should never happen: we are the DLL. Return -1 as a sentinel for
+        // "module handle not found" — distinct from "exports not resolved".
+        return -1;
+    }
+
+    // All expected undecorated export names (C-linkage, cdecl or /EXPORT alias).
+    static const char* const kExpectedExports[] = {
+        "utinni_init",                        // stdcall decorated → /EXPORT alias
+        "utinni_findPattern",                 // cdecl
+        "utinni_getVtbl",                     // cdecl
+        "utinni_test_freeConfigBuffer",       // cdecl
+        "utinni_test_networkCast",            // cdecl
+        "utinni_clr_stop",                    // cdecl
+        "utinni_triggerInstallCallbacks",     // cdecl
+        "utinni_test_initPresentBlockedEvent",// cdecl
+        "utinni_test_getPresentBlockedEvent", // cdecl
+        "utinni_test_initDepthTexture",       // cdecl
+        "utinni_test_getDepthTexturePtr",     // cdecl
+        "getPresentBlockedEvent",             // file-scope C-linkage in directx9.cpp
+    };
+
+    static constexpr int kExportCount =
+        static_cast<int>(sizeof(kExpectedExports) / sizeof(kExpectedExports[0]));
+
+    int resolved = 0;
+    for (int i = 0; i < kExportCount; ++i)
+    {
+        if (GetProcAddress(hSelf, kExpectedExports[i]) != nullptr)
+        {
+            ++resolved;
+        }
+    }
+    return resolved;
 }
