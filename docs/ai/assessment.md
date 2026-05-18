@@ -581,6 +581,25 @@ deleted on the next cleanup pass.
 
 ---
 
+## 📝 Phase 02 code-review findings (02-REVIEW.md)
+
+Findings surfaced by post-Phase-02 code review (`02-REVIEW.md`, 2026-05-17). Tracked separately
+from the original assessment C-NN findings because Phase 02 was already closed when the review
+ran. Phase 02.1 closes these gaps.
+
+| ID    | Item                                              | Status | Notes |
+| ----- | ------------------------------------------------- | ------ | ----- |
+| CR-02 | pCast OUT param narrower than SWG write (swgptr* 4-byte vs int64_t 8-byte) | done | 54e0211 — Phase 02.1 Plan 01 Task 1 (pCast typedef widened to int64_t(__thiscall*)(int64_t*, int, int); D-06 option c hybrid; static_assert(sizeof==8) added; setCastForTest/resetCast seam added) |
+| CR-03 | UB shift (id >> 32) on 32-bit int in Network::cast | done | 54e0211 — Phase 02.1 Plan 01 Task 1 (Network::cast parameter widened to int64_t; shift is now well-defined; covered by same fix as CR-02) |
+| CR-04 | hPresentBlockedEvent TOCTOU lazy-init race        | open   | Phase 02.1 Plan 02 |
+| WR-01 | utinni_test_networkCast tautological sentinel stub | done  | 56725af — Phase 02.1 Plan 01 Task 2 (real harness: testCastDouble reseats swg::network::cast, writes 0xDEADBEEFCAFEBABE through int64_t* OUT param; NetworkCastTests asserts full 64-bit sentinel; seam infrastructure delivered here, WR-01 closes fully in Plan 02.1-03) |
+| WR-02 | utinni_test_freeConfigBuffer no-op stub           | open   | Phase 02.1 Plan 03 |
+| WR-03 | depthTexture lazy-init race from render thread    | open   | Phase 02.1 Plan 02 |
+| WR-05 | GetVtbl negative-only test (no affirmative path)  | open   | Phase 02.1 Plan 03 |
+| WR-09 | CoInitializeEx unpaired / no COM consumer         | done   | 56725af — Phase 02.1 Plan 01 Task 2 (CoInitializeEx removed from utinni_init; CLR host uses CLRCreateInstance which is free-threaded; comment documents rationale; paired CoUninitialize was never added — drop both) |
+
+---
+
 ## See also
 
 - [Vision](vision.md) — the one-stop-shop modding-tool direction this
