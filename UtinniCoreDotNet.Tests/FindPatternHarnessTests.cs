@@ -32,6 +32,9 @@ namespace UtinniCoreDotNet.Tests
     /// C-11 harness tests for directX9::getVtbl null-check fix.
     /// Tests 1+2: memory::findPattern wrapper via utinni_findPattern — absent and present patterns.
     /// Test 3: utinni_getVtbl in test process where d3d9.dll is not loaded — must return 0.
+    /// Test 4 (WR-05): utinni_getVtbl after LoadLibrary(d3d9.dll) — affirmative non-zero assertion.
+    ///   Written without [Skip]; CI is the arbiter. If the pattern is absent in windows-2022
+    ///   SysWOW64\d3d9.dll, add [Fact(Skip=...)] per D-05 (existing null-path test retains coverage).
     /// CON-N-04 preserved: memory::copy (VirtualProtect bracket) is NOT touched by the C-11 fix.
     /// </summary>
     public class FindPatternHarnessTests
@@ -51,6 +54,16 @@ namespace UtinniCoreDotNet.Tests
             [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
                 EntryPoint = "utinni_getVtbl")]
             public static extern UIntPtr Utinni_GetVtbl();
+
+            // WR-05: kernel32.dll imports for loading d3d9.dll in the test process.
+            // CharSet.Ansi matches the A suffix (LoadLibraryA).
+            [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Ansi,
+                EntryPoint = "LoadLibraryA")]
+            public static extern IntPtr LoadLibraryA(string lpFileName);
+
+            [DllImport("kernel32.dll", SetLastError = true, EntryPoint = "FreeLibrary")]
+            [return: MarshalAs(UnmanagedType.Bool)]
+            public static extern bool FreeLibrary(IntPtr hModule);
         }
 
         [Fact]
@@ -113,6 +126,42 @@ namespace UtinniCoreDotNet.Tests
             // The C-11 fix adds a GetModuleHandle null-check; getVtbl returns nullptr => 0.
             UIntPtr result = NativeBridge.Utinni_GetVtbl();
             Assert.Equal(UIntPtr.Zero, result);
+        }
+
+        [Fact]
+        public void GetVtbl_WithD3d9Loaded_ReturnsNonZero()
+        {
+            // WR-05: affirmative test for the C-11 getVtbl pattern-scan path.
+            // Loads d3d9.dll (SysWOW64 on x86 test runner) so GetModuleHandle("d3d9.dll") != NULL.
+            // Then calls Utinni_GetVtbl() and asserts the vtable pattern is found (non-zero).
+            // The pattern is static bytecode in d3d9.dll .text section; does not require a live device.
+            //
+            // Written WITHOUT [Skip] — CI is the arbiter of pattern presence on windows-2022.
+            // If this assertion fails on CI (windows-2022 d3d9.dll lacks the expected pattern),
+            // add:
+            //   [Fact(Skip = "WR-05: pattern absent in windows-2022 SysWOW64\\d3d9.dll — " +
+            //                 "affirmative test requires SWG-era d3d9.dll bytes; existing " +
+            //                 "null-path test (GetVtbl_WithoutD3d9Loaded_ReturnsNull) " +
+            //                 "retains C-11 regression coverage per CONTEXT.md D-05")]
+            IntPtr hD3d9 = IntPtr.Zero;
+            try
+            {
+                hD3d9 = NativeBridge.LoadLibraryA("d3d9.dll");
+
+                // d3d9.dll must be loadable on windows-2022: SysWOW64\d3d9.dll is present
+                // on the runner image (verified in 02.1-RESEARCH.md §WR-05 §Environment,
+                // file size 1535160 bytes).
+                Assert.NotEqual(IntPtr.Zero, hD3d9);
+
+                // Assert the vtable pattern is found now that d3d9.dll is in the address space.
+                UIntPtr result = NativeBridge.Utinni_GetVtbl();
+                Assert.NotEqual(UIntPtr.Zero, result);
+            }
+            finally
+            {
+                if (hD3d9 != IntPtr.Zero)
+                    NativeBridge.FreeLibrary(hD3d9);
+            }
         }
     }
 }
