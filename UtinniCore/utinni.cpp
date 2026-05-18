@@ -137,7 +137,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI utinni_init(LPVOID lpThreadParam)
     utinni::log::info("Loading C++ plugins");
     pluginManager.loadPlugins();
 
-    CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    // WR-09: CoInitializeEx removed — no COM apartment consumer in utinni_init call chain
+    // (CLR host uses CLRCreateInstance, which is free-threaded and does not require COM
+    // apartment init). The utinni_init thread exits after return 0; the abandoned apartment
+    // would leave a per-thread refcount imbalance. Drop both init and (previously absent)
+    // CoUninitialize for the cleanest fix.
 
     utinni::log::info("Loading .NET plugins");
     // Load the clr and UtinniCoreDotNet

@@ -27,6 +27,17 @@
 #include "utinni.h"
 #include "swg/object/object.h"
 
+// CR-02: test-seam declarations for swg::network::cast pointer reseat.
+// setCastForTest and resetCast are implemented in network.cpp; only callable
+// from test_exports.cpp. Production code does not call these.
+namespace swg::network
+{
+    // CR-02: OUT param widened to int64_t* (D-06 option c hybrid).
+    using pCast = int64_t(__thiscall*)(int64_t*, int, int);
+    void setCastForTest(pCast fn);  // test-only seam; do not call from production
+    void resetCast();               // restores realCast pointer
+}
+
 namespace utinni
 {
 class UTINNI_API Network
@@ -36,7 +47,7 @@ public:
     static Object* getObjectById(const int64_t& id);
     static Object* getCachedObjectById(swgptr pCachedNetworkId);
 
-    static int64_t cast(int id);
+    static int64_t cast(int64_t id);
 
 public:
     static bool isServerId(int64_t id)

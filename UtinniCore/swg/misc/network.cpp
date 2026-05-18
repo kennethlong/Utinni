@@ -33,7 +33,7 @@ using pIdManagerGetInstance = swgptr(__cdecl*)();
 
 using pCachedNetworkIdGetObject = utinni::Object* (__thiscall*)(swgptr pThis); // pThis = CachedNetworkId, should be 8 bytes?
 
-using pCast = int64_t(__thiscall*)(swgptr*, int, int);
+// Note: pCast is declared in network.h (namespace swg::network) — CR-02: OUT param widened to int64_t*.
 
 pIdManagerGetObjectById idManagerGetObjectById = (pIdManagerGetObjectById)0x00B380E0;
 pIdManagerGetInstance idManagerGetInstance = (pIdManagerGetInstance)0x00B37F30;
@@ -41,7 +41,15 @@ pIdManagerGetInstance idManagerGetInstance = (pIdManagerGetInstance)0x00B37F30;
 
 pCachedNetworkIdGetObject cachedNetworkIdGetObject = (pCachedNetworkIdGetObject)0x00B30160;
 
-pCast cast = (pCast)0xAA4900;
+// Keep realCast as the original RVA; cast is the mutable reseat-able pointer.
+static pCast realCast = (pCast)0xAA4900;
+pCast cast = realCast;
+
+// Test-seam: allows test_exports.cpp to temporarily replace the cast pointer.
+// Not guarded by #ifdef UTINNI_TESTS — project convention is unguarded test exports
+// (see test_exports.cpp). Production code never calls setCastForTest.
+void setCastForTest(pCast fn) { cast = fn; }
+void resetCast()              { cast = realCast; }
 }
 
 namespace utinni
@@ -62,12 +70,16 @@ Object* Network::getCachedObjectById(swgptr pCachedNetworkId)
     return swg::network::cachedNetworkIdGetObject(pCachedNetworkId);
 }
 
-int64_t Network::cast(int id)
+int64_t Network::cast(int64_t id)
 {
+    // CR-02/CR-03: OUT param is int64_t* (8-byte slot); shift on int64_t is well-defined.
     // C-03: networkId must be initialized; SWG cast writes through &networkId; the function's
     // int64_t return is unreliable per CONCERNS.md TD-03 — read networkId after the call.
-    swgptr networkId = 0;
-    swg::network::cast(&networkId, id, (id >> 32));
+    static_assert(sizeof(int64_t) == 8, "CR-02: networkId slot must be 8 bytes");
+    int64_t networkId = 0;
+    swg::network::cast(&networkId,
+                       static_cast<int>(id & 0xFFFFFFFFLL),
+                       static_cast<int>((id >> 32) & 0xFFFFFFFFLL));
     return networkId;
 }
 
