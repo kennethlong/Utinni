@@ -30,6 +30,7 @@
 #include "clr.h"
 #include "utility/memory.h"
 #include "swg/misc/config.h"
+#include "swg/misc/network.h"
 #include "swg/game/game.h"
 
 namespace directX
@@ -94,21 +95,33 @@ extern "C" __declspec(dllexport) bool __cdecl utinni_test_freeConfigBuffer(
 }
 
 // ---------------------------------------------------------------------------
-// C-03: Network::cast — post-condition sentinel wrapper
-//   The real cast calls SWG at hard RVA 0xAA4900 which is only valid inside an
-//   injected SWG process. This wrapper returns a sentinel (0xDEADBEEF) instead
-//   so the test runs safely in the dotnet test process. The test asserts the
-//   returned value equals the sentinel, which also catches any future regression
-//   that rewires this wrapper to call SWG without proper initialization.
+// WR-01: Network::cast — real function-pointer reseat harness (CR-02/CR-03).
+//   The test double writes a 64-bit sentinel through the OUT param.
+//   If the OUT param were reverted to swgptr* (4-byte slot), the test double
+//   would write 8 bytes through a 4-byte slot; the high 32 bits of the sentinel
+//   would be lost and the managed assertion on the full 64-bit value would fail.
+//   swg::network::cast is reseated to the test double, then restored on return.
 // ---------------------------------------------------------------------------
+
+// Test double: __thiscall matching pCast. Writes a 64-bit sentinel through the
+// OUT param whose upper half differs from the lower half — distinguishes truncation.
+// MSVC v142 accepts __thiscall on non-member free functions (PLAN-CHECK Concern E
+// confirmed: no fix needed, just informational).
+static int64_t __thiscall testCastDouble(int64_t* networkId, int /*low*/, int /*high*/)
+{
+    // Write a 64-bit sentinel. Upper 32 bits (0xDEADBEEF) differ from lower 32
+    // bits (0xCAFEBABE) so truncation to a 4-byte swgptr* slot is detectable:
+    // only 0xCAFEBABE would survive (lower 32 bits), making the assertion fail.
+    *networkId = static_cast<int64_t>(0xDEADBEEFCAFEBABELL);
+    return 0; // return value unreliable per CONCERNS.md TD-03; not tested
+}
+
 extern "C" __declspec(dllexport) int64_t __cdecl utinni_test_networkCast(int id)
 {
-    // Sentinel value — NOT calling swg::network::cast here because that would
-    // call SWG at hard RVA 0xAA4900 which AVs in the test process.
-    // The C-03 fix in network.cpp (initialize swgptr networkId = 0 + return networkId)
-    // is verified by ensuring the sentinel != 0xCCCCCCCC (MSVC debug-init pattern).
-    (void)id;
-    return (int64_t)0xDEADBEEFLL;
+    swg::network::setCastForTest(reinterpret_cast<swg::network::pCast>(testCastDouble));
+    int64_t result = utinni::Network::cast(static_cast<int64_t>(id));
+    swg::network::resetCast();
+    return result;
 }
 
 // ---------------------------------------------------------------------------

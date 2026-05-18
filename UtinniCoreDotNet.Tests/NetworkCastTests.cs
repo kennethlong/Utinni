@@ -28,11 +28,15 @@ using Xunit;
 namespace UtinniCoreDotNet.Tests
 {
     /// <summary>
-    /// C-03 partial-proof harness: asserts the post-condition of Network::cast.
-    /// The test-only wrapper utinni_test_networkCast returns a sentinel (0xDEADBEEF)
-    /// instead of calling SWG at hard RVA 0xAA4900 (which would AV in the test process).
-    /// The sentinel assertion catches any regression that rewires the wrapper to call SWG
-    /// without proper initialization. Full live-SWG proof remains Tier-4 manual.
+    /// WR-01 real harness for CR-02/CR-03: function-pointer reseat test double.
+    /// utinni_test_networkCast reseats swg::network::cast to a test double that writes
+    /// the 64-bit sentinel 0xDEADBEEFCAFEBABE through the OUT param, then calls
+    /// Network::cast and restores the real pointer.
+    ///
+    /// The full 64-bit sentinel round-trips only if the OUT param is declared as
+    /// int64_t* (8-byte slot). If CR-02 is reverted (swgptr* 4-byte slot), the high
+    /// 32 bits of the sentinel are lost and this assertion fails — the test would
+    /// catch the regression.
     /// </summary>
     public class NetworkCastTests
     {
@@ -44,20 +48,20 @@ namespace UtinniCoreDotNet.Tests
         }
 
         [Fact]
-        public void NetworkCast_Wrapper_ReturnsInitializedValue()
+        public void NetworkCast_WithTestDouble_ReturnsFullSentinel()
         {
-            // Arrange
+            // Arrange: pass a 32-bit id; the test double writes 0xDEADBEEFCAFEBABE
+            // through the OUT param. The full 64-bit value round-trips only if
+            // the OUT param is declared as int64_t* (8-byte slot, not swgptr* 4-byte).
             const int syntheticId = 0x12345678;
 
             // Act
             long result = NativeBridge.Utinni_TestNetworkCast(syntheticId);
 
-            // Assert: must NOT be the MSVC debug-init uninitialized-stack pattern
-            Assert.NotEqual(0xCCCCCCCCL, result);
-            // Must NOT be 0 (the pre-fix path where SWG didn't write through &networkId)
-            Assert.NotEqual(0L, result);
-            // Must equal our sentinel (0xDEADBEEF) — confirms wrapper is not calling SWG
-            Assert.Equal(unchecked((long)0xDEADBEEFL), result);
+            // Assert: full 64-bit sentinel must survive.
+            // If CR-02 is reverted (OUT param back to swgptr* / 4 bytes), the high
+            // 32 bits of the sentinel are lost and this assertion fails.
+            Assert.Equal(unchecked((long)0xDEADBEEFCAFEBABEL), result);
         }
     }
 }
