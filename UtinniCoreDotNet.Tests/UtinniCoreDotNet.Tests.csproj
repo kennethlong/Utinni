@@ -13,6 +13,16 @@
     <RootNamespace>UtinniCoreDotNet.Tests</RootNamespace>
     <AssemblyName>UtinniCoreDotNet.Tests</AssemblyName>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <!-- Fixtures/{BrokenPlugin,GoodPlugin}/ have their own csprojs that produce
+         their own obj/Release/net472/*.AssemblyInfo.cs (SDK-style auto-gen).
+         Without this exclude, this project's default Compile glob (**/*.cs)
+         picks up the Fixtures' AssemblyInfo files AND generates its own,
+         failing with CS0579 duplicate-attribute errors. CI happens to win the
+         parallel-/m race (Tests's Compile evaluated before Fixtures' obj/
+         materialises); local builds often lose it. Excluding the subtree
+         from the SDK default-item globs is the correct fix — the Fixtures
+         build via their own csproj entries in Utinni.sln. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);Fixtures\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
