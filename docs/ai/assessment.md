@@ -592,7 +592,7 @@ ran. Phase 02.1 closes these gaps.
 | CR-02 | pCast OUT param narrower than SWG write (swgptr* 4-byte vs int64_t 8-byte) | done | 54e0211 — Phase 02.1 Plan 01 Task 1 (pCast typedef widened to int64_t(__thiscall*)(int64_t*, int, int); D-06 option c hybrid; static_assert(sizeof==8) added; setCastForTest/resetCast seam added) |
 | CR-03 | UB shift (id >> 32) on 32-bit int in Network::cast | done | 54e0211 — Phase 02.1 Plan 01 Task 1 (Network::cast parameter widened to int64_t; shift is now well-defined; covered by same fix as CR-02) |
 | CR-04 | hPresentBlockedEvent TOCTOU lazy-init race        | open   | Phase 02.1 Plan 02 |
-| WR-01 | utinni_test_networkCast tautological sentinel stub | done  | 56725af — Phase 02.1 Plan 01 Task 2 (real harness: testCastDouble reseats swg::network::cast, writes 0xDEADBEEFCAFEBABE through int64_t* OUT param; NetworkCastTests asserts full 64-bit sentinel; seam infrastructure delivered here, WR-01 closes fully in Plan 02.1-03) |
+| WR-01 | utinni_test_networkCast tautological sentinel stub | deferred to 02.1-03 | Plan 02.1-01 set up the setCastForTest/resetCast seam in network.cpp/.h (infrastructure ready). The testCastDouble implementation in Plan 02.1-01 was reverted: MSVC C3865 (`__thiscall` cannot be used on free functions) blocked the planned pattern. Plan 02.1-03 implements the real harness via an ABI-shim approach (`__declspec(naked)` + inline asm, or class-method-bitcast). |
 | WR-02 | utinni_test_freeConfigBuffer no-op stub           | open   | Phase 02.1 Plan 03 |
 | WR-03 | depthTexture lazy-init race from render thread    | open   | Phase 02.1 Plan 02 |
 | WR-05 | GetVtbl negative-only test (no affirmative path)  | open   | Phase 02.1 Plan 03 |
