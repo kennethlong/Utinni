@@ -99,6 +99,18 @@ void createPatches()
 // C-01: utinni_init runs synchronously on the launcher-spawned thread.
 // Launcher's WaitForSingleObject blocks until this returns. Synchronous startup
 // is easier to debug than fire-and-forget; bring-up is bounded (CLR init + plugin load).
+//
+// WINAPI (__stdcall) is required by LPTHREAD_START_ROUTINE (CreateRemoteThread's
+// target type). On x86, __stdcall + extern "C" decorates the export name as
+// `_utinni_init@4`; the launcher's GetProcAddress("utinni_init") cannot find the
+// decorated form. The /EXPORT linker directive below adds an alias so BOTH names
+// resolve to the same RVA in UtinniCore.dll's export table.
+//
+// Why this slipped Phase 02 Plan 02-03's harness: the LoaderLockHarness only
+// measures LoadLibraryA("UtinniCore.dll") timing -- it never calls GetProcAddress
+// for utinni_init. The mismatch is invisible to that harness. Caught by the live
+// SWG manual UAT on 2026-05-18 (the Tier-4 residual doing its job).
+#pragma comment(linker, "/EXPORT:utinni_init=_utinni_init@4")
 extern "C" __declspec(dllexport) DWORD WINAPI utinni_init(LPVOID lpThreadParam)
 {
     char dllPathbuffer[MAX_PATH];
