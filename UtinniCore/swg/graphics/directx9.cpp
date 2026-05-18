@@ -40,16 +40,26 @@
 static HANDLE hPresentBlockedEvent = nullptr;
 
 // getPresentBlockedEvent — production export consumed by FormMain.cs via P/Invoke.
-// Lazy-initialized on first call; subsequent calls return the same HANDLE.
+// CR-04: hPresentBlockedEvent is eagerly created by directX::initPresentBlockedEvent()
+// in utinni_init before any detour fires. This function is now a pure reader.
+// TOCTOU race window has been eliminated — no lazy CreateEvent here.
 // extern "C" + __cdecl ensures the symbol is unmangled so DllImport resolves it directly.
 extern "C" __declspec(dllexport) HANDLE __cdecl getPresentBlockedEvent()
 {
-    if (!hPresentBlockedEvent)
-    {
-        // TRUE = manual-reset; FALSE = initially non-signalled.
-        hPresentBlockedEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
-    }
     return hPresentBlockedEvent;
+}
+
+// CR-04: Eagerly creates hPresentBlockedEvent so hkPresent (render thread) always
+// finds a valid HANDLE. Called from utinni_init before createDetours() — the launcher
+// remote thread runs this synchronously and hkPresent cannot fire until SWG's main loop
+// is running (main loop is parked at WaitForSingleObject until Launcher/main.cpp:232 returns).
+// No concurrency is possible at init time; no TOCTOU race.
+// CON-N-01: this is NOT a Detour::Create call; it is additive Win32 event plumbing.
+// CON-H-01: called from utinni_init (launcher remote thread), NOT DllMain.
+void directX::initPresentBlockedEvent()
+{
+    // TRUE = manual-reset; FALSE = initially non-signalled.
+    hPresentBlockedEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
 }
 
 namespace directX
@@ -60,6 +70,19 @@ swgptr dllBaseAddress = 0;
 DepthTexture* depthTexture = nullptr;
 
 static bool blockPresentCall = false;
+
+// WR-03: Eagerly constructs DepthTexture so hkPresent (render thread) always finds a
+// valid pointer. DepthTexture() ctor only calls NvAPI_Initialize() — does NOT require a
+// live D3D9 device (verified in Phase 02.1 RESEARCH §WR-03). createTexture() still fires
+// on the first render frame inside hkPresent when pDevice is available.
+// Called from utinni_init before createDetours() — single-threaded, no race possible.
+// CON-N-01: this is NOT a Detour::Create call; it is a plain C++ new.
+// CON-H-01: called from utinni_init (launcher remote thread), NOT DllMain.
+void initDepthTexture()
+{
+    depthTexture = new DepthTexture();
+}
+
 static bool isPresenting = false;
 bool enableWireframe = false;
 
@@ -253,6 +276,11 @@ HRESULT __stdcall hkPresent(LPDIRECT3DDEVICE9 pDevice, const RECT* pSourceRect, 
 	
 	 if (depthTexture == nullptr)
 	 {
+		  // WR-03: This branch is unreachable in production after utinni_init calls initDepthTexture().
+		  // If reached, the render thread has raced with cleanup() — a threading contract violation.
+		  // Creating here as a defensive fallback to avoid a null-deref crash; the log::critical
+		  // call ensures any regression is immediately visible in the utinni log.
+		  utinni::log::critical("directX::hkPresent: depthTexture null on render thread — initDepthTexture() was not called from utinni_init (WR-03 regression).");
 		  depthTexture = new DepthTexture();
 	 }
 
@@ -381,8 +409,21 @@ void detour()
 
 void cleanup()
 {
-	 delete depthTexture;
-	 depthTexture = nullptr;
+    // WR-03: Threading contract — cleanup() MUST only run after the SWG render thread
+    // is fully quiesced (not mid-frame). DLL_PROCESS_DETACH runs on a separate thread;
+    // if hkPresent is mid-frame when cleanup() is called, deleting depthTexture here
+    // is a use-after-free. Confirmed live on 2026-05-18: injected-session SWG exit fires
+    // a "Direct3D could not be correctly initialized" dialog caused by exactly this UAF.
+    //
+    // Conventional Win32 DllMain teardown pattern: on process exit, the OS reclaims all
+    // heap memory. Skipping delete here avoids the cleanup-side UAF at the cost of a
+    // bounded "leak" (bounded by process lifetime — not a real leak). This is the correct
+    // tradeoff for DLL_PROCESS_DETACH teardown (Raymond Chen / Win32 documentation).
+    // The caller (detatch() in utinni.cpp) must ensure the render thread is quiesced
+    // before calling cleanup() if this function is ever invoked outside of process exit.
+    //
+    // WR-03: delete depthTexture intentionally OMITTED — UAF on exit is worse than leak.
+    // depthTexture = nullptr omitted too (moot on exit; no caller reads it after cleanup).
 }
 
 DepthTexture* getDepthTexture()

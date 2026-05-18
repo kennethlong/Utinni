@@ -29,6 +29,8 @@
 
 namespace directX
 {
+void initPresentBlockedEvent();  // CR-04: call from utinni_init before createDetours()
+void initDepthTexture();         // WR-03: call from utinni_init before createDetours()
 void detour();
 void cleanup();
 DepthTexture* getDepthTexture();
