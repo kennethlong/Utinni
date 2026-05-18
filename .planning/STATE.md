@@ -77,8 +77,14 @@ None active. Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gat
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| Tier-4 manual UAT | Plan 02-03 Task 3 — live SWG injection: confirm editor + ≥1 plugin loads, no `LdrpDrainWorkQueue` wait chain after C-01 fix. Build `bin/Release/Launcher.exe + UtinniCore.dll + UtinniCoreDotNet.dll`, run, inspect (per `02-03-SUMMARY.md` §Task 3). | Pending | 2026-05-17 (Wave 3) |
-| Tier-4 manual UAT | Plan 02-04 Task 2 — live SWG minimize/restore: 5+ rapid minimize/restore cycles, no UI hang and no CPU spike on UI thread (per `02-04-SUMMARY.md` §Task 2). Verifies C-09 `EventWaitHandle.WaitOne(100ms)` replacement of WndProc busy-wait. | Pending | 2026-05-17 (Wave 3) |
+| *(none)* | | | |
+
+## Resolved Deferred Items
+
+| Category | Item | Resolved | Notes |
+|----------|------|----------|-------|
+| Tier-4 manual UAT | Plan 02-03 Task 3 — C-01 live SWG injection | 2026-05-18 | PASSED. Editor host + TJT plugin came up alongside live SWGEmu client; no loader-lock hang. See `02-HUMAN-UAT.md` §1. En-route fixes (commits `cb547bb`, `92758ff`, `9a108d1`, `3254059`, `389fc83`) landed during the UAT run. |
+| Tier-4 manual UAT | Plan 02-04 Task 2 — C-09 live SWG minimize/restore | 2026-05-18 | PASSED. Editor stays responsive across rapid minimize/restore cycles; no UI-thread CPU spike. See `02-HUMAN-UAT.md` §2. |
 
 ## Session Continuity
 
