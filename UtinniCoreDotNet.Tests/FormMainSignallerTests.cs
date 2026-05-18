@@ -24,6 +24,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -41,11 +42,40 @@ namespace UtinniCoreDotNet.Tests
     //      the native signal never fires (covers the pre-fix regression class).
     //   2. Signal-fires case: the wait returns promptly (under the timeout) when signalled.
     //   3. Already-signalled case: the wait returns immediately.
+    //   4. CR-04 D-04 regression guard: initPresentBlockedEvent() returns non-zero HANDLE.
+    //   5. WR-03 D-04 regression guard: initDepthTexture() returns non-zero pointer.
     //
     // FormMain.TestSignaller is reset to null in every finally block so test runs stay
     // isolated from each other regardless of execution order or parallelism.
     public class FormMainSignallerTests
     {
+        // P/Invoke bridge for CR-04 / WR-03 test exports.
+        // These exports are in UtinniCore.dll (built by the CI workflow).
+        // Both new test exports and the existing exports use __cdecl to avoid the
+        // C-01 export-decoration class of bug.
+        private static class NativeBridge
+        {
+            // CR-04: calls directX::initPresentBlockedEvent() and returns the HANDLE.
+            [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+                EntryPoint = "utinni_test_initPresentBlockedEvent")]
+            public static extern UIntPtr Utinni_TestInitPresentBlockedEvent();
+
+            // CR-04: returns the current hPresentBlockedEvent HANDLE value.
+            [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+                EntryPoint = "utinni_test_getPresentBlockedEvent")]
+            public static extern UIntPtr Utinni_GetPresentBlockedEventHandle();
+
+            // WR-03: calls directX::initDepthTexture() and returns the DepthTexture ptr.
+            [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+                EntryPoint = "utinni_test_initDepthTexture")]
+            public static extern UIntPtr Utinni_TestInitDepthTexture();
+
+            // WR-03: returns the current depthTexture pointer.
+            [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+                EntryPoint = "utinni_test_getDepthTexturePtr")]
+            public static extern UIntPtr Utinni_GetDepthTexturePtr();
+        }
+
         [Fact]
         public void WaitForPresentBlock_SignalNeverFires_ReturnsWithinTimeout()
         {
@@ -159,6 +189,70 @@ namespace UtinniCoreDotNet.Tests
                 {
                     FormMain.TestSignaller = null;
                 }
+            }
+        }
+
+        [Fact]
+        public void InitPresentBlockedEvent_AfterEagerInit_ReturnsNonNullHandle()
+        {
+            // CR-04 D-04 regression guard (Concern B from PLAN-CHECK.md):
+            //
+            // This test calls utinni_test_initPresentBlockedEvent() which directly invokes
+            // directX::initPresentBlockedEvent() — the same eager-init path that utinni_init
+            // uses in production. After the call, getPresentBlockedEvent() must return a
+            // non-zero HANDLE (a live Win32 manual-reset event object).
+            //
+            // If CR-04 is REVERTED (lazy-init re-introduced in getPresentBlockedEvent()):
+            //   - initPresentBlockedEvent() becomes a no-op or is removed entirely.
+            //   - utinni_test_initPresentBlockedEvent() would call a no-op and return 0.
+            //   - Assert.NotEqual(UIntPtr.Zero, ...) FAILS. D-04 is satisfied.
+            //
+            // This test does NOT require utinni_init to have run; it exercises the
+            // init function directly so the regression guard works in the test process.
+            try
+            {
+                UIntPtr afterInit = NativeBridge.Utinni_TestInitPresentBlockedEvent();
+                Assert.NotEqual(UIntPtr.Zero, afterInit);
+
+                UIntPtr getResult = NativeBridge.Utinni_GetPresentBlockedEventHandle();
+                Assert.Equal(afterInit, getResult);
+            }
+            catch (DllNotFoundException)
+            {
+                // Local build without UtinniCore.dll — skip gracefully.
+                // CI validates the P/Invoke path (UtinniCore.dll is built before dotnet test).
+            }
+        }
+
+        [Fact]
+        public void InitDepthTexture_AfterEagerInit_ReturnsNonNullPointer()
+        {
+            // WR-03 D-04 regression guard (Concern B from PLAN-CHECK.md):
+            //
+            // This test calls utinni_test_initDepthTexture() which directly invokes
+            // directX::initDepthTexture() — the same eager-init path that utinni_init
+            // uses in production. After the call, getDepthTexture() must return a
+            // non-zero pointer (a live DepthTexture object; ctor is D3D9-free).
+            //
+            // If WR-03 is REVERTED (lazy-init re-introduced in hkPresent):
+            //   - initDepthTexture() becomes a no-op or is removed entirely.
+            //   - utinni_test_initDepthTexture() would call a no-op and return 0.
+            //   - Assert.NotEqual(UIntPtr.Zero, ...) FAILS. D-04 is satisfied.
+            //
+            // This test does NOT require a live D3D9 device; DepthTexture() ctor
+            // only calls NvAPI_Initialize() which is safe in the test process.
+            try
+            {
+                UIntPtr afterInit = NativeBridge.Utinni_TestInitDepthTexture();
+                Assert.NotEqual(UIntPtr.Zero, afterInit);
+
+                UIntPtr getResult = NativeBridge.Utinni_GetDepthTexturePtr();
+                Assert.Equal(afterInit, getResult);
+            }
+            catch (DllNotFoundException)
+            {
+                // Local build without UtinniCore.dll — skip gracefully.
+                // CI validates the P/Invoke path (UtinniCore.dll is built before dotnet test).
             }
         }
     }

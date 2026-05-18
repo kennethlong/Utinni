@@ -128,6 +128,13 @@ extern "C" __declspec(dllexport) DWORD WINAPI utinni_init(LPVOID lpThreadParam)
     utinni::Client::setEditorMode(ini.getBool("Editor", "enableEditorMode"));
     imgui_impl::enableInternalUi(ini.getBool("UtinniCore", "enableInternalUi"));
 
+    // CR-04/WR-03: Eagerly initialize native objects that hkPresent (render thread) needs.
+    // These calls are BEFORE createDetours() so hkPresent cannot fire before they complete.
+    // CON-H-01: running in utinni_init (launcher remote thread), NOT DllMain.
+    // CON-N-01: these are NOT Detour::Create calls.
+    directX::initPresentBlockedEvent();  // CR-04: hPresentBlockedEvent eager init
+    directX::initDepthTexture();         // WR-03: depthTexture eager init
+
     // Adds hooks to functions inside the game
     createDetours();
 
