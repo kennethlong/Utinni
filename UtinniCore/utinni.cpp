@@ -83,7 +83,11 @@ void createDetours()
     utinni::debugCamera::detour();
     utinni::Game::detour();
     utinni::GroundScene::detour();
-    utinni::Graphics::detour();
+    // BISECT 2026-05-19 ROUND 12: Graphics::detour disabled to test whether
+    // its hook chain (which installs SWG's graphics::install hook + our
+    // directX::detour → dummy device + 7 d3d9 hooks) is the new wedge
+    // between preloading and first render.
+    // utinni::Graphics::detour();
     utinni::ParticleEffectAppearance::detour();
     utinni::report::detour();
     utinni::skeletalAppearance::detour();
