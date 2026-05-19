@@ -59,18 +59,15 @@ void createDetours()
 {
     utinni::log::info("Creating detours");
 
-    // BISECT 2026-05-19 ROUND 4: config + report enabled.
-    // Baseline confirmed the detour set is the cause (SWG progressed far
-    // past audio init with just report on — dPVS, preloading, warnings).
-    // Resuming bisection where Round 3 left off: culprit is in 1-3.
+    // BISECT 2026-05-19 ROUND 5: Client + report enabled.
+    // Round 4 cleared config (SWG progressed to preloading). Culprit is in
+    // Client or clientWorld. Single-round identifier:
     //
-    // Outcomes:
-    //   - SWG stalls at audio init → swg::config::detour is the culprit
-    //   - SWG progresses past audio init → culprit is Client or clientWorld
-    //     (round 5 splits)
+    //   - Stall at audio init → Client::detour is the culprit
+    //   - Past audio init → clientWorld::detour is the culprit
 
-    swg::config::detour();
-    // utinni::Client::detour();
+    // swg::config::detour();
+    utinni::Client::detour();
     // utinni::clientWorld::detour();
     // utinni::creatureObject::detour();
     // utinni::CuiChatWindow::detour();
