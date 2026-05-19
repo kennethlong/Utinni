@@ -52,27 +52,32 @@ void DirectInput::resume()
 
 int __cdecl hkSetupInstall(HINSTANCE hInstance, HWND hwnd, DWORD menuKey, DWORD unk)
 {
-    HWND result = hwnd;
+    // 2026-05-19: HWND override removed. The original editor-mode path replaced
+    // SWG's HWND with Client::getHwnd() walked up to its top-level ancestor and
+    // passed THAT into DirectInput's setupInstall. On the current SWGEmu binary
+    // DirectInput rejects it (SetCooperativeLevel returns DIERR_INVALIDPARAM "6"
+    // → ExceptionHandler fires) because the editor's top-level HWND is on the
+    // CLR thread, not SWG's main thread. SWG now uses its OWN HWND for
+    // DirectInput; the managed-side reparent-after-creation step doesn't break
+    // DirectInput's binding because reparenting preserves the original HWND.
+    //
+    // Cursor side-effects (write SWG's HCURSOR global + disable hardware cursor)
+    // kept inside the editor-mode block — they're independent of the HWND choice.
+    static bool s_firstFire = true;
+    if (s_firstFire)
+    {
+        s_firstFire = false;
+        utinni::log::info("hkSetupInstall: first fire (passthrough HWND; cursor side-effects retained)");
+    }
+
     if (Client::getEditorMode())
     {
-        result = Client::getHwnd();
-        HWND topWindow;
-        do
-        {
-            topWindow = GetParent(result);
-            if (topWindow)
-            {
-                result = topWindow;
-            }
-        } while (topWindow);
-
         // Create the main cursor and write its pointer to the global SWG Cursor address
         memory::write<HCURSOR>(0x0193C5E0, LoadCursor(nullptr, IDC_ARROW)); // SWG's HCURSOR address
-
         Graphics::useHardwareCursor(false); // Turning this to false makes the game render its own cursor
     }
-    
-    return swg::directInput::setupInstall(hInstance, result, menuKey, unk);
+
+    return swg::directInput::setupInstall(hInstance, hwnd, menuKey, unk);
 }
 
 void DirectInput::detour()
