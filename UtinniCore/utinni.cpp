@@ -59,17 +59,16 @@ void createDetours()
 {
     utinni::log::info("Creating detours");
 
-    // BISECT 2026-05-19 ROUND 1: first-half ENABLED, second-half DISABLED.
-    // Round 0 (everything off) lost the [SWG] log prefix because report::detour
-    // is the hook that captures SWG's print output. We re-enable report so we
-    // can see SWG's progression, and bisect the rest in halves.
+    // BISECT 2026-05-19 ROUND 2: first quarter ENABLED (detours 1-6 of the
+    // first-half block proven to contain the culprit in Round 1). report stays
+    // on for log visibility. Second-quarter (7-12) and second-half (13-24)
+    // remain disabled.
     //
     // Outcomes:
-    //   - SWG stalls again at "Audio: Finished initializing" → culprit is in
-    //     this enabled half (or in report itself, but RVA 0x00A88F90 was
-    //     already proven correct because it captured logs in earlier runs).
-    //   - SWG logs progress past audio init → culprit is in the still-disabled
-    //     second half.
+    //   - SWG stalls at "Audio: Finished initializing" → culprit is in 1-6:
+    //     config / Client / clientWorld / creatureObject / CuiChatWindow / CuiManager
+    //   - SWG logs progress past audio init → culprit is in 7-12:
+    //     cuiHud / cuiIo / cuiMenu / cuiRadialMenuManager / cuiLoginScreen / debugCamera
 
     swg::config::detour();
     utinni::Client::detour();
@@ -77,19 +76,21 @@ void createDetours()
     utinni::creatureObject::detour();
     utinni::CuiChatWindow::detour();
     utinni::CuiManager::detour();
-    utinni::cuiHud::detour();
-    utinni::cuiIo::detour();
-    //utinni::cuiIntro::detour();
-    utinni::cuiMenu::detour();
-    utinni::cuiRadialMenuManager::detour();
-    utinni::cuiLoginScreen::detour();
-    //utinni::cuiMediatorFactorySetup::detour();
-    utinni::debugCamera::detour();
 
-    // Re-enabled so we capture [SWG] log lines and can see how far init goes.
+    // BISECT 2026-05-19 ROUND 2: second-quarter disabled.
+    // utinni::cuiHud::detour();
+    // utinni::cuiIo::detour();
+    //utinni::cuiIntro::detour();
+    // utinni::cuiMenu::detour();
+    // utinni::cuiRadialMenuManager::detour();
+    // utinni::cuiLoginScreen::detour();
+    //utinni::cuiMediatorFactorySetup::detour();
+    // utinni::debugCamera::detour();
+
+    // Always on for log visibility.
     utinni::report::detour();
 
-    // BISECT 2026-05-19 ROUND 1: second-half still disabled.
+    // BISECT 2026-05-19 ROUND 2: second-half still disabled.
     // utinni::Game::detour();
     // utinni::GroundScene::detour();
     // utinni::Graphics::detour();
