@@ -163,10 +163,19 @@ namespace Detour
 	    for (int i = 0; i<detLen; i++)
 		    pbFuncOrig[i] = pbPatchBuf[i];
 
-	    delete pbPatchBuf;
+	    // 2026-05-19: pbPatchBuf was allocated with `new BYTE[detLen]` (line 110),
+	    // so scalar `delete pbPatchBuf` is undefined behaviour and triggers the
+	    // Debug CRT's HEAP_CORRUPTION check at injection time. Use the matching
+	    // array delete; in Release builds the prior code likely left the heap in
+	    // a degraded state which is a plausible root cause of downstream weirdness
+	    // (silent stalls, CLR exceptions inside SWG) seen during 2026-05-19 UAT.
+	    delete[] pbPatchBuf;
 
-	    // Reset original mem flags
-	    VirtualProtect(lpFuncOrig, detLen, dwProt, new DWORD);
+	    // Reset original mem flags. The 4th arg is an out-pointer; the original
+	    // code allocated a fresh DWORD with `new DWORD` and never freed it (leak
+	    // on every Detour::Create call). Use a local instead.
+	    DWORD dwOldProt = 0;
+	    VirtualProtect(lpFuncOrig, detLen, dwProt, &dwOldProt);
 
 	    return lpMallocPtr;
     }
@@ -203,7 +212,9 @@ namespace Detour
 								      // Write the overwritten bytes back to the original
 	    VirtualProtect((LPVOID)dwFuncOrig, (i - JMP32_SZ), PAGE_READWRITE, &dwProt);
 	    memcpy((LPVOID)dwFuncOrig, lpDetourCreatePtr, (i - JMP32_SZ));
-	    VirtualProtect((LPVOID)dwFuncOrig, (i - JMP32_SZ), dwProt, new DWORD);
+	    // 2026-05-19: same `new DWORD` leak fix as Detour::Create. Use a local.
+	    DWORD dwOldProt = 0;
+	    VirtualProtect((LPVOID)dwFuncOrig, (i - JMP32_SZ), dwProt, &dwOldProt);
 
 	    return true;
     }
