@@ -103,6 +103,47 @@ void createPatches()
     utinni::debugCamera::patch();
 }
 
+// DIAG 2026-05-19: Vectored Exception Handler to log first-chance int 3
+// (EXCEPTION_BREAKPOINT) events. Source-level analysis points at SWG's
+// InternalFatal (Fatal.cpp:156) ending in `__asm int 3` followed by code
+// that should run but apparently parks at a `jmp $` — meaning either a
+// pre-existing VEH on this process consumes the int 3, or SWG's SEH
+// returns into a halt sequence. By logging EIP at int 3, we identify the
+// exact call site without needing a debugger attached.
+//
+// Returns EXCEPTION_CONTINUE_SEARCH so we don't change behavior — just
+// observe. AddVectoredExceptionHandler with FirstHandler=1 ensures we run
+// before any other VEH on the process.
+static LONG WINAPI utinniBreakpointVEH(PEXCEPTION_POINTERS pInfo)
+{
+    if (pInfo && pInfo->ExceptionRecord &&
+        pInfo->ExceptionRecord->ExceptionCode == EXCEPTION_BREAKPOINT)
+    {
+        char msg[256];
+        // Snapshot 16 bytes around EIP for context (e.g. CC EB FE pattern recognition).
+        BYTE* eipBytes = (BYTE*)pInfo->ContextRecord->Eip;
+        char hexDump[80] = {0};
+        for (int i = -4; i < 12; ++i)
+        {
+            char b[6];
+            // SAFE: VEH runs in-process; EIP is by definition mapped+readable.
+            // Bytes just before/after EIP are typically same code page.
+            snprintf(b, sizeof(b), "%s%02X", (i == 0 ? "[" : (i == 1 ? "]" : " ")),
+                     eipBytes[i]);
+            // Avoid overflow.
+            if (strlen(hexDump) + strlen(b) < sizeof(hexDump) - 1)
+                strcat_s(hexDump, sizeof(hexDump), b);
+        }
+
+        snprintf(msg, sizeof(msg),
+                 "VEH int3: EIP=0x%08X bytes(-4..+11)=%s ESP=0x%08X",
+                 pInfo->ContextRecord->Eip, hexDump,
+                 pInfo->ContextRecord->Esp);
+        utinni::log::info(msg);
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
 // C-01: utinni_init runs synchronously on the launcher-spawned thread.
 // Launcher's WaitForSingleObject blocks until this returns. Synchronous startup
 // is easier to debug than fire-and-forget; bring-up is bounded (CLR init + plugin load).
@@ -128,6 +169,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI utinni_init(LPVOID lpThreadParam)
     path = dllPath.substr(0, dllPath.find_last_of("\\/")) + "\\";
 
     utinni::log::create();
+
+    // DIAG 2026-05-19: register VEH BEFORE anything else so int 3 events
+    // from any source (CRT init, SWG fatal, library asserts) get logged.
+    // FirstHandler=1 → our handler runs before other VEHs.
+    AddVectoredExceptionHandler(1, utinniBreakpointVEH);
 
     ini.createUtinniSettings();
     ini.load(path + "ut.ini");
