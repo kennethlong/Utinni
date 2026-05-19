@@ -59,25 +59,28 @@ void createDetours()
 {
     utinni::log::info("Creating detours");
 
-    // BISECT 2026-05-19 ROUND 3: detours 1-3 enabled, 4-6 disabled.
-    // Round 2 confirmed culprit is in detours 1-6. Splitting 3/3.
+    // BISECT 2026-05-19 BASELINE: ONLY report::detour enabled.
+    // Per user feedback: round 0 disabled report along with everything,
+    // so we couldn't tell whether SWG actually stalled at audio init or
+    // simply didn't have its log captured. This baseline puts report back
+    // (proven correct, fires the [SWG] log lines) WITHOUT any other detour.
     //
     // Outcomes:
-    //   - Stall at audio init → culprit in 1-3:
-    //     config / Client / clientWorld
-    //   - Past audio init → culprit in 4-6:
-    //     creatureObject / CuiChatWindow / CuiManager
+    //   - SWG stalls at audio init → detour set is NOT the cause; the
+    //     bisection so far has been chasing a ghost. Investigate report,
+    //     CLR init, injection, or DLL load behavior instead.
+    //   - SWG logs progression past audio init (login screen messages,
+    //     network connection attempts, etc.) → detour set IS the cause,
+    //     and the bisection to date is valid. Resume splitting detours 1-3
+    //     (config / Client / clientWorld).
 
-    swg::config::detour();
-    utinni::Client::detour();
-    utinni::clientWorld::detour();
-
-    // BISECT 2026-05-19 ROUND 3: detours 4-6 disabled.
+    // All detours other than report disabled for the baseline.
+    // swg::config::detour();
+    // utinni::Client::detour();
+    // utinni::clientWorld::detour();
     // utinni::creatureObject::detour();
     // utinni::CuiChatWindow::detour();
     // utinni::CuiManager::detour();
-
-    // BISECT 2026-05-19 ROUND 3: second-quarter (7-12) still disabled.
     // utinni::cuiHud::detour();
     // utinni::cuiIo::detour();
     //utinni::cuiIntro::detour();
@@ -87,10 +90,9 @@ void createDetours()
     //utinni::cuiMediatorFactorySetup::detour();
     // utinni::debugCamera::detour();
 
-    // Always on for log visibility.
     utinni::report::detour();
 
-    // BISECT 2026-05-19 ROUND 2: second-half still disabled.
+    // BISECT 2026-05-19 BASELINE: second-half still disabled.
     // utinni::Game::detour();
     // utinni::GroundScene::detour();
     // utinni::Graphics::detour();
