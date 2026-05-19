@@ -144,11 +144,35 @@ extern "C" __declspec(dllexport) DWORD WINAPI utinni_init(LPVOID lpThreadParam)
     utinni::log::info("Loading C++ plugins");
     pluginManager.loadPlugins();
 
-    // WR-09: CoInitializeEx removed — no COM apartment consumer in utinni_init call chain
-    // (CLR host uses CLRCreateInstance, which is free-threaded and does not require COM
-    // apartment init). The utinni_init thread exits after return 0; the abandoned apartment
-    // would leave a per-thread refcount imbalance. Drop both init and (previously absent)
-    // CoUninitialize for the cleanest fix.
+    // WR-09 (REVISED 2026-05-18 after live UAT): CoInitializeEx MUST stay.
+    //
+    // Phase 02.1 Plan 02.1-01 attempted to remove this call under the rationale
+    // that "CLR host is free-threaded; no COM consumer in utinni_init call chain".
+    // That analysis missed the IMPLICIT consumer: WinForms drag-and-drop
+    // registration (`RegisterDragDrop`, called by `Control.SetAcceptDrops`) requires
+    // the calling thread to be in STA mode. PanelGame.cs and other editor controls
+    // throw `System.InvalidOperationException: DragDrop registration did not
+    // succeed --- ThreadStateException: Current thread must be set to single thread
+    // apartment (STA) mode before OLE calls can be made` if this CoInitializeEx is
+    // absent.
+    //
+    // docs/ai/injection.md line 167 documents this explicitly:
+    //   "CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED) — for COM types used by
+    //    the editor (drag-drop and any OLE-flavoured WinForms behaviour)."
+    //
+    // Phase 02.1's grep-based audit (RESEARCH.md §3) only scanned UtinniCore native
+    // sources for `CoCreateInstance` / `CoTaskMemAlloc` and concluded "no consumer"
+    // — missing the managed-side WinForms surface entirely. The C-01 manual UAT on
+    // 2026-05-18 caught the regression; this comment is the post-mortem trace.
+    //
+    // Pairing concern: there is no matching CoUninitialize. The utinni_init thread
+    // returns 0 immediately after clr::load() returns. But clr::load() doesn't
+    // return until CLR shutdown (Application.Run blocks until FormMain closes), so
+    // utinni_init's thread effectively IS the CLR's main thread for process
+    // lifetime. The per-thread apartment refcount "leak" is bounded by process
+    // lifetime — conventional Win32 main-thread COM init pattern; OS reclaims on
+    // process exit. NOT a bug; accepted as documented.
+    CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
     utinni::log::info("Loading .NET plugins");
     // Load the clr and UtinniCoreDotNet
