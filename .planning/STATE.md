@@ -71,7 +71,13 @@ None yet.
 
 ### Blockers/Concerns
 
-None active. Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved constraints — see ROADMAP.md "Open-Question → Phase Mapping" section. Each gates exactly one phase plan and is not a blocker until that phase is being planned.
+**Open concerns from live UAT 2026-05-18 (not phase-gated; track separately):**
+
+1. **WR-03 exit dialog STILL FIRES** — Plan 02.1-02 successfully eliminated the `delete depthTexture` UAF in `directX::cleanup()` (verified empty body at `directx9.cpp:410-427`), but on injected-session SWG exit the "Direct3D could not be correctly initialized" dialog still appears. Different teardown path than the one we fixed — likely `clr::stop()` (called immediately after cleanup in `detatch()`) or SWG's own D3D9 device-release noticing leftover state. Investigation deferred — not blocking; exit-only nuisance. Earlier "no exit dialog" UAT report on 2026-05-18 was incorrect (user mistook a delayed dialog for a startup dialog); status reset to "partial-fix; exit-side teardown still flagged." Re-investigate in Phase 03 or a Phase 02.2 mini-effort.
+
+2. **RVA drift on SWGEmu Launchpad 0.0.119.798** — Utinni's hardcoded D3D9/Game::install/Network::cast/etc. addresses were calibrated against an older SWGEmu binary. On the user's currently-installed `SWGEmu.exe` (ProductName "Star Wars Galaxies", Version `0.0.119.798`, OriginalFilename `SwgClient_r.exe`, signed `Sony Online Entertainment`), the D3D9 detours do not fire — confirmed by enabling `enableInternalUi=true` and observing that ImGui overlays do NOT appear on the SWG window. This blocks "use the editor productively against this client" but NOT framework validation (editor host, plugin pipeline, drag-drop, CLR bring-up all live-verified). Natural fit for Phase 03 R-C ("Single-source RVAs") IF R-C is scoped to include externalizing RVAs per SWGEmu build version (rather than just hoisting to a single header). Otherwise opens as Phase 02.2 mini-effort. Need: dumpbin/IDA on the user's client → compare against Utinni's hardcoded addresses → regenerate detour table.
+
+Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved constraints — see ROADMAP.md "Open-Question → Phase Mapping" section.
 
 ## Deferred Items
 
