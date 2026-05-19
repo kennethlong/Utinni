@@ -59,52 +59,48 @@ void createDetours()
 {
     utinni::log::info("Creating detours");
 
-    // BISECT 2026-05-19 ROUND 6: Client::detour ENABLED but its body
-    // edited (in client.cpp) to install ONLY hkSetupStartInstall — the
-    // most suspect sub-detour because its hook writes a possibly-null
-    // window handle into SWG's startup data.
-    //
-    //   - Stall → hkSetupStartInstall is the culprit
-    //   - Past → try clientMain next round, then DirectInput, etc.
+    // 2026-05-19: full detour set restored after bisection (rounds 0-10).
+    // The audio-init stall was traced to Client::detour's hkSetupStartInstall
+    // writing pStartupData->createOwnWindow=false, which SWG's setupStartDataInstall
+    // on the current SWGEmu binary rejects. That field write is now removed
+    // (see client.cpp). All other detours+patches were proven innocent by
+    // the bisection; restoring them here.
 
-    // swg::config::detour();
+    swg::config::detour();
+
     utinni::Client::detour();
-    // utinni::clientWorld::detour();
-    // utinni::creatureObject::detour();
-    // utinni::CuiChatWindow::detour();
-    // utinni::CuiManager::detour();
-    // utinni::cuiHud::detour();
-    // utinni::cuiIo::detour();
+    utinni::clientWorld::detour();
+    utinni::creatureObject::detour();
+    utinni::CuiChatWindow::detour();
+    utinni::CuiManager::detour();
+    utinni::cuiHud::detour();
+    utinni::cuiIo::detour();
     //utinni::cuiIntro::detour();
-    // utinni::cuiMenu::detour();
-    // utinni::cuiRadialMenuManager::detour();
-    // utinni::cuiLoginScreen::detour();
+    utinni::cuiMenu::detour();
+    utinni::cuiRadialMenuManager::detour();
+    utinni::cuiLoginScreen::detour();
     //utinni::cuiMediatorFactorySetup::detour();
-    // utinni::debugCamera::detour();
-
+    utinni::debugCamera::detour();
+    utinni::Game::detour();
+    utinni::GroundScene::detour();
+    utinni::Graphics::detour();
+    utinni::ParticleEffectAppearance::detour();
     utinni::report::detour();
-
-    // BISECT 2026-05-19 ROUND 4: second-half still disabled.
-    // utinni::Game::detour();
-    // utinni::GroundScene::detour();
-    // utinni::Graphics::detour();
-    // utinni::ParticleEffectAppearance::detour();
-    // utinni::skeletalAppearance::detour();
-    // utinni::SystemMessageManager::detour();
-    // utinni::treefile::detour();
-    // utinni::renderWorld::detour();
-    // utinni::shaderPrimitiveSorter::detour();
-    // utinni::IoWin::detour();
-    // utinni::postProcessing::detour();
+    utinni::skeletalAppearance::detour();
+    utinni::SystemMessageManager::detour();
+    utinni::treefile::detour();
+    utinni::renderWorld::detour();
+    utinni::shaderPrimitiveSorter::detour();
+    utinni::IoWin::detour();
+    utinni::postProcessing::detour();
 }
 
 void createPatches()
 {
     utinni::log::info("Creating patches");
 
-    // BISECT 2026-05-19 ROUND 1: patches still disabled.
-    // utinni::cuiMisc::patch();
-    // utinni::debugCamera::patch();
+    utinni::cuiMisc::patch();
+    utinni::debugCamera::patch();
 }
 
 // C-01: utinni_init runs synchronously on the launcher-spawned thread.

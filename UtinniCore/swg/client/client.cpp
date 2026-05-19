@@ -114,42 +114,30 @@ bool Client::isInputAllowed()
 
 int __cdecl hkSetupStartInstall(StartupData* pStartupData)
 {
-    // DIAG 2026-05-19 ROUND 9: window-redirect fields ONLY.
-    // Round 8 (passthrough) progressed cleanly. Round 7 (all 6 mods) stalled.
-    // Apply only the 3 mods needed for editor-window integration; leave the
-    // other 3 (hInstance / processMessagePump / lostFocusCallback) untouched.
-    utinni::log::info("hkSetupStartInstall: ENTERED (window-redirect only)");
-
-    char msg[256];
-    snprintf(msg, sizeof(msg),
-             "hkSetupStartInstall: editorMode=%d, Client::getHwnd()=0x%p, pStartupData=0x%p (window-redirect group only)",
-             Client::getEditorMode() ? 1 : 0, (void*)Client::getHwnd(), (void*)pStartupData);
-    utinni::log::info(msg);
-
-    if (Client::getEditorMode())
+    // 2026-05-19: editor-mode pStartupData modifications REMOVED.
+    //
+    // The original code set createOwnWindow=false + useNewWindowHandle=true +
+    // windowHandle=Client::getHwnd() to make SWG render directly into the
+    // editor host's HWND. Bisection (rounds 0-10, see git log) proved that
+    // SWG's setupStartDataInstall on the current SWGEmu binary rejects
+    // createOwnWindow=false and hangs at audio init when it's applied.
+    //
+    // New integration model: SWG creates its own window normally, then the
+    // managed side (FormMain) reparents that HWND into the editor's
+    // PanelGame via Win32 SetParent + WS_CHILD style adjustment. That
+    // moves the embedded-window plumbing entirely out of this hook.
+    //
+    // Hook is kept installed (not removed from Client::detour) so we have
+    // a known fire point for future per-startup-data behavior changes.
+    // First-fire log preserved so we can confirm hook firing in the log.
+    static bool s_firstFire = true;
+    if (s_firstFire)
     {
-        // BISECT 2026-05-19 ROUND 10: createOwnWindow LEFT ALONE.
-        // Round 8 (passthrough) progressed; Round 9 (all 3 window-redirect mods) stalled.
-        // Test "use external HWND" without forbidding SWG from creating its own window.
-        // pStartupData->createOwnWindow = false;
-        pStartupData->useNewWindowHandle = true;
-        pStartupData->windowHandle = Client::getHwnd();
-
-        // "other" group still disabled.
-        // pStartupData->hInstance = nullptr;
-        // pStartupData->processMessagePump = true;
-        // pStartupData->lostFocusCallback = 0;
-        utinni::log::info("hkSetupStartInstall: useNewWindowHandle+windowHandle set; createOwnWindow untouched");
+        s_firstFire = false;
+        utinni::log::info("hkSetupStartInstall: first fire (passthrough; reparent-after-creation model)");
     }
 
-    utinni::log::info("hkSetupStartInstall: calling original setupStartDataInstall");
-    int result = swg::client::setupStartDataInstall(pStartupData);
-
-    char rmsg[96];
-    snprintf(rmsg, sizeof(rmsg), "hkSetupStartInstall: original returned %d", result);
-    utinni::log::info(rmsg);
-
-    return result;
+    return swg::client::setupStartDataInstall(pStartupData);
 }
 
 LRESULT CALLBACK hkWndProc(HWND Hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -220,22 +208,16 @@ __declspec(naked) void midCrashLogWrite()
 
 void Client::detour()
 {
-    // BISECT 2026-05-19 ROUND 6: only setupStartDataInstall sub-detour active.
-    // Round 5 narrowed culprit to one of the sub-detours inside Client::detour.
-    // Testing one at a time. setupStartDataInstall first because its hook
-    // (hkSetupStartInstall) writes Client::getHwnd() into SWG's startup data;
-    // if FormMain hasn't set the host HWND yet, SWG proceeds with a null
-    // window handle and would stall at the first graphics call after audio.
     swg::client::setupStartDataInstall = (swg::client::pSetupInstall)Detour::Create((LPVOID)swg::client::setupStartDataInstall, hkSetupStartInstall, DETOUR_TYPE_PUSH_RET);
-    // swg::client::clientMain = (swg::client::pMainLoop)Detour::Create((LPVOID)swg::client::clientMain, hkMainLoop, DETOUR_TYPE_PUSH_RET);
+    swg::client::clientMain = (swg::client::pMainLoop)Detour::Create((LPVOID)swg::client::clientMain, hkMainLoop, DETOUR_TYPE_PUSH_RET);
     //swg::client::wndProc = (swg::client::pWndProc)Detour::Create((LPVOID)swg::client::wndProc, hkWndProc, DETOUR_TYPE_PUSH_RET);
 
-    // DirectInput::detour();
+    DirectInput::detour();
 
     // Move crash log location to logs/
-    // swg::client::writeCrashLog = (swg::client::pWriteCrashLog)Detour::Create((LPVOID)swg::client::writeCrashLog, hWriteCrashLog, DETOUR_TYPE_PUSH_RET);
-    // swg::client::writeMiniDump = (swg::client::pWriteMiniDump)Detour::Create((LPVOID)swg::client::writeMiniDump, hWriteMiniDump, DETOUR_TYPE_PUSH_RET);
-    // memory::createJMP(start_MidCrashLogWrite, (swgptr)midCrashLogWrite, 5);
+    swg::client::writeCrashLog = (swg::client::pWriteCrashLog)Detour::Create((LPVOID)swg::client::writeCrashLog, hWriteCrashLog, DETOUR_TYPE_PUSH_RET);
+    swg::client::writeMiniDump = (swg::client::pWriteMiniDump)Detour::Create((LPVOID)swg::client::writeMiniDump, hWriteMiniDump, DETOUR_TYPE_PUSH_RET);
+    memory::createJMP(start_MidCrashLogWrite, (swgptr)midCrashLogWrite, 5);
 }
 
 }
