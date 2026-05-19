@@ -114,7 +114,19 @@ bool Client::isInputAllowed()
 
 int __cdecl hkSetupStartInstall(StartupData* pStartupData)
 {
-    if (Client::getEditorMode())
+    // DIAG 2026-05-19: hook entry/state/exit logs to distinguish RVA drift
+    // (hook never fires) from null-HWND race (hook fires with nullptr hwnd).
+    utinni::log::info("hkSetupStartInstall: ENTERED");
+
+    bool editorMode = Client::getEditorMode();
+    HWND currentHwnd = Client::getHwnd();
+    char msg[256];
+    snprintf(msg, sizeof(msg),
+             "hkSetupStartInstall: editorMode=%d, Client::getHwnd()=0x%p, pStartupData=0x%p",
+             editorMode ? 1 : 0, (void*)currentHwnd, (void*)pStartupData);
+    utinni::log::info(msg);
+
+    if (editorMode)
     {
         pStartupData->createOwnWindow = false;
         pStartupData->hInstance = nullptr;
@@ -122,9 +134,17 @@ int __cdecl hkSetupStartInstall(StartupData* pStartupData)
         pStartupData->windowHandle = Client::getHwnd();
         pStartupData->processMessagePump = true;
         pStartupData->lostFocusCallback = 0;
+        utinni::log::info("hkSetupStartInstall: editor-mode pStartupData modifications applied");
     }
 
-    return swg::client::setupStartDataInstall(pStartupData);
+    utinni::log::info("hkSetupStartInstall: calling original setupStartDataInstall");
+    int result = swg::client::setupStartDataInstall(pStartupData);
+
+    char rmsg[96];
+    snprintf(rmsg, sizeof(rmsg), "hkSetupStartInstall: original returned %d", result);
+    utinni::log::info(rmsg);
+
+    return result;
 }
 
 LRESULT CALLBACK hkWndProc(HWND Hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
