@@ -59,12 +59,13 @@ void createDetours()
 {
     utinni::log::info("Creating detours");
 
-    // BISECT 2026-05-19 ROUND 5: Client + report enabled.
-    // Round 4 cleared config (SWG progressed to preloading). Culprit is in
-    // Client or clientWorld. Single-round identifier:
+    // BISECT 2026-05-19 ROUND 6: Client::detour ENABLED but its body
+    // edited (in client.cpp) to install ONLY hkSetupStartInstall — the
+    // most suspect sub-detour because its hook writes a possibly-null
+    // window handle into SWG's startup data.
     //
-    //   - Stall at audio init → Client::detour is the culprit
-    //   - Past audio init → clientWorld::detour is the culprit
+    //   - Stall → hkSetupStartInstall is the culprit
+    //   - Past → try clientMain next round, then DirectInput, etc.
 
     // swg::config::detour();
     utinni::Client::detour();

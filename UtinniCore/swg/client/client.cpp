@@ -195,16 +195,22 @@ __declspec(naked) void midCrashLogWrite()
 
 void Client::detour()
 {
+    // BISECT 2026-05-19 ROUND 6: only setupStartDataInstall sub-detour active.
+    // Round 5 narrowed culprit to one of the sub-detours inside Client::detour.
+    // Testing one at a time. setupStartDataInstall first because its hook
+    // (hkSetupStartInstall) writes Client::getHwnd() into SWG's startup data;
+    // if FormMain hasn't set the host HWND yet, SWG proceeds with a null
+    // window handle and would stall at the first graphics call after audio.
     swg::client::setupStartDataInstall = (swg::client::pSetupInstall)Detour::Create((LPVOID)swg::client::setupStartDataInstall, hkSetupStartInstall, DETOUR_TYPE_PUSH_RET);
-    swg::client::clientMain = (swg::client::pMainLoop)Detour::Create((LPVOID)swg::client::clientMain, hkMainLoop, DETOUR_TYPE_PUSH_RET);
+    // swg::client::clientMain = (swg::client::pMainLoop)Detour::Create((LPVOID)swg::client::clientMain, hkMainLoop, DETOUR_TYPE_PUSH_RET);
     //swg::client::wndProc = (swg::client::pWndProc)Detour::Create((LPVOID)swg::client::wndProc, hkWndProc, DETOUR_TYPE_PUSH_RET);
 
-    DirectInput::detour();
+    // DirectInput::detour();
 
     // Move crash log location to logs/
-    swg::client::writeCrashLog = (swg::client::pWriteCrashLog)Detour::Create((LPVOID)swg::client::writeCrashLog, hWriteCrashLog, DETOUR_TYPE_PUSH_RET);
-    swg::client::writeMiniDump = (swg::client::pWriteMiniDump)Detour::Create((LPVOID)swg::client::writeMiniDump, hWriteMiniDump, DETOUR_TYPE_PUSH_RET);
-    memory::createJMP(start_MidCrashLogWrite, (swgptr)midCrashLogWrite, 5);
+    // swg::client::writeCrashLog = (swg::client::pWriteCrashLog)Detour::Create((LPVOID)swg::client::writeCrashLog, hWriteCrashLog, DETOUR_TYPE_PUSH_RET);
+    // swg::client::writeMiniDump = (swg::client::pWriteMiniDump)Detour::Create((LPVOID)swg::client::writeMiniDump, hWriteMiniDump, DETOUR_TYPE_PUSH_RET);
+    // memory::createJMP(start_MidCrashLogWrite, (swgptr)midCrashLogWrite, 5);
 }
 
 }
