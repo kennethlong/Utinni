@@ -200,9 +200,33 @@ void Graphics::drawExtent(Extent* extent, swgptr vecArgbColor)
 
 bool __cdecl hkInstall()
 {
+    // DIAG 2026-05-19: one-shot entry/exit logs to confirm SWG reaches
+    // graphics::install AND our directX::detour completes. Catches stalls
+    // inside either swg::graphics::install (real SWG code) or our
+    // dummy-device vtable harvest in directX::detour.
+    static bool s_first = true;
+    bool firstFire = s_first;
+    if (firstFire)
+    {
+        s_first = false;
+        utinni::log::info("hkInstall: ENTRY (calling swg::graphics::install)");
+    }
+
     bool result = swg::graphics::install();
 
+    if (firstFire)
+    {
+        char msg[96];
+        snprintf(msg, sizeof(msg), "hkInstall: swg::graphics::install returned %d; calling directX::detour", result ? 1 : 0);
+        utinni::log::info(msg);
+    }
+
     directX::detour();
+
+    if (firstFire)
+    {
+        utinni::log::info("hkInstall: directX::detour returned; EXIT");
+    }
 
     return result;
 }

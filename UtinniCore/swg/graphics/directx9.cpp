@@ -484,11 +484,19 @@ swgptr* getVtbl()
 
 void detour()
 {
+    // DIAG 2026-05-19: log entry, vtable-harvest result, and exit. Lets us see
+    // if the dummy-device CreateDevice + Release sequence completes when called
+    // from inside SWG's graphics::install context (different from injection time).
+    utinni::log::info("directX::detour: ENTRY (calling getVtbl)");
+
     auto vtbl = getVtbl();
     if (vtbl == nullptr)
     {
+        utinni::log::info("directX::detour: getVtbl returned null; EXIT without installing detours");
         return;
     }
+
+    utinni::log::info("directX::detour: getVtbl returned valid vtable; installing 7 D3D9 detours");
 
 	 swgptr BeginSceneAddress = Detour::CheckPointer(vtbl[d3di_BeginScene_Index]);
     beginScene = (pBeginScene)Detour::Create((LPVOID)BeginSceneAddress, hkBeginScene, DETOUR_TYPE_PUSH_RET);
@@ -514,6 +522,7 @@ void detour()
 	 // ToDo Potentially make this an option, in case it creates issues
 	 compileShader = (pCompileShader)Detour::Create((LPVOID)compileShader, hkD3DXCompileShader, DETOUR_TYPE_PUSH_RET);
 
+    utinni::log::info("directX::detour: EXIT (all 7 D3D9 hooks + compileShader detour installed)");
 }
 
 void cleanup()
