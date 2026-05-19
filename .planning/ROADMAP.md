@@ -67,7 +67,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal:** Close 4 correctness gaps (CR-02/CR-03/CR-04/WR-03) and 4 harness-quality regressions (WR-01/WR-02/WR-05/WR-09) that the Phase 02 code review surfaced after executor agents reported plans complete. Every finding closed with a regression test that would fail if the fix were reverted.
 **Requirements:** [STAB-01]
 **Depends on:** Phase 2
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 02.1-01-PLAN.md — Native correctness fixes (CR-02/CR-03/WR-09)
