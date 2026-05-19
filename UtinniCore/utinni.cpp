@@ -59,30 +59,41 @@ void createDetours()
 {
     utinni::log::info("Creating detours");
 
-    // BISECT 2026-05-19 ROUND 0: ALL detours disabled to isolate whether
-    // SWG-init stall (post Audio: Finished initializing) is caused by Utinni's
-    // detour set as a whole, or by something else (DLL load, CLR init, etc.).
-    // If SWG advances past audio init with this code, restore detours in
-    // halves to bisect the culprit. If SWG still stalls, the failure isn't
-    // RVA-drift — investigate injection/loader-lock/CLR threading instead.
+    // BISECT 2026-05-19 ROUND 1: first-half ENABLED, second-half DISABLED.
+    // Round 0 (everything off) lost the [SWG] log prefix because report::detour
+    // is the hook that captures SWG's print output. We re-enable report so we
+    // can see SWG's progression, and bisect the rest in halves.
+    //
+    // Outcomes:
+    //   - SWG stalls again at "Audio: Finished initializing" → culprit is in
+    //     this enabled half (or in report itself, but RVA 0x00A88F90 was
+    //     already proven correct because it captured logs in earlier runs).
+    //   - SWG logs progress past audio init → culprit is in the still-disabled
+    //     second half.
 
-    // swg::config::detour();
-    // utinni::Client::detour();
-    // utinni::clientWorld::detour();
-    // utinni::creatureObject::detour();
-    // utinni::CuiChatWindow::detour();
-    // utinni::CuiManager::detour();
-    // utinni::cuiHud::detour();
-    // utinni::cuiIo::detour();
-    // utinni::cuiMenu::detour();
-    // utinni::cuiRadialMenuManager::detour();
-    // utinni::cuiLoginScreen::detour();
-    // utinni::debugCamera::detour();
+    swg::config::detour();
+    utinni::Client::detour();
+    utinni::clientWorld::detour();
+    utinni::creatureObject::detour();
+    utinni::CuiChatWindow::detour();
+    utinni::CuiManager::detour();
+    utinni::cuiHud::detour();
+    utinni::cuiIo::detour();
+    //utinni::cuiIntro::detour();
+    utinni::cuiMenu::detour();
+    utinni::cuiRadialMenuManager::detour();
+    utinni::cuiLoginScreen::detour();
+    //utinni::cuiMediatorFactorySetup::detour();
+    utinni::debugCamera::detour();
+
+    // Re-enabled so we capture [SWG] log lines and can see how far init goes.
+    utinni::report::detour();
+
+    // BISECT 2026-05-19 ROUND 1: second-half still disabled.
     // utinni::Game::detour();
     // utinni::GroundScene::detour();
     // utinni::Graphics::detour();
     // utinni::ParticleEffectAppearance::detour();
-    // utinni::report::detour();
     // utinni::skeletalAppearance::detour();
     // utinni::SystemMessageManager::detour();
     // utinni::treefile::detour();
@@ -96,7 +107,7 @@ void createPatches()
 {
     utinni::log::info("Creating patches");
 
-    // BISECT 2026-05-19 ROUND 0: patches disabled together with detours.
+    // BISECT 2026-05-19 ROUND 1: patches still disabled.
     // utinni::cuiMisc::patch();
     // utinni::debugCamera::patch();
 }
