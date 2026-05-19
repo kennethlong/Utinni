@@ -234,6 +234,18 @@ enum D3DInformation
 
 HRESULT __stdcall hkBeginScene(LPDIRECT3DDEVICE9 pDevice)
 {
+    // DIAG 2026-05-19: one-shot info log on first BeginScene fire.
+    // Confirms SWG's render thread reached the scene-begin stage AND our detour
+    // is wired correctly. Pair with hkPresent's one-shot below to triangulate
+    // where rendering is stalling. Remove after the play-window-stays-black
+    // investigation closes.
+    static bool s_firstBeginScene = true;
+    if (s_firstBeginScene)
+    {
+        s_firstBeginScene = false;
+        utinni::log::info("directX::hkBeginScene: first fire (D3D9 detour confirmed)");
+    }
+
 	 if (pDirectXDevice == nullptr)
 	 {
 		  pDirectXDevice = pDevice;
@@ -252,6 +264,20 @@ HRESULT __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 
 HRESULT __stdcall hkPresent(LPDIRECT3DDEVICE9 pDevice, const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion)
 {
+    // DIAG 2026-05-19: one-shot info logs on first Present fire.
+    // Captures the device's hwnd state and blockPresentCall flag so we can tell
+    // whether SWG is rendering at all and whether C-09's block flag is stuck.
+    static bool s_firstPresent = true;
+    if (s_firstPresent)
+    {
+        s_firstPresent = false;
+        char msg[256];
+        snprintf(msg, sizeof(msg),
+                 "directX::hkPresent: first fire (block=%d, destHwndOverride=0x%p)",
+                 blockPresentCall ? 1 : 0, (void*)hDestWindowOverride);
+        utinni::log::info(msg);
+    }
+
 	 HRESULT result = 0;
 
 	 imgui_impl::render();
