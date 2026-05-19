@@ -1,5 +1,24 @@
 # RVA Realignment: Porting Utinni to a New SWGEmu Build
 
+> **CORRIGENDUM 2026-05-19:** This research doc assumed broad SWG-side RVA
+> drift as the cause of the 2026-05-18 black-screen / no-ImGui symptoms.
+> **That hypothesis was incorrect.** The actual root cause is much narrower:
+> Utinni's `directx9.cpp::getVtbl()` uses a byte-pattern scan of
+> `d3d9.dll` that doesn't match modern Microsoft `d3d9.dll` builds — so
+> ZERO D3D9 detours install, even though most SWG-side RVAs are likely
+> still correct (PE link timestamp confirms SWGEmu doesn't relink the
+> binary; it only does in-place byte patches). See
+> `.planning/SESSION-HANDOFF-2026-05-19.md` for the corrected diagnosis
+> and the simple fix (replace pattern-scan with `CreateDevice(NULLREF)` +
+> read vtable from first 4 bytes of the device pointer).
+>
+> This doc is preserved as **reference for the eventual Phase 03 R-C
+> work** (when Utinni externalizes RVAs for build-version resilience), but
+> the immediate problem doesn't require its workflow. Original research
+> below.
+>
+> ---
+>
 > Research compiled 2026-05-18 after the Phase 02.1 live UAT confirmed that
 > Utinni's hardcoded native addresses don't match SWGEmu Launchpad's current
 > output (build `0.0.119.798`). This doc captures the tools, techniques, and
