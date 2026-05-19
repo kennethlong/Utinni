@@ -83,27 +83,24 @@ void createDetours()
     utinni::debugCamera::detour();
     utinni::Game::detour();
     utinni::GroundScene::detour();
-    // utinni::Graphics::detour();   // still off from round 12 (proven innocent for the runtime-window-missing symptom)
-
-    // BISECT 2026-05-19 ROUND 13: bottom-block detours disabled (kept report for log visibility).
-    // utinni::ParticleEffectAppearance::detour();
+    utinni::Graphics::detour();
+    utinni::ParticleEffectAppearance::detour();
     utinni::report::detour();
-    // utinni::skeletalAppearance::detour();
-    // utinni::SystemMessageManager::detour();
-    // utinni::treefile::detour();
-    // utinni::renderWorld::detour();
-    // utinni::shaderPrimitiveSorter::detour();
-    // utinni::IoWin::detour();
-    // utinni::postProcessing::detour();
+    utinni::skeletalAppearance::detour();
+    utinni::SystemMessageManager::detour();
+    utinni::treefile::detour();
+    utinni::renderWorld::detour();
+    utinni::shaderPrimitiveSorter::detour();
+    utinni::IoWin::detour();
+    utinni::postProcessing::detour();
 }
 
 void createPatches()
 {
     utinni::log::info("Creating patches");
 
-    // BISECT 2026-05-19 ROUND 13: patches disabled too.
-    // utinni::cuiMisc::patch();
-    // utinni::debugCamera::patch();
+    utinni::cuiMisc::patch();
+    utinni::debugCamera::patch();
 }
 
 // C-01: utinni_init runs synchronously on the launcher-spawned thread.
