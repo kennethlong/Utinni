@@ -59,25 +59,25 @@ void createDetours()
 {
     utinni::log::info("Creating detours");
 
-    // BISECT 2026-05-19 ROUND 2: first quarter ENABLED (detours 1-6 of the
-    // first-half block proven to contain the culprit in Round 1). report stays
-    // on for log visibility. Second-quarter (7-12) and second-half (13-24)
-    // remain disabled.
+    // BISECT 2026-05-19 ROUND 3: detours 1-3 enabled, 4-6 disabled.
+    // Round 2 confirmed culprit is in detours 1-6. Splitting 3/3.
     //
     // Outcomes:
-    //   - SWG stalls at "Audio: Finished initializing" → culprit is in 1-6:
-    //     config / Client / clientWorld / creatureObject / CuiChatWindow / CuiManager
-    //   - SWG logs progress past audio init → culprit is in 7-12:
-    //     cuiHud / cuiIo / cuiMenu / cuiRadialMenuManager / cuiLoginScreen / debugCamera
+    //   - Stall at audio init → culprit in 1-3:
+    //     config / Client / clientWorld
+    //   - Past audio init → culprit in 4-6:
+    //     creatureObject / CuiChatWindow / CuiManager
 
     swg::config::detour();
     utinni::Client::detour();
     utinni::clientWorld::detour();
-    utinni::creatureObject::detour();
-    utinni::CuiChatWindow::detour();
-    utinni::CuiManager::detour();
 
-    // BISECT 2026-05-19 ROUND 2: second-quarter disabled.
+    // BISECT 2026-05-19 ROUND 3: detours 4-6 disabled.
+    // utinni::creatureObject::detour();
+    // utinni::CuiChatWindow::detour();
+    // utinni::CuiManager::detour();
+
+    // BISECT 2026-05-19 ROUND 3: second-quarter (7-12) still disabled.
     // utinni::cuiHud::detour();
     // utinni::cuiIo::detour();
     //utinni::cuiIntro::detour();
