@@ -40,9 +40,9 @@ result: **passed** — 2026-05-18. Minimize/restore stress test against the live
 
 ## Side-quest finding (NOT a UAT failure — surfaces Phase 02.1 work)
 
-**WR-03 live-confirmed.** On exit from the injected session, SWGEmu showed a "Direct3D could not be correctly initialized" error dialog. Standalone SWGEmu.exe (no Utinni injection) does NOT show this dialog on exit — comparison confirmed by user. This matches the WR-03 prediction from `02-REVIEW.md` exactly: `directX::cleanup()` deletes `depthTexture` on the `DLL_PROCESS_DETACH` thread; if the render thread is mid-frame, that's a use-after-free, and SWG's D3D9 device-state validator notices on teardown and fires the canned "Direct3D could not be correctly initialized" dialog.
+**WR-03 live-confirmed (partial fix in 02.1; exit dialog STILL fires).** On exit from the injected session, SWGEmu showed a "Direct3D could not be correctly initialized" error dialog. Standalone SWGEmu.exe (no Utinni injection) does NOT show this dialog on exit — comparison confirmed by user. This matches the WR-03 prediction from `02-REVIEW.md`.
 
-This finding is non-blocking for Phase 02 closure (C-01 + C-09 both pass on their own criteria). It adds urgency + a concrete repro to Phase 02.1 Plan 02.1-02 (race hardening) which already targets WR-03. **See `.planning/phases/02.1-.../02.1-PLAN-CHECK.md` §Live-confirmed findings for the actionable note to the 02.1-02 executor.**
+**Update 2026-05-18 post Phase 02.1:** Plan 02.1-02 successfully eliminated the `delete depthTexture` UAF in `directX::cleanup()` — verified empty body at `directx9.cpp:410-427` after Phase 02.1's eager-init refactor. However, **the exit dialog STILL fires** on the user's machine after Phase 02.1's fix landed. The earlier "no exit dialog" UAT report from 2026-05-18 was incorrect — the user later noticed the dialog had been appearing all along, just delayed/missed. The cleanup-side UAF is fixed; the remaining failure mode is a DIFFERENT teardown path, likely `clr::stop()` (called immediately after `cleanup()` in `detatch()` at `utinni.cpp:153-157`) or SWG's own D3D9 device-release validator. Investigation deferred to Phase 03 (or a Phase 02.2 mini-effort). Tracked in `STATE.md` Blockers/Concerns. Non-blocking for Phase 02 closure — both C-01 and C-09 manual UATs remain PASSED on their own criteria.
 
 ## Summary
 
