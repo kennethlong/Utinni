@@ -128,16 +128,18 @@ int __cdecl hkSetupStartInstall(StartupData* pStartupData)
 
     if (Client::getEditorMode())
     {
-        // Window-redirect group (applied this round):
-        pStartupData->createOwnWindow = false;
+        // BISECT 2026-05-19 ROUND 10: createOwnWindow LEFT ALONE.
+        // Round 8 (passthrough) progressed; Round 9 (all 3 window-redirect mods) stalled.
+        // Test "use external HWND" without forbidding SWG from creating its own window.
+        // pStartupData->createOwnWindow = false;
         pStartupData->useNewWindowHandle = true;
         pStartupData->windowHandle = Client::getHwnd();
 
-        // BISECT 2026-05-19 ROUND 9: "other" group disabled this round.
+        // "other" group still disabled.
         // pStartupData->hInstance = nullptr;
         // pStartupData->processMessagePump = true;
         // pStartupData->lostFocusCallback = 0;
-        utinni::log::info("hkSetupStartInstall: window-redirect mods applied; other 3 fields untouched");
+        utinni::log::info("hkSetupStartInstall: useNewWindowHandle+windowHandle set; createOwnWindow untouched");
     }
 
     utinni::log::info("hkSetupStartInstall: calling original setupStartDataInstall");
