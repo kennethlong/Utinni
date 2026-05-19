@@ -348,29 +348,112 @@ HRESULT __stdcall hkD3DXCompileShader(LPCSTR pSrcData, UINT srcDataLen, LPVOID* 
 	 return compileShader(pSrcData, srcDataLen, pDefines, pInclude, pFunctionName, "vs_3_0", Flags, ppShader, ppErrorMsgs, ppConstantTable);
 }
 
+// IDirect3DDevice9 has 119 vtable entries (3 IUnknown + 116 D3D9-specific).
+// The enum d3di_NumberOfFunctions above is set to 118 (matches the last index,
+// d3di_CreateQuery_Index) — that is the historical labeling and is intentionally
+// not touched here. Use this literal for the actual array length.
+static const size_t kD3D9VtblEntries = 119;
+
+// 2026-05-19 — Replaced the d3d9.dll code-pattern scan that broke on modern
+// Windows (probe of Win11 24H2 d3d9.dll 6.2.26100.8328 showed the IDirect3DDevice9
+// vtable is allocated per-instance on the heap, NOT as a static array in
+// d3d9.dll's read-only data — modern d3d9 ships without an .rdata section at all).
+// The new approach creates a throwaway IDirect3DDevice9 via the public D3D9 API,
+// snapshots its vtable, and releases. The method addresses inside the vtable point
+// into d3d9.dll's .text section (verified 119/119 entries) and remain valid after
+// the dummy device is released, because we patch the function bodies there
+// rather than mutating any vtable. This works identically against the SWG Source
+// build and the stock SWGEmu client because both load the OS-provided d3d9.dll.
 swgptr* getVtbl()
 {
-    // C-11: null-check GetModuleHandle + findPattern before memcpy.
-    // CON-N-04: memory::copy (VirtualProtect bracket) is NOT touched here —
-    // only memory::findPattern (pure read) is used.
-    HMODULE hD3d9 = GetModuleHandle("d3d9.dll");
+    static swgptr s_vtbl[kD3D9VtblEntries];
+    static bool s_initialized = false;
+    if (s_initialized) return s_vtbl;
+
+    // Dynamic load of Direct3DCreate9 — avoids adding d3d9.lib to the link line.
+    // d3d9.dll is loaded by SWG before utinni_init runs (the launcher injects after
+    // the game has bootstrapped its render subsystem); in the test process the
+    // xUnit harness LoadLibraryAs it explicitly.
+    HMODULE hD3d9 = GetModuleHandleA("d3d9.dll");
     if (hD3d9 == nullptr)
     {
-        utinni::log::critical("DirectX9 hook installation failed: d3d9.dll not loaded yet");
+        utinni::log::critical("DirectX9 hook installation failed: d3d9.dll not loaded");
         return nullptr;
     }
 
-    auto pDevice = (LPDIRECT3DDEVICE9)memory::findPattern((swgptr)hD3d9, 0x128000,
-        "\xC7\x06\x00\x00\x00\x00\x89\x86\x00\x00\x00\x00\x89\x86", "xx????xx????xx");
-    if (pDevice == nullptr)
+    typedef IDirect3D9* (WINAPI *PFN_Direct3DCreate9)(UINT);
+    auto pfnDirect3DCreate9 =
+        (PFN_Direct3DCreate9)GetProcAddress(hD3d9, "Direct3DCreate9");
+    if (pfnDirect3DCreate9 == nullptr)
     {
-        utinni::log::critical("DirectX9 hook installation failed: vtable pattern not found in d3d9.dll");
+        utinni::log::critical("DirectX9 hook installation failed: Direct3DCreate9 not exported by d3d9.dll");
         return nullptr;
     }
 
-    swgptr* vtbl = nullptr;
-    memcpy(&vtbl, (void*)(((swgptr)pDevice) + 2), 4);
-    return vtbl;
+    IDirect3D9* pD3D = pfnDirect3DCreate9(D3D_SDK_VERSION);
+    if (pD3D == nullptr)
+    {
+        utinni::log::critical("DirectX9 hook installation failed: Direct3DCreate9 returned null");
+        return nullptr;
+    }
+
+    // Hidden 1x1 window — required as the hDeviceWindow. Never shown, never pumped.
+    HWND hwnd = CreateWindowExA(0, "STATIC", nullptr, WS_POPUP, 0, 0, 1, 1,
+                                nullptr, nullptr, GetModuleHandleA(nullptr), nullptr);
+    if (hwnd == nullptr)
+    {
+        char msg[160];
+        snprintf(msg, sizeof(msg),
+                 "DirectX9 hook installation failed: dummy window creation failed (GetLastError=0x%08lX)",
+                 GetLastError());
+        pD3D->Release();
+        utinni::log::critical(msg);
+        return nullptr;
+    }
+
+    D3DPRESENT_PARAMETERS pp = {};
+    pp.BackBufferWidth = 1;
+    pp.BackBufferHeight = 1;
+    pp.BackBufferFormat = D3DFMT_X8R8G8B8;
+    pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
+    pp.Windowed = TRUE;
+    pp.hDeviceWindow = hwnd;
+    pp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
+
+    // HAL is mandatory: SWG uses HAL, so HAL's vtable is what we need to harvest.
+    // NULLREF/REF can return different IDirect3DDevice9 implementations whose
+    // function addresses don't intercept HAL Present calls — falling back to them
+    // would be a silent miss in production.
+    IDirect3DDevice9* pDevice = nullptr;
+    HRESULT hr = pD3D->CreateDevice(
+        D3DADAPTER_DEFAULT,
+        D3DDEVTYPE_HAL,
+        hwnd,
+        D3DCREATE_SOFTWARE_VERTEXPROCESSING | D3DCREATE_DISABLE_DRIVER_MANAGEMENT,
+        &pp,
+        &pDevice);
+
+    if (FAILED(hr) || pDevice == nullptr)
+    {
+        char msg[160];
+        snprintf(msg, sizeof(msg),
+                 "DirectX9 hook installation failed: CreateDevice(HAL) returned 0x%08lX",
+                 (unsigned long)hr);
+        DestroyWindow(hwnd);
+        pD3D->Release();
+        utinni::log::critical(msg);
+        return nullptr;
+    }
+
+    swgptr* liveVtbl = *(swgptr**)pDevice;
+    memcpy(s_vtbl, liveVtbl, sizeof(swgptr) * kD3D9VtblEntries);
+
+    pDevice->Release();
+    DestroyWindow(hwnd);
+    pD3D->Release();
+
+    s_initialized = true;
+    return s_vtbl;
 }
 
 void detour()

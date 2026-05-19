@@ -131,18 +131,16 @@ namespace UtinniCoreDotNet.Tests
         [Fact]
         public void GetVtbl_WithD3d9Loaded_ReturnsNonZero()
         {
-            // WR-05: affirmative test for the C-11 getVtbl pattern-scan path.
-            // Loads d3d9.dll (SysWOW64 on x86 test runner) so GetModuleHandle("d3d9.dll") != NULL.
-            // Then calls Utinni_GetVtbl() and asserts the vtable pattern is found (non-zero).
-            // The pattern is static bytecode in d3d9.dll .text section; does not require a live device.
+            // WR-05: affirmative test for getVtbl. As of 2026-05-19 the d3d9.dll code-pattern
+            // scan was replaced with a dummy-device dance (Direct3DCreate9 + CreateDevice(HAL)
+            // + read vtable pointer) — see directx9.cpp::getVtbl for the rationale. The test
+            // semantics are unchanged: with d3d9.dll loaded the function should succeed; without
+            // it, the null-path test (GetVtbl_WithoutD3d9Loaded_ReturnsNull) covers the early-out.
             //
-            // Written WITHOUT [Skip] — CI is the arbiter of pattern presence on windows-2022.
-            // If this assertion fails on CI (windows-2022 d3d9.dll lacks the expected pattern),
-            // add:
-            //   [Fact(Skip = "WR-05: pattern absent in windows-2022 SysWOW64\\d3d9.dll — " +
-            //                 "affirmative test requires SWG-era d3d9.dll bytes; existing " +
-            //                 "null-path test (GetVtbl_WithoutD3d9Loaded_ReturnsNull) " +
-            //                 "retains C-11 regression coverage per CONTEXT.md D-05")]
+            // Headless CI caveat: CreateDevice(HAL) may fail on the windows-2022 GitHub runner
+            // if no graphics adapter is exposed. If that happens, mark this test:
+            //   [Fact(Skip = "WR-05: HAL CreateDevice unavailable on headless windows-2022; " +
+            //                 "null-path test retains regression coverage per CONTEXT.md D-05")]
             IntPtr hD3d9 = IntPtr.Zero;
             try
             {
