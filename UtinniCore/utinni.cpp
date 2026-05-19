@@ -59,23 +59,17 @@ void createDetours()
 {
     utinni::log::info("Creating detours");
 
-    // BISECT 2026-05-19 BASELINE: ONLY report::detour enabled.
-    // Per user feedback: round 0 disabled report along with everything,
-    // so we couldn't tell whether SWG actually stalled at audio init or
-    // simply didn't have its log captured. This baseline puts report back
-    // (proven correct, fires the [SWG] log lines) WITHOUT any other detour.
+    // BISECT 2026-05-19 ROUND 4: config + report enabled.
+    // Baseline confirmed the detour set is the cause (SWG progressed far
+    // past audio init with just report on — dPVS, preloading, warnings).
+    // Resuming bisection where Round 3 left off: culprit is in 1-3.
     //
     // Outcomes:
-    //   - SWG stalls at audio init → detour set is NOT the cause; the
-    //     bisection so far has been chasing a ghost. Investigate report,
-    //     CLR init, injection, or DLL load behavior instead.
-    //   - SWG logs progression past audio init (login screen messages,
-    //     network connection attempts, etc.) → detour set IS the cause,
-    //     and the bisection to date is valid. Resume splitting detours 1-3
-    //     (config / Client / clientWorld).
+    //   - SWG stalls at audio init → swg::config::detour is the culprit
+    //   - SWG progresses past audio init → culprit is Client or clientWorld
+    //     (round 5 splits)
 
-    // All detours other than report disabled for the baseline.
-    // swg::config::detour();
+    swg::config::detour();
     // utinni::Client::detour();
     // utinni::clientWorld::detour();
     // utinni::creatureObject::detour();
@@ -92,7 +86,7 @@ void createDetours()
 
     utinni::report::detour();
 
-    // BISECT 2026-05-19 BASELINE: second-half still disabled.
+    // BISECT 2026-05-19 ROUND 4: second-half still disabled.
     // utinni::Game::detour();
     // utinni::GroundScene::detour();
     // utinni::Graphics::detour();
