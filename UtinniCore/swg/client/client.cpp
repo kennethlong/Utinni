@@ -114,28 +114,31 @@ bool Client::isInputAllowed()
 
 int __cdecl hkSetupStartInstall(StartupData* pStartupData)
 {
-    // DIAG 2026-05-19 ROUND 8: PASSTHROUGH mode — editor-mode block disabled.
-    // Round 7 proved the hook fires, HWND is non-null, original returns OK,
-    // yet SWG still stalls. Testing whether the editor-mode field
-    // modifications themselves are what stalls SWG.
-    utinni::log::info("hkSetupStartInstall: ENTERED (passthrough)");
+    // DIAG 2026-05-19 ROUND 9: window-redirect fields ONLY.
+    // Round 8 (passthrough) progressed cleanly. Round 7 (all 6 mods) stalled.
+    // Apply only the 3 mods needed for editor-window integration; leave the
+    // other 3 (hInstance / processMessagePump / lostFocusCallback) untouched.
+    utinni::log::info("hkSetupStartInstall: ENTERED (window-redirect only)");
 
     char msg[256];
     snprintf(msg, sizeof(msg),
-             "hkSetupStartInstall: editorMode=%d, Client::getHwnd()=0x%p, pStartupData=0x%p (modifications SKIPPED this round)",
+             "hkSetupStartInstall: editorMode=%d, Client::getHwnd()=0x%p, pStartupData=0x%p (window-redirect group only)",
              Client::getEditorMode() ? 1 : 0, (void*)Client::getHwnd(), (void*)pStartupData);
     utinni::log::info(msg);
 
-    // BISECT 2026-05-19 ROUND 8: editor-mode modifications skipped entirely.
-    // if (Client::getEditorMode())
-    // {
-    //     pStartupData->createOwnWindow = false;
-    //     pStartupData->hInstance = nullptr;
-    //     pStartupData->useNewWindowHandle = true;
-    //     pStartupData->windowHandle = Client::getHwnd();
-    //     pStartupData->processMessagePump = true;
-    //     pStartupData->lostFocusCallback = 0;
-    // }
+    if (Client::getEditorMode())
+    {
+        // Window-redirect group (applied this round):
+        pStartupData->createOwnWindow = false;
+        pStartupData->useNewWindowHandle = true;
+        pStartupData->windowHandle = Client::getHwnd();
+
+        // BISECT 2026-05-19 ROUND 9: "other" group disabled this round.
+        // pStartupData->hInstance = nullptr;
+        // pStartupData->processMessagePump = true;
+        // pStartupData->lostFocusCallback = 0;
+        utinni::log::info("hkSetupStartInstall: window-redirect mods applied; other 3 fields untouched");
+    }
 
     utinni::log::info("hkSetupStartInstall: calling original setupStartDataInstall");
     int result = swg::client::setupStartDataInstall(pStartupData);
