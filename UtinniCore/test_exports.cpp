@@ -33,6 +33,8 @@
 #include "swg/misc/network.h"
 #include "swg/game/game.h"
 #include "swg/graphics/directx9.h"
+// Note: windows.h (GetModuleHandleA, GetProcAddress) is available transitively via
+// directx9.h -> <d3d9.h> -> <windows.h>. No explicit include needed.
 
 namespace directX
 {
@@ -100,28 +102,91 @@ extern "C" __declspec(dllexport) bool __cdecl utinni_test_freeConfigBuffer(
 }
 
 // ---------------------------------------------------------------------------
-// C-03: Network::cast — post-condition sentinel wrapper (DEFERRED WR-01 real harness)
-//   The real cast calls SWG at hard RVA 0xAA4900 which is only valid inside an
-//   injected SWG process. This wrapper returns a sentinel (0xDEADBEEF) instead
-//   so the test runs safely in the dotnet test process. The sentinel assertion
-//   catches any future regression that rewires this wrapper to call SWG without
-//   proper initialization.
+// WR-01 real harness: Network::cast function-pointer reseat via __declspec(naked)
 //
-//   WR-01 (real fn-pointer reseat harness) was attempted in Plan 02.1-01 but
-//   the __thiscall test-double pattern requires either __declspec(naked) + inline
-//   asm, or a class-method-bitcast trick (MSVC C3865: __thiscall can only be
-//   used on native member functions). Deferred back to Plan 02.1-03 with a
-//   known-good ABI-shim pattern. The setCastForTest/resetCast seam in network.cpp
-//   stays in place so 02.1-03 can use it directly.
+// Background: swg::network::cast is a pCast pointer (int64_t(__thiscall*)(int64_t*, int, int)).
+// __thiscall ABI on x86:
+//   ECX      = this / first "hidden" param = int64_t* networkId (OUT param)
+//   [ESP+4]  = first explicit arg (low 32 bits of id), pushed right-to-left
+//   [ESP+8]  = second explicit arg (high 32 bits of id), pushed right-to-left
+//   Callee cleans: 2 explicit args * 4 bytes = 8 bytes → ret 8
+//
+// testCastDoubleNaked writes the full 64-bit sentinel 0xDEADBEEFCAFEBABE through
+// the int64_t* OUT param so the upper 32 bits (0xDEADBEEF) differ from the lower
+// 32 bits (0xCAFEBABE). Any slot narrower than 8 bytes (CR-02 regression) would
+// silently truncate the upper half, causing the assertion in NetworkCastTests.cs
+// to fail with an actual vs expected mismatch.
+//
+// MSVC C3865 blocks "__thiscall" on ordinary free functions. The naked-function
+// form sidesteps this: the function body is raw assembly that manually implements
+// the __thiscall ABI — MSVC never sees a __thiscall declaration.
+// ---------------------------------------------------------------------------
+extern "C" __declspec(naked) int64_t __cdecl testCastDoubleNaked()
+{
+    __asm {
+        // Standard frame prologue (not strictly required for a naked function,
+        // but documents the contract so the ret 8 below is unambiguous).
+        push ebp
+        mov  ebp, esp
+
+        // __thiscall convention: ECX = first hidden arg = int64_t* networkId (OUT param).
+        // Write the 64-bit sentinel 0xDEADBEEFCAFEBABE through the 8-byte slot.
+        //   Lower 32 bits at [ecx]   = 0xCAFEBABE
+        //   Upper 32 bits at [ecx+4] = 0xDEADBEEF
+        // (little-endian layout: low word first)
+        mov  dword ptr [ecx],   0xCAFEBABEh
+        mov  dword ptr [ecx+4], 0xDEADBEEFh
+
+        // int64_t return value: low half in EAX, high half in EDX.
+        // We return the same 64-bit sentinel so Network::cast's caller (which
+        // reads from networkId, not from the return value) is also exercised.
+        mov  eax, 0xCAFEBABEh
+        mov  edx, 0xDEADBEEFh
+
+        // Restore frame.
+        mov  esp, ebp
+        pop  ebp
+
+        // __thiscall callee-cleans: 2 explicit args * 4 bytes = 8 bytes.
+        // ECX (the hidden THIS param) is NOT counted in the callee-clean count.
+        ret  8
+    }
+}
+
+// ---------------------------------------------------------------------------
+// C-03: Network::cast — WR-01 real function-pointer reseat harness
+//   Replaces the previous hardcoded-sentinel stub.
+//
+//   Steps:
+//     1. Reseat swg::network::cast to testCastDoubleNaked via setCastForTest.
+//     2. Call Network::cast(id) — this invokes testCastDoubleNaked through the
+//        real call chain in network.cpp (swg::network::cast(&networkId, low, high)).
+//     3. Restore the real cast pointer via resetCast.
+//     4. Return the value from networkId (which testCastDoubleNaked wrote as
+//        0xDEADBEEFCAFEBABELL through the OUT param).
+//
+//   Regression coverage: if CR-02 were reverted (OUT param narrowed back to
+//   swgptr*/int32_t*), only the lower 32 bits would survive — the C# test
+//   asserting unchecked((long)0xDEADBEEFCAFEBABEL) would detect the truncation.
 // ---------------------------------------------------------------------------
 extern "C" __declspec(dllexport) int64_t __cdecl utinni_test_networkCast(int id)
 {
-    // Sentinel value — NOT calling swg::network::cast here because that would
-    // call SWG at hard RVA 0xAA4900 which AVs in the test process.
-    // The C-03 fix in network.cpp (initialize int64_t networkId = 0 + return networkId)
-    // is verified by ensuring the sentinel != 0xCCCCCCCC (MSVC debug-init pattern).
-    (void)id;
-    return (int64_t)0xDEADBEEFLL;
+    using swg::network::pCast;
+
+    // Reseat: point cast at our __declspec(naked) ABI-shim.
+    swg::network::setCastForTest(reinterpret_cast<pCast>(testCastDoubleNaked));
+
+    // Exercise Network::cast — this calls swg::network::cast, which is now
+    // testCastDoubleNaked. Network::cast passes &networkId (int64_t*, 8-byte slot)
+    // as ECX and the low/high split of id as the two stack args.
+    int64_t result = utinni::Network::cast(static_cast<int64_t>(id));
+
+    // Always restore the real pointer before returning (regardless of crash path —
+    // in production code this function would use RAII; in a test export a direct
+    // call is sufficient because the test process runs single-threaded per test).
+    swg::network::resetCast();
+
+    return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -190,4 +255,78 @@ extern "C" __declspec(dllexport) uintptr_t __cdecl utinni_test_initDepthTexture(
 extern "C" __declspec(dllexport) uintptr_t __cdecl utinni_test_getDepthTexturePtr()
 {
     return (uintptr_t)(void*)directX::getDepthTexture();
+}
+
+// ---------------------------------------------------------------------------
+// NEW (Plan 02.1-03): Export-decoration resolution harness
+//
+// Background: C-01 live UAT (2026-05-18) caught that utinni_init exported as
+// _utinni_init@4 (decorated stdcall name on x86) while Launcher's GetProcAddress
+// used the undecorated name "utinni_init". The LoaderLockHarness only timed
+// LoadLibrary — it never resolved exports. The /EXPORT linker pragma in utinni.cpp
+// fixes C-01's specific case, but any future __stdcall/__WINAPI export without a
+// matching /EXPORT alias would reintroduce the gap silently.
+//
+// This export probes GetProcAddress for every documented C-linkage export by its
+// UNDECORATED name and returns the count of successful resolutions (all or nothing
+// for the xUnit assertion). Uses GetModuleHandleA (not LoadLibrary) because we are
+// already executing inside UtinniCore.dll — the module is already loaded.
+//
+// Expected exports (12 total as of Plan 02.1-03):
+//   utinni_init               (decorated stdcall; resolved via /EXPORT alias)
+//   utinni_findPattern        (cdecl — no decoration on x86)
+//   utinni_getVtbl            (cdecl)
+//   utinni_test_freeConfigBuffer (cdecl)
+//   utinni_test_networkCast   (cdecl)
+//   utinni_clr_stop           (cdecl)
+//   utinni_triggerInstallCallbacks (cdecl)
+//   utinni_test_initPresentBlockedEvent (cdecl)
+//   utinni_test_getPresentBlockedEvent  (cdecl)
+//   utinni_test_initDepthTexture        (cdecl)
+//   utinni_test_getDepthTexturePtr      (cdecl)
+//   getPresentBlockedEvent    (file-scope C-linkage cdecl in directx9.cpp)
+//
+// Returns: count of exports successfully resolved (max 12).
+// The xUnit test asserts count == 12.
+// ---------------------------------------------------------------------------
+extern "C" __declspec(dllexport) int __cdecl utinni_test_resolveExports()
+{
+    // We are executing inside UtinniCore.dll — GetModuleHandleA avoids a
+    // reference-count bump (no paired FreeLibrary needed).
+    HMODULE hSelf = GetModuleHandleA("UtinniCore.dll");
+    if (hSelf == nullptr)
+    {
+        // Should never happen: we are the DLL. Return -1 as a sentinel for
+        // "module handle not found" — distinct from "exports not resolved".
+        return -1;
+    }
+
+    // All expected undecorated export names (C-linkage, cdecl or /EXPORT alias).
+    static const char* const kExpectedExports[] = {
+        "utinni_init",                        // stdcall decorated → /EXPORT alias
+        "utinni_findPattern",                 // cdecl
+        "utinni_getVtbl",                     // cdecl
+        "utinni_test_freeConfigBuffer",       // cdecl
+        "utinni_test_networkCast",            // cdecl
+        "utinni_clr_stop",                    // cdecl
+        "utinni_triggerInstallCallbacks",     // cdecl
+        "utinni_test_initPresentBlockedEvent",// cdecl
+        "utinni_test_getPresentBlockedEvent", // cdecl
+        "utinni_test_initDepthTexture",       // cdecl
+        "utinni_test_getDepthTexturePtr",     // cdecl
+        "getPresentBlockedEvent",             // file-scope C-linkage in directx9.cpp
+    };
+
+    static constexpr int kExportCount =
+        static_cast<int>(sizeof(kExpectedExports) / sizeof(kExpectedExports[0]));
+
+    int resolved = 0;
+    for (int i = 0; i < kExportCount; ++i)
+    {
+        if (GetProcAddress(hSelf, kExpectedExports[i]) != nullptr)
+        {
+            ++resolved;
+        }
+    }
+    return resolved;
 }

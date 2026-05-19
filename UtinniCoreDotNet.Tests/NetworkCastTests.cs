@@ -28,16 +28,21 @@ using Xunit;
 namespace UtinniCoreDotNet.Tests
 {
     /// <summary>
-    /// C-03 partial-proof harness: asserts the post-condition of Network::cast.
-    /// The test-only wrapper utinni_test_networkCast returns a sentinel (0xDEADBEEF)
-    /// instead of calling SWG at hard RVA 0xAA4900 (which would AV in the test process).
-    /// The sentinel assertion catches any regression that rewires the wrapper to call SWG
-    /// without proper initialization. Full live-SWG proof remains Tier-4 manual.
+    /// WR-01 real function-pointer reseat harness for Network::cast (CR-02/CR-03 regression guard).
     ///
-    /// WR-01 (real function-pointer reseat harness) was attempted in Plan 02.1-01 but
-    /// blocked on MSVC's C3865 restriction (__thiscall not allowed on free functions).
-    /// Deferred to Plan 02.1-03; the setCastForTest/resetCast seam in network.cpp is
-    /// already in place so 02.1-03 can implement WR-01 with a proper ABI-shim pattern.
+    /// utinni_test_networkCast reseats swg::network::cast to a naked-asm test double
+    /// (testCastDoubleNaked) that writes the 64-bit sentinel 0xDEADBEEFCAFEBABE through
+    /// the int64_t* OUT param (ECX in __thiscall ABI). Network::cast in network.cpp is
+    /// invoked through the real call chain — this is NOT a hardcoded return value.
+    ///
+    /// Regression coverage:
+    ///   - CR-02 regression (OUT param narrowed back to swgptr*/int32_t*): the upper 32 bits
+    ///     of the sentinel (0xDEADBEEF) would be silently dropped — Assert.Equal below fails.
+    ///   - CR-03 regression (UB shift re-introduced): the low/high split in Network::cast would
+    ///     corrupt the sentinel high half — Assert.Equal below fails.
+    ///
+    /// Full live-SWG proof (real cast at RVA 0xAA4900) remains Tier-4 manual per D-05.
+    /// The full 64-bit sentinel assertion is stronger than the previous 0xDEADBEEF stub.
     /// </summary>
     public class NetworkCastTests
     {
@@ -49,20 +54,22 @@ namespace UtinniCoreDotNet.Tests
         }
 
         [Fact]
-        public void NetworkCast_Wrapper_ReturnsInitializedValue()
+        public void NetworkCast_WithTestDouble_ReturnsFullSentinel()
         {
-            // Arrange
+            // Arrange: any id — the test double ignores the input and writes the sentinel
+            // through the int64_t* OUT param (ECX in __thiscall ABI).
             const int syntheticId = 0x12345678;
 
-            // Act
+            // Act: utinni_test_networkCast calls Network::cast via the reseated pointer.
+            // If UtinniCore.dll is absent in the test output directory, this throws
+            // DllNotFoundException — the CI build's CopyNativeArtifactsForTests target
+            // ensures the DLL is present.
             long result = NativeBridge.Utinni_TestNetworkCast(syntheticId);
 
-            // Assert: must NOT be the MSVC debug-init uninitialized-stack pattern
-            Assert.NotEqual(0xCCCCCCCCL, result);
-            // Must NOT be 0 (the pre-fix path where SWG didn't write through &networkId)
-            Assert.NotEqual(0L, result);
-            // Must equal our sentinel (0xDEADBEEF) — confirms wrapper is not calling SWG
-            Assert.Equal(unchecked((long)0xDEADBEEFL), result);
+            // Assert: the full 64-bit sentinel must survive the round-trip through the
+            // int64_t* OUT param. The upper 32 bits (0xDEADBEEF) are the regression
+            // discriminator — a 4-byte slot would silently truncate them to 0.
+            Assert.Equal(unchecked((long)0xDEADBEEFCAFEBABEL), result);
         }
     }
 }

@@ -62,15 +62,17 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 02-03-PLAN.md — Architectural C-01 (Wave 3): DllMain loader-lock — utinni_init export + launcher CreateRemoteThread (path a per RESEARCH); Utinni.LoaderLockHarness sibling project
 - [x] 02-04-PLAN.md — Architectural C-09 (Wave 3): UI/game-thread busy-wait deadlock — Win32 CreateEvent + EventWaitHandle signaller
 
-### Phase 02.1: Phase 02 gap closure — critical correctness + harness quality from 02-REVIEW.md (INSERTED)
+### Phase 02.1: Phase 02 gap closure — critical correctness + harness quality from 02-REVIEW.md
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Goal:** Close 4 correctness gaps (CR-02/CR-03/CR-04/WR-03) and 4 harness-quality regressions (WR-01/WR-02/WR-05/WR-09) that the Phase 02 code review surfaced after executor agents reported plans complete. Every finding closed with a regression test that would fail if the fix were reverted.
+**Requirements:** [STAB-01]
 **Depends on:** Phase 2
-**Plans:** 2/3 plans executed
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 02.1 to break down)
+- [x] 02.1-01-PLAN.md — Native correctness fixes (CR-02/CR-03/WR-09)
+- [x] 02.1-02-PLAN.md — Lazy-init race hardening (CR-04/WR-03)
+- [x] 02.1-03-PLAN.md — Harness quality uplift + phase bookkeeping (WR-01/WR-02/WR-05 + utinni_test_resolveExports)
 
 ### Phase 3: Strategic reworks (R-A..R-H)
 **Goal**: All 8 strategic reworks from assessment.md land. Plugin authoring is "genuinely pleasant"; native code grows the testable seams that Phase 5 (C++ unit tests) and Phase 4 (CLI shim) depend on.
