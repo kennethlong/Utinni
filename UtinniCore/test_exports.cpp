@@ -134,14 +134,16 @@ extern "C" __declspec(naked) int64_t __cdecl testCastDoubleNaked()
         //   Lower 32 bits at [ecx]   = 0xCAFEBABE
         //   Upper 32 bits at [ecx+4] = 0xDEADBEEF
         // (little-endian layout: low word first)
-        mov  dword ptr [ecx],   0xCAFEBABEh
-        mov  dword ptr [ecx+4], 0xDEADBEEFh
+        // C-style 0x hex prefix WITHOUT the MASM trailing 'h' — mixing them is a
+        // C2400 syntax error. MSVC inline asm accepts either form, not both.
+        mov  dword ptr [ecx],   0xCAFEBABE
+        mov  dword ptr [ecx+4], 0xDEADBEEF
 
         // int64_t return value: low half in EAX, high half in EDX.
         // We return the same 64-bit sentinel so Network::cast's caller (which
         // reads from networkId, not from the return value) is also exercised.
-        mov  eax, 0xCAFEBABEh
-        mov  edx, 0xDEADBEEFh
+        mov  eax, 0xCAFEBABE
+        mov  edx, 0xDEADBEEF
 
         // Restore frame.
         mov  esp, ebp
