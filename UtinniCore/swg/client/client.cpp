@@ -114,28 +114,28 @@ bool Client::isInputAllowed()
 
 int __cdecl hkSetupStartInstall(StartupData* pStartupData)
 {
-    // DIAG 2026-05-19: hook entry/state/exit logs to distinguish RVA drift
-    // (hook never fires) from null-HWND race (hook fires with nullptr hwnd).
-    utinni::log::info("hkSetupStartInstall: ENTERED");
+    // DIAG 2026-05-19 ROUND 8: PASSTHROUGH mode — editor-mode block disabled.
+    // Round 7 proved the hook fires, HWND is non-null, original returns OK,
+    // yet SWG still stalls. Testing whether the editor-mode field
+    // modifications themselves are what stalls SWG.
+    utinni::log::info("hkSetupStartInstall: ENTERED (passthrough)");
 
-    bool editorMode = Client::getEditorMode();
-    HWND currentHwnd = Client::getHwnd();
     char msg[256];
     snprintf(msg, sizeof(msg),
-             "hkSetupStartInstall: editorMode=%d, Client::getHwnd()=0x%p, pStartupData=0x%p",
-             editorMode ? 1 : 0, (void*)currentHwnd, (void*)pStartupData);
+             "hkSetupStartInstall: editorMode=%d, Client::getHwnd()=0x%p, pStartupData=0x%p (modifications SKIPPED this round)",
+             Client::getEditorMode() ? 1 : 0, (void*)Client::getHwnd(), (void*)pStartupData);
     utinni::log::info(msg);
 
-    if (editorMode)
-    {
-        pStartupData->createOwnWindow = false;
-        pStartupData->hInstance = nullptr;
-        pStartupData->useNewWindowHandle = true;
-        pStartupData->windowHandle = Client::getHwnd();
-        pStartupData->processMessagePump = true;
-        pStartupData->lostFocusCallback = 0;
-        utinni::log::info("hkSetupStartInstall: editor-mode pStartupData modifications applied");
-    }
+    // BISECT 2026-05-19 ROUND 8: editor-mode modifications skipped entirely.
+    // if (Client::getEditorMode())
+    // {
+    //     pStartupData->createOwnWindow = false;
+    //     pStartupData->hInstance = nullptr;
+    //     pStartupData->useNewWindowHandle = true;
+    //     pStartupData->windowHandle = Client::getHwnd();
+    //     pStartupData->processMessagePump = true;
+    //     pStartupData->lostFocusCallback = 0;
+    // }
 
     utinni::log::info("hkSetupStartInstall: calling original setupStartDataInstall");
     int result = swg::client::setupStartDataInstall(pStartupData);
