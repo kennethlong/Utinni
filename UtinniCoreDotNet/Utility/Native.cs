@@ -76,5 +76,13 @@ namespace UtinniCoreDotNet.Utility
         [DllImport("user32.dll")]
         public static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
 
+        // 2026-05-19: signal the named ready event so the Launcher can restore
+        // SWGEmu's PE entry bytes (originally patched to EB FE to stall the main
+        // thread during injection). Called from Startup.EntryPoint right before
+        // Application.Run blocks. The native side opens the event by name (the
+        // Launcher created it as "Local\\UtinniReady_<pid>") and SetEvents it.
+        [DllImport("UtinniCore.dll", CallingConvention = CallingConvention.Cdecl,
+            EntryPoint = "utinni_signal_launcher_ready")]
+        public static extern void SignalLauncherReady();
     }
 }

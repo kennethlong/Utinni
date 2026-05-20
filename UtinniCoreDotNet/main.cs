@@ -47,15 +47,28 @@ namespace UtinniCoreDotNet
 
                 // Load plugins from the /Plugins/ directory
                 PluginLoader pluginLoader = new PluginLoader();
-                
+
                 // Initialize callbacks that aren't purely editor related
                 GameCallbacks.Initialize();
                 GroundSceneCallbacks.Initialize();
                 ObjectCallbacks.Initialize();
                 CuiCallbacks.Initialize();
 
+                // 2026-05-19: signal the Launcher that all C++ + managed plugin
+                // setup is complete and SWG's main thread is safe to resume past
+                // the EB FE stall the Launcher applied at PE entry. By this point
+                // createDetours/createPatches have run (native side) and the four
+                // *Callbacks.Initialize() calls above have wired managed
+                // callbacks, so any hook that fires post-resume has its
+                // registrations in place. After this returns the next call is
+                // Application.Run which blocks for the editor's lifetime --
+                // hence we cannot defer the signal further. See Launcher/
+                // main.cpp loadDll() and UtinniCore/utinni.cpp
+                // utinni_signal_launcher_ready for the wait/signal mechanics.
+                Native.SignalLauncherReady();
+
                 if (UtinniCore.Utinni.utinni.GetConfig().GetBool("Editor", "enableEditorMode"))
-                { 
+                {
                     Application.Run(new FormMain(pluginLoader));
                 }
 
