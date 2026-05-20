@@ -28,6 +28,9 @@
 #include "swg/misc/swg_memory.h"
 #include "utility/log.h"
 
+#include <cstdio>
+#include <intrin.h>
+
 namespace swg::cuiChatWindow
 {
 using pCtor = swgptr(__thiscall*)(swgptr pThis, swgptr uiPage, DWORD unk1, DWORD unk2, DWORD unk3);
@@ -137,7 +140,32 @@ void CuiChatWindow::sendMessage(const char* msg, bool addToChatHistory)
 
 void __fastcall hkEnableTextInput(swgptr pThis, swgptr EDX, bool value, bool setKeyboardInput, bool unfocus)
 {
-    swg::cuiChatWindow::enableTextInput(pCuiChatWindow, value, setKeyboardInput, unfocus);
+    // DIAG 2026-05-20 Issue #11 Phase E (per CODEX consult): log every call
+    // to identify (a) the natural caller(s) when SWG opens chat at login
+    // and (b) whether ANYTHING fires enableTextInput when the user presses
+    // in-game Enter (without our F11 bypass). If a caller fires for login
+    // chat-open but nothing fires for in-game Enter -> bug is in the SWG
+    // upstream code that decides "Enter is pressed in game-mode, open chat"
+    // (likely in CuiHud's keyboard handler or CuiActionMap dispatch).
+    static int s_logCount = 0;
+    if (s_logCount < 30)
+    {
+        ++s_logCount;
+        const void* callerPC = _ReturnAddress();
+        char m[224];
+        snprintf(m, sizeof(m),
+            "hkEnableTextInput[%d]: pThis=0x%p value=%d setKbdInput=%d unfocus=%d caller=0x%p captured_pCuiChatWindow=0x%p",
+            s_logCount, (void*)pThis, value ? 1 : 0, setKeyboardInput ? 1 : 0,
+            unfocus ? 1 : 0, callerPC, (void*)pCuiChatWindow);
+        utinni::log::info(m);
+    }
+
+    // CODEX bug-fix: previous code called with pCuiChatWindow instead of
+    // pThis. Wrong for an instance hook -- SWG might construct multiple
+    // CuiChatWindow instances and the captured one might be stale or not
+    // the one we were just called on. Always forward to the instance we
+    // were actually invoked on.
+    swg::cuiChatWindow::enableTextInput(pThis, value, setKeyboardInput, unfocus);
 }
 
 CommandParser* mainCommandParser;
@@ -182,7 +210,12 @@ __declspec(naked) void midCtor()
 void CuiChatWindow::detour()
 {
     swg::cuiChatWindow::ctor = (swg::cuiChatWindow::pCtor)Detour::Create(swg::cuiChatWindow::ctor, hkCtor, DETOUR_TYPE_PUSH_RET);
-    //swg::cuiChatWindow::enableTextInput = (swg::cuiChatWindow::pEnableTextInput)Detour::Create(swg::cuiChatWindow::enableTextInput, hkEnableTextInput, DETOUR_TYPE_PUSH_RET);
+
+    // DIAG 2026-05-20 Issue #11 Phase E: enabled for caller-tracing. Was
+    // commented-out historically (likely because of the pCuiChatWindow vs
+    // pThis bug now fixed in hkEnableTextInput). Logs every caller of
+    // enableTextInput; nothing is suppressed -- pure passthrough.
+    swg::cuiChatWindow::enableTextInput = (swg::cuiChatWindow::pEnableTextInput)Detour::Create(swg::cuiChatWindow::enableTextInput, hkEnableTextInput, DETOUR_TYPE_PUSH_RET);
 
     memory::createJMP(0x00F36797, (swgptr)midCtor, 6); // Mid CuiChatWindow::ctor detour
 }
