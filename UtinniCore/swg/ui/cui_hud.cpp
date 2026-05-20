@@ -45,6 +45,25 @@ pGetTarget getTarget = (pGetTarget)0x00BD3E20;
 
 }
 
+// DIAG 2026-05-20 Issue #12 Phase A: SwgCuiGameMenu is the SWG system-menu
+// mediator class (resolved by hunting for the class-name string
+// "SwgCuiGameMenu" at VA 0x018BFD68, finding its sole push imm32
+// reference at 0x00C7D386, then identifying the surrounding function as
+// the mediator's C++ constructor -- standard MSVC pattern, pushes class
+// name + arg, calls base class ctor at 0x009BFF00). Detour the ctor entry
+// at 0x00C7D360 to log every construction. Three diagnostic outcomes:
+//   - Fires at program startup AND on every Esc -> menu is being created
+//     on-demand but failing to render (CUI rendering / layering bug).
+//   - Fires only at startup -> mediator is a singleton; activation goes
+//     through a separate Activate() method we'll need to find next.
+//   - Never fires -> the factory itself isn't running this constructor;
+//     deeper investigation (registry, factory init, etc.) needed.
+namespace swg::cuiGameMenu
+{
+using pSwgCuiGameMenuCtor = swgptr(__thiscall*)(swgptr pThis, swgptr pPage);
+pSwgCuiGameMenuCtor swgCuiGameMenuCtor = (pSwgCuiGameMenuCtor)0x00C7D360;
+}
+
 namespace utinni::cuiHud
 {
 Object* targetUnderCursor;
@@ -218,11 +237,33 @@ swg::math::Vector* getWe()
     return &we;
 }
 
+// DIAG 2026-05-20 Issue #12 Phase A: log every SwgCuiGameMenu ctor call
+// + return-address. Returns swgptr (the constructed `this`) so the caller
+// downstream still gets the right value.
+swgptr __fastcall hkSwgCuiGameMenuCtor(swgptr pThis, swgptr EDX, swgptr pPage)
+{
+    static int s_count = 0;
+    if (s_count < 20)
+    {
+        ++s_count;
+        const void* callerPC = _ReturnAddress();
+        char m[200];
+        snprintf(m, sizeof(m),
+            "hkSwgCuiGameMenuCtor[%d]: SwgCuiGameMenu CONSTRUCTED pThis=0x%p pPage=0x%p caller=0x%p",
+            s_count, (void*)pThis, (void*)pPage, callerPC);
+        utinni::log::info(m);
+    }
+    return swg::cuiGameMenu::swgCuiGameMenuCtor(pThis, pPage);
+}
+
 void detour()
 {
     //swg::cuiHud::update = (swg::cuiHud::pUpdate)Detour::Create((LPVOID)swg::cuiHud::update, hkUpdate, DETOUR_TYPE_PUSH_RET);
     swg::cuiHud::actionPerformAction = (swg::cuiHud::pActionPerformAction)Detour::Create((LPVOID)swg::cuiHud::actionPerformAction, hkActionPerformAction, DETOUR_TYPE_PUSH_RET);
     swg::cuiHud::getTarget = (swg::cuiHud::pGetTarget)Detour::Create((LPVOID)swg::cuiHud::getTarget, hkGetTarget, DETOUR_TYPE_PUSH_RET);
+
+    // DIAG Issue #12 Phase A: SwgCuiGameMenu ctor detour
+    swg::cuiGameMenu::swgCuiGameMenuCtor = (swg::cuiGameMenu::pSwgCuiGameMenuCtor)Detour::Create((LPVOID)swg::cuiGameMenu::swgCuiGameMenuCtor, hkSwgCuiGameMenuCtor, DETOUR_TYPE_PUSH_RET);
 
     //memory::createJMP(0x00BD5951, (swgptr)midUpdate, 6); // Mid CuiHud::update detour
 }
