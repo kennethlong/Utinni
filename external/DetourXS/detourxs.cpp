@@ -81,8 +81,15 @@ namespace Detour
 		    return nullptr;
 
 	    if (detourLen != DETOUR_LEN_AUTO)
+	    {
 		    detLen = detourLen;
-
+		    // Explicit length must be >= the patch type's required size, otherwise
+		    // the case-specific writes below overflow pbPatchBuf (e.g. PUSH_RET writes
+		    // pbPatchBuf[5] which is OOB if detLen=5) AND the terminating opcode never
+		    // gets copied back to the target, leaving the patched function malformed.
+		    if (detLen < minDetLen)
+			    return nullptr;
+	    }
 	    else if ((detLen = GetDetourLenAuto(pbFuncOrig, minDetLen)) < minDetLen)
 		    return nullptr;
 

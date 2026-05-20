@@ -163,7 +163,7 @@ void detour()
 {
     //swg::cuiHud::update = (swg::cuiHud::pUpdate)Detour::Create((LPVOID)swg::cuiHud::update, hkUpdate, DETOUR_TYPE_PUSH_RET);
     swg::cuiHud::actionPerformAction = (swg::cuiHud::pActionPerformAction)Detour::Create((LPVOID)swg::cuiHud::actionPerformAction, hkActionPerformAction, DETOUR_TYPE_PUSH_RET);
-    swg::cuiHud::getTarget = (swg::cuiHud::pGetTarget)Detour::Create((LPVOID)swg::cuiHud::getTarget, hkGetTarget, DETOUR_TYPE_PUSH_RET, 5);
+    swg::cuiHud::getTarget = (swg::cuiHud::pGetTarget)Detour::Create((LPVOID)swg::cuiHud::getTarget, hkGetTarget, DETOUR_TYPE_PUSH_RET);
 
     //memory::createJMP(0x00BD5951, (swgptr)midUpdate, 6); // Mid CuiHud::update detour
 }
