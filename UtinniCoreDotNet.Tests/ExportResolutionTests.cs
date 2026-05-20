@@ -41,7 +41,7 @@ namespace UtinniCoreDotNet.Tests
     /// the expected value and this test fails — closing the harness-decoration gap
     /// that Plan 02-03's LoaderLockHarness missed.
     ///
-    /// Expected: 12 exports resolve (as of Plan 02.1-03).
+    /// Expected: 13 exports resolve (as of 2026-05-19).
     /// </summary>
     public class ExportResolutionTests
     {
@@ -55,7 +55,7 @@ namespace UtinniCoreDotNet.Tests
         }
 
         /// <summary>
-        /// Expected number of C-linkage exports in UtinniCore.dll as of Plan 02.1-03.
+        /// Expected number of C-linkage exports in UtinniCore.dll.
         /// Update this constant whenever a new export is added or removed.
         /// List:
         ///   utinni_init, utinni_findPattern, utinni_getVtbl,
@@ -63,9 +63,10 @@ namespace UtinniCoreDotNet.Tests
         ///   utinni_clr_stop, utinni_triggerInstallCallbacks,
         ///   utinni_test_initPresentBlockedEvent, utinni_test_getPresentBlockedEvent,
         ///   utinni_test_initDepthTexture, utinni_test_getDepthTexturePtr,
-        ///   getPresentBlockedEvent
+        ///   getPresentBlockedEvent,
+        ///   utinni_signal_launcher_ready (added 2026-05-19 for signal-event sync)
         /// </summary>
-        private const int ExpectedExportCount = 12;
+        private const int ExpectedExportCount = 13;
 
         [Fact]
         public void ResolveExports_AllDocumentedCLinkageExports_ResolveByUndecoratedName()

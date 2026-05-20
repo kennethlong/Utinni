@@ -274,7 +274,7 @@ extern "C" __declspec(dllexport) uintptr_t __cdecl utinni_test_getDepthTexturePt
 // for the xUnit assertion). Uses GetModuleHandleA (not LoadLibrary) because we are
 // already executing inside UtinniCore.dll — the module is already loaded.
 //
-// Expected exports (12 total as of Plan 02.1-03):
+// Expected exports (13 total as of 2026-05-19):
 //   utinni_init               (decorated stdcall; resolved via /EXPORT alias)
 //   utinni_findPattern        (cdecl — no decoration on x86)
 //   utinni_getVtbl            (cdecl)
@@ -287,9 +287,12 @@ extern "C" __declspec(dllexport) uintptr_t __cdecl utinni_test_getDepthTexturePt
 //   utinni_test_initDepthTexture        (cdecl)
 //   utinni_test_getDepthTexturePtr      (cdecl)
 //   getPresentBlockedEvent    (file-scope C-linkage cdecl in directx9.cpp)
+//   utinni_signal_launcher_ready (cdecl, signal-event sync added 2026-05-19)
 //
-// Returns: count of exports successfully resolved (max 12).
-// The xUnit test asserts count == 12.
+// Returns: count of exports successfully resolved (max == kExportCount, derived
+// from the array length so adding an export updates this automatically).
+// The xUnit test asserts count == kExportCount; update the test's expected
+// constant when extending this list.
 // ---------------------------------------------------------------------------
 extern "C" __declspec(dllexport) int __cdecl utinni_test_resolveExports()
 {
@@ -317,6 +320,7 @@ extern "C" __declspec(dllexport) int __cdecl utinni_test_resolveExports()
         "utinni_test_initDepthTexture",       // cdecl
         "utinni_test_getDepthTexturePtr",     // cdecl
         "getPresentBlockedEvent",             // file-scope C-linkage in directx9.cpp
+        "utinni_signal_launcher_ready",       // cdecl, 2026-05-19 signal-event sync
     };
 
     static constexpr int kExportCount =

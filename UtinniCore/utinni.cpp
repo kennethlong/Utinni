@@ -55,6 +55,15 @@ std::string swgOverrideCfgFilename = "utinni.cfg";
 static utinni::UtINI ini;
 utinni::PluginManager pluginManager;
 
+// 2026-05-19: signal-based sync with Launcher. The Launcher creates a named
+// manual-reset event "Local\\UtinniReady_<pid>" and passes the C-string name as
+// utinni_init's lpThreadParam. The managed-side Startup.EntryPoint invokes
+// utinni_signal_launcher_ready() right before Application.Run blocks, which
+// opens the named event and SetEvents it. That unblocks the Launcher's
+// WaitForSingleObject so it can restore the PE entry bytes (originally patched
+// to EB FE to stall the main thread during injection).
+static std::string g_readyEventName;
+
 void createDetours()
 {
     utinni::log::info("Creating detours");
@@ -161,6 +170,17 @@ static LONG WINAPI utinniBreakpointVEH(PEXCEPTION_POINTERS pInfo)
 #pragma comment(linker, "/EXPORT:utinni_init=_utinni_init@4")
 extern "C" __declspec(dllexport) DWORD WINAPI utinni_init(LPVOID lpThreadParam)
 {
+    // 2026-05-19: capture the ready-event name passed by the Launcher.
+    // Stored in g_readyEventName for utinni_signal_launcher_ready() to use.
+    // Defensive: if lpThreadParam is null (e.g. tests invoking utinni_init
+    // directly, or an older Launcher that doesn't pass the name), the signal
+    // export becomes a no-op and the Launcher's wait will simply time out --
+    // not a crash.
+    if (lpThreadParam != nullptr)
+    {
+        g_readyEventName = static_cast<const char*>(lpThreadParam);
+    }
+
     char dllPathbuffer[MAX_PATH];
     HMODULE handle = nullptr;
     GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)&createDetours, &handle);
@@ -238,6 +258,51 @@ void detatch()
 {
     directX::cleanup();
     clr::stop();
+}
+
+// 2026-05-19: managed Startup.EntryPoint calls this right before Application.Run
+// to release the Launcher's WaitForSingleObject on the named ready event. By the
+// time this fires, createDetours()/createPatches() have run, C++ plugins are
+// loaded, and managed *Callbacks.Initialize() have registered their delegates --
+// so the main thread is safe to release into SWG's WinMain. See utinni.cpp top
+// for the full sync rationale and Launcher/main.cpp loadDll() for the wait side.
+extern "C" __declspec(dllexport) void __cdecl utinni_signal_launcher_ready()
+{
+    if (g_readyEventName.empty())
+    {
+        utinni::log::critical("utinni_signal_launcher_ready: g_readyEventName is empty -- Launcher will time out");
+        return;
+    }
+
+    HANDLE h = OpenEventA(EVENT_MODIFY_STATE, FALSE, g_readyEventName.c_str());
+    if (h == nullptr)
+    {
+        char msg[160];
+        snprintf(msg, sizeof(msg),
+                 "utinni_signal_launcher_ready: OpenEventA('%s') failed (GetLastError=0x%08lX)",
+                 g_readyEventName.c_str(), GetLastError());
+        utinni::log::critical(msg);
+        return;
+    }
+
+    if (!SetEvent(h))
+    {
+        char msg[160];
+        snprintf(msg, sizeof(msg),
+                 "utinni_signal_launcher_ready: SetEvent failed (GetLastError=0x%08lX)",
+                 GetLastError());
+        utinni::log::critical(msg);
+    }
+    else
+    {
+        char msg[160];
+        snprintf(msg, sizeof(msg),
+                 "utinni_signal_launcher_ready: signaled '%s'",
+                 g_readyEventName.c_str());
+        utinni::log::info(msg);
+    }
+
+    CloseHandle(h);
 }
 
 // C-01: DllMain MUST complete in microseconds. Heavy startup (CLR + plugin load) moved
