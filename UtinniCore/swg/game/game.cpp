@@ -137,61 +137,110 @@ void __cdecl hkMainLoop(bool presentToWindow, HWND hwnd, int width, int height)
         func();
     }
 
+    // DIAG 2026-05-19: log the scene-load state machine transitions. Conditional
+    // so we don't spam the log every frame; only fires when loadNewScene flag is set.
     if (loadNewScene && sceneCleaned)
     {
+        utinni::log::info("hkMainLoop: loadNewScene+sceneCleaned -> calling swg::game::setupScene via trampoline");
         loadNewScene = false;
         sceneCleaned = false;
         swg::game::setupScene(GroundScene::ctor(sceneToLoadTerrainFilename.c_str(), sceneToLoadAvatarObjectFilename.c_str()));
+        utinni::log::info("hkMainLoop: swg::game::setupScene returned");
     }
 
     if (loadNewScene)
     {
+        utinni::log::info("hkMainLoop: loadNewScene set, sceneCleaned=false -> calling Game::cleanupScene");
         Game::cleanupScene();
         sceneCleaned = true;
+        utinni::log::info("hkMainLoop: Game::cleanupScene returned, sceneCleaned=true");
     }
 }
 
 void __cdecl hkInstall(int application)
 {
+    // DIAG 2026-05-19: pinpoint where post-preload init hangs when scene-load fails.
+    utinni::log::info("hkInstall: ENTRY (Game::install) -> calling swg::game::install trampoline");
     swg::game::install(application);
+    utinni::log::info("hkInstall: swg::game::install returned; constructing Repository");
 
     repository = Repository();
+    utinni::log::info("hkInstall: Repository constructed; WorldSnapshot::generateHighestId()");
+
     WorldSnapshot::generateHighestId();
 
+    {
+        char msg[80];
+        snprintf(msg, sizeof(msg), "hkInstall: firing %zu installCallbacks",
+                 installCallbacks.size());
+        utinni::log::info(msg);
+    }
     for (const auto& func : installCallbacks)
     {
         func();
     }
+    utinni::log::info("hkInstall: installCallbacks complete");
 
     if (getConfig().getBool("UtinniCore", "autoLoadScene"))
     {
+        utinni::log::info("hkInstall: autoLoadScene=true -> calling Game::loadScene");
         Game::loadScene();
+        utinni::log::info("hkInstall: Game::loadScene returned");
+    }
+    else
+    {
+        utinni::log::info("hkInstall: autoLoadScene=false; EXIT");
     }
 }
 
 void __cdecl hkSetScene(GroundScene* scene)
 {
+    {
+        char msg[80];
+        snprintf(msg, sizeof(msg), "hkSetScene: ENTRY (scene=%p)", (void*)scene);
+        utinni::log::info(msg);
+    }
+
     swg::game::setupScene(scene);
+    utinni::log::info("hkSetScene: swg::game::setupScene returned");
 
     if (scene != nullptr)
     {
+        char msg[80];
+        snprintf(msg, sizeof(msg), "hkSetScene: scene!=null, firing %zu setSceneCallbacks",
+                 setSceneCallbacks.size());
+        utinni::log::info(msg);
         for (const auto& func : setSceneCallbacks)
         {
             func();
         }
+        utinni::log::info("hkSetScene: setSceneCallbacks complete; EXIT");
+    }
+    else
+    {
+        utinni::log::info("hkSetScene: scene==null; EXIT (no callbacks fired)");
     }
 }
 
 void __cdecl hkCleanupScene()
 {
+    utinni::log::info("hkCleanupScene: ENTRY -> calling swg::game::cleanupScene trampoline");
     swg::game::cleanupScene();
+    utinni::log::info("hkCleanupScene: swg::game::cleanupScene returned; disabling imgui_gizmo");
 
     imgui_gizmo::disable();
 
+    {
+        char msg[80];
+        snprintf(msg, sizeof(msg), "hkCleanupScene: firing %zu cleanUpSceneCallbacks",
+                 cleanUpSceneCallbacks.size());
+        utinni::log::info(msg);
+    }
     for (const auto& func : cleanUpSceneCallbacks)
     {
         func();
     }
+    utinni::log::info("hkCleanupScene: cleanUpSceneCallbacks complete; EXIT");
 }
 
 void Game::detour()
