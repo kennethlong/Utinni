@@ -68,6 +68,16 @@ public:
     static void setHInstance(void* newHInstance);
     static HINSTANCE getHInstance();
 
+    // 2026-05-20 Issue #10: SWG's actual top-level HWND, captured from
+    // D3D9's cParam.hFocusWindow at first BeginScene. Kept separate from
+    // setHwnd/getHwnd (which was the old editor-mode override path now
+    // intentionally unused -- repurposing it would reactivate
+    // hkMainLoop/hkEndScene editor-mode branches with SWG's own HWND,
+    // which may not behave correctly). PanelGame uses this to find
+    // SWG's window for SetParent + WS_CHILD reparenting.
+    static void setSwgHwnd(void* hwnd);
+    static HWND getSwgHwnd();
+
     static void setSize(int width, int height);
     static int getWidth();
     static int getHeight();

@@ -35,6 +35,7 @@
 #include "swg/ui/cui_chat_window.h"
 #include "swg/game/game.h"
 #include "swg/scene/ground_scene.h"
+#include "swg/client/client.h"
 
 #include "swg/graphics/graphics.h"
 #include "swg/misc/direct_input.h"
@@ -208,6 +209,11 @@ bool isSetup = false;
 	  D3DDEVICE_CREATION_PARAMETERS cParam;
 
 	  pDevice->GetCreationParameters(&cParam);
+
+	  // 2026-05-20 Issue #10 Phase A: publish SWG's actual top-level HWND
+	  // (D3D9's focus window) to the managed side so PanelGame can find it
+	  // for SetParent reparenting. Pure plumbing -- no behavior change yet.
+	  utinni::Client::setSwgHwnd(cParam.hFocusWindow);
 
 	  IMGUI_CHECKVERSION();
 	  ImGui::CreateContext();

@@ -50,6 +50,11 @@ bool enableEditorMode = false;
 HWND hwnd = nullptr;
 HINSTANCE hInstance = nullptr;
 bool allowInput = false;
+// 2026-05-20 Issue #10 Phase A: SWG's actual top-level HWND, captured
+// from imgui_impl::setup at first hkBeginScene. Separate from `hwnd`
+// (which was the old editor-mode-override target, intentionally unused
+// post-Phase-B). Read by managed-side PanelGame for SetParent reparenting.
+HWND swgHwnd = nullptr;
 
 static std::string logDir = "logs/";
 
@@ -96,6 +101,27 @@ void Client::setHInstance(void* newHInstance)
 HINSTANCE Client::getHInstance()
 {
     return hInstance;
+}
+
+void Client::setSwgHwnd(void* newHwnd)
+{
+    // Log first-capture for timing verification (Issue #10 Phase A).
+    static bool s_firstCapture = true;
+    if (s_firstCapture && newHwnd != nullptr)
+    {
+        s_firstCapture = false;
+        char msg[96];
+        snprintf(msg, sizeof(msg),
+            "Client::setSwgHwnd: first capture 0x%p (Issue #10 Phase A)",
+            newHwnd);
+        utinni::log::info(msg);
+    }
+    swgHwnd = (HWND)newHwnd;
+}
+
+HWND Client::getSwgHwnd()
+{
+    return swgHwnd;
 }
 
 void Client::suspendInput()
