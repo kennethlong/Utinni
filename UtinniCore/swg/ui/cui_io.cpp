@@ -24,6 +24,9 @@
 
 #include "cui_io.h"
 #include "swg/ui/imgui_impl.h"
+#include "utility/log.h"
+
+#include <cstdio>
 
 namespace swg::cuiIo
 {
@@ -59,6 +62,16 @@ swgptr cuiIo::get()
 
 void cuiIo::enableKeyboard(bool value)
 {
+    // DIAG 2026-05-20 Issue #11: log every call so we can see WHO flips
+    // isKeyboardEnabled to false (HotkeyManager has the only known caller,
+    // gated by OverrideGameInput hotkeys -- but the comment on
+    // restorePreviousEnableKeyboardValue admits the toggle gets broken).
+    char msg[128];
+    snprintf(msg, sizeof(msg),
+        "cuiIo::enableKeyboard: value=%d (was=%d)",
+        value ? 1 : 0, isKeyboardEnabled ? 1 : 0);
+    utinni::log::info(msg);
+
     oldIsKeyboardEnabled = isKeyboardEnabled;
     isKeyboardEnabled = value;
 }
@@ -66,6 +79,7 @@ void cuiIo::enableKeyboard(bool value)
 void cuiIo::restorePreviousEnableKeyboardValue()
 {
     // ToDo this can get broken somehow when called from .NET, figure out why. Use enableKeyboard(true) for now
+    utinni::log::info("cuiIo::restorePreviousEnableKeyboardValue: forcing isKeyboardEnabled=true");
     isKeyboardEnabled = true;
 }
 
@@ -77,9 +91,40 @@ bool cuiIo::isInputBlocked()
 swgptr __fastcall hkProcessEvent(swgptr pThis, swgptr EDX, swgptr pEvent)
 {
     const int eventType = memory::read<int>(pEvent + 4);
+
+    // DIAG 2026-05-20 Issue #11: log any keyboard-event drop. If
+    // isKeyboardEnabled gets stuck false, SWG's CUI silently stops
+    // receiving KeyCharacter(6)/KeyDown(7) -- which matches "Enter/Esc
+    // dead in-game while WASD (polled separately by SWG) still works".
+    // Rate-limit by only logging drops, not every passthrough, to keep
+    // log readable. Also log the FIRST passthrough of types 6/7 each
+    // session so we can confirm the detour is on the right RVA.
     if ((eventType == 6 || eventType == 7) && !isKeyboardEnabled)
     {
+        // Read a couple more event-struct words to help identify which key
+        // got dropped. Layout is informed-guess; if wrong, fields will be
+        // garbage but the log still confirms the drop is happening.
+        unsigned w2 = (unsigned)memory::read<int>(pEvent + 8);
+        unsigned w3 = (unsigned)memory::read<int>(pEvent + 12);
+        char msg[160];
+        snprintf(msg, sizeof(msg),
+            "hkProcessEvent: DROPPING type=%d (isKeyboardEnabled=0) pEvent=0x%p w2=0x%08X w3=0x%08X",
+            eventType, (void*)pEvent, w2, w3);
+        utinni::log::info(msg);
         return 0;
+    }
+
+    static bool s_firstChar = true;
+    static bool s_firstKeyDown = true;
+    if (eventType == 6 && s_firstChar)
+    {
+        s_firstChar = false;
+        utinni::log::info("hkProcessEvent: first KeyCharacter (type=6) passthrough (isKeyboardEnabled=1)");
+    }
+    else if (eventType == 7 && s_firstKeyDown)
+    {
+        s_firstKeyDown = false;
+        utinni::log::info("hkProcessEvent: first KeyDown (type=7) passthrough (isKeyboardEnabled=1)");
     }
 
     return swg::cuiIo::processEvent(pThis, pEvent);
