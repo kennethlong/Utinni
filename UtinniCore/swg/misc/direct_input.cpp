@@ -64,20 +64,18 @@ int __cdecl hkSetupInstall(HINSTANCE hInstance, HWND hwnd, DWORD menuKey, DWORD 
     // DirectInput; the managed-side reparent-after-creation step doesn't break
     // DirectInput's binding because reparenting preserves the original HWND.
     //
-    // Cursor side-effects (write SWG's HCURSOR global + disable hardware cursor)
-    // kept inside the editor-mode block — they're independent of the HWND choice.
+    // 2026-05-20 Issue #9: cursor side-effects (HCURSOR write + software-cursor
+    // mode) REMOVED. They were a holdover from the old "SWG renders into
+    // PanelGame" model, where SWG's software cursor needed to render into the
+    // editor's framebuffer. In the new model SWG owns its top-level window and
+    // the OS hardware cursor works natively -- forcing software-cursor mode
+    // left users with no visible cursor on the login screen. Let SWG's
+    // default (useHardwareCursor=true) stand.
     static bool s_firstFire = true;
     if (s_firstFire)
     {
         s_firstFire = false;
-        utinni::log::info("hkSetupInstall: first fire (passthrough HWND; cursor side-effects retained)");
-    }
-
-    if (Client::getEditorMode())
-    {
-        // Create the main cursor and write its pointer to the global SWG Cursor address
-        memory::write<HCURSOR>(0x0193C5E0, LoadCursor(nullptr, IDC_ARROW)); // SWG's HCURSOR address
-        Graphics::useHardwareCursor(false); // Turning this to false makes the game render its own cursor
+        utinni::log::info("hkSetupInstall: first fire (passthrough HWND; cursor side-effects dropped)");
     }
 
     return swg::directInput::setupInstall(hInstance, hwnd, menuKey, unk);

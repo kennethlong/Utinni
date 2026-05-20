@@ -42,8 +42,14 @@ namespace UtinniCoreDotNet.UI.Controls
             base.WndProc(ref m);
         }
 
+        // 2026-05-20 Issue #9: PanelGame is empty in the new SWG-owns-its-own-
+        // window model. HasFocus stays false -- there is no way the editor
+        // panel can hold "game focus" when SWG is a separate top-level window.
+        // FormMain.ProcessCmdKey reads this to decide hotkey routing; with it
+        // pinned false, plugin hotkeys still process (their OnGameFocusOnly
+        // gate is the only consumer that cares) and the editor stops swallowing
+        // Tab. Revisit when Issue #10 (reparent SWG into PanelGame) lands.
         public bool HasFocus;
-        private bool isCursorVisible;
 
         private readonly PluginLoader pluginLoader;
 
@@ -54,12 +60,13 @@ namespace UtinniCoreDotNet.UI.Controls
 
             Disposed += PanelGame_Disposed;
 
-            MouseEnter += PanelGame_MouseEnter;
-            MouseLeave += PanelGame_MouseLeave;
-            MouseMove += PanelGame_MouseMove;
-
-            GotFocus += PanelGame_GotFocus;
-            LostFocus += PanelGame_LostFocus;
+            // 2026-05-20 Issue #9: focus/mouse-leave/mouse-move handlers REMOVED.
+            // In the new architecture SWG owns its own top-level window, so
+            // PanelGame focus events no longer correlate with game-input intent.
+            // The old handlers fired Client.SuspendInput on every focus loss,
+            // which unacquired DirectInput the moment the user clicked into
+            // SWG's window -- killing Tab/Del/Return at the login screen.
+            // Diagnosed via 2026-05-20 utinni.log capture (Phase A diag).
 
             KeyDown += PanelGame_KeyDown;
 
@@ -70,81 +77,21 @@ namespace UtinniCoreDotNet.UI.Controls
             this.pluginLoader = pluginLoader;
         }
 
-        private void PanelGame_GotFocus(object sender, EventArgs e)
-        {
-            ResumeGameInput();
-        }
-
-        private void PanelGame_LostFocus(object sender, EventArgs e)
-        {
-            SuspendGameInput();
-        }
-
         private void PanelGame_Layout(object sender, LayoutEventArgs e)
         {
-            Client.SetHwnd(Handle);
+            // 2026-05-20 Issue #9: Client.SetHwnd(Handle) call REMOVED. SWG now
+            // creates its own top-level window; overwriting Client::hwnd with
+            // PanelGame's handle made resumeInput() steal focus away from SWG
+            // every cycle, and forced hkMainLoop to push the wrong HWND into
+            // SWG's render path. SetHInstance is kept because hkMainLoop's
+            // editor-mode branch waits for Client::getHInstance() != null as a
+            // startup gate.
             Client.SetHInstance(Process.GetCurrentProcess().Handle);
         }
 
         private void PanelGame_Disposed(object sender, EventArgs e)
         {
             Game.Quit();
-        }
-
-        private void PanelGame_MouseEnter(object sender, EventArgs e)
-        {
-            Focus();
-        }
-
-        private void PanelGame_MouseLeave(object sender, EventArgs e)
-        {
-            SuspendGameInput();
-        }
-
-        private void PanelGame_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (imgui_impl.IsInternalUiHovered() && !isCursorVisible)
-            {
-                ShowCursor();
-                SuspendGameInput();
-            }
-            else if (!imgui_impl.IsInternalUiHovered() && isCursorVisible)
-            {
-                ResumeGameInput();
-                HideCursor();
-            }
-        }
-
-        private void ResumeGameInput()
-        {
-            Client.ResumeInput();
-            HideCursor();
-            HasFocus = true;
-        }
-
-        private void SuspendGameInput()
-        {
-            ShowCursor();
-            Client.SuspendInput();
-            HasFocus = false;
-        }
-
-        int cursorHideCount; // ToDo Implement proper, hacky workaround when a single Cursor.Show() doesn't show the Cursor
-        private void HideCursor()
-        {
-            Cursor.Hide();
-            cursorHideCount++;
-            isCursorVisible = false;
-        }
-
-        private void ShowCursor()
-        {
-            for (int i = 0; i < cursorHideCount; i++)
-            {
-                Cursor.Show();
-            }
-            cursorHideCount = 0;
-            isCursorVisible = true;
         }
 
         private void PanelGame_KeyDown(object sender, KeyEventArgs e)
