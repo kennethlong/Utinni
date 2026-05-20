@@ -114,17 +114,32 @@ swgptr __fastcall hkProcessEvent(swgptr pThis, swgptr EDX, swgptr pEvent)
         return 0;
     }
 
-    static bool s_firstChar = true;
-    static bool s_firstKeyDown = true;
-    if (eventType == 6 && s_firstChar)
+    // DIAG 2026-05-20 Issue #11 Phase B: prior diag with first-fire-only
+    // logs proved isKeyboardEnabled stays true (no drops) but couldn't
+    // tell whether in-game Enter/Esc actually reach processEvent (only
+    // the FIRST type-7 fired the log). Upgrade: log EVERY type-6 and
+    // type-7 with pEvent+8/+12 dumps, capped at 60 total to avoid runaway
+    // spam. The cap is generous enough for a "press Enter+Esc 5x each
+    // in-game" repro to clearly show whether events reach CUI in-game.
+    if (eventType == 6 || eventType == 7)
     {
-        s_firstChar = false;
-        utinni::log::info("hkProcessEvent: first KeyCharacter (type=6) passthrough (isKeyboardEnabled=1)");
-    }
-    else if (eventType == 7 && s_firstKeyDown)
-    {
-        s_firstKeyDown = false;
-        utinni::log::info("hkProcessEvent: first KeyDown (type=7) passthrough (isKeyboardEnabled=1)");
+        static int s_eventLogCount = 0;
+        if (s_eventLogCount < 60)
+        {
+            ++s_eventLogCount;
+            unsigned w2 = (unsigned)memory::read<int>(pEvent + 8);
+            unsigned w3 = (unsigned)memory::read<int>(pEvent + 12);
+            char msg[160];
+            snprintf(msg, sizeof(msg),
+                "hkProcessEvent[%d]: type=%d PASS pEvent=0x%p w2=0x%08X w3=0x%08X",
+                s_eventLogCount, eventType, (void*)pEvent, w2, w3);
+            utinni::log::info(msg);
+        }
+        else if (s_eventLogCount == 60)
+        {
+            ++s_eventLogCount;
+            utinni::log::info("hkProcessEvent: 60 type-6/7 events logged, suppressing further passthrough logs");
+        }
     }
 
     return swg::cuiIo::processEvent(pThis, pEvent);
