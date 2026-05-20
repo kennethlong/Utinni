@@ -33,6 +33,8 @@
 
 #include "utility/log.h"
 #include "swg/ui/cui_chat_window.h"
+#include "swg/game/game.h"
+#include "swg/scene/ground_scene.h"
 
 #include "swg/graphics/graphics.h"
 #include "swg/misc/direct_input.h"
@@ -130,6 +132,32 @@ IMGUI_API LRESULT hkWndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 				// triggers each handler.
 				utinni::log::info("hkWndProcHandler: F12 pressed -- dumping action string slots");
 				utinni::CuiChatWindow::dumpActionStringSlotsFromCpp();
+		  }
+		  // PHASE G WORKAROUND (Issue #11, CODEX-endorsed): in-game Enter
+		  // is dispatched to SwgCuiChatWindow::performAction("chatEnter")
+		  // even when chat isn't in input mode, because some upstream SWG
+		  // context-routing layer is wrong under editor injection. The
+		  // chatEnter handler unconditionally submits+closes (no-op when
+		  // chat is closed). Redirect: if we're in a ground scene, imgui
+		  // isn't capturing keyboard, and chat isn't already in input
+		  // mode, call enableTextInput(true) directly and CONSUME the
+		  // message so SWG's broken chatEnter dispatch doesn't immediately
+		  // close what we just opened. When chat IS in input mode,
+		  // passthrough so the natural chatEnter submit-and-close runs.
+		  if (wParam == VK_RETURN
+			  && !io.WantCaptureKeyboard
+			  && utinni::Game::isRunning()
+			  && utinni::GroundScene::get() != nullptr
+			  && !utinni::CuiChatWindow::isChatInputModeActive())
+		  {
+				utinni::log::info("hkWndProcHandler: VK_RETURN in-game with chat closed -- invoking workaround forceOpenChatInputFromCpp + CONSUMING message");
+				utinni::CuiChatWindow::forceOpenChatInputFromCpp();
+				// Also update imgui's keystate so subsequent reads are consistent.
+				if (wParam < 256) io.KeysDown[wParam] = 1;
+				// CONSUME: return 0 instead of forwarding via CallWindowProc.
+				// Prevents SWG's chatEnter handler from immediately
+				// closing the chat we just opened.
+				return 0;
 		  }
 		  if (wParam < 256)
 				io.KeysDown[wParam] = 1;

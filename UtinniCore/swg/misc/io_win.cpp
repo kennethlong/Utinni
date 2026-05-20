@@ -23,6 +23,10 @@
 **/
 
 #include "io_win.h"
+#include "utility/log.h"
+
+#include <cstdio>
+#include <intrin.h>
 
 namespace swg::ioWin
 {
@@ -54,6 +58,51 @@ void __fastcall hkDraw(IoWin* pThis, swgptr EDX)
 void IoWin::detour()
 {
     //swg::ioWin::draw = (swg::ioWin::pDraw)Detour::Create(swg::ioWin::draw, hkDraw, DETOUR_TYPE_PUSH_RET);
+}
+
+// DIAG 2026-05-20 Issue #11 Phase G (per CODEX consult): instrument
+// MessageQueue::appendMessage and ::appendMessageData. These are what the
+// GroundScene input map emits after translating raw IoEvents into
+// game commands. Logging here reveals what command was emitted for Enter
+// -- comparing standalone-Enter behavior vs editor-injected behavior will
+// either localize the bug here ("input map emits wrong command") or
+// downstream ("command is correct but consumed by wrong mediator").
+void __fastcall hkAppendMessage(MessageQueue* pThis, DWORD EDX, int msg, float value, uint32_t* flags)
+{
+    static int s_appendMsgLogCount = 0;
+    if (s_appendMsgLogCount < 60)
+    {
+        ++s_appendMsgLogCount;
+        const void* callerPC = _ReturnAddress();
+        char m[200];
+        snprintf(m, sizeof(m),
+            "hkAppendMessage[%d]: queue=0x%p msg=0x%X value=%.3f flags=0x%p caller=0x%p",
+            s_appendMsgLogCount, (void*)pThis, (unsigned)msg, value, (void*)flags, callerPC);
+        utinni::log::info(m);
+    }
+    swg::messageQueue::appendMessage(pThis, msg, value, flags);
+}
+
+void __fastcall hkAppendMessageData(MessageQueue* pThis, DWORD EDX, int msg, float value, swgptr data, uint32_t* flags)
+{
+    static int s_appendDataLogCount = 0;
+    if (s_appendDataLogCount < 60)
+    {
+        ++s_appendDataLogCount;
+        const void* callerPC = _ReturnAddress();
+        char m[224];
+        snprintf(m, sizeof(m),
+            "hkAppendMessageData[%d]: queue=0x%p msg=0x%X value=%.3f data=0x%p flags=0x%p caller=0x%p",
+            s_appendDataLogCount, (void*)pThis, (unsigned)msg, value, (void*)data, (void*)flags, callerPC);
+        utinni::log::info(m);
+    }
+    swg::messageQueue::appendMessageData(pThis, msg, value, data, flags);
+}
+
+void MessageQueue::detour()
+{
+    swg::messageQueue::appendMessage = (swg::messageQueue::pAppendMessage)Detour::Create(swg::messageQueue::appendMessage, hkAppendMessage, DETOUR_TYPE_PUSH_RET);
+    swg::messageQueue::appendMessageData = (swg::messageQueue::pAppendMessageData)Detour::Create(swg::messageQueue::appendMessageData, hkAppendMessageData, DETOUR_TYPE_PUSH_RET);
 }
 
 int MessageQueue::getCount()

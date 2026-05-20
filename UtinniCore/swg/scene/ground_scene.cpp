@@ -27,11 +27,16 @@
 #include "world_snapshot.h"
 #include "render_world.h"
 #include "swg/misc/swg_memory.h"
+#include "swg/misc/io_win.h"
 #include "swg/game/game.h"
 #include "swg/object/client_object.h"
+#include "utility/log.h"
 #include "utility/string_utility.h"
 #include "swg/appearance/portal.h"
 #include "swg/camera/debug_camera.h"
+
+#include <cstdio>
+#include <intrin.h>
 
 
 namespace swg::groundScene
@@ -145,6 +150,32 @@ void __fastcall hkUpdateLoop(GroundScene* pThis, DWORD EDX, float time)
 
 void __fastcall hkHandleInputEvent(GroundScene* pThis, DWORD EDX, IoEvent* ioEvent)
 {
+    // DIAG 2026-05-20 Issue #11 Phase G (per CODEX consult): log every
+    // IoEvent that reaches GroundScene::handleInputMapEvent. This is the
+    // earliest local hook point after CuiIo::processEvent where the
+    // game-mode input map should translate kc_Enter (28 / 0x1C) into a
+    // command/action. If Enter shows up here, GroundScene's input map is
+    // getting the event but routing it to chatWindow instead of to
+    // game-mode 'startChat'. If Enter doesn't show up, it's already been
+    // siphoned off before this point. Filter out t_Update (4) and other
+    // noisy continuous events; log everything else, capped at 40 entries.
+    if (ioEvent != nullptr && ioEvent->type != IoEvent::t_Update)
+    {
+        static int s_ioEventLogCount = 0;
+        if (s_ioEventLogCount < 40)
+        {
+            ++s_ioEventLogCount;
+            const void* callerPC = _ReturnAddress();
+            char m[200];
+            snprintf(m, sizeof(m),
+                "hkHandleInputEvent[%d]: type=%d arg1=%d arg2=%d arg3=%.3f pThis=0x%p freeCam=%d caller=0x%p",
+                s_ioEventLogCount, ioEvent->type, ioEvent->arg1, ioEvent->arg2,
+                ioEvent->arg3, (void*)pThis, pThis->isFreeCameraActive() ? 1 : 0,
+                callerPC);
+            utinni::log::info(m);
+        }
+    }
+
     if (pThis->isFreeCameraActive())
     {
         debugCamera::processIoEvent(ioEvent);

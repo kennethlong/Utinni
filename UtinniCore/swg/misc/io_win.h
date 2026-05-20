@@ -139,6 +139,8 @@ public:
     void getMessage(int index, int* msg, float* value);
     void appendMessage(int msg, float value);
     void appendMessage(int msg, float value, swgptr data);
+
+    static void detour();
 };
 
 

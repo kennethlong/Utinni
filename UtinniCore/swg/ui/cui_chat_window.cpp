@@ -54,6 +54,13 @@ static swgptr pCuiChatWindow; // ToDo use the getChatWindow function instead of 
 static swgptr pCuiConsoleHelper;
 static std::vector<void(*)(utinni::CommandParser* mainCommandParser)> addCommandParserCallback;
 
+// Phase G (Issue #11): mirrors the last value SWG passed to enableTextInput.
+// Updated in hkEnableTextInput. Used by external code (imgui_impl
+// hkWndProcHandler VK_RETURN intercept) to decide whether to short-circuit
+// in-game Enter to forceOpenChatInputFromCpp. Default false: chat starts
+// in display mode at scene-load (scene-init calls enableTextInput(false)).
+static bool s_chatInputActive = false;
+
 namespace utinni
 {
 bool enableInput;
@@ -268,12 +275,20 @@ void __fastcall hkEnableTextInput(swgptr pThis, swgptr EDX, bool value, bool set
         utinni::log::info(m);
     }
 
+    // Phase G: mirror the most recent value for external consumers.
+    s_chatInputActive = value;
+
     // CODEX bug-fix: previous code called with pCuiChatWindow instead of
     // pThis. Wrong for an instance hook -- SWG might construct multiple
     // CuiChatWindow instances and the captured one might be stale or not
     // the one we were just called on. Always forward to the instance we
     // were actually invoked on.
     swg::cuiChatWindow::enableTextInput(pThis, value, setKeyboardInput, unfocus);
+}
+
+bool CuiChatWindow::isChatInputModeActive()
+{
+    return s_chatInputActive;
 }
 
 CommandParser* mainCommandParser;

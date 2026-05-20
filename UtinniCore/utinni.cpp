@@ -32,6 +32,7 @@
 #include "swg/game/game.h"
 #include "swg/graphics/graphics.h"
 #include "swg/misc/config.h"
+#include "swg/misc/io_win.h"
 #include "swg/misc/tree_file.h"
 #include "swg/object/creature_object.h"
 #include "swg/scene/client_world.h"
@@ -93,6 +94,7 @@ void createDetours()
     utinni::Game::detour();
     utinni::GroundScene::detour();
     utinni::Graphics::detour();
+    utinni::MessageQueue::detour(); // Phase G (Issue #11): instrument input-map output
     utinni::ParticleEffectAppearance::detour();
     utinni::report::detour();
     utinni::skeletalAppearance::detour();

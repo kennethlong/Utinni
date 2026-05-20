@@ -61,6 +61,14 @@ public:
     // call that actually fires today).
     static void dumpActionStringSlotsFromCpp();
 
+    // Phase G workaround (Issue #11, CODEX-endorsed): track the last value
+    // SWG passed to enableTextInput, so external code (the WndProc
+    // subclass intercepting VK_RETURN) can tell whether chat is currently
+    // in input mode and decide whether to short-circuit Enter to
+    // forceOpenChatInputFromCpp. Updated by hkEnableTextInput on every
+    // call.
+    static bool isChatInputModeActive();
+
     static void detour();
 };
 
