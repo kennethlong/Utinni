@@ -134,6 +134,49 @@ bool __fastcall hkActionPerformAction(swgptr pThis, DWORD EDX, DWORD val1, DWORD
             (unsigned)val1, v1[0], v1[1], v1[2], v1[3], v1[4], v1[5], v1[6], v1[7],
             (unsigned)val2, v2[0], v2[1], v2[2], v2[3], v2[4], v2[5], v2[6], v2[7]);
         utinni::log::info(m);
+
+        // DIAG 2026-05-20 Issue #12 Phase B: dump the strings pointed to by
+        // val1[0] (8-char range) and val1[3] (16-char range). Phase A
+        // pattern analysis: val1 layout for in-game Esc is two CharPair
+        // strings -- looks like (group, action) e.g. ("gameMenu",
+        // "gameMenuActivate"). Confirming the strings tells us exactly
+        // which action SWG is trying to dispatch and lets us find the
+        // (currently broken) activation handler.
+        char str_a[40] = "<null>";
+        char str_b[40] = "<null>";
+        if (v1[0] != 0)
+        {
+            int len = (int)(v1[1] - v1[0]);
+            if (len < 1) len = 1;
+            if (len > 32) len = 32;
+            for (int j = 0; j < len; ++j)
+            {
+                __try { str_a[j] = (char)memory::read<byte>((swgptr)(v1[0] + (DWORD)j)); }
+                __except(EXCEPTION_EXECUTE_HANDLER) { str_a[j] = '?'; break; }
+                if (str_a[j] == 0) break;
+                if (str_a[j] < 0x20 || str_a[j] >= 0x7F) str_a[j] = '.';
+            }
+            str_a[len] = 0;
+        }
+        if (v1[3] != 0)
+        {
+            int len = (int)(v1[4] - v1[3]);
+            if (len < 1) len = 1;
+            if (len > 32) len = 32;
+            for (int j = 0; j < len; ++j)
+            {
+                __try { str_b[j] = (char)memory::read<byte>((swgptr)(v1[3] + (DWORD)j)); }
+                __except(EXCEPTION_EXECUTE_HANDLER) { str_b[j] = '?'; break; }
+                if (str_b[j] == 0) break;
+                if (str_b[j] < 0x20 || str_b[j] >= 0x7F) str_b[j] = '.';
+            }
+            str_b[len] = 0;
+        }
+        char m2[256];
+        snprintf(m2, sizeof(m2),
+            "  ^ str_a (val1[0..1]) = '%s'   str_b (val1[3..4]) = '%s'",
+            str_a, str_b);
+        utinni::log::info(m2);
     }
     return ret;
 }
