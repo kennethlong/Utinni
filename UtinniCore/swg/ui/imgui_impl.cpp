@@ -32,6 +32,7 @@
 #include <vector>
 
 #include "utility/log.h"
+#include "swg/ui/cui_chat_window.h"
 
 #include "swg/graphics/graphics.h"
 #include "swg/misc/direct_input.h"
@@ -109,6 +110,18 @@ IMGUI_API LRESULT hkWndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 					(unsigned)wParam, (void*)hwnd, (void*)fg,
 					io.WantCaptureKeyboard ? 1 : 0, io.WantTextInput ? 1 : 0);
 				utinni::log::info(m);
+		  }
+		  // DIAG 2026-05-20 Issue #11 Phase D (per CODEX consult): F11
+		  // force-opens SWG's chat input via direct native call. Definitive
+		  // A/B: if F11 opens chat, chat mediator works and the bug is
+		  // upstream of it (in whatever normally translates in-game Enter
+		  // into chat-open). If F11 does nothing either, the mediator/window
+		  // itself is broken. F11 (0x7A) chosen because no SWG/TJT binding
+		  // uses it.
+		  if (wParam == VK_F11)
+		  {
+				utinni::log::info("hkWndProcHandler: F11 pressed -- invoking CuiChatWindow::forceOpenChatInputFromCpp");
+				utinni::CuiChatWindow::forceOpenChatInputFromCpp();
 		  }
 		  if (wParam < 256)
 				io.KeysDown[wParam] = 1;

@@ -31,6 +31,7 @@
 #include "utility/log.h"
 
 #include <cstdio>
+#include <intrin.h>
 
 namespace swg::cuiHud
 {
@@ -55,32 +56,67 @@ void __fastcall hkUpdate(swgptr pThis, float time)
 
 bool __fastcall hkActionPerformAction(swgptr pThis, DWORD EDX, DWORD val1, DWORD val2)
 {
-    // DIAG 2026-05-20 Issue #11 Phase C: this detour silently returns false
-    // (skipping SWG's CuiHud::actionPerformAction) when imgui_gizmo's mouse
-    // hover state is true. Hypothesis: this is what's eating in-game
-    // Enter/Esc -- actionPerformAction is the HUD's central action
-    // dispatcher (chat-open, system-menu, etc.). Diag: log every call with
-    // val1/val2 + the hover state. Also TEMPORARILY BYPASS the hover-skip
-    // so we can A/B test in one run: if in-game Enter/Esc now work,
-    // confirmed. Risk for test build: gizmo manipulation overlaps with
-    // SWG action processing (user isn't using gizmo in this repro).
+    // DIAG 2026-05-20 Issue #11 Phase D (per CODEX consult): the hover-skip
+    // is restored (was confirmed no-op in Phase C -- gizmoHover always 0).
+    // Phase D logs *everything* CODEX asked for: pThis vtable ptr, first
+    // 8 DWORDs of val1 + val2 (GameAction / ActionContext structs on the
+    // caller's stack), return value, caller return address. Goal: identify
+    // (a) what action code Esc dispatches, (b) why SWG's
+    // actionPerformAction accepts it but produces no visible result.
     bool hover = imgui_gizmo::hasMouseHover();
 
-    static int s_logCount = 0;
-    if (s_logCount < 40)
+    // Capture caller BEFORE doing anything that might shift the call stack.
+    const void* callerPC = _ReturnAddress();
+
+    // Pre-call snapshot: vtable + struct contents
+    DWORD vtbl  = (pThis != 0) ? memory::read<DWORD>(pThis) : 0;
+    DWORD v1[8] = {0};
+    DWORD v2[8] = {0};
+    if (val1 != 0)
     {
-        ++s_logCount;
-        char m[160];
-        snprintf(m, sizeof(m),
-            "hkActionPerformAction[%d]: val1=0x%08X val2=0x%08X gizmoHover=%d (skip-bypassed for diag)",
-            s_logCount, (unsigned)val1, (unsigned)val2, hover ? 1 : 0);
-        utinni::log::info(m);
+        for (int i = 0; i < 8; ++i) v1[i] = memory::read<DWORD>(val1 + (DWORD)(i * 4));
+    }
+    if (val2 != 0)
+    {
+        for (int i = 0; i < 8; ++i) v2[i] = memory::read<DWORD>(val2 + (DWORD)(i * 4));
     }
 
-    // BYPASS for Phase C test -- restore after diagnosis:
-    // if (hover) { return false; }
+    // Hover-skip path: log + return false without calling trampoline.
+    static int s_logCount = 0;
+    if (hover)
+    {
+        if (s_logCount < 20)
+        {
+            ++s_logCount;
+            char m[512];
+            snprintf(m, sizeof(m),
+                "hkActionPerformAction[%d]: SKIPPED (gizmoHover=1) pThis=0x%p vtbl=0x%08X caller=0x%p\n"
+                "  val1=0x%08X [%08X %08X %08X %08X %08X %08X %08X %08X]\n"
+                "  val2=0x%08X [%08X %08X %08X %08X %08X %08X %08X %08X]",
+                s_logCount, (void*)pThis, vtbl, callerPC,
+                (unsigned)val1, v1[0], v1[1], v1[2], v1[3], v1[4], v1[5], v1[6], v1[7],
+                (unsigned)val2, v2[0], v2[1], v2[2], v2[3], v2[4], v2[5], v2[6], v2[7]);
+            utinni::log::info(m);
+        }
+        return false;
+    }
 
-    return swg::cuiHud::actionPerformAction(pThis, val1, val2);
+    // Passthrough path: call trampoline, log with return value.
+    bool ret = swg::cuiHud::actionPerformAction(pThis, val1, val2);
+    if (s_logCount < 20)
+    {
+        ++s_logCount;
+        char m[512];
+        snprintf(m, sizeof(m),
+            "hkActionPerformAction[%d]: PASS pThis=0x%p vtbl=0x%08X ret=%d caller=0x%p\n"
+            "  val1=0x%08X [%08X %08X %08X %08X %08X %08X %08X %08X]\n"
+            "  val2=0x%08X [%08X %08X %08X %08X %08X %08X %08X %08X]",
+            s_logCount, (void*)pThis, vtbl, ret ? 1 : 0, callerPC,
+            (unsigned)val1, v1[0], v1[1], v1[2], v1[3], v1[4], v1[5], v1[6], v1[7],
+            (unsigned)val2, v2[0], v2[1], v2[2], v2[3], v2[4], v2[5], v2[6], v2[7]);
+        utinni::log::info(m);
+    }
+    return ret;
 }
 
 bool collideCursorWithWorld(int x, int y, swg::math::Vector& result, Object* excludeObject)

@@ -40,6 +40,15 @@ public:
     static void writeToCurrentTab(const char* str);
     static void sendMessage(const char* msg, bool addToChatHistory);
 
+    // DIAG 2026-05-20 Issue #11 (per CODEX consult): force-open SWG's
+    // chat input box directly via native enableTextInput(pCuiChatWindow,
+    // true, true, false). Bypasses whatever upstream dispatch path
+    // normally translates in-game Enter into chat-open. If wired to a
+    // free hotkey (F11), pressing it should open chat reliably -- if so,
+    // chat mediator is fine and the bug is upstream. Guarded by
+    // pCuiChatWindow != 0.
+    static void forceOpenChatInputFromCpp();
+
     static void detour();
 };
 

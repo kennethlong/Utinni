@@ -26,6 +26,7 @@
 #include "command_parser.h"
 #include "utinni_command_parser.h"
 #include "swg/misc/swg_memory.h"
+#include "utility/log.h"
 
 namespace swg::cuiChatWindow
 {
@@ -82,6 +83,24 @@ void CuiChatWindow::writeToCurrentTab(const char* str) // Accepts color codes by
     }
 
     swg::cuiChatWindow::writeToCurrentTab(pCuiChatWindow, swg::WString(str));
+}
+
+void CuiChatWindow::forceOpenChatInputFromCpp()
+{
+    // DIAG 2026-05-20 Issue #11 (per CODEX consult): A/B test whether SWG's
+    // chat mediator itself works when we call enableTextInput directly with
+    // the captured CuiChatWindow instance pointer. If pressing F11 opens
+    // chat reliably, the Enter-in-game dispatch is broken UPSTREAM of the
+    // chat mediator (search the 0x00F38390 / 0x00F38430 functions next).
+    // If F11 ALSO does nothing, the mediator/window is broken or
+    // pCuiChatWindow is stale.
+    if (pCuiChatWindow == 0)
+    {
+        utinni::log::warning("CuiChatWindow::forceOpenChatInputFromCpp: pCuiChatWindow is null (chat window was never constructed?)");
+        return;
+    }
+    utinni::log::info("CuiChatWindow::forceOpenChatInputFromCpp: calling swg::cuiChatWindow::enableTextInput(pCuiChatWindow, true, true, false)");
+    swg::cuiChatWindow::enableTextInput(pCuiChatWindow, true, true, false);
 }
 
 void CuiChatWindow::sendMessage(const char* msg, bool addToChatHistory)
