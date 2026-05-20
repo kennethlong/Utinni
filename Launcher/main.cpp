@@ -171,7 +171,7 @@ void throwError(const std::string& message)
 //    CoUninitialize();
 //}
 
-void inject(PROCESS_INFORMATION procInfo)
+void inject(PROCESS_INFORMATION procInfo, LPVOID utinniInitArg)
 {
     char curDirBuffer[MAX_PATH];
     GetModuleFileName(nullptr, curDirBuffer, MAX_PATH);
@@ -227,13 +227,22 @@ void inject(PROCESS_INFORMATION procInfo)
     FreeLibrary(localCore);
 
     FARPROC remoteInit = (FARPROC)((BYTE*)hDll + initOffset);
+    // 2026-05-19: pass the ready-event name (in REMOTE process memory) as
+    // lpThreadParam. utinni_init captures it, then the managed EntryPoint signals
+    // the event right before Application.Run blocks (see UtinniCoreDotNet/main.cs).
+    // We no longer WaitForSingleObject(hInitThread, INFINITE) -- that would block
+    // for the entire editor session because Application.Run never returns until
+    // the form closes, which means the OEP-restore at loadDll() lines 382-384
+    // never ran. The wait now happens on the named event in loadDll().
     HANDLE hInitThread = CreateRemoteThread(procInfo.hProcess, nullptr, 0,
-                                             (LPTHREAD_START_ROUTINE)remoteInit, nullptr, 0, nullptr);
+                                             (LPTHREAD_START_ROUTINE)remoteInit, utinniInitArg, 0, nullptr);
     if (!hInitThread)
     {
         throwError("[ERROR] Couldn't open utinni_init remote thread.");
     }
-    WaitForSingleObject(hInitThread, INFINITE);
+    // Intentionally do NOT wait on hInitThread here. Caller waits on the named
+    // ready event instead. The thread stays alive running Application.Run for
+    // the editor's lifetime; the OS reclaims the handle on process exit.
     CloseHandle(hInitThread);
 }
 
@@ -347,9 +356,48 @@ void loadDll(const std::string& cmdLine)
             unsigned char oep[2];
             ReadProcessMemory(hProcess, entry, oep, 2, nullptr);
 
+            // 2026-05-19: named ready event for signal-based sync with utinni_init.
+            // Created BEFORE the EB FE write so we own the event when the remote
+            // thread spins up. utinni_init captures the name from lpThreadParam and
+            // the managed-side EntryPoint signals it just before Application.Run.
+            std::string readyEventName = "Local\\UtinniReady_" + std::to_string(procInfo.dwProcessId);
+            HANDLE hReady = CreateEventA(nullptr, TRUE /* manual reset */, FALSE /* initial state */, readyEventName.c_str());
+            if (hReady == nullptr)
+            {
+                throwError("[ERROR] CreateEventA failed for utinni_ready event.");
+            }
+
+            // Allocate remote memory and write the event-name C string for utinni_init.
+            // +1 for the NUL terminator.
+            const SIZE_T eventNameLen = readyEventName.size() + 1;
+            LPVOID remoteEventName = VirtualAllocEx(procInfo.hProcess, nullptr, eventNameLen, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+            if (remoteEventName == nullptr)
+            {
+                CloseHandle(hReady);
+                throwError("[ERROR] VirtualAllocEx for event-name string failed.");
+            }
+            WriteProcessMemory(procInfo.hProcess, remoteEventName, readyEventName.c_str(), eventNameLen, nullptr);
+
             // patch original entry point with ian infinite loop
             unsigned char patchedOep[]{ 0xEB, 0xFE };
             WriteProcessMemory(hProcess, entry, patchedOep, 2, nullptr);
+            // CRITICAL: flush instruction cache so the main thread fetches the patched
+            // bytes rather than a stale prefetched original. Without this, the CPU's
+            // I-cache may execute the pre-patch bytes for some duration after
+            // ResumeThread, producing nondeterministic "sometimes halts at entry,
+            // sometimes runs through" behaviour. Diagnosed 2026-05-19.
+            FlushInstructionCache(hProcess, entry, 2);
+
+            // DIAG: read back to confirm what the patch left in memory.
+            {
+                unsigned char afterPatch[2] = {0, 0};
+                ReadProcessMemory(hProcess, entry, afterPatch, 2, nullptr);
+                char dbg[128];
+                _snprintf_s(dbg, sizeof(dbg), _TRUNCATE,
+                    "[LAUNCHER] post-patch bytes at 0x%08X: %02X %02X (expected EB FE)\n",
+                    (DWORD)entry, afterPatch[0], afterPatch[1]);
+                OutputDebugStringA(dbg);
+            }
 
             // Do patching here
 
@@ -370,18 +418,53 @@ void loadDll(const std::string& cmdLine)
                 throwError("Timed out trying to reach the entry point");
             }
 
-            // Attach the debugger before we inject, only do this in RelWithDbgInfo or Debug configuration 
-            #if defined RELDBG  || defined  _DEBUG 
+            // Attach the debugger before we inject, only do this in RelWithDbgInfo or Debug configuration
+            #if defined RELDBG  || defined  _DEBUG
             // ToDo add an .ini setting to enable or disable it, commented out for now until there is a setting
             //attachToVisualStudio(procInfo.dwProcessId);
             #endif
 
-            // inject DLL
-            inject(procInfo);
+            // inject DLL -- fires LoadLibraryA + utinni_init remote threads. We pass
+            // remoteEventName as utinni_init's lpThreadParam so utinni_init can later
+            // open the named event and have the managed side signal us.
+            inject(procInfo, remoteEventName);
+
+            // 2026-05-19: wait on the named event (signaled from managed EntryPoint
+            // right before Application.Run) instead of the utinni_init thread handle.
+            // The thread never exits during a normal editor session because
+            // Application.Run blocks it for the form's lifetime, so the old
+            // WaitForSingleObject(hInitThread, INFINITE) deadlocked the restore.
+            // 30s timeout covers first-run CLR/JIT/AV-scan worst cases.
+            DWORD waitResult = WaitForSingleObject(hReady, 30000);
+            CloseHandle(hReady);
+
+            if (waitResult != WAIT_OBJECT_0)
+            {
+                throwError("[ERROR] Timed out waiting for utinni ready signal (30s).");
+            }
 
             SuspendThread(procInfo.hThread);
             WriteProcessMemory(hProcess, entry, oep, 2, nullptr); // Restore original entry point
+            // Same flush rationale as the patch write: ensure the main thread
+            // executes the restored bytes, not a cached EB FE.
+            FlushInstructionCache(hProcess, entry, 2);
+
+            // DIAG: confirm the restore landed.
+            {
+                unsigned char afterRestore[2] = {0, 0};
+                ReadProcessMemory(hProcess, entry, afterRestore, 2, nullptr);
+                char dbg[128];
+                _snprintf_s(dbg, sizeof(dbg), _TRUNCATE,
+                    "[LAUNCHER] post-restore bytes at 0x%08X: %02X %02X (expected %02X %02X)\n",
+                    (DWORD)entry, afterRestore[0], afterRestore[1], oep[0], oep[1]);
+                OutputDebugStringA(dbg);
+            }
+
             ResumeThread(procInfo.hThread);
+
+            // The remote-event-name allocation in SWG's process stays alive for
+            // utinni_init's lifetime (it holds a pointer to it). The OS reclaims
+            // it on SWG process exit; intentional leak.
         }
         catch (...)
         {
