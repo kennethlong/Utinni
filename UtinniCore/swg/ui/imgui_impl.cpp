@@ -28,7 +28,10 @@
 #include "imgui/imgui_impl_dx9.h"
 #include "ImGuizmo/ImGuizmo.h"
 
+#include <cstdio>
 #include <vector>
+
+#include "utility/log.h"
 
 #include "swg/graphics/graphics.h"
 #include "swg/misc/direct_input.h"
@@ -91,6 +94,22 @@ IMGUI_API LRESULT hkWndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 		  io.MousePos.y = (signed short)(lParam >> 16);
 		  break;
 	 case WM_KEYDOWN:
+		  // DIAG 2026-05-20 Issue #11: in-game Return + Esc dead while WASD
+		  // works. WASD comes from SWG's DirectInput keyboard polling; Return
+		  // / Esc must arrive via WM_KEYDOWN through this subclass. Log every
+		  // VK_RETURN / VK_ESCAPE that reaches us, with HWND + wantCaptureKbd
+		  // + foreground-HWND so we can tell (a) message reached subclass and
+		  // (b) what focus / imgui-capture state was at the time.
+		  if (wParam == VK_RETURN || wParam == VK_ESCAPE)
+		  {
+				HWND fg = GetForegroundWindow();
+				char m[160];
+				snprintf(m, sizeof(m),
+					"hkWndProcHandler: WM_KEYDOWN vk=0x%02X hwnd=0x%p fg=0x%p io.WantCaptureKeyboard=%d io.WantTextInput=%d",
+					(unsigned)wParam, (void*)hwnd, (void*)fg,
+					io.WantCaptureKeyboard ? 1 : 0, io.WantTextInput ? 1 : 0);
+				utinni::log::info(m);
+		  }
 		  if (wParam < 256)
 				io.KeysDown[wParam] = 1;
 		  break;
@@ -99,10 +118,49 @@ IMGUI_API LRESULT hkWndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 				io.KeysDown[wParam] = 0;
 		  break;
 	 case WM_CHAR:
+		  // DIAG 2026-05-20 Issue #11: log WM_CHAR for printable ASCII so we
+		  // can tell if typing letters into a (presumed-open) chat box works.
+		  // Filter to printable range to avoid log spam from CR/LF/etc.
+		  if (wParam >= 0x20 && wParam < 0x7F)
+		  {
+				char m[96];
+				snprintf(m, sizeof(m), "hkWndProcHandler: WM_CHAR '%c' (0x%X)",
+					(int)wParam, (unsigned)wParam);
+				utinni::log::info(m);
+		  }
 		  // You can also use ToAscii()+GetKeyboardState() to retrieve characters.
 		  if (wParam > 0 && wParam < 0x10000)
 				io.AddInputCharacter((unsigned short)wParam);
 		  break;
+	 case WM_ACTIVATE:
+	 {
+		  // DIAG 2026-05-20 Issue #11: who's focused. wParam LOWORD is WA_INACTIVE(0)
+		  // / WA_ACTIVE(1) / WA_CLICKACTIVE(2). If SWG window goes inactive when
+		  // user clicks it, that explains dead WM_KEYDOWN.
+		  unsigned wa = (unsigned)LOWORD(wParam);
+		  const char* name = (wa == 0) ? "INACTIVE" : (wa == 1) ? "ACTIVE" : (wa == 2) ? "CLICKACTIVE" : "?";
+		  char m[128];
+		  snprintf(m, sizeof(m), "hkWndProcHandler: WM_ACTIVATE %s (wParam=0x%X) hwnd=0x%p",
+			  name, (unsigned)wParam, (void*)hwnd);
+		  utinni::log::info(m);
+		  break;
+	 }
+	 case WM_SETFOCUS:
+	 {
+		  char m[96];
+		  snprintf(m, sizeof(m), "hkWndProcHandler: WM_SETFOCUS hwnd=0x%p (lost-focus-from=0x%p)",
+			  (void*)hwnd, (void*)wParam);
+		  utinni::log::info(m);
+		  break;
+	 }
+	 case WM_KILLFOCUS:
+	 {
+		  char m[96];
+		  snprintf(m, sizeof(m), "hkWndProcHandler: WM_KILLFOCUS hwnd=0x%p (gained-focus-to=0x%p)",
+			  (void*)hwnd, (void*)wParam);
+		  utinni::log::info(m);
+		  break;
+	 }
 	 }
 
 	 return CallWindowProc(originalWndProcHandler, hwnd, msg, wParam, lParam);
