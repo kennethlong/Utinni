@@ -42,11 +42,14 @@ namespace utinni
 {
 void DirectInput::suspend()
 {
+    // DIAG 2026-05-19 Issue #9: every call. Pair with Client::suspendInput logs.
+    utinni::log::info("DirectInput::suspend: unacquiring keyboard/mouse devices");
     swg::directInput::suspend();
 }
 
 void DirectInput::resume()
 {
+    utinni::log::info("DirectInput::resume: re-acquiring keyboard/mouse devices");
     swg::directInput::resume();
 }
 

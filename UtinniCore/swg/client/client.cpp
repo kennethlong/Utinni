@@ -67,6 +67,19 @@ bool Client::getEditorMode()
 
 void Client::setHwnd(void* newHwnd)
 {
+    // DIAG 2026-05-19 Issue #9: trace who's writing the HWND. In the new
+    // SWG-owns-its-own-window model, the editor's PanelGame_Layout calls
+    // this on every layout with PanelGame.Handle, which shadows SWG's
+    // actual top-level HWND. Rate-limit: first-write + any change.
+    static HWND lastLogged = (HWND)~0;
+    if ((HWND)newHwnd != lastLogged)
+    {
+        char msg[96];
+        snprintf(msg, sizeof(msg), "Client::setHwnd: 0x%p (prev 0x%p)",
+                 newHwnd, (void*)lastLogged);
+        utinni::log::info(msg);
+        lastLogged = (HWND)newHwnd;
+    }
     hwnd = (HWND)newHwnd;
 }
 
@@ -87,7 +100,16 @@ HINSTANCE Client::getHInstance()
 
 void Client::suspendInput()
 {
-    if (Game::isRunning())
+    // DIAG 2026-05-19 Issue #9: log every call. If Game::isRunning() is
+    // true at login screen, then PanelGame focus-loss / mouse-leave
+    // fires DirectInput::suspend(), killing special keys (Tab/Del/Return).
+    bool running = Game::isRunning();
+    char msg[96];
+    snprintf(msg, sizeof(msg), "Client::suspendInput: called (Game::isRunning=%d, getHwnd=0x%p)",
+             running ? 1 : 0, (void*)Client::getHwnd());
+    utinni::log::info(msg);
+
+    if (running)
     {
         SetFocus(nullptr);
         Graphics::showMouseCursor(false);
@@ -98,7 +120,13 @@ void Client::suspendInput()
 
 void Client::resumeInput()
 {
-    if (Game::isRunning())
+    bool running = Game::isRunning();
+    char msg[96];
+    snprintf(msg, sizeof(msg), "Client::resumeInput: called (Game::isRunning=%d, getHwnd=0x%p)",
+             running ? 1 : 0, (void*)Client::getHwnd());
+    utinni::log::info(msg);
+
+    if (running)
     {
         SetFocus(Client::getHwnd());
         Graphics::showMouseCursor(true);
