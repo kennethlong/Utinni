@@ -28,6 +28,9 @@
 #include "swg/camera/camera.h"
 #include "swg/scene/client_world.h"
 #include "swg/scene/ground_scene.h"
+#include "utility/log.h"
+
+#include <cstdio>
 
 namespace swg::cuiHud
 {
@@ -52,10 +55,30 @@ void __fastcall hkUpdate(swgptr pThis, float time)
 
 bool __fastcall hkActionPerformAction(swgptr pThis, DWORD EDX, DWORD val1, DWORD val2)
 {
-    if (imgui_gizmo::hasMouseHover())
+    // DIAG 2026-05-20 Issue #11 Phase C: this detour silently returns false
+    // (skipping SWG's CuiHud::actionPerformAction) when imgui_gizmo's mouse
+    // hover state is true. Hypothesis: this is what's eating in-game
+    // Enter/Esc -- actionPerformAction is the HUD's central action
+    // dispatcher (chat-open, system-menu, etc.). Diag: log every call with
+    // val1/val2 + the hover state. Also TEMPORARILY BYPASS the hover-skip
+    // so we can A/B test in one run: if in-game Enter/Esc now work,
+    // confirmed. Risk for test build: gizmo manipulation overlaps with
+    // SWG action processing (user isn't using gizmo in this repro).
+    bool hover = imgui_gizmo::hasMouseHover();
+
+    static int s_logCount = 0;
+    if (s_logCount < 40)
     {
-        return false;
+        ++s_logCount;
+        char m[160];
+        snprintf(m, sizeof(m),
+            "hkActionPerformAction[%d]: val1=0x%08X val2=0x%08X gizmoHover=%d (skip-bypassed for diag)",
+            s_logCount, (unsigned)val1, (unsigned)val2, hover ? 1 : 0);
+        utinni::log::info(m);
     }
+
+    // BYPASS for Phase C test -- restore after diagnosis:
+    // if (hover) { return false; }
 
     return swg::cuiHud::actionPerformAction(pThis, val1, val2);
 }
