@@ -133,32 +133,16 @@ IMGUI_API LRESULT hkWndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 				utinni::log::info("hkWndProcHandler: F12 pressed -- dumping action string slots");
 				utinni::CuiChatWindow::dumpActionStringSlotsFromCpp();
 		  }
-		  // PHASE G WORKAROUND (Issue #11, CODEX-endorsed): in-game Enter
-		  // is dispatched to SwgCuiChatWindow::performAction("chatEnter")
-		  // even when chat isn't in input mode, because some upstream SWG
-		  // context-routing layer is wrong under editor injection. The
-		  // chatEnter handler unconditionally submits+closes (no-op when
-		  // chat is closed). Redirect: if we're in a ground scene, imgui
-		  // isn't capturing keyboard, and chat isn't already in input
-		  // mode, call enableTextInput(true) directly and CONSUME the
-		  // message so SWG's broken chatEnter dispatch doesn't immediately
-		  // close what we just opened. When chat IS in input mode,
-		  // passthrough so the natural chatEnter submit-and-close runs.
-		  if (wParam == VK_RETURN
-			  && !io.WantCaptureKeyboard
-			  && utinni::Game::isRunning()
-			  && utinni::GroundScene::get() != nullptr
-			  && !utinni::CuiChatWindow::isChatInputModeActive())
-		  {
-				utinni::log::info("hkWndProcHandler: VK_RETURN in-game with chat closed -- invoking workaround forceOpenChatInputFromCpp + CONSUMING message");
-				utinni::CuiChatWindow::forceOpenChatInputFromCpp();
-				// Also update imgui's keystate so subsequent reads are consistent.
-				if (wParam < 256) io.KeysDown[wParam] = 1;
-				// CONSUME: return 0 instead of forwarding via CallWindowProc.
-				// Prevents SWG's chatEnter handler from immediately
-				// closing the chat we just opened.
-				return 0;
-		  }
+		  // PHASE G WORKAROUND REMOVED 2026-05-20: WM_KEYDOWN consumption
+		  // proved ineffective because SWG generates the Enter CUI event
+		  // via DirectInput keyboard polling, not via WM_KEYDOWN. Consuming
+		  // the Win32 message had no effect on SWG's input pipeline, so the
+		  // chatEnter dispatch fired anyway and closed our forceOpen.
+		  // Phase H replacement: detour the chatEnter handler itself
+		  // (0x00F3E420 in cui_chat_window.cpp) and override its display-
+		  // mode behavior to open chat instead of attempting a no-op
+		  // submit+close. That's the right semantic level -- we replace
+		  // SWG's broken context-routing behavior at the handler.
 		  if (wParam < 256)
 				io.KeysDown[wParam] = 1;
 		  break;

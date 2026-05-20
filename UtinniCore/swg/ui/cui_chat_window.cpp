@@ -37,6 +37,18 @@ using pCtor = swgptr(__thiscall*)(swgptr pThis, swgptr uiPage, DWORD unk1, DWORD
 using pEnableTextInput = void(__thiscall*)(swgptr pThis, bool value, bool setKeyboardInput, bool unfocus);
 using pWriteToTab = swgptr(__thiscall*)(swgptr pThis, const WString& str);
 
+// 2026-05-20 Issue #11 Phase H: SwgCuiChatWindow's "chatEnter" action handler.
+// Per Phase F dispatcher decode, this is the small wrapper at 0x00F3E420 that
+// calls CuiConsoleHelper::?(1) then enableTextInput(false). Normally invoked
+// by SWG's input map when chat is in input mode (legitimate submit + close).
+// Under editor injection it ALSO fires for in-game Enter while chat is in
+// display mode -- the context routing layer is broken and sends the
+// chat-input-mode binding instead of the game-mode openChat binding. Our
+// hkChatEnter (in utinni namespace) overrides the display-mode case to open
+// chat input instead of attempting a no-op submit/close.
+using pChatEnterHandler = void(__thiscall*)(swgptr pThis);
+pChatEnterHandler chatEnterHandler = (pChatEnterHandler)0x00F3E420;
+
 pCtor ctor = (pCtor)0x00F364B0;
 pEnableTextInput enableTextInput = (pEnableTextInput)0x00F38500;
 pWriteToTab writeToAllTabs = (pWriteToTab)0x00F3BFD0;
@@ -219,6 +231,10 @@ void CuiChatWindow::forceOpenChatInputFromCpp()
     }
     utinni::log::info("CuiChatWindow::forceOpenChatInputFromCpp: calling swg::cuiChatWindow::enableTextInput(pCuiChatWindow, true, true, false)");
     swg::cuiChatWindow::enableTextInput(pCuiChatWindow, true, true, false);
+    // Phase H: enableTextInput pointer is the trampoline (post-detour), which
+    // bypasses our hkEnableTextInput. Update tracker directly so downstream
+    // consumers (hkChatEnter, etc.) see the correct state.
+    s_chatInputActive = true;
 }
 
 void CuiChatWindow::sendMessage(const char* msg, bool addToChatHistory)
@@ -330,6 +346,30 @@ __declspec(naked) void midCtor()
     }
 }
 
+// Phase H (Issue #11): override SwgCuiChatWindow's chatEnter wrapper at
+// 0x00F3E420. Under editor injection, SWG's input-map context routing is
+// broken and fires chatEnter for in-game Enter even when chat is in
+// display mode. The original handler does helper(1)+enableTextInput(false)
+// -- a no-op in display mode. Replace display-mode behavior with "open chat
+// input" (what the missing openChat action should have done). In input
+// mode, fall through to the original handler so submit+close behaves
+// normally.
+void __fastcall hkChatEnter(swgptr pThis, swgptr EDX)
+{
+    if (!s_chatInputActive)
+    {
+        utinni::log::info("hkChatEnter: chat is in display mode -- overriding to open chat input (was: submit+close)");
+        // enableTextInput pointer is the post-detour trampoline; it goes
+        // straight to SWG without re-entering our hook, so update tracker
+        // manually.
+        swg::cuiChatWindow::enableTextInput(pThis, true, true, false);
+        s_chatInputActive = true;
+        return;
+    }
+    // Input mode: pass through to original chatEnter (submit + close).
+    swg::cuiChatWindow::chatEnterHandler(pThis);
+}
+
 void CuiChatWindow::detour()
 {
     swg::cuiChatWindow::ctor = (swg::cuiChatWindow::pCtor)Detour::Create(swg::cuiChatWindow::ctor, hkCtor, DETOUR_TYPE_PUSH_RET);
@@ -339,6 +379,9 @@ void CuiChatWindow::detour()
     // pThis bug now fixed in hkEnableTextInput). Logs every caller of
     // enableTextInput; nothing is suppressed -- pure passthrough.
     swg::cuiChatWindow::enableTextInput = (swg::cuiChatWindow::pEnableTextInput)Detour::Create(swg::cuiChatWindow::enableTextInput, hkEnableTextInput, DETOUR_TYPE_PUSH_RET);
+
+    // Phase H (Issue #11): chatEnter override (see hkChatEnter above).
+    swg::cuiChatWindow::chatEnterHandler = (swg::cuiChatWindow::pChatEnterHandler)Detour::Create((LPVOID)swg::cuiChatWindow::chatEnterHandler, hkChatEnter, DETOUR_TYPE_PUSH_RET);
 
     memory::createJMP(0x00F36797, (swgptr)midCtor, 6); // Mid CuiChatWindow::ctor detour
 }
