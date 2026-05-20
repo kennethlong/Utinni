@@ -123,6 +123,14 @@ IMGUI_API LRESULT hkWndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 				utinni::log::info("hkWndProcHandler: F11 pressed -- invoking CuiChatWindow::forceOpenChatInputFromCpp");
 				utinni::CuiChatWindow::forceOpenChatInputFromCpp();
 		  }
+		  if (wParam == VK_F12)
+		  {
+				// DIAG Phase F: dump the .bss action-name string slots of
+				// SwgCuiChatWindow's dispatcher to identify which action
+				// triggers each handler.
+				utinni::log::info("hkWndProcHandler: F12 pressed -- dumping action string slots");
+				utinni::CuiChatWindow::dumpActionStringSlotsFromCpp();
+		  }
 		  if (wParam < 256)
 				io.KeysDown[wParam] = 1;
 		  break;

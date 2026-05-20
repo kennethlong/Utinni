@@ -49,6 +49,18 @@ public:
     // pCuiChatWindow != 0.
     static void forceOpenChatInputFromCpp();
 
+    // DIAG 2026-05-20 Issue #11 Phase F: dump the .bss-resident action-name
+    // string pointers that gate the SwgCuiChatWindow performAction
+    // dispatcher (0x00F37C00..0x00F37F58). Each case loads two pointers
+    // (start, end) from globals at 0x0197BAxx / 0x0197Exxx -- those globals
+    // are uninitialized at file-load time but populated at runtime by SWG's
+    // constructors. Read them at runtime and resolve to readable strings so
+    // we know which action name routes to which handler -- especially
+    // crucial for identifying what's at 0x00F3E440 OPEN (the OPEN call we
+    // expect for in-game Enter) vs 0x00F3E420 CLOSE (the close-on-Enter
+    // call that actually fires today).
+    static void dumpActionStringSlotsFromCpp();
+
     static void detour();
 };
 

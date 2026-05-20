@@ -88,6 +88,114 @@ void CuiChatWindow::writeToCurrentTab(const char* str) // Accepts color codes by
     swg::cuiChatWindow::writeToCurrentTab(pCuiChatWindow, swg::WString(str));
 }
 
+// DIAG 2026-05-20 Issue #11 Phase F: probe the SwgCuiChatWindow
+// performAction dispatcher's action-name string slots. Static byte-level
+// analysis of 0x00F37C00..0x00F37F58 identified these 12 cases. The
+// globals at the listed addresses are .bss pointers populated at runtime;
+// each pair (start, end) defines an interned action name. Two cases use a
+// different style (push imm32 directly into strcmp): for those, the imm32
+// itself is the .bss slot holding a char*. Reading at runtime should
+// reveal which action name routes to which handler, including which
+// action triggers the 0x00F3E440 OPEN call we expect on in-game Enter.
+struct DispatchSlot
+{
+    DWORD startPtrAddr;  // VA of .bss slot holding (char*)action_start
+    DWORD endPtrAddr;    // VA of .bss slot holding (char*)action_end
+    DWORD handlerVA;     // target of the dispatched CALL
+    const char* role;
+};
+static const DispatchSlot kDispatchSlots[] = {
+    { 0x0197BAAC, 0x0197BAB0, 0x00F3E3A0, "OPEN 1arg-v1 (case 0 @F37CB4)" },
+    { 0x0197BAA0, 0x0197BAA4, 0x00F3E3A0, "OPEN 1arg-v1 (case 1 @F37CF2)" },
+    { 0x0197E310, 0x0197E314, 0x00F3E370, "OPEN 2arg   (case 2 @F37D31)" },
+    { 0x0197E304, 0x0197E308, 0x00F3E370, "OPEN 2arg   (case 3 @F37D70)" },
+    { 0x0197E328, 0x0197E32C, 0x00F3E370, "OPEN 2arg   (case 4 @F37DB0)" },
+    { 0x0197E31C, 0x0197E320, 0x00F3E370, "OPEN 2arg   (case 5 @F37DF0)" },
+    { 0x0197E340, 0x0197E344, 0x00F3E3D0, "OPEN 1arg-v2(case 6 @F37E2E)" },
+    { 0x0197E334, 0x0197E338, 0x00F3E3D0, "OPEN 1arg-v2(case 7 @F37E6C)" },
+    { 0x0197E2F8, 0x0197E2FC, 0x00F3E400, "OPEN 0arg   (case 8 @F37EA8)" },
+    { 0x0197E2EC, 0x0197E2F0, 0x00F3E460, "CLOSE 0arg  (case 9 @F37EE4)" },
+    // Cases 10/11 use a different style: the imm32 IS the .bss slot
+    { 0x0197E2A4, 0x0197E2A4, 0x00F3E440, "OPEN 0arg   (case 10 @F37F19 -- direct push imm)" },
+    { 0x0197E28C, 0x0197E28C, 0x00F3E420, "CLOSE pushArg1 (case 11 @F37F4B -- direct push imm <-- IN-GAME ENTER FIRES THIS)" },
+};
+
+static void dumpStringAt(swgptr addr, char* buf, size_t buflen, size_t max = 48)
+{
+    if (addr == 0) { snprintf(buf, buflen, "<null>"); return; }
+    size_t pos = 0;
+    buf[0] = '\'';
+    pos = 1;
+    for (size_t i = 0; i < max && pos < buflen - 4; ++i)
+    {
+        byte b = 0;
+        // memory::read might throw on bad addresses; guard with __try
+        __try
+        {
+            b = memory::read<byte>(addr + (DWORD)i);
+        }
+        __except(EXCEPTION_EXECUTE_HANDLER)
+        {
+            snprintf(buf + pos, buflen - pos, "...<AV>");
+            return;
+        }
+        if (b == 0) break;
+        if (b >= 0x20 && b < 0x7F) { buf[pos++] = (char)b; }
+        else { buf[pos++] = '.'; }
+    }
+    buf[pos++] = '\'';
+    buf[pos] = 0;
+}
+
+void CuiChatWindow::dumpActionStringSlotsFromCpp()
+{
+    utinni::log::info("=== Phase F: SwgCuiChatWindow performAction dispatcher string slots ===");
+    char m[400];
+    char s[80];
+    for (size_t i = 0; i < sizeof(kDispatchSlots) / sizeof(kDispatchSlots[0]); ++i)
+    {
+        const DispatchSlot& slot = kDispatchSlots[i];
+
+        // Read the slot as if it holds a pointer (interpretation 1: *(char**)slot is a string ptr)
+        DWORD ptrVal = 0;
+        __try { ptrVal = memory::read<DWORD>(slot.startPtrAddr); }
+        __except(EXCEPTION_EXECUTE_HANDLER) { ptrVal = 0; }
+
+        // Treat ptrVal as a char* and read string from there
+        dumpStringAt((swgptr)ptrVal, s, sizeof(s));
+
+        snprintf(m, sizeof(m),
+            "  slot[%2d] %s\n"
+            "    startAddr=0x%08X *startAddr=0x%08X str=%s",
+            (int)i, slot.role, slot.startPtrAddr, ptrVal, s);
+        utinni::log::info(m);
+
+        // For paired slots, also dump end pointer
+        if (slot.endPtrAddr != slot.startPtrAddr)
+        {
+            DWORD endVal = 0;
+            __try { endVal = memory::read<DWORD>(slot.endPtrAddr); }
+            __except(EXCEPTION_EXECUTE_HANDLER) { endVal = 0; }
+            DWORD len = (endVal >= ptrVal && endVal - ptrVal < 64) ? endVal - ptrVal : 0;
+            snprintf(m, sizeof(m),
+                "    endAddr=0x%08X *endAddr=0x%08X (computed len = %u)",
+                slot.endPtrAddr, endVal, len);
+            utinni::log::info(m);
+        }
+
+        // Also try interpretation 2: the slot ADDRESS itself is the string start (for cases 10/11)
+        if (slot.startPtrAddr == slot.endPtrAddr)
+        {
+            char s2[80];
+            dumpStringAt((swgptr)slot.startPtrAddr, s2, sizeof(s2));
+            snprintf(m, sizeof(m), "    alt: string starting AT addr 0x%08X = %s",
+                slot.startPtrAddr, s2);
+            utinni::log::info(m);
+        }
+    }
+    utinni::log::info("=== Phase F dump complete ===");
+}
+
 void CuiChatWindow::forceOpenChatInputFromCpp()
 {
     // DIAG 2026-05-20 Issue #11 (per CODEX consult): A/B test whether SWG's
