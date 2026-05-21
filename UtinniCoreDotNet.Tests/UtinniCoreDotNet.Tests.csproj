@@ -38,9 +38,12 @@
        AnyCPU/x64 (its CppSharp deps are AMD64), and the Tests project runs x86 —
        loading the x64 exe into an x86 process throws BadImageFormatException at
        JIT time. Linking the .cs file compiles SlnDirResolver directly into
-       UtinniCoreDotNet.Tests.dll so the test sees its own bitness-matched copy. -->
+       UtinniCoreDotNet.Tests.dll so the test sees its own bitness-matched copy.
+       Phase 3 R-F extends the same pattern to HeaderDiscovery for the
+       HeaderDiscoveryTests fixture tests. -->
   <ItemGroup>
     <Compile Include="..\UtinniCoreDotNetGen\SlnDirResolver.cs" Link="SlnDirResolver.cs" />
+    <Compile Include="..\UtinniCoreDotNetGen\HeaderDiscovery.cs" Link="HeaderDiscovery.cs" />
   </ItemGroup>
   <ItemGroup>
     <!-- HotkeyTests.cs uses Keys enum and key chord syntax from System.Windows.Forms,
