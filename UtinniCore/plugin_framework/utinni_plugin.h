@@ -63,9 +63,41 @@ namespace utinni
 //
 // D-15 / CON-O-07 disposition: legacy plugins (Sytner — upstream dormant per
 // project_fork_strategy memory) that omit destroyPlugin compile-break-at-link
-// against the new macro. Acceptable; no ABI-compat target preserved. The host
-// loader has a virtual-destructor fallback path for legacy DLLs that only
-// export createPlugin (see plugin_manager.cpp ~PluginManager).
+// against the new macro. CR-02 (03-REVIEW): PluginManager now rejects
+// plugins without destroyPlugin at load time -- the previous virtual-destructor
+// fallback ran in the host /MD CRT against plugin-CRT-allocated memory and
+// was the CON-B-04 cross-CRT-free crash class. Plugin authors must adopt
+// UTINNI_PLUGIN; there is no compat fallback.
+//
+// WR-02 (03-REVIEW) shutdown-lifecycle contract:
+//
+//   ~PluginManager invokes loaded.destroyFn(loaded.plugin) FIRST and then
+//   FreeLibrary(loaded.hModule). Implications for destroyPlugin authors:
+//
+//     1. destroyPlugin runs while the framework is STILL FULLY FUNCTIONAL:
+//        UtinniCore is loaded, log::* works, callback registries are still
+//        live. If you previously subscribed callbacks (Subscribe*Callback),
+//        unsubscribe them in destroyPlugin BEFORE doing anything else that
+//        might invoke them.
+//
+//     2. Do NOT call utinni::log::* from inside destroyPlugin if you
+//        previously subscribed an output sink callback that lives in your
+//        own DLL -- the log dispatch could re-enter your own callback,
+//        possibly on a callback whose pin is being torn down. Either
+//        unsubscribe the output-sink callback first, or avoid log calls
+//        during destroyPlugin.
+//
+//     3. FreeLibrary runs AFTER destroyPlugin returns. Anything that runs
+//        in DLL_PROCESS_DETACH (e.g. static destructors in your DLL) must
+//        not call back into the host -- the host may have already torn
+//        down state by then.
+//
+//     4. Do not call FreeLibraryAndExitThread() from within destroyPlugin;
+//        the loader expects destroyPlugin to return normally so the
+//        FreeLibrary call can pair correctly.
+//
+// These constraints are theoretical for the current set of plugins (TJT,
+// CrtMatchPlugin) but they're worth pinning down before more plugins ship.
 #define UTINNI_PLUGIN \
     extern "C" __declspec(dllexport) utinni::UtinniPlugin* createPlugin(); \
     extern "C" __declspec(dllexport) void destroyPlugin(utinni::UtinniPlugin* p)
