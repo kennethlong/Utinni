@@ -26,8 +26,13 @@
 #include "spdlog/spdlog.h"
 #include <spdlog/sinks/basic_file_sink.h>
 
+#include <unordered_map>
+#include <vector>
+
 static std::vector<std::string> logMessageBuffer;
-static std::vector<void(*)(const char* msg)> outputSinkCallbacks;
+// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry.
+static std::unordered_map<int, void(*)(const char* msg)> outputSinkCallbacks;
+static int s_nextOutputSinkId = 1;
 
 namespace utinni::log
 {
@@ -48,7 +53,14 @@ protected:
         const std::string formattedString = fmt::to_string(formatted);
 
         logMessageBuffer.emplace_back(formattedString);
-        for (const auto& func : outputSinkCallbacks)
+        // R-H snapshot dispatch per D-12.
+        std::vector<void(*)(const char*)> snapshot;
+        snapshot.reserve(outputSinkCallbacks.size());
+        for (const auto& kv : outputSinkCallbacks)
+        {
+            snapshot.push_back(kv.second);
+        }
+        for (const auto& func : snapshot)
         {
             func(formattedString.c_str());
         }
@@ -103,9 +115,26 @@ void warning(const char* text)
     spdlog::warn(text);
 }
 
+// Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
+int subscribeOutputSinkCallback(void(*func)(const char* msg))
+{
+    int id = s_nextOutputSinkId++;
+    outputSinkCallbacks[id] = func;
+    return id;
+}
+
+bool unsubscribeOutputSinkCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return outputSinkCallbacks.erase(handle) > 0;
+}
+
 void addOutputSinkCallback(void(*func)(const char* msg))
 {
-    outputSinkCallbacks.emplace_back(func);
+    subscribeOutputSinkCallback(func);
 }
 
 int getMessageBufferCount()

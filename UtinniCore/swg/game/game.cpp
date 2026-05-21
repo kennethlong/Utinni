@@ -25,6 +25,8 @@
 #include "game.h"
 #include "utinni.h";
 #include <imgui/imgui_user.h>
+#include <unordered_map>
+#include <vector>
 #include "swg/client/client.h"
 #include "swg/misc/config.h"
 #include "swg/scene/ground_scene.h"
@@ -68,39 +70,131 @@ pIsViewFirstPerson isViewFirstPerson = (pIsViewFirstPerson)0x00425C10;
 pIsHudSceneTypeSpace isHudSceneTypeSpace = (pIsHudSceneTypeSpace)0x00426170;
 }
 
-static std::vector<void(*)()> installCallbacks;
-static std::vector<void(*)()> preMainLoopCallbacks;
-static std::vector<void(*)()> mainLoopCallbacks;
-static std::vector<void(*)()> setSceneCallbacks;
-static std::vector<void(*)()> cleanUpSceneCallbacks;
+// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries
+// backed by std::unordered_map<int, fn_ptr> + monotonic next-id. Handle 0 is
+// reserved as the invalid sentinel.
+static std::unordered_map<int, void(*)()> installCallbacks;
+static std::unordered_map<int, void(*)()> preMainLoopCallbacks;
+static std::unordered_map<int, void(*)()> mainLoopCallbacks;
+static std::unordered_map<int, void(*)()> setSceneCallbacks;
+static std::unordered_map<int, void(*)()> cleanUpSceneCallbacks;
+static int s_nextInstallId = 1;
+static int s_nextPreMainLoopId = 1;
+static int s_nextMainLoopId = 1;
+static int s_nextSetSceneId = 1;
+static int s_nextCleanUpSceneId = 1;
 static utinni::Repository repository;
 
 namespace utinni
 {
 
+// Phase 3 R-A primary API: Subscribe returns opaque handle; pair with Unsubscribe.
+// D-10: legacy add* retained as wrappers (return value discarded) — existing
+// UtinniPlugins (TJT, Sytner) keep working without recompile.
+
+int Game::subscribeInstallCallback(void(*func)())
+{
+    int id = s_nextInstallId++;
+    installCallbacks[id] = func;
+    return id;
+}
+
+bool Game::unsubscribeInstallCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false; // D-09: handle 0 reserved as invalid sentinel.
+    }
+    return installCallbacks.erase(handle) > 0;
+}
+
+int Game::subscribePreMainLoopCallback(void(*func)())
+{
+    int id = s_nextPreMainLoopId++;
+    preMainLoopCallbacks[id] = func;
+    return id;
+}
+
+bool Game::unsubscribePreMainLoopCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return preMainLoopCallbacks.erase(handle) > 0;
+}
+
+int Game::subscribeMainLoopCallback(void(*func)())
+{
+    int id = s_nextMainLoopId++;
+    mainLoopCallbacks[id] = func;
+    return id;
+}
+
+bool Game::unsubscribeMainLoopCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return mainLoopCallbacks.erase(handle) > 0;
+}
+
+int Game::subscribeSetSceneCallback(void(*func)())
+{
+    int id = s_nextSetSceneId++;
+    setSceneCallbacks[id] = func;
+    return id;
+}
+
+bool Game::unsubscribeSetSceneCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return setSceneCallbacks.erase(handle) > 0;
+}
+
+int Game::subscribeCleanupSceneCallback(void(*func)())
+{
+    int id = s_nextCleanUpSceneId++;
+    cleanUpSceneCallbacks[id] = func;
+    return id;
+}
+
+bool Game::unsubscribeCleanupSceneCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return cleanUpSceneCallbacks.erase(handle) > 0;
+}
+
 void Game::addInstallCallback(void(*func)())
 {
-    installCallbacks.emplace_back(func);
+    subscribeInstallCallback(func);
 }
 
 void Game::addPreMainLoopCallback(void(*func)())
 {
-    preMainLoopCallbacks.emplace_back(func);
+    subscribePreMainLoopCallback(func);
 }
 
 void Game::addMainLoopCallback(void(*func)())
 {
-    mainLoopCallbacks.emplace_back(func);
+    subscribeMainLoopCallback(func);
 }
 
 void Game::addSetSceneCallback(void(*func)())
 {
-    setSceneCallbacks.emplace_back(func);
+    subscribeSetSceneCallback(func);
 }
 
 void Game::addCleanupSceneCallback(void(*func)())
 {
-    cleanUpSceneCallbacks.emplace_back(func);
+    subscribeCleanupSceneCallback(func);
 }
 
 int getMainLoopCount()
@@ -114,9 +208,21 @@ std::string sceneToLoadTerrainFilename;
 std::string sceneToLoadAvatarObjectFilename = "object/creature/player/shared_human_male.iff";
 void __cdecl hkMainLoop(bool presentToWindow, HWND hwnd, int width, int height)
 {
-    for (const auto& func : preMainLoopCallbacks)
+    // Phase 3 R-H snapshot dispatch per D-12: copy values into a local vector
+    // before iteration so Subscribe-during-dispatch can't invalidate the iterator.
+    // Subscribers added mid-iteration land in the registry but fire on the NEXT
+    // dispatch.
     {
-        func();
+        std::vector<void(*)()> snapshot;
+        snapshot.reserve(preMainLoopCallbacks.size());
+        for (const auto& kv : preMainLoopCallbacks)
+        {
+            snapshot.push_back(kv.second);
+        }
+        for (const auto& func : snapshot)
+        {
+            func();
+        }
     }
 
     RECT rect;
@@ -132,9 +238,18 @@ void __cdecl hkMainLoop(bool presentToWindow, HWND hwnd, int width, int height)
         swg::game::mainLoop(presentToWindow, hwnd, width, height);
     }
 
-    for (const auto& func : mainLoopCallbacks)
+    // R-H snapshot dispatch per D-12.
     {
-        func();
+        std::vector<void(*)()> snapshot;
+        snapshot.reserve(mainLoopCallbacks.size());
+        for (const auto& kv : mainLoopCallbacks)
+        {
+            snapshot.push_back(kv.second);
+        }
+        for (const auto& func : snapshot)
+        {
+            func();
+        }
     }
 
     // DIAG 2026-05-19: log the scene-load state machine transitions. Conditional
@@ -175,9 +290,18 @@ void __cdecl hkInstall(int application)
                  installCallbacks.size());
         utinni::log::info(msg);
     }
-    for (const auto& func : installCallbacks)
+    // R-H snapshot dispatch per D-12.
     {
-        func();
+        std::vector<void(*)()> snapshot;
+        snapshot.reserve(installCallbacks.size());
+        for (const auto& kv : installCallbacks)
+        {
+            snapshot.push_back(kv.second);
+        }
+        for (const auto& func : snapshot)
+        {
+            func();
+        }
     }
     utinni::log::info("hkInstall: installCallbacks complete");
 
@@ -210,7 +334,14 @@ void __cdecl hkSetScene(GroundScene* scene)
         snprintf(msg, sizeof(msg), "hkSetScene: scene!=null, firing %zu setSceneCallbacks",
                  setSceneCallbacks.size());
         utinni::log::info(msg);
-        for (const auto& func : setSceneCallbacks)
+        // R-H snapshot dispatch per D-12.
+        std::vector<void(*)()> snapshot;
+        snapshot.reserve(setSceneCallbacks.size());
+        for (const auto& kv : setSceneCallbacks)
+        {
+            snapshot.push_back(kv.second);
+        }
+        for (const auto& func : snapshot)
         {
             func();
         }
@@ -236,9 +367,18 @@ void __cdecl hkCleanupScene()
                  cleanUpSceneCallbacks.size());
         utinni::log::info(msg);
     }
-    for (const auto& func : cleanUpSceneCallbacks)
+    // R-H snapshot dispatch per D-12.
     {
-        func();
+        std::vector<void(*)()> snapshot;
+        snapshot.reserve(cleanUpSceneCallbacks.size());
+        for (const auto& kv : cleanUpSceneCallbacks)
+        {
+            snapshot.push_back(kv.second);
+        }
+        for (const auto& func : snapshot)
+        {
+            func();
+        }
     }
     utinni::log::info("hkCleanupScene: cleanUpSceneCallbacks complete; EXIT");
 }
@@ -363,10 +503,25 @@ bool Game::isSafeToUse()
 
 void Game::triggerInstallCallbacks()
 {
-    for (const auto& func : installCallbacks)
+    // R-H snapshot dispatch per D-12.
+    std::vector<void(*)()> snapshot;
+    snapshot.reserve(installCallbacks.size());
+    for (const auto& kv : installCallbacks)
+    {
+        snapshot.push_back(kv.second);
+    }
+    for (const auto& func : snapshot)
     {
         func();
     }
+}
+
+// Phase 3 R-A test-bridge support: expose the registry size to native
+// test-only exports without leaking the registry symbol. Used by
+// utinni_test_installSubscriberCount in test_exports.cpp.
+int Game::getInstallSubscriberCount()
+{
+    return static_cast<int>(installCallbacks.size());
 }
 
 }

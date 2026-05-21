@@ -28,6 +28,9 @@
 #include "swg/ui/cui_manager.h"
 #include "directx9.h"
 
+#include <unordered_map>
+#include <vector>
+
 namespace swg::graphics
 {
 using pInstall = bool(__cdecl*)();
@@ -81,71 +84,248 @@ pScreenshot screenshot = (pScreenshot)0x00755890;
 
 static std::string screenshotsDir = "screenshots/";
 
-static std::vector<void(*)(float elapsedTime)> preUpdateCallback;
-static std::vector<void(*)(float elapsedTime)> postUpdateCallback;
+// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries.
+// Handle 0 reserved as invalid sentinel.
+static std::unordered_map<int, void(*)(float elapsedTime)> preUpdateCallback;
+static std::unordered_map<int, void(*)(float elapsedTime)> postUpdateCallback;
 
-static std::vector<void(*)()> preBeginSceneCallback;
-static std::vector<void(*)()> postBeginSceneCallback;
+static std::unordered_map<int, void(*)()> preBeginSceneCallback;
+static std::unordered_map<int, void(*)()> postBeginSceneCallback;
 
-static std::vector<void(*)()> preEndSceneCallback;
-static std::vector<void(*)()> postEndSceneCallback;
+static std::unordered_map<int, void(*)()> preEndSceneCallback;
+static std::unordered_map<int, void(*)()> postEndSceneCallback;
 
-static std::vector<void(*)(HWND hwnd, int width, int height)> prePresentWindowCallback;
-static std::vector<void(*)(HWND hwnd, int width, int height)> postPresentWindowCallback;
+static std::unordered_map<int, void(*)(HWND hwnd, int width, int height)> prePresentWindowCallback;
+static std::unordered_map<int, void(*)(HWND hwnd, int width, int height)> postPresentWindowCallback;
 
-static std::vector<void(*)()> prePresentCallback;
-static std::vector<void(*)()> postPresentCallback;
+static std::unordered_map<int, void(*)()> prePresentCallback;
+static std::unordered_map<int, void(*)()> postPresentCallback;
+
+static int s_nextPreUpdateId = 1;
+static int s_nextPostUpdateId = 1;
+static int s_nextPreBeginSceneId = 1;
+static int s_nextPostBeginSceneId = 1;
+static int s_nextPreEndSceneId = 1;
+static int s_nextPostEndSceneId = 1;
+static int s_nextPrePresentWindowId = 1;
+static int s_nextPostPresentWindowId = 1;
+static int s_nextPrePresentId = 1;
+static int s_nextPostPresentId = 1;
 
 namespace utinni
 {
+// Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09. addX wrappers
+// retained per D-10.
+
+int Graphics::subscribePreUpdateLoopCallback(void(*func)(float elapsedTime))
+{
+    int id = s_nextPreUpdateId++;
+    preUpdateCallback[id] = func;
+    return id;
+}
+
+bool Graphics::unsubscribePreUpdateLoopCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return preUpdateCallback.erase(handle) > 0;
+}
+
+int Graphics::subscribePostUpdateLoopCallback(void(*func)(float elapsedTime))
+{
+    int id = s_nextPostUpdateId++;
+    postUpdateCallback[id] = func;
+    return id;
+}
+
+bool Graphics::unsubscribePostUpdateLoopCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return postUpdateCallback.erase(handle) > 0;
+}
+
+int Graphics::subscribePreBeginSceneCallback(void(*func)())
+{
+    int id = s_nextPreBeginSceneId++;
+    preBeginSceneCallback[id] = func;
+    return id;
+}
+
+bool Graphics::unsubscribePreBeginSceneCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return preBeginSceneCallback.erase(handle) > 0;
+}
+
+int Graphics::subscribePostBeginSceneCallback(void(*func)())
+{
+    int id = s_nextPostBeginSceneId++;
+    postBeginSceneCallback[id] = func;
+    return id;
+}
+
+bool Graphics::unsubscribePostBeginSceneCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return postBeginSceneCallback.erase(handle) > 0;
+}
+
+int Graphics::subscribePreEndSceneCallback(void(*func)())
+{
+    int id = s_nextPreEndSceneId++;
+    preEndSceneCallback[id] = func;
+    return id;
+}
+
+bool Graphics::unsubscribePreEndSceneCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return preEndSceneCallback.erase(handle) > 0;
+}
+
+int Graphics::subscribePostEndSceneCallback(void(*func)())
+{
+    int id = s_nextPostEndSceneId++;
+    postEndSceneCallback[id] = func;
+    return id;
+}
+
+bool Graphics::unsubscribePostEndSceneCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return postEndSceneCallback.erase(handle) > 0;
+}
+
+int Graphics::subscribePrePresentWindowCallback(void(*func)(HWND hwnd, int width, int height))
+{
+    int id = s_nextPrePresentWindowId++;
+    prePresentWindowCallback[id] = func;
+    return id;
+}
+
+bool Graphics::unsubscribePrePresentWindowCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return prePresentWindowCallback.erase(handle) > 0;
+}
+
+int Graphics::subscribePostPresentWindowCallback(void(*func)(HWND hwnd, int width, int height))
+{
+    int id = s_nextPostPresentWindowId++;
+    postPresentWindowCallback[id] = func;
+    return id;
+}
+
+bool Graphics::unsubscribePostPresentWindowCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return postPresentWindowCallback.erase(handle) > 0;
+}
+
+int Graphics::subscribePrePresentCallback(void(*func)())
+{
+    int id = s_nextPrePresentId++;
+    prePresentCallback[id] = func;
+    return id;
+}
+
+bool Graphics::unsubscribePrePresentCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return prePresentCallback.erase(handle) > 0;
+}
+
+int Graphics::subscribePostPresentCallback(void(*func)())
+{
+    int id = s_nextPostPresentId++;
+    postPresentCallback[id] = func;
+    return id;
+}
+
+bool Graphics::unsubscribePostPresentCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return postPresentCallback.erase(handle) > 0;
+}
+
+// Legacy add* API (D-10): wrappers around subscribe* (return value discarded).
 void Graphics::addPreUpdateLoopCallback(void(*func)(float elapsedTime))
 {
-    preUpdateCallback.emplace_back(func);
+    subscribePreUpdateLoopCallback(func);
 }
 
 void Graphics::addPostUpdateLoopCallback(void(*func)(float elapsedTime))
 {
-    postUpdateCallback.emplace_back(func);
+    subscribePostUpdateLoopCallback(func);
 }
 
 void Graphics::addPreBeginSceneCallback(void(*func)())
 {
-    preBeginSceneCallback.emplace_back(func);
+    subscribePreBeginSceneCallback(func);
 }
 
 void Graphics::addPostBeginSceneCallback(void(*func)())
 {
-    postBeginSceneCallback.emplace_back(func);
+    subscribePostBeginSceneCallback(func);
 }
 
 void Graphics::addPreEndSceneCallback(void(*func)())
 {
-    preEndSceneCallback.emplace_back(func);
+    subscribePreEndSceneCallback(func);
 }
 
 void Graphics::addPostEndSceneCallback(void(*func)())
 {
-    postEndSceneCallback.emplace_back(func);
+    subscribePostEndSceneCallback(func);
 }
 
 void Graphics::addPrePresentWindowCallback(void(*func)(HWND hwnd, int width, int height))
 {
-    prePresentWindowCallback.emplace_back(func);
+    subscribePrePresentWindowCallback(func);
 }
 
 void Graphics::addPostPresentWindowCallback(void(*func)(HWND hwnd, int width, int height))
 {
-    postPresentWindowCallback.emplace_back(func);
+    subscribePostPresentWindowCallback(func);
 }
 
 void Graphics::addPrePresentCallback(void(*func)())
 {
-    prePresentCallback.emplace_back(func);
+    subscribePrePresentCallback(func);
 }
 
 void Graphics::addPostPresentCallback(void(*func)())
 {
-    postPresentCallback.emplace_back(func);
+    subscribePostPresentCallback(func);
 }
 
 void Graphics::useHardwareCursor(bool value)
@@ -231,51 +411,80 @@ bool __cdecl hkInstall()
     return result;
 }
 
+// R-H snapshot dispatch helpers per D-12: copy registry values into a local
+// vector before iteration so Subscribe-during-dispatch can't invalidate the
+// iterator. Subscribers added mid-iteration land in the registry but fire on
+// the NEXT dispatch.
+static void dispatchVoid(const std::unordered_map<int, void(*)()>& registry)
+{
+    std::vector<void(*)()> snapshot;
+    snapshot.reserve(registry.size());
+    for (const auto& kv : registry)
+    {
+        snapshot.push_back(kv.second);
+    }
+    for (const auto& func : snapshot)
+    {
+        func();
+    }
+}
+
+static void dispatchFloat(const std::unordered_map<int, void(*)(float)>& registry, float arg)
+{
+    std::vector<void(*)(float)> snapshot;
+    snapshot.reserve(registry.size());
+    for (const auto& kv : registry)
+    {
+        snapshot.push_back(kv.second);
+    }
+    for (const auto& func : snapshot)
+    {
+        func(arg);
+    }
+}
+
+static void dispatchPresentWindow(const std::unordered_map<int, void(*)(HWND, int, int)>& registry,
+                                  HWND hwnd, int width, int height)
+{
+    std::vector<void(*)(HWND, int, int)> snapshot;
+    snapshot.reserve(registry.size());
+    for (const auto& kv : registry)
+    {
+        snapshot.push_back(kv.second);
+    }
+    for (const auto& func : snapshot)
+    {
+        func(hwnd, width, height);
+    }
+}
+
 void __cdecl hkUpdate(float elapsedTime)
 {
-    for (const auto& func : preUpdateCallback)
-    {
-        func(elapsedTime);
-    }
+    dispatchFloat(preUpdateCallback, elapsedTime);
 
     swg::graphics::update(elapsedTime);
 
-    for (const auto& func : postUpdateCallback)
-    {
-        func(elapsedTime);
-    }
+    dispatchFloat(postUpdateCallback, elapsedTime);
 }
 
 void __cdecl hkBeginScene()
 {
-    for (const auto& func : preBeginSceneCallback)
-    {
-        func();
-    }
+    dispatchVoid(preBeginSceneCallback);
 
     swg::graphics::beginScene();
 
-    for (const auto& func : postBeginSceneCallback)
-    {
-        func();
-    }
+    dispatchVoid(postBeginSceneCallback);
 }
 
 int oldWidth = 0;
 int oldHeight = 0;
 void __cdecl hkEndScene()
 {
-    for (const auto& func : preEndSceneCallback)
-    {
-        func();
-    }
+    dispatchVoid(preEndSceneCallback);
 
     swg::graphics::endScene();
 
-    for (const auto& func : postEndSceneCallback)
-    {
-        func();
-    }
+    dispatchVoid(postEndSceneCallback);
 
     RECT rect;
     if (Client::getEditorMode() && GetWindowRect(Client::getHwnd(), &rect))
@@ -302,32 +511,20 @@ void __cdecl hkEndScene()
 
 void __cdecl hkPresentWindow(HWND hwnd, int width, int height)
 {
-    for (const auto& func : prePresentWindowCallback)
-    {
-        func(hwnd, width, height);
-    }
+    dispatchPresentWindow(prePresentWindowCallback, hwnd, width, height);
 
     swg::graphics::presentWindow(hwnd, width, height);
 
-    for (const auto& func : postPresentWindowCallback)
-    {
-        func(hwnd, width, height);
-    }
+    dispatchPresentWindow(postPresentWindowCallback, hwnd, width, height);
 }
 
 void __cdecl hkPresent()
 {
-    for (const auto& func : prePresentCallback)
-    {
-        func();
-    }
+    dispatchVoid(prePresentCallback);
 
     swg::graphics::present();
 
-    for (const auto& func : postPresentCallback)
-    {
-        func();
-    }
+    dispatchVoid(postPresentCallback);
 }
 
 bool __cdecl hkScreenshot(const char* filename)

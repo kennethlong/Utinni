@@ -206,6 +206,58 @@ extern "C" __declspec(dllexport) void __cdecl utinni_triggerInstallCallbacks()
 }
 
 // ---------------------------------------------------------------------------
+// Phase 3 R-A test-bridge exports (Plan 03-01 Task 3)
+//
+// These exports give NativeCallbacksHandleTests.cs a P/Invoke surface against
+// Game::installCallbacks — the representative subscriber-backed registry
+// chosen per PATTERNS.md "Native test bridge exports" (line 192-199). The
+// same xUnit-asserts-via-P/Invoke pattern used for FindPattern / GetVtbl in
+// Phase 2 + utinni_test_* in Phase 02.1.
+//
+// Coverage:
+//   utinni_test_subscribeInstall(fn)        — Subscribe handle-based; returns
+//                                              opaque int handle (0 = invalid
+//                                              sentinel per D-09).
+//   utinni_test_unsubscribeInstall(handle)  — Unsubscribe via handle; returns
+//                                              true when entry removed.
+//   utinni_test_dispatchInstall()           — Fires R-H snapshot dispatch over
+//                                              the install registry (wraps
+//                                              Game::triggerInstallCallbacks).
+//   utinni_test_installSubscriberCount()    — Reads registry size for
+//                                              assertions.
+//   utinni_test_addInstall(fn)              — Legacy add* path (D-10 wrapper);
+//                                              proves the wrapper still
+//                                              dispatches.
+//
+// __cdecl per the C-01 export-decoration discipline (avoids stdcall name
+// mangling on x86).
+// ---------------------------------------------------------------------------
+extern "C" __declspec(dllexport) int __cdecl utinni_test_subscribeInstall(void(*fn)())
+{
+    return utinni::Game::subscribeInstallCallback(fn);
+}
+
+extern "C" __declspec(dllexport) bool __cdecl utinni_test_unsubscribeInstall(int handle)
+{
+    return utinni::Game::unsubscribeInstallCallback(handle);
+}
+
+extern "C" __declspec(dllexport) void __cdecl utinni_test_dispatchInstall()
+{
+    utinni::Game::triggerInstallCallbacks();
+}
+
+extern "C" __declspec(dllexport) int __cdecl utinni_test_installSubscriberCount()
+{
+    return utinni::Game::getInstallSubscriberCount();
+}
+
+extern "C" __declspec(dllexport) void __cdecl utinni_test_addInstall(void(*fn)())
+{
+    utinni::Game::addInstallCallback(fn);
+}
+
+// ---------------------------------------------------------------------------
 // CR-04: hPresentBlockedEvent eager-init test exports (Concern B fix from PLAN-CHECK.md)
 //
 // utinni_test_initPresentBlockedEvent — directly calls directX::initPresentBlockedEvent()
@@ -321,6 +373,14 @@ extern "C" __declspec(dllexport) int __cdecl utinni_test_resolveExports()
         "utinni_test_getDepthTexturePtr",     // cdecl
         "getPresentBlockedEvent",             // file-scope C-linkage in directx9.cpp
         "utinni_signal_launcher_ready",       // cdecl, 2026-05-19 signal-event sync
+        // Phase 3 R-A native bridge (Plan 03-01 Task 3) — exposes
+        // Game::installCallbacks subscribe/unsubscribe/dispatch/count + the
+        // legacy addInstallCallback to NativeCallbacksHandleTests via P/Invoke.
+        "utinni_test_subscribeInstall",       // cdecl
+        "utinni_test_unsubscribeInstall",     // cdecl
+        "utinni_test_dispatchInstall",        // cdecl
+        "utinni_test_installSubscriberCount", // cdecl
+        "utinni_test_addInstall",             // cdecl
     };
 
     static constexpr int kExportCount =

@@ -28,6 +28,11 @@
 
 namespace utinni::shaderPrimitiveSorter
 {
+// Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09). Parameterized
+// `void(*)(int)` callback type passes the current draw phase.
+UTINNI_API extern int subscribeDrawPhaseCallback(void (*func)(int currentPhase));
+UTINNI_API extern bool unsubscribeDrawPhaseCallback(int handle);
+// Legacy single-callback API (D-10): thin wrapper.
 UTINNI_API extern void drawPhaseCallback(void (*func)(int currentPhase));
 
 void detour();

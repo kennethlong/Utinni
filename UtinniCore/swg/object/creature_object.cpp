@@ -26,6 +26,9 @@
 #include "swg/object/object.h"
 #include "swg/misc/network.h"
 
+#include <unordered_map>
+#include <vector>
+
 namespace swg::creatureObject
 {
 using pSetTarget = void(__thiscall*)(swgptr pThis, const int64_t& id);
@@ -33,14 +36,33 @@ using pSetTarget = void(__thiscall*)(swgptr pThis, const int64_t& id);
 pSetTarget setTarget = (pSetTarget)0x00434AB0;
 }
 
-static std::vector<void(*)(utinni::Object* target)> onTargetCallbacks;
+// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry.
+// Handle 0 reserved as invalid sentinel.
+static std::unordered_map<int, void(*)(utinni::Object* target)> onTargetCallbacks;
+static int s_nextOnTargetId = 1;
 
 namespace utinni::creatureObject
 {
 
+int subscribeOnTargetCallback(void(*func)(Object* target))
+{
+    int id = s_nextOnTargetId++;
+    onTargetCallbacks[id] = func;
+    return id;
+}
+
+bool unsubscribeOnTargetCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return onTargetCallbacks.erase(handle) > 0;
+}
+
 void addOnTargetCallback(void(*func)(Object* target))
 {
-    onTargetCallbacks.emplace_back(func);
+    subscribeOnTargetCallback(func);
 }
 
 void __fastcall hkSetTarget(swgptr pThis, DWORD EDX, const int64_t& id)
@@ -49,7 +71,14 @@ void __fastcall hkSetTarget(swgptr pThis, DWORD EDX, const int64_t& id)
 
     Object* obj = Network::getObjectById(id);
 
-    for (const auto& func : onTargetCallbacks)
+    // R-H snapshot dispatch per D-12.
+    std::vector<void(*)(Object*)> snapshot;
+    snapshot.reserve(onTargetCallbacks.size());
+    for (const auto& kv : onTargetCallbacks)
+    {
+        snapshot.push_back(kv.second);
+    }
+    for (const auto& func : snapshot)
     {
         func(obj);
     }

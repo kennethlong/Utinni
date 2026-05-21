@@ -28,6 +28,13 @@
 
 namespace utinni::postProcessing
 {
+// Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09).
+UTINNI_API extern int subscribePreSceneRenderCallback(void (*func)());
+UTINNI_API extern bool unsubscribePreSceneRenderCallback(int handle);
+UTINNI_API extern int subscribePostSceneRenderCallback(void (*func)());
+UTINNI_API extern bool unsubscribePostSceneRenderCallback(int handle);
+
+// Legacy add* (D-10): thin wrappers.
 UTINNI_API extern void addPreSceneRenderCallback(void (*func)());
 UTINNI_API extern void addPostSceneRenderCallback(void (*func)());
 

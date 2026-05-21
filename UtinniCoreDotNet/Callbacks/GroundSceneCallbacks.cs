@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MIT License
  *
  * Copyright (c) 2020 Philip Klatt
@@ -25,15 +25,27 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace UtinniCoreDotNet.Callbacks
 {
+    // Phase 3 R-A + R-H managed-side: same pattern as GameCallbacks
+    // (Subscribe/Unsubscribe + snapshot dispatch + Drain delegated to
+    // CallbackHelpers). Queue-backed registrations (update/preDraw/postDraw)
+    // remain queues per IN-05; the subscriber-backed cameraChange callback now
+    // exposes handle-based Subscribe/Unsubscribe in addition to legacy Add per
+    // D-10.
     public static class GroundSceneCallbacks
     {
+        // Queue-backed registrations: stay queues per IN-05 / D-11.
         private static readonly ConcurrentQueue<Action> updateLoopCallQueue = new ConcurrentQueue<Action>();
         private static readonly ConcurrentQueue<Action> preDrawLoopCallQueue = new ConcurrentQueue<Action>();
         private static readonly ConcurrentQueue<Action> postDrawLoopCallQueue = new ConcurrentQueue<Action>();
-        private static readonly SynchronizedCollection<Action> cameraChangeCallbacks = new SynchronizedCollection<Action>();
+
+        // Subscriber-backed registry (R-A D-08/D-09).
+        private static readonly Dictionary<int, Action> cameraChangeSubscribers = new Dictionary<int, Action>();
+        private static int s_nextCameraChangeId = 1; // 0 reserved as invalid handle per D-09
+        private static readonly object cameraChangeLock = new object();
 
         // C-16 (resolves CON-O-03 2026-Q2): The static field acts as a GC root for the
         // delegate passed to native via Add*Callback. Without it, the GC can collect the
@@ -71,48 +83,98 @@ namespace UtinniCoreDotNet.Callbacks
             postDrawLoopCallQueue.Enqueue(call);
         }
 
+        // --- CameraChange callback (R-A subscriber-backed) ---
+
+        public static int SubscribeCameraChange(Action call)
+        {
+            lock (cameraChangeLock)
+            {
+                int id = s_nextCameraChangeId++;
+                cameraChangeSubscribers[id] = call;
+                return id;
+            }
+        }
+
+        public static bool UnsubscribeCameraChange(int handle)
+        {
+            if (handle == 0)
+            {
+                return false;
+            }
+            lock (cameraChangeLock)
+            {
+                return cameraChangeSubscribers.Remove(handle);
+            }
+        }
+
+        // D-10: legacy Add retained as wrapper (return value discarded). Existing
+        // UtinniPlugins keep working without recompile.
         public static void AddCameraChangeCallback(Action call)
         {
-            cameraChangeCallbacks.Add(call);
+            SubscribeCameraChange(call);
+        }
+
+        public static void RemoveCameraChangeCallback(Action call)
+        {
+            // Best-effort legacy lookup; new code should use UnsubscribeCameraChange(handle).
+            lock (cameraChangeLock)
+            {
+                int matchId = 0;
+                foreach (var kvp in cameraChangeSubscribers)
+                {
+                    if (Equals(kvp.Value, call))
+                    {
+                        matchId = kvp.Key;
+                        break;
+                    }
+                }
+                if (matchId != 0)
+                {
+                    cameraChangeSubscribers.Remove(matchId);
+                }
+            }
         }
 
         private static void DequeueUpdateLoopCalls(IntPtr pGroundScene, float elapsedTime)
         {
-            Drain(updateLoopCallQueue);
+            CallbackHelpers.Drain(updateLoopCallQueue);
         }
 
         private static void DequeuePreDrawLoopCalls(IntPtr pGroundScene)
         {
-            Drain(preDrawLoopCallQueue);
+            CallbackHelpers.Drain(preDrawLoopCallQueue);
         }
 
         private static void DequeuePostDrawLoopCalls(IntPtr pGroundScene)
         {
-            // C-04: this previously drained preDrawLoopCallQueue (typo). The Drain helper
-            // makes the queue-vs-method correspondence explicit so this class of bug
-            // cannot recur.
-            Drain(postDrawLoopCallQueue);
+            // C-04: this previously drained preDrawLoopCallQueue (typo). The shared
+            // CallbackHelpers.Drain helper makes the queue-vs-method correspondence
+            // explicit so this class of bug cannot recur.
+            CallbackHelpers.Drain(postDrawLoopCallQueue);
         }
 
+        // R-H snapshot iteration per D-12: copy Values under lock, iterate outside.
         private static void CallCameraChangeCallbacks()
         {
-            foreach (Action callback in cameraChangeCallbacks)
+            Action[] snapshot;
+            lock (cameraChangeLock)
+            {
+                snapshot = cameraChangeSubscribers.Values.ToArray();
+            }
+            foreach (Action callback in snapshot)
             {
                 callback();
             }
         }
 
-        // Shared drain helper introduced for C-04 (CON-O-02 default-fallback per D-12):
-        // a single TryDequeue loop pattern that every queue-drain call site reuses. The
-        // outer Count > 0 check from the original code was dropped because TryDequeue
-        // already returns false on an empty queue, and the Count read was racey under
-        // concurrent producers anyway.
+        // Phase 3 R-A / IN-05 (per 03-CONTEXT D-11): the inline Drain helper that
+        // previously lived here has moved to CallbackHelpers.Drain. The wrapper
+        // below preserves the existing `GroundSceneCallbacks.Drain(queue)` call sites
+        // (GroundSceneCallbacksTests reaches the helper via this surface) without
+        // duplicating the body.
         internal static void Drain(ConcurrentQueue<Action> queue)
         {
-            while (queue.TryDequeue(out var func))
-            {
-                func();
-            }
+            CallbackHelpers.Drain(queue);
         }
 
     }

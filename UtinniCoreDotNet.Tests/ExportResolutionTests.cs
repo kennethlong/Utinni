@@ -64,9 +64,12 @@ namespace UtinniCoreDotNet.Tests
         ///   utinni_test_initPresentBlockedEvent, utinni_test_getPresentBlockedEvent,
         ///   utinni_test_initDepthTexture, utinni_test_getDepthTexturePtr,
         ///   getPresentBlockedEvent,
-        ///   utinni_signal_launcher_ready (added 2026-05-19 for signal-event sync)
+        ///   utinni_signal_launcher_ready (added 2026-05-19 for signal-event sync),
+        ///   utinni_test_subscribeInstall, utinni_test_unsubscribeInstall,
+        ///   utinni_test_dispatchInstall, utinni_test_installSubscriberCount,
+        ///   utinni_test_addInstall (added 2026-05-21 Phase 3 R-A native bridge)
         /// </summary>
-        private const int ExpectedExportCount = 13;
+        private const int ExpectedExportCount = 18;
 
         [Fact]
         public void ResolveExports_AllDocumentedCLinkageExports_ResolveByUndecoratedName()

@@ -24,6 +24,9 @@
 
 #include "post_processing.h"
 
+#include <unordered_map>
+#include <vector>
+
 namespace swg::bloom
 {
 using pPreSceneRender = void(__cdecl*)();
@@ -34,14 +37,24 @@ pPostSceneRender postSceneRender = (pPostSceneRender)0x0064B560;
 
 }
 
-static std::vector<void(*)()> preSceneRenderCallbacks;
-static std::vector<void(*)()> postSceneRenderCallbacks;
+// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries.
+static std::unordered_map<int, void(*)()> preSceneRenderCallbacks;
+static std::unordered_map<int, void(*)()> postSceneRenderCallbacks;
+static int s_nextPreSceneRenderId = 1;
+static int s_nextPostSceneRenderId = 1;
 
 namespace utinni::postProcessing
 {
 void __cdecl hkPreSceneRender() // Originally a Bloom class function, repurposed to be a general PostProcessing function.
 {
-    for (const auto& func : preSceneRenderCallbacks)
+    // R-H snapshot dispatch per D-12.
+    std::vector<void(*)()> snapshot;
+    snapshot.reserve(preSceneRenderCallbacks.size());
+    for (const auto& kv : preSceneRenderCallbacks)
+    {
+        snapshot.push_back(kv.second);
+    }
+    for (const auto& func : snapshot)
     {
         func();
     }
@@ -53,20 +66,60 @@ void __cdecl hkPostSceneRender() // Originally a Bloom class function, repurpose
 {
     swg::bloom::postSceneRender();
 
-    for (const auto& func : postSceneRenderCallbacks)
+    // R-H snapshot dispatch per D-12.
+    std::vector<void(*)()> snapshot;
+    snapshot.reserve(postSceneRenderCallbacks.size());
+    for (const auto& kv : postSceneRenderCallbacks)
+    {
+        snapshot.push_back(kv.second);
+    }
+    for (const auto& func : snapshot)
     {
         func();
     }
 }
 
+// Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
+int subscribePreSceneRenderCallback(void(*func)())
+{
+    int id = s_nextPreSceneRenderId++;
+    preSceneRenderCallbacks[id] = func;
+    return id;
+}
+
+bool unsubscribePreSceneRenderCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return preSceneRenderCallbacks.erase(handle) > 0;
+}
+
+int subscribePostSceneRenderCallback(void(*func)())
+{
+    int id = s_nextPostSceneRenderId++;
+    postSceneRenderCallbacks[id] = func;
+    return id;
+}
+
+bool unsubscribePostSceneRenderCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return postSceneRenderCallbacks.erase(handle) > 0;
+}
+
 void addPreSceneRenderCallback(void(* func)())
 {
-    preSceneRenderCallbacks.emplace_back(func);
+    subscribePreSceneRenderCallback(func);
 }
 
 void addPostSceneRenderCallback(void(* func)())
 {
-    postSceneRenderCallbacks.emplace_back(func);
+    subscribePostSceneRenderCallback(func);
 }
 
 void detour()
