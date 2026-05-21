@@ -565,14 +565,14 @@ doc in sync so future sessions (human or AI) can see what's done.
 | C-14  | utinni.cfg login.swgemu.com default               | done       | e7c6699 — Phase 2 Plan 02-01 Task 7 (CON-D-01 blank-login default) |
 | C-15  | CppSharp slnDir brittle                           | done       | 8a4d7f9 — Phase 2 Plan 02-02 Task 8 (ResolveSlnDir 3-mode function; post-build passes $(SolutionDir); 4 tests) |
 | C-16  | GameCallbacks delegate-pinning (CON-O-03)         | done       | bfddf7d — Phase 2 Plan 02-02 Task 9 (comment audit + GC-survival regression test; CON-O-03 resolved) |
-| R-A   | Symmetric Add/Remove for callbacks                | open       |       |
+| R-A   | Symmetric Add/Remove for callbacks                | done       | Phase 3 Plan 03-01 Tasks 1-3 (b220e36 IN-05 Drain consolidation; 2e1b61d managed-side handle Subscribe/Unsubscribe + Log.cs typo fix; 5e81410 + e4b2b59 native-side handle Subscribe/Unsubscribe across 11 files / 32 registries; ddda9f0 utinni_test_* native bridge + NativeCallbacksHandleTests) |
 | R-B   | Plugin lifecycle contract                         | open       |       |
 | R-C   | Single source of truth for RVAs                   | open       |       |
 | R-D   | Add CI                                            | open       |       |
 | R-E   | Log `[CallerMemberName]`                          | open       |       |
 | R-F   | CppSharp header auto-discovery                    | open       |       |
 | R-G   | Directory.Build.props idempotent                  | open       |       |
-| R-H   | SynchronizedCollection snapshot iteration         | open       |       |
+| R-H   | SynchronizedCollection snapshot iteration         | done       | Phase 3 Plan 03-01 Tasks 2-3 (2e1b61d managed snapshot dispatch via Dictionary.Values.ToArray() under lock; 5e81410 + e4b2b59 native snapshot via std::vector copy per registry; CallbacksSnapshotIterationTests + NativeCallbacksHandleTests cover Subscribe-during-dispatch + Unsubscribe-during-dispatch invariants) |
 
 When updating: set status to `in progress` while working, `done` when
 merged, and add a one-line note (PR link, commit SHA, or "deferred — see
