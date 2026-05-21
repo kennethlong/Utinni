@@ -66,8 +66,17 @@ pSendInput sendInput = (pSendInput)0x009141D0;
 
 }
 
-static swgptr pCuiChatWindow; // ToDo use the getChatWindow function instead of the ctor detour?
-static swgptr pCuiConsoleHelper;
+// WR-06 (03-REVIEW): pCuiChatWindow + pCuiConsoleHelper are written from
+// hkCtor on whatever thread SWG constructs the chat window on (typically the
+// main thread post-login) and read from many reader sites (writeToAllTabs,
+// writeToCurrentTab, forceOpenChatInputFromCpp, sendMessage). x86's strong
+// memory model permitted the raw read/write but a future compiler hoist or
+// ARM port would break. Promoted to std::atomic<swgptr>. Release store on
+// publish (hkCtor) pairs with relaxed loads at reader sites: the pointer
+// value itself is the synchronization datum (the SWG objects pointed at
+// finished their ctor before swg::cuiChatWindow::ctor returned).
+static std::atomic<swgptr> pCuiChatWindow{0}; // ToDo use the getChatWindow function instead of the ctor detour?
+static std::atomic<swgptr> pCuiConsoleHelper{0};
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry.
 // CR-01 (03-REVIEW): per-registry mutex protects Subscribe / Unsubscribe / snapshot.
 static std::unordered_map<int, void(*)(utinni::CommandParser* mainCommandParser)> addCommandParserCallback;
@@ -123,22 +132,26 @@ void CuiChatWindow::enableTextInput(bool value) // Accepts color codes by prefix
 
 void CuiChatWindow::writeToAllTabs(const char* str)
 {
-    if (pCuiChatWindow == 0)
+    // WR-06: atomic load (published with release in hkCtor).
+    const swgptr p = pCuiChatWindow.load(std::memory_order_relaxed);
+    if (p == 0)
     {
         return;
     }
 
-    swg::cuiChatWindow::writeToAllTabs(pCuiChatWindow, swg::WString(str));
+    swg::cuiChatWindow::writeToAllTabs(p, swg::WString(str));
 }
 
 void CuiChatWindow::writeToCurrentTab(const char* str) // Accepts color codes by prefixing them with \\, ie "\\#888888 test"
 {
-    if (pCuiChatWindow == 0)
+    // WR-06: atomic load.
+    const swgptr p = pCuiChatWindow.load(std::memory_order_relaxed);
+    if (p == 0)
     {
         return;
     }
 
-    swg::cuiChatWindow::writeToCurrentTab(pCuiChatWindow, swg::WString(str));
+    swg::cuiChatWindow::writeToCurrentTab(p, swg::WString(str));
 }
 
 // DIAG 2026-05-20 Issue #11 Phase F: probe the SwgCuiChatWindow
@@ -258,13 +271,15 @@ void CuiChatWindow::forceOpenChatInputFromCpp()
     // chat mediator (search the 0x00F38390 / 0x00F38430 functions next).
     // If F11 ALSO does nothing, the mediator/window is broken or
     // pCuiChatWindow is stale.
-    if (pCuiChatWindow == 0)
+    // WR-06: atomic load.
+    const swgptr p = pCuiChatWindow.load(std::memory_order_relaxed);
+    if (p == 0)
     {
         utinni::log::warning("CuiChatWindow::forceOpenChatInputFromCpp: pCuiChatWindow is null (chat window was never constructed?)");
         return;
     }
     utinni::log::info("CuiChatWindow::forceOpenChatInputFromCpp: calling swg::cuiChatWindow::enableTextInput(pCuiChatWindow, true, true, false)");
-    swg::cuiChatWindow::enableTextInput(pCuiChatWindow, true, true, false);
+    swg::cuiChatWindow::enableTextInput(p, true, true, false);
     // Phase H: enableTextInput pointer is the trampoline (post-detour), which
     // bypasses our hkEnableTextInput. Update tracker directly so downstream
     // consumers (hkChatEnter, etc.) see the correct state. WR-05 atomic.
@@ -273,7 +288,10 @@ void CuiChatWindow::forceOpenChatInputFromCpp()
 
 void CuiChatWindow::sendMessage(const char* msg, bool addToChatHistory)
 {
-    if (pCuiChatWindow == 0 || pCuiConsoleHelper == 0)
+    // WR-06: atomic loads.
+    const swgptr p = pCuiChatWindow.load(std::memory_order_relaxed);
+    const swgptr helper = pCuiConsoleHelper.load(std::memory_order_relaxed);
+    if (p == 0 || helper == 0)
     {
         return;
     }
@@ -290,7 +308,7 @@ void CuiChatWindow::sendMessage(const char* msg, bool addToChatHistory)
 
     memory::set(0x0091428C, 0x75, 1);
 
-    swg::cuiConsoleHelper::sendInput(pCuiConsoleHelper, swg::WString(msg), 0, addToChatHistory);
+    swg::cuiConsoleHelper::sendInput(helper, swg::WString(msg), 0, addToChatHistory);
 
     // Once the call has been made, the function needs to be restored
     // for potential swg calls that might utilize the parameter
@@ -327,7 +345,8 @@ void __fastcall hkEnableTextInput(swgptr pThis, swgptr EDX, bool value, bool set
             snprintf(m, sizeof(m),
                 "hkEnableTextInput[%d]: pThis=0x%p value=%d setKbdInput=%d unfocus=%d caller=0x%p captured_pCuiChatWindow=0x%p",
                 slot + 1, (void*)pThis, value ? 1 : 0, setKeyboardInput ? 1 : 0,
-                unfocus ? 1 : 0, callerPC, (void*)pCuiChatWindow);
+                unfocus ? 1 : 0, callerPC,
+                (void*)pCuiChatWindow.load(std::memory_order_relaxed));
             utinni::log::info(m);
         }
     }
@@ -352,8 +371,11 @@ CommandParser* mainCommandParser;
 swgptr __fastcall hkCtor(swgptr pThis, swgptr EDX, swgptr uiPage, DWORD unk1, DWORD unk2, DWORD unk3)
 {
     swgptr result = swg::cuiChatWindow::ctor(pThis, uiPage, unk1, unk2, unk3);
-    pCuiChatWindow = pThis;
-    pCuiConsoleHelper = memory::read<swgptr>(pThis + 0xBC); // Store the CuiConsoleHelper* for later use
+    // WR-06: publish chat-window + console-helper pointers atomically. Release
+    // store pairs with relaxed loads at reader sites; SWG objects finished
+    // construction inside swg::cuiChatWindow::ctor before the publish.
+    pCuiChatWindow.store(pThis, std::memory_order_release);
+    pCuiConsoleHelper.store(memory::read<swgptr>(pThis + 0xBC), std::memory_order_release);
 
     mainCommandParser->addSubCommand(swg_new<UtinniCommandParser>());
 
