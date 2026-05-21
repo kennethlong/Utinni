@@ -70,7 +70,7 @@ void IoWin::detour()
 void __fastcall hkAppendMessage(MessageQueue* pThis, DWORD EDX, int msg, float value, uint32_t* flags)
 {
     static int s_appendMsgLogCount = 0;
-    if (s_appendMsgLogCount < 60)
+    if (s_appendMsgLogCount < 5)
     {
         ++s_appendMsgLogCount;
         const void* callerPC = _ReturnAddress();
@@ -86,7 +86,7 @@ void __fastcall hkAppendMessage(MessageQueue* pThis, DWORD EDX, int msg, float v
 void __fastcall hkAppendMessageData(MessageQueue* pThis, DWORD EDX, int msg, float value, swgptr data, uint32_t* flags)
 {
     static int s_appendDataLogCount = 0;
-    if (s_appendDataLogCount < 60)
+    if (s_appendDataLogCount < 5)
     {
         ++s_appendDataLogCount;
         const void* callerPC = _ReturnAddress();
