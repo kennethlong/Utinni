@@ -26,6 +26,7 @@
 #include "swg/camera/camera.h"
 #include "swg/misc/swg_string.h"
 
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 
@@ -67,7 +68,9 @@ pSendMessage sendMessage = (pSendMessage)0x008AC250;
 }
 
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry.
+// CR-01 (03-REVIEW): per-registry mutex protects Subscribe / Unsubscribe / snapshot.
 static std::unordered_map<int, void(*)(const char* msg)> receiveSystemMessageCallbacks;
+static std::mutex receiveSystemMessageCallbacksMutex;
 static int s_nextReceiveSystemMessageId = 1;
 
 namespace utinni
@@ -135,6 +138,7 @@ void UiManager::drawCursor(bool value)
 // Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
 int SystemMessageManager::subscribeReceiveMessageCallback(void(*func)(const char* msg))
 {
+    std::lock_guard<std::mutex> guard(receiveSystemMessageCallbacksMutex);
     int id = s_nextReceiveSystemMessageId++;
     receiveSystemMessageCallbacks[id] = func;
     return id;
@@ -146,6 +150,7 @@ bool SystemMessageManager::unsubscribeReceiveMessageCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(receiveSystemMessageCallbacksMutex);
     return receiveSystemMessageCallbacks.erase(handle) > 0;
 }
 
@@ -175,12 +180,15 @@ void __cdecl hkReceiveMessage(swgptr pChatSystemMsg)
         swg::systemMessageManager::receiveMessage(pChatSystemMsg);
     }
 
-    // R-H snapshot dispatch per D-12.
+    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
     std::vector<void(*)(const char*)> snapshot;
-    snapshot.reserve(receiveSystemMessageCallbacks.size());
-    for (const auto& kv : receiveSystemMessageCallbacks)
     {
-        snapshot.push_back(kv.second);
+        std::lock_guard<std::mutex> guard(receiveSystemMessageCallbacksMutex);
+        snapshot.reserve(receiveSystemMessageCallbacks.size());
+        for (const auto& kv : receiveSystemMessageCallbacks)
+        {
+            snapshot.push_back(kv.second);
+        }
     }
     for (const auto& func : snapshot)
     {

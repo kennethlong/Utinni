@@ -12521,6 +12521,168 @@ namespace UtinniCore
         }
     }
 
+    namespace Utinni
+    {
+        public unsafe partial class NewPlaceholder : IDisposable
+        {
+            [StructLayout(LayoutKind.Explicit, Size = 0)]
+            public partial struct __Internal
+            {
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.ThisCall,
+                    EntryPoint="??0NewPlaceholder@utinni@@QAE@ABU01@@Z")]
+                internal static extern global::System.IntPtr cctor(global::System.IntPtr __instance, global::System.IntPtr _0);
+            }
+
+            public global::System.IntPtr __Instance { get; protected set; }
+
+            internal static readonly global::System.Collections.Concurrent.ConcurrentDictionary<IntPtr, global::UtinniCore.Utinni.NewPlaceholder> NativeToManagedMap = new global::System.Collections.Concurrent.ConcurrentDictionary<IntPtr, global::UtinniCore.Utinni.NewPlaceholder>();
+
+            protected bool __ownsNativeInstance;
+
+            internal static global::UtinniCore.Utinni.NewPlaceholder __CreateInstance(global::System.IntPtr native, bool skipVTables = false)
+            {
+                return new global::UtinniCore.Utinni.NewPlaceholder(native.ToPointer(), skipVTables);
+            }
+
+            internal static global::UtinniCore.Utinni.NewPlaceholder __CreateInstance(global::UtinniCore.Utinni.NewPlaceholder.__Internal native, bool skipVTables = false)
+            {
+                return new global::UtinniCore.Utinni.NewPlaceholder(native, skipVTables);
+            }
+
+            private static void* __CopyValue(global::UtinniCore.Utinni.NewPlaceholder.__Internal native)
+            {
+                var ret = Marshal.AllocHGlobal(sizeof(global::UtinniCore.Utinni.NewPlaceholder.__Internal));
+                *(global::UtinniCore.Utinni.NewPlaceholder.__Internal*) ret = native;
+                return ret.ToPointer();
+            }
+
+            private NewPlaceholder(global::UtinniCore.Utinni.NewPlaceholder.__Internal native, bool skipVTables = false)
+                : this(__CopyValue(native), skipVTables)
+            {
+                __ownsNativeInstance = true;
+                NativeToManagedMap[__Instance] = this;
+            }
+
+            protected NewPlaceholder(void* native, bool skipVTables = false)
+            {
+                if (native == null)
+                    return;
+                __Instance = new global::System.IntPtr(native);
+            }
+
+            public NewPlaceholder()
+            {
+                __Instance = Marshal.AllocHGlobal(sizeof(global::UtinniCore.Utinni.NewPlaceholder.__Internal));
+                __ownsNativeInstance = true;
+                NativeToManagedMap[__Instance] = this;
+            }
+
+            public NewPlaceholder(global::UtinniCore.Utinni.NewPlaceholder _0)
+            {
+                __Instance = Marshal.AllocHGlobal(sizeof(global::UtinniCore.Utinni.NewPlaceholder.__Internal));
+                __ownsNativeInstance = true;
+                NativeToManagedMap[__Instance] = this;
+                *((global::UtinniCore.Utinni.NewPlaceholder.__Internal*) __Instance) = *((global::UtinniCore.Utinni.NewPlaceholder.__Internal*) _0.__Instance);
+            }
+
+            public void Dispose()
+            {
+                Dispose(disposing: true);
+            }
+
+            public virtual void Dispose(bool disposing)
+            {
+                if (__Instance == IntPtr.Zero)
+                    return;
+                global::UtinniCore.Utinni.NewPlaceholder __dummy;
+                NativeToManagedMap.TryRemove(__Instance, out __dummy);
+                if (__ownsNativeInstance)
+                    Marshal.FreeHGlobal(__Instance);
+                __Instance = IntPtr.Zero;
+            }
+        }
+
+        public unsafe partial class swg_memory
+        {
+            public partial struct __Internal
+            {
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?allocate@utinni@@YAPAXI@Z")]
+                internal static extern global::System.IntPtr Allocate(uint size);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?allocateString@utinni@@YAPAXI@Z")]
+                internal static extern global::System.IntPtr AllocateString(uint size);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?deallocate@utinni@@YAXPAXI@Z")]
+                internal static extern void Deallocate(global::System.IntPtr address, uint size);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?deallocateString@utinni@@YAXPAXI@Z")]
+                internal static extern void DeallocateString(global::System.IntPtr address, uint size);
+            }
+
+            public static global::System.IntPtr Allocate(uint size)
+            {
+                var __ret = __Internal.Allocate(size);
+                return __ret;
+            }
+
+            public static global::System.IntPtr AllocateString(uint size)
+            {
+                var __ret = __Internal.AllocateString(size);
+                return __ret;
+            }
+
+            public static void Deallocate(global::System.IntPtr address, uint size)
+            {
+                __Internal.Deallocate(address, size);
+            }
+
+            public static void DeallocateString(global::System.IntPtr address, uint size)
+            {
+                __Internal.DeallocateString(address, size);
+            }
+        }
+    }
+
+    namespace Utinni
+    {
+        public unsafe partial class swg_utility
+        {
+            public partial struct __Internal
+            {
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?calculateCrc@utinni@@YAIPBD@Z")]
+                internal static extern uint CalculateCrc([MarshalAs(UnmanagedType.LPUTF8Str)] string @string);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?treeFileOpen@utinni@@YAIPBDH_N@Z")]
+                internal static extern uint TreeFileOpen([MarshalAs(UnmanagedType.LPUTF8Str)] string filename, int priorityType, bool allowFail);
+            }
+
+            public static uint CalculateCrc(string @string)
+            {
+                var __ret = __Internal.CalculateCrc(@string);
+                return __ret;
+            }
+
+            public static uint TreeFileOpen(string filename, int priorityType, bool allowFail)
+            {
+                var __ret = __Internal.TreeFileOpen(filename, priorityType, allowFail);
+                return __ret;
+            }
+        }
+    }
+
     namespace Swg
     {
         namespace Network
@@ -12700,168 +12862,6 @@ namespace UtinniCore
                     var __ret = __Internal.GetManger();
                     return __ret;
                 }
-            }
-        }
-    }
-
-    namespace Utinni
-    {
-        public unsafe partial class NewPlaceholder : IDisposable
-        {
-            [StructLayout(LayoutKind.Explicit, Size = 0)]
-            public partial struct __Internal
-            {
-                [SuppressUnmanagedCodeSecurity]
-                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.ThisCall,
-                    EntryPoint="??0NewPlaceholder@utinni@@QAE@ABU01@@Z")]
-                internal static extern global::System.IntPtr cctor(global::System.IntPtr __instance, global::System.IntPtr _0);
-            }
-
-            public global::System.IntPtr __Instance { get; protected set; }
-
-            internal static readonly global::System.Collections.Concurrent.ConcurrentDictionary<IntPtr, global::UtinniCore.Utinni.NewPlaceholder> NativeToManagedMap = new global::System.Collections.Concurrent.ConcurrentDictionary<IntPtr, global::UtinniCore.Utinni.NewPlaceholder>();
-
-            protected bool __ownsNativeInstance;
-
-            internal static global::UtinniCore.Utinni.NewPlaceholder __CreateInstance(global::System.IntPtr native, bool skipVTables = false)
-            {
-                return new global::UtinniCore.Utinni.NewPlaceholder(native.ToPointer(), skipVTables);
-            }
-
-            internal static global::UtinniCore.Utinni.NewPlaceholder __CreateInstance(global::UtinniCore.Utinni.NewPlaceholder.__Internal native, bool skipVTables = false)
-            {
-                return new global::UtinniCore.Utinni.NewPlaceholder(native, skipVTables);
-            }
-
-            private static void* __CopyValue(global::UtinniCore.Utinni.NewPlaceholder.__Internal native)
-            {
-                var ret = Marshal.AllocHGlobal(sizeof(global::UtinniCore.Utinni.NewPlaceholder.__Internal));
-                *(global::UtinniCore.Utinni.NewPlaceholder.__Internal*) ret = native;
-                return ret.ToPointer();
-            }
-
-            private NewPlaceholder(global::UtinniCore.Utinni.NewPlaceholder.__Internal native, bool skipVTables = false)
-                : this(__CopyValue(native), skipVTables)
-            {
-                __ownsNativeInstance = true;
-                NativeToManagedMap[__Instance] = this;
-            }
-
-            protected NewPlaceholder(void* native, bool skipVTables = false)
-            {
-                if (native == null)
-                    return;
-                __Instance = new global::System.IntPtr(native);
-            }
-
-            public NewPlaceholder()
-            {
-                __Instance = Marshal.AllocHGlobal(sizeof(global::UtinniCore.Utinni.NewPlaceholder.__Internal));
-                __ownsNativeInstance = true;
-                NativeToManagedMap[__Instance] = this;
-            }
-
-            public NewPlaceholder(global::UtinniCore.Utinni.NewPlaceholder _0)
-            {
-                __Instance = Marshal.AllocHGlobal(sizeof(global::UtinniCore.Utinni.NewPlaceholder.__Internal));
-                __ownsNativeInstance = true;
-                NativeToManagedMap[__Instance] = this;
-                *((global::UtinniCore.Utinni.NewPlaceholder.__Internal*) __Instance) = *((global::UtinniCore.Utinni.NewPlaceholder.__Internal*) _0.__Instance);
-            }
-
-            public void Dispose()
-            {
-                Dispose(disposing: true);
-            }
-
-            public virtual void Dispose(bool disposing)
-            {
-                if (__Instance == IntPtr.Zero)
-                    return;
-                global::UtinniCore.Utinni.NewPlaceholder __dummy;
-                NativeToManagedMap.TryRemove(__Instance, out __dummy);
-                if (__ownsNativeInstance)
-                    Marshal.FreeHGlobal(__Instance);
-                __Instance = IntPtr.Zero;
-            }
-        }
-
-        public unsafe partial class swg_memory
-        {
-            public partial struct __Internal
-            {
-                [SuppressUnmanagedCodeSecurity]
-                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
-                    EntryPoint="?allocate@utinni@@YAPAXI@Z")]
-                internal static extern global::System.IntPtr Allocate(uint size);
-
-                [SuppressUnmanagedCodeSecurity]
-                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
-                    EntryPoint="?allocateString@utinni@@YAPAXI@Z")]
-                internal static extern global::System.IntPtr AllocateString(uint size);
-
-                [SuppressUnmanagedCodeSecurity]
-                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
-                    EntryPoint="?deallocate@utinni@@YAXPAXI@Z")]
-                internal static extern void Deallocate(global::System.IntPtr address, uint size);
-
-                [SuppressUnmanagedCodeSecurity]
-                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
-                    EntryPoint="?deallocateString@utinni@@YAXPAXI@Z")]
-                internal static extern void DeallocateString(global::System.IntPtr address, uint size);
-            }
-
-            public static global::System.IntPtr Allocate(uint size)
-            {
-                var __ret = __Internal.Allocate(size);
-                return __ret;
-            }
-
-            public static global::System.IntPtr AllocateString(uint size)
-            {
-                var __ret = __Internal.AllocateString(size);
-                return __ret;
-            }
-
-            public static void Deallocate(global::System.IntPtr address, uint size)
-            {
-                __Internal.Deallocate(address, size);
-            }
-
-            public static void DeallocateString(global::System.IntPtr address, uint size)
-            {
-                __Internal.DeallocateString(address, size);
-            }
-        }
-    }
-
-    namespace Utinni
-    {
-        public unsafe partial class swg_utility
-        {
-            public partial struct __Internal
-            {
-                [SuppressUnmanagedCodeSecurity]
-                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
-                    EntryPoint="?calculateCrc@utinni@@YAIPBD@Z")]
-                internal static extern uint CalculateCrc([MarshalAs(UnmanagedType.LPUTF8Str)] string @string);
-
-                [SuppressUnmanagedCodeSecurity]
-                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
-                    EntryPoint="?treeFileOpen@utinni@@YAIPBDH_N@Z")]
-                internal static extern uint TreeFileOpen([MarshalAs(UnmanagedType.LPUTF8Str)] string filename, int priorityType, bool allowFail);
-            }
-
-            public static uint CalculateCrc(string @string)
-            {
-                var __ret = __Internal.CalculateCrc(@string);
-                return __ret;
-            }
-
-            public static uint TreeFileOpen(string filename, int priorityType, bool allowFail)
-            {
-                var __ret = __Internal.TreeFileOpen(filename, priorityType, allowFail);
-                return __ret;
             }
         }
     }

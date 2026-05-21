@@ -26,6 +26,7 @@
 #include "swg/object/object.h"
 #include "swg/misc/network.h"
 
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 
@@ -38,7 +39,9 @@ pSetTarget setTarget = (pSetTarget)0x00434AB0;
 
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry.
 // Handle 0 reserved as invalid sentinel.
+// CR-01 (03-REVIEW): per-registry mutex protects Subscribe / Unsubscribe / snapshot.
 static std::unordered_map<int, void(*)(utinni::Object* target)> onTargetCallbacks;
+static std::mutex onTargetCallbacksMutex;
 static int s_nextOnTargetId = 1;
 
 namespace utinni::creatureObject
@@ -46,6 +49,7 @@ namespace utinni::creatureObject
 
 int subscribeOnTargetCallback(void(*func)(Object* target))
 {
+    std::lock_guard<std::mutex> guard(onTargetCallbacksMutex);
     int id = s_nextOnTargetId++;
     onTargetCallbacks[id] = func;
     return id;
@@ -57,6 +61,7 @@ bool unsubscribeOnTargetCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(onTargetCallbacksMutex);
     return onTargetCallbacks.erase(handle) > 0;
 }
 
@@ -71,12 +76,15 @@ void __fastcall hkSetTarget(swgptr pThis, DWORD EDX, const int64_t& id)
 
     Object* obj = Network::getObjectById(id);
 
-    // R-H snapshot dispatch per D-12.
+    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
     std::vector<void(*)(Object*)> snapshot;
-    snapshot.reserve(onTargetCallbacks.size());
-    for (const auto& kv : onTargetCallbacks)
     {
-        snapshot.push_back(kv.second);
+        std::lock_guard<std::mutex> guard(onTargetCallbacksMutex);
+        snapshot.reserve(onTargetCallbacks.size());
+        for (const auto& kv : onTargetCallbacks)
+        {
+            snapshot.push_back(kv.second);
+        }
     }
     for (const auto& func : snapshot)
     {

@@ -27,6 +27,7 @@
 
 #include <d3dx9.h>
 #include <d3d9types.h>
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 #include "external/nvapi/nvapi.h"
@@ -42,7 +43,9 @@
 // clause ("handle stored per-instance OR static-class registry, planner's
 // discretion") we keep the static-class storage shape — every existing call
 // site treats this as a process-wide registry, not per-instance.
+// CR-01 (03-REVIEW): per-registry mutex protects Subscribe / Unsubscribe / snapshot.
 static std::unordered_map<int, void(*)()> depthResolveCallbacks;
+static std::mutex depthResolveCallbacksMutex;
 static int s_nextDepthResolveId = 1;
 
 namespace directX
@@ -215,6 +218,7 @@ void DepthTexture::resolveDepth(const LPDIRECT3DDEVICE9 pDevice, IDirect3DSurfac
 // Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
 int DepthTexture::subscribeDepthResolveCallback(void(*func)())
 {
+	 std::lock_guard<std::mutex> guard(depthResolveCallbacksMutex);
 	 int id = s_nextDepthResolveId++;
 	 depthResolveCallbacks[id] = func;
 	 return id;
@@ -226,6 +230,7 @@ bool DepthTexture::unsubscribeDepthResolveCallback(int handle)
 	 {
 		  return false;
 	 }
+	 std::lock_guard<std::mutex> guard(depthResolveCallbacksMutex);
 	 return depthResolveCallbacks.erase(handle) > 0;
 }
 
@@ -271,12 +276,15 @@ void DepthTexture::resolveDepth()
 	 _pDevice->SetTexture(14, pTextureColor);
 	 _pDevice->SetTexture(15, pTextureDepth);
 
-	 // R-H snapshot dispatch per D-12.
+	 // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
 	 std::vector<void(*)()> snapshot;
-	 snapshot.reserve(depthResolveCallbacks.size());
-	 for (const auto& kv : depthResolveCallbacks)
 	 {
-		  snapshot.push_back(kv.second);
+		  std::lock_guard<std::mutex> guard(depthResolveCallbacksMutex);
+		  snapshot.reserve(depthResolveCallbacks.size());
+		  for (const auto& kv : depthResolveCallbacks)
+		  {
+			   snapshot.push_back(kv.second);
+		  }
 	 }
 	 for (const auto& func : snapshot)
 	 {

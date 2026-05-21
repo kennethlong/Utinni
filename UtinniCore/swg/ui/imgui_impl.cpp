@@ -29,6 +29,7 @@
 #include "ImGuizmo/ImGuizmo.h"
 
 #include <cstdio>
+#include <mutex>
 #include <vector>
 #include <unordered_map>
 
@@ -58,7 +59,9 @@ namespace imgui_impl
 {
 
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry.
+// CR-01 (03-REVIEW): per-registry mutex protects Subscribe / Unsubscribe / snapshot.
 static std::unordered_map<int, void(*)()> renderCallbacks;
+static std::mutex renderCallbacksMutex;
 static int s_nextRenderId = 1;
 
 bool enableUi;
@@ -362,14 +365,18 @@ bool isSetup = false;
 					  }
 				 }
 
-				 // R-H snapshot dispatch per D-12. ToDo add an additional
-				 // callback to host controls in the future main ImGui window.
+				 // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
+				 // ToDo add an additional callback to host controls in the
+				 // future main ImGui window.
 				 {
 					  std::vector<void(*)()> snapshot;
-					  snapshot.reserve(renderCallbacks.size());
-					  for (const auto& kv : renderCallbacks)
 					  {
-						   snapshot.push_back(kv.second);
+						   std::lock_guard<std::mutex> guard(renderCallbacksMutex);
+						   snapshot.reserve(renderCallbacks.size());
+						   for (const auto& kv : renderCallbacks)
+						   {
+							    snapshot.push_back(kv.second);
+						   }
 					  }
 					  for (const auto& func : snapshot)
 					  {
@@ -424,6 +431,7 @@ bool isRendering()
 // Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
 int subscribeRenderCallback(void(*func)())
  {
+	  std::lock_guard<std::mutex> guard(renderCallbacksMutex);
 	  int id = s_nextRenderId++;
 	  renderCallbacks[id] = func;
 	  return id;
@@ -435,6 +443,7 @@ bool unsubscribeRenderCallback(int handle)
 	  {
 		   return false;
 	  }
+	  std::lock_guard<std::mutex> guard(renderCallbacksMutex);
 	  return renderCallbacks.erase(handle) > 0;
  }
 
@@ -452,10 +461,15 @@ bool isInternalUiHovered()
 }
 
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries.
+// CR-01 (03-REVIEW): per-registry mutex protects Subscribe / Unsubscribe / snapshot.
 static std::unordered_map<int, void(*)()> onGizmoEnabledCallbacks;
 static std::unordered_map<int, void(*)()> onGizmoDisabledCallbacks;
 static std::unordered_map<int, void(*)()> onGizmoPositionChangedCallbacks;
 static std::unordered_map<int, void(*)()> onGizmoRotationChangedCallbacks;
+static std::mutex onGizmoEnabledCallbacksMutex;
+static std::mutex onGizmoDisabledCallbacksMutex;
+static std::mutex onGizmoPositionChangedCallbacksMutex;
+static std::mutex onGizmoRotationChangedCallbacksMutex;
 static int s_nextGizmoEnabledId = 1;
 static int s_nextGizmoDisabledId = 1;
 static int s_nextGizmoPositionChangedId = 1;
@@ -481,12 +495,15 @@ void enable(Object* obj)
 	 object = obj;
 	 enabled = true;
 
-	 // R-H snapshot dispatch per D-12.
+	 // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
 	 std::vector<void(*)()> snapshot;
-	 snapshot.reserve(onGizmoEnabledCallbacks.size());
-	 for (const auto& kv : onGizmoEnabledCallbacks)
 	 {
-		  snapshot.push_back(kv.second);
+		  std::lock_guard<std::mutex> guard(onGizmoEnabledCallbacksMutex);
+		  snapshot.reserve(onGizmoEnabledCallbacks.size());
+		  for (const auto& kv : onGizmoEnabledCallbacks)
+		  {
+			   snapshot.push_back(kv.second);
+		  }
 	 }
 	 for (const auto& func : snapshot)
 	 {
@@ -499,12 +516,15 @@ void disable()
 	 enabled = false;
 	 object = nullptr;
 
-	 // R-H snapshot dispatch per D-12.
+	 // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
 	 std::vector<void(*)()> snapshot;
-	 snapshot.reserve(onGizmoDisabledCallbacks.size());
-	 for (const auto& kv : onGizmoDisabledCallbacks)
 	 {
-		  snapshot.push_back(kv.second);
+		  std::lock_guard<std::mutex> guard(onGizmoDisabledCallbacksMutex);
+		  snapshot.reserve(onGizmoDisabledCallbacks.size());
+		  for (const auto& kv : onGizmoDisabledCallbacks)
+		  {
+			   snapshot.push_back(kv.second);
+		  }
 	 }
 	 for (const auto& func : snapshot)
 	 {
@@ -528,6 +548,7 @@ bool hasMouseHover()
 // Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
 int subscribeOnEnabledCallback(void(*func)())
 {
+	 std::lock_guard<std::mutex> guard(onGizmoEnabledCallbacksMutex);
 	 int id = s_nextGizmoEnabledId++;
 	 onGizmoEnabledCallbacks[id] = func;
 	 return id;
@@ -539,11 +560,13 @@ bool unsubscribeOnEnabledCallback(int handle)
 	 {
 		  return false;
 	 }
+	 std::lock_guard<std::mutex> guard(onGizmoEnabledCallbacksMutex);
 	 return onGizmoEnabledCallbacks.erase(handle) > 0;
 }
 
 int subscribeOnDisabledCallback(void(*func)())
 {
+	 std::lock_guard<std::mutex> guard(onGizmoDisabledCallbacksMutex);
 	 int id = s_nextGizmoDisabledId++;
 	 onGizmoDisabledCallbacks[id] = func;
 	 return id;
@@ -555,11 +578,13 @@ bool unsubscribeOnDisabledCallback(int handle)
 	 {
 		  return false;
 	 }
+	 std::lock_guard<std::mutex> guard(onGizmoDisabledCallbacksMutex);
 	 return onGizmoDisabledCallbacks.erase(handle) > 0;
 }
 
 int subscribeOnPositionChangedCallback(void(*func)())
 {
+	 std::lock_guard<std::mutex> guard(onGizmoPositionChangedCallbacksMutex);
 	 int id = s_nextGizmoPositionChangedId++;
 	 onGizmoPositionChangedCallbacks[id] = func;
 	 return id;
@@ -571,11 +596,13 @@ bool unsubscribeOnPositionChangedCallback(int handle)
 	 {
 		  return false;
 	 }
+	 std::lock_guard<std::mutex> guard(onGizmoPositionChangedCallbacksMutex);
 	 return onGizmoPositionChangedCallbacks.erase(handle) > 0;
 }
 
 int subscribeOnRotationChangedCallback(void(*func)())
 {
+	 std::lock_guard<std::mutex> guard(onGizmoRotationChangedCallbacksMutex);
 	 int id = s_nextGizmoRotationChangedId++;
 	 onGizmoRotationChangedCallbacks[id] = func;
 	 return id;
@@ -587,6 +614,7 @@ bool unsubscribeOnRotationChangedCallback(int handle)
 	 {
 		  return false;
 	 }
+	 std::lock_guard<std::mutex> guard(onGizmoRotationChangedCallbacksMutex);
 	 return onGizmoRotationChangedCallbacks.erase(handle) > 0;
 }
 
@@ -774,12 +802,15 @@ void draw()
 		  {
 				if (originalTransform.getPosition() != object->getTransform_o2w()->getPosition())
 				{
-					 // R-H snapshot dispatch per D-12.
+					 // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
 					 std::vector<void(*)()> snapshot;
-					 snapshot.reserve(onGizmoPositionChangedCallbacks.size());
-					 for (const auto& kv : onGizmoPositionChangedCallbacks)
 					 {
-						  snapshot.push_back(kv.second);
+						  std::lock_guard<std::mutex> guard(onGizmoPositionChangedCallbacksMutex);
+						  snapshot.reserve(onGizmoPositionChangedCallbacks.size());
+						  for (const auto& kv : onGizmoPositionChangedCallbacks)
+						  {
+							   snapshot.push_back(kv.second);
+						  }
 					 }
 					 for (const auto& func : snapshot)
 					 {
@@ -789,12 +820,15 @@ void draw()
 
 				if (!object->getTransform_o2w()->isRotationEqual(originalTransform))
 				{
-					 // R-H snapshot dispatch per D-12.
+					 // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
 					 std::vector<void(*)()> snapshot;
-					 snapshot.reserve(onGizmoRotationChangedCallbacks.size());
-					 for (const auto& kv : onGizmoRotationChangedCallbacks)
 					 {
-						  snapshot.push_back(kv.second);
+						  std::lock_guard<std::mutex> guard(onGizmoRotationChangedCallbacksMutex);
+						  snapshot.reserve(onGizmoRotationChangedCallbacks.size());
+						  for (const auto& kv : onGizmoRotationChangedCallbacks)
+						  {
+							   snapshot.push_back(kv.second);
+						  }
 					 }
 					 for (const auto& func : snapshot)
 					 {

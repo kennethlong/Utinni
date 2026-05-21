@@ -37,6 +37,7 @@
 
 #include <cstdio>
 #include <intrin.h>
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 
@@ -71,10 +72,17 @@ pInit init = (pInit)0x00518EB0;
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries
 // backed by std::unordered_map<int, fn_ptr>. Handle 0 reserved as invalid
 // sentinel.
+//
+// CR-01 (03-REVIEW): per-registry std::mutex serializes Subscribe / Unsubscribe
+// writes against the snapshot-build read in the dispatch sites.
 static std::unordered_map<int, void(*)(utinni::GroundScene* pThis)> preDrawLoopCallbacks;
 static std::unordered_map<int, void(*)(utinni::GroundScene* pThis)> postDrawLoopCallbacks;
 static std::unordered_map<int, void(*)(utinni::GroundScene* pThis, float time)> updateLoopCallbacks;
 static std::unordered_map<int, void(*)()> cameraChangeCallbacks;
+static std::mutex preDrawLoopCallbacksMutex;
+static std::mutex postDrawLoopCallbacksMutex;
+static std::mutex updateLoopCallbacksMutex;
+static std::mutex cameraChangeCallbacksMutex;
 static int s_nextPreDrawId = 1;
 static int s_nextPostDrawId = 1;
 static int s_nextUpdateId = 1;
@@ -116,6 +124,7 @@ std::string GroundScene::getName()
 // per D-10 as wrappers (return value discarded).
 int GroundScene::subscribePreDrawLoopCallback(void(*func)(GroundScene* pThis))
 {
+    std::lock_guard<std::mutex> guard(preDrawLoopCallbacksMutex);
     int id = s_nextPreDrawId++;
     preDrawLoopCallbacks[id] = func;
     return id;
@@ -127,11 +136,13 @@ bool GroundScene::unsubscribePreDrawLoopCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(preDrawLoopCallbacksMutex);
     return preDrawLoopCallbacks.erase(handle) > 0;
 }
 
 int GroundScene::subscribePostDrawLoopCallback(void(*func)(GroundScene* pThis))
 {
+    std::lock_guard<std::mutex> guard(postDrawLoopCallbacksMutex);
     int id = s_nextPostDrawId++;
     postDrawLoopCallbacks[id] = func;
     return id;
@@ -143,11 +154,13 @@ bool GroundScene::unsubscribePostDrawLoopCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(postDrawLoopCallbacksMutex);
     return postDrawLoopCallbacks.erase(handle) > 0;
 }
 
 int GroundScene::subscribeUpdateLoopCallback(void(*func)(GroundScene* pThis, float elapsedTime))
 {
+    std::lock_guard<std::mutex> guard(updateLoopCallbacksMutex);
     int id = s_nextUpdateId++;
     updateLoopCallbacks[id] = func;
     return id;
@@ -159,11 +172,13 @@ bool GroundScene::unsubscribeUpdateLoopCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(updateLoopCallbacksMutex);
     return updateLoopCallbacks.erase(handle) > 0;
 }
 
 int GroundScene::subscribeCameraChangeCallback(void(*func)())
 {
+    std::lock_guard<std::mutex> guard(cameraChangeCallbacksMutex);
     int id = s_nextCameraChangeId++;
     cameraChangeCallbacks[id] = func;
     return id;
@@ -175,6 +190,7 @@ bool GroundScene::unsubscribeCameraChangeCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(cameraChangeCallbacksMutex);
     return cameraChangeCallbacks.erase(handle) > 0;
 }
 
@@ -190,13 +206,16 @@ void GroundScene::addPostDrawLoopCallback(void(*func)(GroundScene* pThis))
 
 void __fastcall hkDrawLoop(GroundScene* pThis, DWORD EDX)
 {
-    // R-H snapshot dispatch per D-12.
+    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
     {
         std::vector<void(*)(GroundScene*)> snapshot;
-        snapshot.reserve(preDrawLoopCallbacks.size());
-        for (const auto& kv : preDrawLoopCallbacks)
         {
-            snapshot.push_back(kv.second);
+            std::lock_guard<std::mutex> guard(preDrawLoopCallbacksMutex);
+            snapshot.reserve(preDrawLoopCallbacks.size());
+            for (const auto& kv : preDrawLoopCallbacks)
+            {
+                snapshot.push_back(kv.second);
+            }
         }
         for (const auto& func : snapshot)
         {
@@ -208,10 +227,13 @@ void __fastcall hkDrawLoop(GroundScene* pThis, DWORD EDX)
 
     {
         std::vector<void(*)(GroundScene*)> snapshot;
-        snapshot.reserve(postDrawLoopCallbacks.size());
-        for (const auto& kv : postDrawLoopCallbacks)
         {
-            snapshot.push_back(kv.second);
+            std::lock_guard<std::mutex> guard(postDrawLoopCallbacksMutex);
+            snapshot.reserve(postDrawLoopCallbacks.size());
+            for (const auto& kv : postDrawLoopCallbacks)
+            {
+                snapshot.push_back(kv.second);
+            }
         }
         for (const auto& func : snapshot)
         {
@@ -232,12 +254,15 @@ void GroundScene::addCameraChangeCallback(void(*func)())
 
 void __fastcall hkUpdateLoop(GroundScene* pThis, DWORD EDX, float time)
 {
-    // R-H snapshot dispatch per D-12.
+    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
     std::vector<void(*)(GroundScene*, float)> snapshot;
-    snapshot.reserve(updateLoopCallbacks.size());
-    for (const auto& kv : updateLoopCallbacks)
     {
-        snapshot.push_back(kv.second);
+        std::lock_guard<std::mutex> guard(updateLoopCallbacksMutex);
+        snapshot.reserve(updateLoopCallbacks.size());
+        for (const auto& kv : updateLoopCallbacks)
+        {
+            snapshot.push_back(kv.second);
+        }
     }
     for (const auto& func : snapshot)
     {
@@ -312,13 +337,16 @@ void GroundScene::toggleFreeCamera()
         swg::groundScene::changeCamera(this, Camera::Modes::cm_Free, 0);
     }
 
-    // R-H snapshot dispatch per D-12.
+    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
     {
         std::vector<void(*)()> snapshot;
-        snapshot.reserve(cameraChangeCallbacks.size());
-        for (const auto& kv : cameraChangeCallbacks)
         {
-            snapshot.push_back(kv.second);
+            std::lock_guard<std::mutex> guard(cameraChangeCallbacksMutex);
+            snapshot.reserve(cameraChangeCallbacks.size());
+            for (const auto& kv : cameraChangeCallbacks)
+            {
+                snapshot.push_back(kv.second);
+            }
         }
         for (const auto& func : snapshot)
         {

@@ -24,6 +24,7 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Threading;
 using Xunit;
 
 namespace UtinniCoreDotNet.Tests
@@ -251,6 +252,120 @@ namespace UtinniCoreDotNet.Tests
             {
                 pin.Free();
             }
+        }
+
+        [Fact]
+        public void ConcurrentSubscribeAndDispatch_DoesNotCrash()
+        {
+            // CR-01 (03-REVIEW) regression: prior to the per-registry std::mutex
+            // fix, Subscribe / Unsubscribe writes and the dispatch site's
+            // snapshot-build iteration both touched installCallbacks
+            // unsynchronized. Concurrent runs from N threads racing a
+            // dispatcher could AV, hang in rehash, or return garbage values.
+            // This test does NOT deterministically prove race-freedom (no
+            // unit test can on a TSan-less platform), but the bucket-corruption
+            // path almost always produces a visible failure within a few
+            // thousand iterations — the structural fix takes the risk to ~0.
+            //
+            // N threads x M iterations of paired subscribe + unsubscribe,
+            // with one thread acting as the dispatcher concurrent with the
+            // mutators. Subscribe/Unsubscribe paired in tight loops on each
+            // mutator thread keeps the registry baseline at end-of-test
+            // (no leaks into the shared install registry that would distort
+            // the sibling Subscribe_DuringDispatch test under parallel
+            // collection scheduling).
+            if (!TryEnsureNativeAvailable())
+            {
+                return;
+            }
+
+            const int mutatorThreadCount = 7;
+            const int iterationsPerThread = 1000;
+            const int dispatcherIterations = 250;
+
+            var threads = new Thread[mutatorThreadCount + 1];
+            var pins = new GCHandle[mutatorThreadCount];
+            var callbacks = new NativeCallback[mutatorThreadCount];
+            var exceptions = new Exception[mutatorThreadCount + 1];
+
+            // Mutator threads: tight Subscribe → Unsubscribe loop, no
+            // intervening Dispatch. The registry stays at baseline + 1 (this
+            // thread's in-flight subscribe) at all times, then returns to
+            // baseline once the matching Unsubscribe lands.
+            for (int t = 0; t < mutatorThreadCount; t++)
+            {
+                int idx = t;
+                int local = 0;
+                NativeCallback cb = () => local++;
+                callbacks[idx] = cb;
+                pins[idx] = GCHandle.Alloc(cb);
+
+                threads[idx] = new Thread(() =>
+                {
+                    try
+                    {
+                        for (int i = 0; i < iterationsPerThread; i++)
+                        {
+                            int handle = NativeBridge.SubscribeInstall(cb);
+                            NativeBridge.UnsubscribeInstall(handle);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        exceptions[idx] = ex;
+                    }
+                });
+            }
+
+            // Dispatcher thread: concurrent DispatchInstall() while the
+            // mutators churn. This is the read-side of the data race the fix
+            // serializes against. The dispatch iterates a snapshot built
+            // under the registry mutex (per CR-01); any callbacks that fire
+            // are baseline-only entries (e.g. GameCallbacks.Initialize's
+            // managed bridge) -- this test doesn't add long-lived subscribers.
+            threads[mutatorThreadCount] = new Thread(() =>
+            {
+                try
+                {
+                    for (int i = 0; i < dispatcherIterations; i++)
+                    {
+                        NativeBridge.DispatchInstall();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    exceptions[mutatorThreadCount] = ex;
+                }
+            });
+
+            for (int t = 0; t < threads.Length; t++)
+            {
+                threads[t].Start();
+            }
+            for (int t = 0; t < threads.Length; t++)
+            {
+                threads[t].Join();
+            }
+
+            for (int t = 0; t < mutatorThreadCount; t++)
+            {
+                pins[t].Free();
+            }
+
+            for (int t = 0; t < exceptions.Length; t++)
+            {
+                if (exceptions[t] != null)
+                {
+                    throw new Xunit.Sdk.XunitException(
+                        "Thread " + t + " threw: " + exceptions[t]);
+                }
+            }
+
+            // Survival of the entire fan-out is the assertion — no crash,
+            // no thrown exception. The per-thread `local` counters are
+            // intentionally NOT asserted: this is a stress harness for the
+            // map/lock surface, not a correctness assertion about which
+            // callback fires.
         }
 
         // If UtinniCore.dll is not available (local dev sans build), the

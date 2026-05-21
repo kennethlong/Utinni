@@ -25,6 +25,7 @@
 #include "game.h"
 #include "utinni.h";
 #include <imgui/imgui_user.h>
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 #include "swg/client/client.h"
@@ -73,11 +74,22 @@ pIsHudSceneTypeSpace isHudSceneTypeSpace = (pIsHudSceneTypeSpace)0x00426170;
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries
 // backed by std::unordered_map<int, fn_ptr> + monotonic next-id. Handle 0 is
 // reserved as the invalid sentinel.
+//
+// CR-01 (03-REVIEW): per-registry std::mutex serializes Subscribe / Unsubscribe
+// writes against the snapshot-build read in the dispatch sites. Mirrors the
+// managed-side `lock` discipline (e.g. GameCallbacks.cs xxxLock). Dispatch
+// copies under the lock, iterates the snapshot outside the lock so callbacks
+// can re-subscribe without deadlock.
 static std::unordered_map<int, void(*)()> installCallbacks;
 static std::unordered_map<int, void(*)()> preMainLoopCallbacks;
 static std::unordered_map<int, void(*)()> mainLoopCallbacks;
 static std::unordered_map<int, void(*)()> setSceneCallbacks;
 static std::unordered_map<int, void(*)()> cleanUpSceneCallbacks;
+static std::mutex installCallbacksMutex;
+static std::mutex preMainLoopCallbacksMutex;
+static std::mutex mainLoopCallbacksMutex;
+static std::mutex setSceneCallbacksMutex;
+static std::mutex cleanUpSceneCallbacksMutex;
 static int s_nextInstallId = 1;
 static int s_nextPreMainLoopId = 1;
 static int s_nextMainLoopId = 1;
@@ -94,6 +106,7 @@ namespace utinni
 
 int Game::subscribeInstallCallback(void(*func)())
 {
+    std::lock_guard<std::mutex> guard(installCallbacksMutex);
     int id = s_nextInstallId++;
     installCallbacks[id] = func;
     return id;
@@ -105,11 +118,13 @@ bool Game::unsubscribeInstallCallback(int handle)
     {
         return false; // D-09: handle 0 reserved as invalid sentinel.
     }
+    std::lock_guard<std::mutex> guard(installCallbacksMutex);
     return installCallbacks.erase(handle) > 0;
 }
 
 int Game::subscribePreMainLoopCallback(void(*func)())
 {
+    std::lock_guard<std::mutex> guard(preMainLoopCallbacksMutex);
     int id = s_nextPreMainLoopId++;
     preMainLoopCallbacks[id] = func;
     return id;
@@ -121,11 +136,13 @@ bool Game::unsubscribePreMainLoopCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(preMainLoopCallbacksMutex);
     return preMainLoopCallbacks.erase(handle) > 0;
 }
 
 int Game::subscribeMainLoopCallback(void(*func)())
 {
+    std::lock_guard<std::mutex> guard(mainLoopCallbacksMutex);
     int id = s_nextMainLoopId++;
     mainLoopCallbacks[id] = func;
     return id;
@@ -137,11 +154,13 @@ bool Game::unsubscribeMainLoopCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(mainLoopCallbacksMutex);
     return mainLoopCallbacks.erase(handle) > 0;
 }
 
 int Game::subscribeSetSceneCallback(void(*func)())
 {
+    std::lock_guard<std::mutex> guard(setSceneCallbacksMutex);
     int id = s_nextSetSceneId++;
     setSceneCallbacks[id] = func;
     return id;
@@ -153,11 +172,13 @@ bool Game::unsubscribeSetSceneCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(setSceneCallbacksMutex);
     return setSceneCallbacks.erase(handle) > 0;
 }
 
 int Game::subscribeCleanupSceneCallback(void(*func)())
 {
+    std::lock_guard<std::mutex> guard(cleanUpSceneCallbacksMutex);
     int id = s_nextCleanUpSceneId++;
     cleanUpSceneCallbacks[id] = func;
     return id;
@@ -169,6 +190,7 @@ bool Game::unsubscribeCleanupSceneCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(cleanUpSceneCallbacksMutex);
     return cleanUpSceneCallbacks.erase(handle) > 0;
 }
 
@@ -211,13 +233,19 @@ void __cdecl hkMainLoop(bool presentToWindow, HWND hwnd, int width, int height)
     // Phase 3 R-H snapshot dispatch per D-12: copy values into a local vector
     // before iteration so Subscribe-during-dispatch can't invalidate the iterator.
     // Subscribers added mid-iteration land in the registry but fire on the NEXT
-    // dispatch.
+    // dispatch. CR-01 (03-REVIEW): snapshot copy taken under per-registry lock
+    // so concurrent Subscribe/Unsubscribe from other threads can't race the
+    // map's bucket structure. Iteration runs outside the lock so callbacks
+    // can safely re-subscribe.
     {
         std::vector<void(*)()> snapshot;
-        snapshot.reserve(preMainLoopCallbacks.size());
-        for (const auto& kv : preMainLoopCallbacks)
         {
-            snapshot.push_back(kv.second);
+            std::lock_guard<std::mutex> guard(preMainLoopCallbacksMutex);
+            snapshot.reserve(preMainLoopCallbacks.size());
+            for (const auto& kv : preMainLoopCallbacks)
+            {
+                snapshot.push_back(kv.second);
+            }
         }
         for (const auto& func : snapshot)
         {
@@ -238,13 +266,16 @@ void __cdecl hkMainLoop(bool presentToWindow, HWND hwnd, int width, int height)
         swg::game::mainLoop(presentToWindow, hwnd, width, height);
     }
 
-    // R-H snapshot dispatch per D-12.
+    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
     {
         std::vector<void(*)()> snapshot;
-        snapshot.reserve(mainLoopCallbacks.size());
-        for (const auto& kv : mainLoopCallbacks)
         {
-            snapshot.push_back(kv.second);
+            std::lock_guard<std::mutex> guard(mainLoopCallbacksMutex);
+            snapshot.reserve(mainLoopCallbacks.size());
+            for (const auto& kv : mainLoopCallbacks)
+            {
+                snapshot.push_back(kv.second);
+            }
         }
         for (const auto& func : snapshot)
         {
@@ -285,18 +316,22 @@ void __cdecl hkInstall(int application)
     WorldSnapshot::generateHighestId();
 
     {
+        std::lock_guard<std::mutex> guard(installCallbacksMutex);
         char msg[80];
         snprintf(msg, sizeof(msg), "hkInstall: firing %zu installCallbacks",
                  installCallbacks.size());
         utinni::log::info(msg);
     }
-    // R-H snapshot dispatch per D-12.
+    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
     {
         std::vector<void(*)()> snapshot;
-        snapshot.reserve(installCallbacks.size());
-        for (const auto& kv : installCallbacks)
         {
-            snapshot.push_back(kv.second);
+            std::lock_guard<std::mutex> guard(installCallbacksMutex);
+            snapshot.reserve(installCallbacks.size());
+            for (const auto& kv : installCallbacks)
+            {
+                snapshot.push_back(kv.second);
+            }
         }
         for (const auto& func : snapshot)
         {
@@ -330,16 +365,19 @@ void __cdecl hkSetScene(GroundScene* scene)
 
     if (scene != nullptr)
     {
-        char msg[80];
-        snprintf(msg, sizeof(msg), "hkSetScene: scene!=null, firing %zu setSceneCallbacks",
-                 setSceneCallbacks.size());
-        utinni::log::info(msg);
-        // R-H snapshot dispatch per D-12.
+        // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
         std::vector<void(*)()> snapshot;
-        snapshot.reserve(setSceneCallbacks.size());
-        for (const auto& kv : setSceneCallbacks)
         {
-            snapshot.push_back(kv.second);
+            std::lock_guard<std::mutex> guard(setSceneCallbacksMutex);
+            char msg[80];
+            snprintf(msg, sizeof(msg), "hkSetScene: scene!=null, firing %zu setSceneCallbacks",
+                     setSceneCallbacks.size());
+            utinni::log::info(msg);
+            snapshot.reserve(setSceneCallbacks.size());
+            for (const auto& kv : setSceneCallbacks)
+            {
+                snapshot.push_back(kv.second);
+            }
         }
         for (const auto& func : snapshot)
         {
@@ -361,19 +399,20 @@ void __cdecl hkCleanupScene()
 
     imgui_gizmo::disable();
 
-    {
-        char msg[80];
-        snprintf(msg, sizeof(msg), "hkCleanupScene: firing %zu cleanUpSceneCallbacks",
-                 cleanUpSceneCallbacks.size());
-        utinni::log::info(msg);
-    }
-    // R-H snapshot dispatch per D-12.
+    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
     {
         std::vector<void(*)()> snapshot;
-        snapshot.reserve(cleanUpSceneCallbacks.size());
-        for (const auto& kv : cleanUpSceneCallbacks)
         {
-            snapshot.push_back(kv.second);
+            std::lock_guard<std::mutex> guard(cleanUpSceneCallbacksMutex);
+            char msg[80];
+            snprintf(msg, sizeof(msg), "hkCleanupScene: firing %zu cleanUpSceneCallbacks",
+                     cleanUpSceneCallbacks.size());
+            utinni::log::info(msg);
+            snapshot.reserve(cleanUpSceneCallbacks.size());
+            for (const auto& kv : cleanUpSceneCallbacks)
+            {
+                snapshot.push_back(kv.second);
+            }
         }
         for (const auto& func : snapshot)
         {
@@ -503,12 +542,15 @@ bool Game::isSafeToUse()
 
 void Game::triggerInstallCallbacks()
 {
-    // R-H snapshot dispatch per D-12.
+    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
     std::vector<void(*)()> snapshot;
-    snapshot.reserve(installCallbacks.size());
-    for (const auto& kv : installCallbacks)
     {
-        snapshot.push_back(kv.second);
+        std::lock_guard<std::mutex> guard(installCallbacksMutex);
+        snapshot.reserve(installCallbacks.size());
+        for (const auto& kv : installCallbacks)
+        {
+            snapshot.push_back(kv.second);
+        }
     }
     for (const auto& func : snapshot)
     {
@@ -521,6 +563,7 @@ void Game::triggerInstallCallbacks()
 // utinni_test_installSubscriberCount in test_exports.cpp.
 int Game::getInstallSubscriberCount()
 {
+    std::lock_guard<std::mutex> guard(installCallbacksMutex);
     return static_cast<int>(installCallbacks.size());
 }
 

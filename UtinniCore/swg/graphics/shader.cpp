@@ -25,6 +25,7 @@
 #include "shader.h"
 #include "swg/graphics/directx9.h"
 
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 
@@ -36,19 +37,25 @@ namespace swg::shaderPrimitiveSorter
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry
 // with parameterized `void(*)(int)` callback type. Handle 0 reserved as
 // invalid sentinel.
+// CR-01 (03-REVIEW): per-registry mutex protects Subscribe / Unsubscribe / snapshot.
 static std::unordered_map<int, void(*)(int currentPhase)> drawPhaseCallbacks;
+static std::mutex drawPhaseCallbacksMutex;
 static int s_nextDrawPhaseId = 1;
 
 // Non-naked dispatch helper: called from inside the __declspec(naked)
 // midPopCell function below. Lives outside the naked function so std::vector
-// stack allocation + exception-unwind frames work normally.
+// stack allocation + exception-unwind frames work normally. CR-01: snapshot
+// built under lock, iteration runs outside the lock.
 static void dispatchDrawPhaseCallbacks(int phase)
 {
     std::vector<void(*)(int)> snapshot;
-    snapshot.reserve(drawPhaseCallbacks.size());
-    for (const auto& kv : drawPhaseCallbacks)
     {
-        snapshot.push_back(kv.second);
+        std::lock_guard<std::mutex> guard(drawPhaseCallbacksMutex);
+        snapshot.reserve(drawPhaseCallbacks.size());
+        for (const auto& kv : drawPhaseCallbacks)
+        {
+            snapshot.push_back(kv.second);
+        }
     }
     for (const auto& func : snapshot)
     {
@@ -105,6 +112,7 @@ __declspec(naked) void midPopCell()
 // Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
 int subscribeDrawPhaseCallback(void(*func)(int currentPhase))
 {
+    std::lock_guard<std::mutex> guard(drawPhaseCallbacksMutex);
     int id = s_nextDrawPhaseId++;
     drawPhaseCallbacks[id] = func;
     return id;
@@ -116,6 +124,7 @@ bool unsubscribeDrawPhaseCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(drawPhaseCallbacksMutex);
     return drawPhaseCallbacks.erase(handle) > 0;
 }
 

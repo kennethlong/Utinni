@@ -26,12 +26,26 @@
 #include "spdlog/spdlog.h"
 #include <spdlog/sinks/basic_file_sink.h>
 
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 
 static std::vector<std::string> logMessageBuffer;
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry.
+//
+// CR-01 + WR-07 (03-REVIEW): the registry is touched from two distinct sites
+// without coordination -- (a) the dispatch site inside OutputSink::sink_it_
+// which spdlog calls while holding ITS sink mutex (synchronizes against other
+// sink_it_ invocations only); and (b) subscribe/unsubscribe, which are called
+// from arbitrary threads (e.g. WinForms UI thread via the managed Log.cs
+// callback registration). Piggybacking on spdlog's sink mutex partially
+// protects the iteration but does NOT serialize subscribe/unsubscribe; the
+// next sink_it_ then races the in-progress map mutation. Fix: explicit
+// outputSinkMutex acquired by subscribe / unsubscribe AND the sink_it_
+// snapshot-build. Mirrors the per-registry mutex pattern across the rest of
+// the native callback layer.
 static std::unordered_map<int, void(*)(const char* msg)> outputSinkCallbacks;
+static std::mutex outputSinkMutex;
 static int s_nextOutputSinkId = 1;
 
 namespace utinni::log
@@ -53,12 +67,19 @@ protected:
         const std::string formattedString = fmt::to_string(formatted);
 
         logMessageBuffer.emplace_back(formattedString);
-        // R-H snapshot dispatch per D-12.
+        // R-H snapshot dispatch per D-12. CR-01 + WR-07: snapshot built under
+        // outputSinkMutex so concurrent subscribe / unsubscribe (called from
+        // arbitrary threads, e.g. WinForms UI thread) can't race the map's
+        // bucket structure. Iteration outside the lock so callbacks can
+        // re-subscribe without deadlock.
         std::vector<void(*)(const char*)> snapshot;
-        snapshot.reserve(outputSinkCallbacks.size());
-        for (const auto& kv : outputSinkCallbacks)
         {
-            snapshot.push_back(kv.second);
+            std::lock_guard<std::mutex> guard(outputSinkMutex);
+            snapshot.reserve(outputSinkCallbacks.size());
+            for (const auto& kv : outputSinkCallbacks)
+            {
+                snapshot.push_back(kv.second);
+            }
         }
         for (const auto& func : snapshot)
         {
@@ -118,6 +139,7 @@ void warning(const char* text)
 // Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
 int subscribeOutputSinkCallback(void(*func)(const char* msg))
 {
+    std::lock_guard<std::mutex> guard(outputSinkMutex);
     int id = s_nextOutputSinkId++;
     outputSinkCallbacks[id] = func;
     return id;
@@ -129,6 +151,7 @@ bool unsubscribeOutputSinkCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(outputSinkMutex);
     return outputSinkCallbacks.erase(handle) > 0;
 }
 

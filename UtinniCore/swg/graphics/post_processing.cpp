@@ -24,6 +24,7 @@
 
 #include "post_processing.h"
 
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 
@@ -38,8 +39,11 @@ pPostSceneRender postSceneRender = (pPostSceneRender)0x0064B560;
 }
 
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries.
+// CR-01 (03-REVIEW): per-registry mutex for thread-safe Subscribe / Unsubscribe / snapshot.
 static std::unordered_map<int, void(*)()> preSceneRenderCallbacks;
 static std::unordered_map<int, void(*)()> postSceneRenderCallbacks;
+static std::mutex preSceneRenderCallbacksMutex;
+static std::mutex postSceneRenderCallbacksMutex;
 static int s_nextPreSceneRenderId = 1;
 static int s_nextPostSceneRenderId = 1;
 
@@ -47,12 +51,15 @@ namespace utinni::postProcessing
 {
 void __cdecl hkPreSceneRender() // Originally a Bloom class function, repurposed to be a general PostProcessing function.
 {
-    // R-H snapshot dispatch per D-12.
+    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
     std::vector<void(*)()> snapshot;
-    snapshot.reserve(preSceneRenderCallbacks.size());
-    for (const auto& kv : preSceneRenderCallbacks)
     {
-        snapshot.push_back(kv.second);
+        std::lock_guard<std::mutex> guard(preSceneRenderCallbacksMutex);
+        snapshot.reserve(preSceneRenderCallbacks.size());
+        for (const auto& kv : preSceneRenderCallbacks)
+        {
+            snapshot.push_back(kv.second);
+        }
     }
     for (const auto& func : snapshot)
     {
@@ -66,12 +73,15 @@ void __cdecl hkPostSceneRender() // Originally a Bloom class function, repurpose
 {
     swg::bloom::postSceneRender();
 
-    // R-H snapshot dispatch per D-12.
+    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
     std::vector<void(*)()> snapshot;
-    snapshot.reserve(postSceneRenderCallbacks.size());
-    for (const auto& kv : postSceneRenderCallbacks)
     {
-        snapshot.push_back(kv.second);
+        std::lock_guard<std::mutex> guard(postSceneRenderCallbacksMutex);
+        snapshot.reserve(postSceneRenderCallbacks.size());
+        for (const auto& kv : postSceneRenderCallbacks)
+        {
+            snapshot.push_back(kv.second);
+        }
     }
     for (const auto& func : snapshot)
     {
@@ -82,6 +92,7 @@ void __cdecl hkPostSceneRender() // Originally a Bloom class function, repurpose
 // Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
 int subscribePreSceneRenderCallback(void(*func)())
 {
+    std::lock_guard<std::mutex> guard(preSceneRenderCallbacksMutex);
     int id = s_nextPreSceneRenderId++;
     preSceneRenderCallbacks[id] = func;
     return id;
@@ -93,11 +104,13 @@ bool unsubscribePreSceneRenderCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(preSceneRenderCallbacksMutex);
     return preSceneRenderCallbacks.erase(handle) > 0;
 }
 
 int subscribePostSceneRenderCallback(void(*func)())
 {
+    std::lock_guard<std::mutex> guard(postSceneRenderCallbacksMutex);
     int id = s_nextPostSceneRenderId++;
     postSceneRenderCallbacks[id] = func;
     return id;
@@ -109,6 +122,7 @@ bool unsubscribePostSceneRenderCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(postSceneRenderCallbacksMutex);
     return postSceneRenderCallbacks.erase(handle) > 0;
 }
 

@@ -28,6 +28,7 @@
 #include "swg/ui/cui_manager.h"
 #include "directx9.h"
 
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 
@@ -86,6 +87,8 @@ static std::string screenshotsDir = "screenshots/";
 
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries.
 // Handle 0 reserved as invalid sentinel.
+// CR-01 (03-REVIEW): per-registry std::mutex serializes Subscribe / Unsubscribe
+// writes against the snapshot-build read in the dispatch sites.
 static std::unordered_map<int, void(*)(float elapsedTime)> preUpdateCallback;
 static std::unordered_map<int, void(*)(float elapsedTime)> postUpdateCallback;
 
@@ -100,6 +103,17 @@ static std::unordered_map<int, void(*)(HWND hwnd, int width, int height)> postPr
 
 static std::unordered_map<int, void(*)()> prePresentCallback;
 static std::unordered_map<int, void(*)()> postPresentCallback;
+
+static std::mutex preUpdateCallbackMutex;
+static std::mutex postUpdateCallbackMutex;
+static std::mutex preBeginSceneCallbackMutex;
+static std::mutex postBeginSceneCallbackMutex;
+static std::mutex preEndSceneCallbackMutex;
+static std::mutex postEndSceneCallbackMutex;
+static std::mutex prePresentWindowCallbackMutex;
+static std::mutex postPresentWindowCallbackMutex;
+static std::mutex prePresentCallbackMutex;
+static std::mutex postPresentCallbackMutex;
 
 static int s_nextPreUpdateId = 1;
 static int s_nextPostUpdateId = 1;
@@ -119,6 +133,7 @@ namespace utinni
 
 int Graphics::subscribePreUpdateLoopCallback(void(*func)(float elapsedTime))
 {
+    std::lock_guard<std::mutex> guard(preUpdateCallbackMutex);
     int id = s_nextPreUpdateId++;
     preUpdateCallback[id] = func;
     return id;
@@ -130,11 +145,13 @@ bool Graphics::unsubscribePreUpdateLoopCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(preUpdateCallbackMutex);
     return preUpdateCallback.erase(handle) > 0;
 }
 
 int Graphics::subscribePostUpdateLoopCallback(void(*func)(float elapsedTime))
 {
+    std::lock_guard<std::mutex> guard(postUpdateCallbackMutex);
     int id = s_nextPostUpdateId++;
     postUpdateCallback[id] = func;
     return id;
@@ -146,11 +163,13 @@ bool Graphics::unsubscribePostUpdateLoopCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(postUpdateCallbackMutex);
     return postUpdateCallback.erase(handle) > 0;
 }
 
 int Graphics::subscribePreBeginSceneCallback(void(*func)())
 {
+    std::lock_guard<std::mutex> guard(preBeginSceneCallbackMutex);
     int id = s_nextPreBeginSceneId++;
     preBeginSceneCallback[id] = func;
     return id;
@@ -162,11 +181,13 @@ bool Graphics::unsubscribePreBeginSceneCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(preBeginSceneCallbackMutex);
     return preBeginSceneCallback.erase(handle) > 0;
 }
 
 int Graphics::subscribePostBeginSceneCallback(void(*func)())
 {
+    std::lock_guard<std::mutex> guard(postBeginSceneCallbackMutex);
     int id = s_nextPostBeginSceneId++;
     postBeginSceneCallback[id] = func;
     return id;
@@ -178,11 +199,13 @@ bool Graphics::unsubscribePostBeginSceneCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(postBeginSceneCallbackMutex);
     return postBeginSceneCallback.erase(handle) > 0;
 }
 
 int Graphics::subscribePreEndSceneCallback(void(*func)())
 {
+    std::lock_guard<std::mutex> guard(preEndSceneCallbackMutex);
     int id = s_nextPreEndSceneId++;
     preEndSceneCallback[id] = func;
     return id;
@@ -194,11 +217,13 @@ bool Graphics::unsubscribePreEndSceneCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(preEndSceneCallbackMutex);
     return preEndSceneCallback.erase(handle) > 0;
 }
 
 int Graphics::subscribePostEndSceneCallback(void(*func)())
 {
+    std::lock_guard<std::mutex> guard(postEndSceneCallbackMutex);
     int id = s_nextPostEndSceneId++;
     postEndSceneCallback[id] = func;
     return id;
@@ -210,11 +235,13 @@ bool Graphics::unsubscribePostEndSceneCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(postEndSceneCallbackMutex);
     return postEndSceneCallback.erase(handle) > 0;
 }
 
 int Graphics::subscribePrePresentWindowCallback(void(*func)(HWND hwnd, int width, int height))
 {
+    std::lock_guard<std::mutex> guard(prePresentWindowCallbackMutex);
     int id = s_nextPrePresentWindowId++;
     prePresentWindowCallback[id] = func;
     return id;
@@ -226,11 +253,13 @@ bool Graphics::unsubscribePrePresentWindowCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(prePresentWindowCallbackMutex);
     return prePresentWindowCallback.erase(handle) > 0;
 }
 
 int Graphics::subscribePostPresentWindowCallback(void(*func)(HWND hwnd, int width, int height))
 {
+    std::lock_guard<std::mutex> guard(postPresentWindowCallbackMutex);
     int id = s_nextPostPresentWindowId++;
     postPresentWindowCallback[id] = func;
     return id;
@@ -242,11 +271,13 @@ bool Graphics::unsubscribePostPresentWindowCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(postPresentWindowCallbackMutex);
     return postPresentWindowCallback.erase(handle) > 0;
 }
 
 int Graphics::subscribePrePresentCallback(void(*func)())
 {
+    std::lock_guard<std::mutex> guard(prePresentCallbackMutex);
     int id = s_nextPrePresentId++;
     prePresentCallback[id] = func;
     return id;
@@ -258,11 +289,13 @@ bool Graphics::unsubscribePrePresentCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(prePresentCallbackMutex);
     return prePresentCallback.erase(handle) > 0;
 }
 
 int Graphics::subscribePostPresentCallback(void(*func)())
 {
+    std::lock_guard<std::mutex> guard(postPresentCallbackMutex);
     int id = s_nextPostPresentId++;
     postPresentCallback[id] = func;
     return id;
@@ -274,6 +307,7 @@ bool Graphics::unsubscribePostPresentCallback(int handle)
     {
         return false;
     }
+    std::lock_guard<std::mutex> guard(postPresentCallbackMutex);
     return postPresentCallback.erase(handle) > 0;
 }
 
@@ -415,13 +449,21 @@ bool __cdecl hkInstall()
 // vector before iteration so Subscribe-during-dispatch can't invalidate the
 // iterator. Subscribers added mid-iteration land in the registry but fire on
 // the NEXT dispatch.
-static void dispatchVoid(const std::unordered_map<int, void(*)()>& registry)
+//
+// CR-01 (03-REVIEW): snapshot is built under the registry's mutex so concurrent
+// Subscribe / Unsubscribe writes can't race the map's bucket structure during
+// iteration. The mutex is dropped before invoking callbacks (callbacks can
+// re-subscribe without deadlock; new subscribers fire on the next dispatch).
+static void dispatchVoid(const std::unordered_map<int, void(*)()>& registry, std::mutex& mtx)
 {
     std::vector<void(*)()> snapshot;
-    snapshot.reserve(registry.size());
-    for (const auto& kv : registry)
     {
-        snapshot.push_back(kv.second);
+        std::lock_guard<std::mutex> guard(mtx);
+        snapshot.reserve(registry.size());
+        for (const auto& kv : registry)
+        {
+            snapshot.push_back(kv.second);
+        }
     }
     for (const auto& func : snapshot)
     {
@@ -429,13 +471,16 @@ static void dispatchVoid(const std::unordered_map<int, void(*)()>& registry)
     }
 }
 
-static void dispatchFloat(const std::unordered_map<int, void(*)(float)>& registry, float arg)
+static void dispatchFloat(const std::unordered_map<int, void(*)(float)>& registry, std::mutex& mtx, float arg)
 {
     std::vector<void(*)(float)> snapshot;
-    snapshot.reserve(registry.size());
-    for (const auto& kv : registry)
     {
-        snapshot.push_back(kv.second);
+        std::lock_guard<std::mutex> guard(mtx);
+        snapshot.reserve(registry.size());
+        for (const auto& kv : registry)
+        {
+            snapshot.push_back(kv.second);
+        }
     }
     for (const auto& func : snapshot)
     {
@@ -444,13 +489,16 @@ static void dispatchFloat(const std::unordered_map<int, void(*)(float)>& registr
 }
 
 static void dispatchPresentWindow(const std::unordered_map<int, void(*)(HWND, int, int)>& registry,
-                                  HWND hwnd, int width, int height)
+                                  std::mutex& mtx, HWND hwnd, int width, int height)
 {
     std::vector<void(*)(HWND, int, int)> snapshot;
-    snapshot.reserve(registry.size());
-    for (const auto& kv : registry)
     {
-        snapshot.push_back(kv.second);
+        std::lock_guard<std::mutex> guard(mtx);
+        snapshot.reserve(registry.size());
+        for (const auto& kv : registry)
+        {
+            snapshot.push_back(kv.second);
+        }
     }
     for (const auto& func : snapshot)
     {
@@ -460,31 +508,31 @@ static void dispatchPresentWindow(const std::unordered_map<int, void(*)(HWND, in
 
 void __cdecl hkUpdate(float elapsedTime)
 {
-    dispatchFloat(preUpdateCallback, elapsedTime);
+    dispatchFloat(preUpdateCallback, preUpdateCallbackMutex, elapsedTime);
 
     swg::graphics::update(elapsedTime);
 
-    dispatchFloat(postUpdateCallback, elapsedTime);
+    dispatchFloat(postUpdateCallback, postUpdateCallbackMutex, elapsedTime);
 }
 
 void __cdecl hkBeginScene()
 {
-    dispatchVoid(preBeginSceneCallback);
+    dispatchVoid(preBeginSceneCallback, preBeginSceneCallbackMutex);
 
     swg::graphics::beginScene();
 
-    dispatchVoid(postBeginSceneCallback);
+    dispatchVoid(postBeginSceneCallback, postBeginSceneCallbackMutex);
 }
 
 int oldWidth = 0;
 int oldHeight = 0;
 void __cdecl hkEndScene()
 {
-    dispatchVoid(preEndSceneCallback);
+    dispatchVoid(preEndSceneCallback, preEndSceneCallbackMutex);
 
     swg::graphics::endScene();
 
-    dispatchVoid(postEndSceneCallback);
+    dispatchVoid(postEndSceneCallback, postEndSceneCallbackMutex);
 
     RECT rect;
     if (Client::getEditorMode() && GetWindowRect(Client::getHwnd(), &rect))
@@ -511,20 +559,20 @@ void __cdecl hkEndScene()
 
 void __cdecl hkPresentWindow(HWND hwnd, int width, int height)
 {
-    dispatchPresentWindow(prePresentWindowCallback, hwnd, width, height);
+    dispatchPresentWindow(prePresentWindowCallback, prePresentWindowCallbackMutex, hwnd, width, height);
 
     swg::graphics::presentWindow(hwnd, width, height);
 
-    dispatchPresentWindow(postPresentWindowCallback, hwnd, width, height);
+    dispatchPresentWindow(postPresentWindowCallback, postPresentWindowCallbackMutex, hwnd, width, height);
 }
 
 void __cdecl hkPresent()
 {
-    dispatchVoid(prePresentCallback);
+    dispatchVoid(prePresentCallback, prePresentCallbackMutex);
 
     swg::graphics::present();
 
-    dispatchVoid(postPresentCallback);
+    dispatchVoid(postPresentCallback, postPresentCallbackMutex);
 }
 
 bool __cdecl hkScreenshot(const char* filename)
