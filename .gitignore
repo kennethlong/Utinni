@@ -29,3 +29,7 @@ ipch/
 /UtinniCoreDotNet/Generated/Std.cs
 /UtinniCoreDotNet/Generated/UtinniCore.cs
 *.aps
+# Output artifact from scripts/audit-utinni-rvas.ps1 (default -OutCsv path).
+# Per-machine snapshot of SWGEmu.exe RVA state; not a build-output but
+# still local-machine state. Tool is checked in; its CSV output is not.
+scripts/rva-audit.csv
