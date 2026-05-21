@@ -267,14 +267,57 @@ HRESULT __stdcall hkPresent(LPDIRECT3DDEVICE9 pDevice, const RECT* pSourceRect, 
     // DIAG 2026-05-19: one-shot info logs on first Present fire.
     // Captures the device's hwnd state and blockPresentCall flag so we can tell
     // whether SWG is rendering at all and whether C-09's block flag is stuck.
+    //
+    // 2026-05-21 Phase B-bis: also dump pSourceRect/pDestRect contents and the
+    // swapchain's SwapEffect so we can plan a stretch-to-window strategy. The
+    // handoff sketch (call pDevice->Reset to resize the backbuffer) is
+    // unworkable for SWG -- SWG holds default-pool resources we can't
+    // enumerate, so Reset returns D3DERR_INVALIDCALL and DEVICELOSTs the
+    // device. Need to know what SWG passes here to decide whether natural
+    // Present stretching works or whether we need to override pDestRect.
     static bool s_firstPresent = true;
     if (s_firstPresent)
     {
         s_firstPresent = false;
-        char msg[256];
+        char srcBuf[64];
+        if (pSourceRect)
+            snprintf(srcBuf, sizeof(srcBuf), "(%ld,%ld,%ld,%ld)",
+                     pSourceRect->left, pSourceRect->top, pSourceRect->right, pSourceRect->bottom);
+        else
+            snprintf(srcBuf, sizeof(srcBuf), "NULL");
+        char dstBuf[64];
+        if (pDestRect)
+            snprintf(dstBuf, sizeof(dstBuf), "(%ld,%ld,%ld,%ld)",
+                     pDestRect->left, pDestRect->top, pDestRect->right, pDestRect->bottom);
+        else
+            snprintf(dstBuf, sizeof(dstBuf), "NULL");
+
+        // Probe swapchain present-params so we know SwapEffect + BackBuffer dims
+        // at first-Present. These are the ground truth for any stretch strategy.
+        char swapBuf[160] = {0};
+        IDirect3DSwapChain9* sc = nullptr;
+        if (SUCCEEDED(pDevice->GetSwapChain(0, &sc)) && sc != nullptr)
+        {
+            D3DPRESENT_PARAMETERS pp = {};
+            if (SUCCEEDED(sc->GetPresentParameters(&pp)))
+            {
+                const char* eff =
+                    (pp.SwapEffect == D3DSWAPEFFECT_DISCARD) ? "DISCARD" :
+                    (pp.SwapEffect == D3DSWAPEFFECT_FLIP)    ? "FLIP" :
+                    (pp.SwapEffect == D3DSWAPEFFECT_COPY)    ? "COPY" :
+                    "OTHER";
+                snprintf(swapBuf, sizeof(swapBuf),
+                         " bb=%ux%u fmt=%d effect=%s windowed=%d hDevWnd=0x%p",
+                         pp.BackBufferWidth, pp.BackBufferHeight, (int)pp.BackBufferFormat,
+                         eff, pp.Windowed ? 1 : 0, (void*)pp.hDeviceWindow);
+            }
+            sc->Release();
+        }
+
+        char msg[512];
         snprintf(msg, sizeof(msg),
-                 "directX::hkPresent: first fire (block=%d, destHwndOverride=0x%p)",
-                 blockPresentCall ? 1 : 0, (void*)hDestWindowOverride);
+                 "directX::hkPresent: first fire (block=%d, destHwndOverride=0x%p, src=%s, dst=%s%s)",
+                 blockPresentCall ? 1 : 0, (void*)hDestWindowOverride, srcBuf, dstBuf, swapBuf);
         utinni::log::info(msg);
     }
 
@@ -299,7 +342,7 @@ HRESULT __stdcall hkPresent(LPDIRECT3DDEVICE9 pDevice, const RECT* pSourceRect, 
 			  SetEvent(hPresentBlockedEvent);
 		  }
 	 }
-	
+
 	 if (depthTexture == nullptr)
 	 {
 		  // WR-03: This branch is unreachable in production after utinni_init calls initDepthTexture().
