@@ -25,6 +25,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using UtinniCore.Utinni.Log;
 using static UtinniCore.Utinni.utinni;
 
@@ -35,7 +36,14 @@ namespace UtinniCoreDotNet.Utility
         private static bool writeClassName;
         private static bool writeFunctionName;
 
-        private static readonly SynchronizedCollection<Action<string>> outputSinkCallbacks = new SynchronizedCollection<Action<string>>();
+        // Phase 3 R-A managed-side (per 03-CONTEXT D-08/D-09): handle-based
+        // Subscribe/Unsubscribe over a Dictionary<int, Action<string>>. Per-type
+        // signature is Action<string> rather than Action because the log sink
+        // produces a string message payload. Handle 0 is reserved as the invalid
+        // sentinel per D-09.
+        private static readonly Dictionary<int, Action<string>> outputSinkSubscribers = new Dictionary<int, Action<string>>();
+        private static int s_nextOutputSinkId = 1; // 0 reserved as invalid handle per D-09
+        private static readonly object outputSinkLock = new object();
 
         private static UtinniCore.Delegates.Action_string outputSinkCallbacksAction;
         public static void Setup()
@@ -118,19 +126,83 @@ namespace UtinniCoreDotNet.Utility
             log.Warning(text);
         }
 
+        // Phase 3 R-A managed-side (per 03-CONTEXT D-08/D-09/D-10): primary API.
+        // SubscribeOutputSink returns an opaque int handle; pair with
+        // UnsubscribeOutputSink(handle) for symmetric Add/Remove.
+        public static int SubscribeOutputSink(Action<string> call)
+        {
+            lock (outputSinkLock)
+            {
+                int id = s_nextOutputSinkId++;
+                outputSinkSubscribers[id] = call;
+                return id;
+            }
+        }
+
+        public static bool UnsubscribeOutputSink(int handle)
+        {
+            // Handle 0 is reserved as invalid sentinel (D-09).
+            if (handle == 0)
+            {
+                return false;
+            }
+            lock (outputSinkLock)
+            {
+                return outputSinkSubscribers.Remove(handle);
+            }
+        }
+
+        // Phase 3 R-A typo-fix: AddOutputSinkCallback / RemoveOutputSinkCallback
+        // are the correctly-spelled primary legacy API. They wrap Subscribe per D-10.
+        public static void AddOutputSinkCallback(Action<string> call)
+        {
+            SubscribeOutputSink(call);
+        }
+
+        public static void RemoveOutputSinkCallback(Action<string> call)
+        {
+            // Best-effort legacy lookup: scan for first matching delegate. New code
+            // should use UnsubscribeOutputSink(handle).
+            lock (outputSinkLock)
+            {
+                int matchId = 0;
+                foreach (var kvp in outputSinkSubscribers)
+                {
+                    if (Equals(kvp.Value, call))
+                    {
+                        matchId = kvp.Key;
+                        break;
+                    }
+                }
+                if (matchId != 0)
+                {
+                    outputSinkSubscribers.Remove(matchId);
+                }
+            }
+        }
+
+        // Phase 3 R-A typo-aliases: the original API misspelled "Output" as "Ouput".
+        // The aliases below preserve source-compat with any existing UtinniPlugin
+        // caller while the correctly-spelled versions above are the new primary API.
         public static void AddOuputSinkCallback(Action<string> call)
         {
-            outputSinkCallbacks.Add(call);
+            AddOutputSinkCallback(call);
         }
 
         public static void RemoveOuputSinkCallback(Action<string> call)
         {
-            outputSinkCallbacks.Remove(call);
+            RemoveOutputSinkCallback(call);
         }
 
+        // R-H snapshot iteration per D-12: copy subscribers under lock, iterate outside.
         private static void CallOutputSinkCallbacks(string msg)
         {
-            foreach (Action<string> callback in outputSinkCallbacks)
+            Action<string>[] snapshot;
+            lock (outputSinkLock)
+            {
+                snapshot = outputSinkSubscribers.Values.ToArray();
+            }
+            foreach (Action<string> callback in snapshot)
             {
                 callback(msg);
             }

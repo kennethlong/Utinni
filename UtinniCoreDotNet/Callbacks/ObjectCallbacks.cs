@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MIT License
  *
  * Copyright (c) 2020 Philip Klatt
@@ -25,12 +25,21 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace UtinniCoreDotNet.Callbacks
 {
+    // Phase 3 R-A + R-H managed-side: onTarget is subscriber-backed (gets handle
+    // Subscribe/Unsubscribe per D-08/D-09) while onTargetCall stays queue-backed
+    // (IN-05 / D-11). Snapshot dispatch per D-12.
     public static class ObjectCallbacks
     {
-        private static readonly SynchronizedCollection<Action> onTargetCallbacks = new SynchronizedCollection<Action>();
+        // Subscriber-backed registry (R-A D-08/D-09).
+        private static readonly Dictionary<int, Action> onTargetSubscribers = new Dictionary<int, Action>();
+        private static int s_nextOnTargetId = 1; // 0 reserved as invalid handle per D-09
+        private static readonly object onTargetLock = new object();
+
+        // Queue-backed registrations: stay queues per IN-05 / D-11.
         private static readonly ConcurrentQueue<Action> onTargetCallQueue = new ConcurrentQueue<Action>();
 
         // C-16 (resolves CON-O-03 2026-Q2): The static field acts as a GC root for the
@@ -49,21 +58,67 @@ namespace UtinniCoreDotNet.Callbacks
             onTargetCallQueue.Enqueue(call);
         }
 
+        // --- OnTarget callback (R-A subscriber-backed) ---
+
+        public static int SubscribeOnTarget(Action call)
+        {
+            lock (onTargetLock)
+            {
+                int id = s_nextOnTargetId++;
+                onTargetSubscribers[id] = call;
+                return id;
+            }
+        }
+
+        public static bool UnsubscribeOnTarget(int handle)
+        {
+            if (handle == 0)
+            {
+                return false;
+            }
+            lock (onTargetLock)
+            {
+                return onTargetSubscribers.Remove(handle);
+            }
+        }
+
+        // D-10: legacy Add/Remove retained as wrappers (return value discarded).
         public static void AddOnTargetCallback(Action call)
         {
-            onTargetCallbacks.Add(call);
+            SubscribeOnTarget(call);
         }
 
         public static void RemoveOnTargetCallback(Action call)
         {
-            onTargetCallbacks.Remove(call);
+            lock (onTargetLock)
+            {
+                int matchId = 0;
+                foreach (var kvp in onTargetSubscribers)
+                {
+                    if (Equals(kvp.Value, call))
+                    {
+                        matchId = kvp.Key;
+                        break;
+                    }
+                }
+                if (matchId != 0)
+                {
+                    onTargetSubscribers.Remove(matchId);
+                }
+            }
         }
 
         private static void DequeueOnTargetCalls(IntPtr pTargetObject)
         {
             CallbackHelpers.Drain(onTargetCallQueue);
 
-            foreach (Action callback in onTargetCallbacks)
+            // R-H snapshot iteration per D-12.
+            Action[] snapshot;
+            lock (onTargetLock)
+            {
+                snapshot = onTargetSubscribers.Values.ToArray();
+            }
+            foreach (Action callback in snapshot)
             {
                 callback();
             }

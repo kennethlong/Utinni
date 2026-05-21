@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MIT License
  *
  * Copyright (c) 2020 Philip Klatt
@@ -24,12 +24,20 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace UtinniCoreDotNet.Callbacks
 {
+    // Phase 3 R-A + R-H managed-side: onReceiveSystemMessage is subscriber-backed
+    // with Action<string> payload. Per-callback Dictionary<int, Action<string>>
+    // + lock per D-09; snapshot dispatch per D-12. Pre-Phase-3 this class only
+    // had Add (no Remove); Phase 3 completes the pair plus the canonical
+    // Subscribe/Unsubscribe API.
     public static class CuiCallbacks
     {
-        private static readonly SynchronizedCollection<Action<string>> onReceiveSystemMessage = new SynchronizedCollection<Action<string>>();
+        private static readonly Dictionary<int, Action<string>> onReceiveSystemMessageSubscribers = new Dictionary<int, Action<string>>();
+        private static int s_nextOnReceiveSystemMessageId = 1; // 0 reserved as invalid handle per D-09
+        private static readonly object onReceiveSystemMessageLock = new object();
 
         private static UtinniCore.Delegates.Action_string dequeueOnReceiveSystemMessageAction;
         public static void Initialize()
@@ -38,14 +46,65 @@ namespace UtinniCoreDotNet.Callbacks
             UtinniCore.Utinni.SystemMessageManager.AddReceiveMessageCallback(dequeueOnReceiveSystemMessageAction);
         }
 
-        public static void AddOnReceiveSystemMessageCallback(Action<string> call)
+        public static int SubscribeOnReceiveSystemMessage(Action<string> call)
         {
-            onReceiveSystemMessage.Add(call);
+            lock (onReceiveSystemMessageLock)
+            {
+                int id = s_nextOnReceiveSystemMessageId++;
+                onReceiveSystemMessageSubscribers[id] = call;
+                return id;
+            }
         }
 
+        public static bool UnsubscribeOnReceiveSystemMessage(int handle)
+        {
+            if (handle == 0)
+            {
+                return false;
+            }
+            lock (onReceiveSystemMessageLock)
+            {
+                return onReceiveSystemMessageSubscribers.Remove(handle);
+            }
+        }
+
+        // D-10: legacy Add retained as wrapper (return value discarded).
+        public static void AddOnReceiveSystemMessageCallback(Action<string> call)
+        {
+            SubscribeOnReceiveSystemMessage(call);
+        }
+
+        // Phase 3 R-A: Remove pair previously missing; added per PATTERNS.md (line 427)
+        // as a best-effort legacy lookup. New code should use Unsubscribe(handle).
+        public static void RemoveOnReceiveSystemMessageCallback(Action<string> call)
+        {
+            lock (onReceiveSystemMessageLock)
+            {
+                int matchId = 0;
+                foreach (var kvp in onReceiveSystemMessageSubscribers)
+                {
+                    if (Equals(kvp.Value, call))
+                    {
+                        matchId = kvp.Key;
+                        break;
+                    }
+                }
+                if (matchId != 0)
+                {
+                    onReceiveSystemMessageSubscribers.Remove(matchId);
+                }
+            }
+        }
+
+        // R-H snapshot iteration per D-12.
         private static void DequeueOnReceiveSystemMessageCallbacks(string msg)
         {
-            foreach (Action<string> callback in onReceiveSystemMessage)
+            Action<string>[] snapshot;
+            lock (onReceiveSystemMessageLock)
+            {
+                snapshot = onReceiveSystemMessageSubscribers.Values.ToArray();
+            }
+            foreach (Action<string> callback in snapshot)
             {
                 callback(msg);
             }
