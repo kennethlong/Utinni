@@ -275,3 +275,19 @@ void Client::detour()
 }
 
 }
+
+// 2026-05-20 Issue #10 Phase B: C-linkage export so PanelGame.cs can read
+// SWG's top-level HWND without going through the auto-generated CppSharp
+// bindings. The generator drops pointer-returning getters (HWND/HINSTANCE
+// returns are not in CppSharp's emitted Client class -- only setters and
+// non-pointer getters survive). Mirroring the `getPresentBlockedEvent`
+// pattern in directx9.cpp: extern "C" + __cdecl keeps the symbol unmangled
+// so DllImport resolves it directly.
+//
+// Returns nullptr until imgui_impl::setup runs (first hkBeginScene), then
+// the value persists for process lifetime. Managed-side callers must
+// null-check the returned IntPtr before using it for SetWindowLongPtr.
+extern "C" __declspec(dllexport) HWND __cdecl getSwgHwndExport()
+{
+    return swgHwnd;
+}

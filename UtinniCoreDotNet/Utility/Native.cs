@@ -33,12 +33,36 @@ namespace UtinniCoreDotNet.Utility
         public const int WM_NCHITTEST = 0x0084;
         public const int WM_MOUSEMOVE = 0x0200;
 
-        public const int SC_DRAGMOVE = 0xF012; // SC_MOVE | HTCAPTION 
+        public const int SC_DRAGMOVE = 0xF012; // SC_MOVE | HTCAPTION
         public const int SC_MINIMIZE = 0xF020;
         public const int SC_RESTORE = 0xF120;
         public const int SC_MAXIMIZE = 0xF030;
 
         public const int CS_DROPSHADOW = 0x20000;
+
+        // 2026-05-20 Issue #10 Phase B (owned-popup reparenting). GWL_* indices
+        // for SetWindowLong / GWLP_HWNDPARENT for owner-relationship setting
+        // (GWLP_HWNDPARENT is the documented index but the field really sets
+        // the OWNER, not a parent -- a misnomer in the Win32 API).
+        public const int GWL_STYLE       = -16;
+        public const int GWLP_HWNDPARENT = -8;
+
+        // Window styles we care about for stripping SWG's frame.
+        public const uint WS_POPUP       = 0x80000000;
+        public const uint WS_CAPTION     = 0x00C00000;
+        public const uint WS_THICKFRAME  = 0x00040000;
+        public const uint WS_MINIMIZEBOX = 0x00020000;
+        public const uint WS_MAXIMIZEBOX = 0x00010000;
+        public const uint WS_SYSMENU     = 0x00080000;
+        public const uint WS_BORDER      = 0x00800000;
+        public const uint WS_DLGFRAME    = 0x00400000;
+
+        // SetWindowPos flags.
+        public const uint SWP_NOSIZE        = 0x0001;
+        public const uint SWP_NOZORDER      = 0x0004;
+        public const uint SWP_NOACTIVATE    = 0x0010;
+        public const uint SWP_FRAMECHANGED  = 0x0020;
+        public const uint SWP_SHOWWINDOW    = 0x0040;
 
         public enum WM_HitTests
         {
@@ -75,6 +99,28 @@ namespace UtinniCoreDotNet.Utility
 
         [DllImport("user32.dll")]
         public static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
+
+        // 2026-05-20 Issue #10 Phase B: window-style + owner-set + reposition
+        // primitives for the owned-popup reparent (see PanelGame.ReparentSwgWindow).
+        // 32-bit build only -- SetWindowLong (not SetWindowLongPtr) is correct here.
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
+            int X, int Y, int cx, int cy, uint uFlags);
+
+        // 2026-05-20 Issue #10 Phase B: read SWG's top-level HWND via the
+        // C-linkage export added in client.cpp. CppSharp's binding generator
+        // drops pointer-returning getters so getSwgHwnd() doesn't survive
+        // into Generated/UtinniCore.cs -- this hand-rolled P/Invoke replaces it.
+        [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+            EntryPoint = "getSwgHwndExport")]
+        public static extern IntPtr GetSwgHwnd();
 
         // 2026-05-19: signal the named ready event so the Launcher can restore
         // SWGEmu's PE entry bytes (originally patched to EB FE to stall the main

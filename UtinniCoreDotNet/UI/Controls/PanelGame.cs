@@ -24,6 +24,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.Windows.Forms;
 using UtinniCore.ImguiImpl;
 using UtinniCore.Utinni;
@@ -53,6 +54,24 @@ namespace UtinniCoreDotNet.UI.Controls
 
         private readonly PluginLoader pluginLoader;
 
+        // 2026-05-20 Issue #10 Phase B (owned-popup reparenting). SWG creates
+        // its own top-level window; we capture that HWND in imgui_impl::setup
+        // (first hkBeginScene), then on the managed side we strip its frame
+        // styles, set FormMain as its owner via GWLP_HWNDPARENT, and position
+        // it over PanelGame's client rect in screen coords.
+        //
+        // Why poll: capture happens downstream of PanelGame's ctor, so the
+        // SWG HWND isn't ready yet. Once captured, we reparent once and stop
+        // the timer; ongoing realignment is handled by Resize + LocationChanged.
+        //
+        // Why owned popup, NOT WS_CHILD: per CODEX consult #3 + MSFT docs,
+        // IDirectInputDevice8::SetCooperativeLevel requires a TOP-LEVEL HWND.
+        // WS_CHILD would break DirectInput. Owned-popup keeps top-level identity
+        // while still letting FormMain own/move/minimize SWG as a group.
+        private bool swgReparented;
+        private readonly Timer reparentPollTimer = new Timer { Interval = 100 };
+        private Form ownerFormCached;
+
         public PanelGame(PluginLoader pluginLoader)
         {
             base.Dock = DockStyle.Fill;
@@ -71,6 +90,13 @@ namespace UtinniCoreDotNet.UI.Controls
             KeyDown += PanelGame_KeyDown;
 
             Layout += PanelGame_Layout;
+
+            // Issue #10 Phase B wiring. Start poll on handle creation, stop on
+            // dispose, realign on resize, and hook FormMain.LocationChanged as
+            // soon as the owning form is reachable.
+            reparentPollTimer.Tick += ReparentPollTimer_Tick;
+            HandleCreated += PanelGame_HandleCreated_ForReparent;
+            Resize += (s, e) => RepositionSwgWindow();
 
             GameDragDropEventHandlers.Initialize(this);
 
@@ -91,8 +117,111 @@ namespace UtinniCoreDotNet.UI.Controls
 
         private void PanelGame_Disposed(object sender, EventArgs e)
         {
+            reparentPollTimer.Stop();
+            reparentPollTimer.Dispose();
+            if (ownerFormCached != null)
+            {
+                ownerFormCached.LocationChanged -= OwnerForm_LocationChanged;
+                ownerFormCached = null;
+            }
             Game.Quit();
         }
+
+        private void PanelGame_HandleCreated_ForReparent(object sender, EventArgs e)
+        {
+            // FindForm walks up to the top-level form once our HWND exists.
+            // Cache + subscribe so we can realign on FormMain drags.
+            ownerFormCached = FindForm();
+            if (ownerFormCached != null)
+            {
+                ownerFormCached.LocationChanged += OwnerForm_LocationChanged;
+            }
+            reparentPollTimer.Start();
+        }
+
+        private void OwnerForm_LocationChanged(object sender, EventArgs e)
+        {
+            RepositionSwgWindow();
+        }
+
+        private void ReparentPollTimer_Tick(object sender, EventArgs e)
+        {
+            if (swgReparented)
+            {
+                reparentPollTimer.Stop();
+                return;
+            }
+            if (!IsHandleCreated) return;
+            if (ownerFormCached == null || !ownerFormCached.IsHandleCreated) return;
+
+            IntPtr swgHwnd = Native.GetSwgHwnd();
+            if (swgHwnd == IntPtr.Zero) return;
+
+            ReparentSwgWindow(swgHwnd, ownerFormCached.Handle);
+            reparentPollTimer.Stop();
+        }
+
+        private void ReparentSwgWindow(IntPtr swgHwnd, IntPtr ownerHwnd)
+        {
+            int oldStyle = Native.GetWindowLong(swgHwnd, Native.GWL_STYLE);
+            uint u = unchecked((uint)oldStyle);
+            uint frameMask = Native.WS_CAPTION | Native.WS_THICKFRAME
+                           | Native.WS_MINIMIZEBOX | Native.WS_MAXIMIZEBOX
+                           | Native.WS_SYSMENU | Native.WS_BORDER | Native.WS_DLGFRAME;
+            u = (u & ~frameMask) | Native.WS_POPUP;
+            Native.SetWindowLong(swgHwnd, Native.GWL_STYLE, unchecked((int)u));
+
+            // GWLP_HWNDPARENT: documentation calls it "parent" but it actually
+            // sets the OWNER. SWG stays top-level but gets minimized/closed
+            // with FormMain as a group.
+            Native.SetWindowLong(swgHwnd, Native.GWLP_HWNDPARENT, ownerHwnd.ToInt32());
+
+            // Flag MUST flip before RepositionSwgWindow so the !swgReparented
+            // guard inside it doesn't early-return. Without this the SWP_FRAMECHANGED
+            // never fires and the stripped frame stays visible.
+            swgReparented = true;
+            RepositionSwgWindow();
+
+            Log.Info("PanelGame: reparented SWG hwnd=0x" + swgHwnd.ToInt64().ToString("X")
+                + " owner=0x" + ownerHwnd.ToInt64().ToString("X")
+                + " oldStyle=0x" + oldStyle.ToString("X8") + " newStyle=0x" + u.ToString("X8")
+                + " (Issue #10 Phase B -- owned popup)");
+        }
+
+        private void RepositionSwgWindow()
+        {
+            if (!swgReparented) return;
+            if (!IsHandleCreated) return;
+            IntPtr swgHwnd = Native.GetSwgHwnd();
+            if (swgHwnd == IntPtr.Zero) return;
+
+            // 2026-05-20 Issue #10 Phase B (iter 2): position-only, NOT size.
+            // The first launch attempt (full SetWindowPos with PanelGame.ClientSize)
+            // produced a black SWG window: D3D9's swapchain was created at SWG's
+            // original window dimensions and Present() doesn't auto-rescale on
+            // window resize in windowed mode. Triggering IDirect3DDevice9::Reset()
+            // with new BackBufferWidth/Height + ImGui invalidate/recreate is a
+            // separate concern (Phase B-bis). For now: leave SWG at its native
+            // size, just move it over PanelGame to validate the owned-popup
+            // reparent + frame-strip + DirectInput coop-level survival.
+            Point screenOrigin = PointToScreen(Point.Empty);
+            bool ok = Native.SetWindowPos(swgHwnd, IntPtr.Zero,
+                screenOrigin.X, screenOrigin.Y,
+                0, 0, // ignored under SWP_NOSIZE
+                Native.SWP_NOSIZE | Native.SWP_FRAMECHANGED | Native.SWP_NOZORDER
+                | Native.SWP_SHOWWINDOW | Native.SWP_NOACTIVATE);
+
+            // Diag: cap to first 8 calls to avoid log spam during drag.
+            if (s_repositionLogCount < 8)
+            {
+                s_repositionLogCount++;
+                Log.Info("PanelGame.RepositionSwgWindow: SetWindowPos("
+                    + "x=" + screenOrigin.X + ",y=" + screenOrigin.Y
+                    + ",NOSIZE) -> " + (ok ? "OK" : "FAIL"));
+            }
+        }
+
+        private static int s_repositionLogCount;
 
         private void PanelGame_KeyDown(object sender, KeyEventArgs e)
         {

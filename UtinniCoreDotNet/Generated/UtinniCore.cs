@@ -1913,6 +1913,11 @@ namespace UtinniCore
 
                 [SuppressUnmanagedCodeSecurity]
                 [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?setSwgHwnd@Client@utinni@@SAXPAX@Z")]
+                internal static extern void SetSwgHwnd(global::System.IntPtr hwnd);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
                     EntryPoint="?setSize@Client@utinni@@SAXHH@Z")]
                 internal static extern void SetSize(int width, int height);
 
@@ -2035,6 +2040,11 @@ namespace UtinniCore
             public static void SetHInstance(global::System.IntPtr newHInstance)
             {
                 __Internal.SetHInstance(newHInstance);
+            }
+
+            public static void SetSwgHwnd(global::System.IntPtr hwnd)
+            {
+                __Internal.SetSwgHwnd(hwnd);
             }
 
             public static void SetSize(int width, int height)
@@ -2690,6 +2700,11 @@ namespace UtinniCore
                 internal static extern void AppendMessage(global::System.IntPtr __instance, int msg, float value, uint data);
 
                 [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?detour@MessageQueue@utinni@@SAXXZ")]
+                internal static extern void Detour();
+
+                [SuppressUnmanagedCodeSecurity]
                 [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.ThisCall,
                     EntryPoint="?getCount@MessageQueue@utinni@@QAEHXZ")]
                 internal static extern int GetCount(global::System.IntPtr __instance);
@@ -2784,6 +2799,11 @@ namespace UtinniCore
             public void AppendMessage(int msg, float value, uint data)
             {
                 __Internal.AppendMessage(__Instance, msg, value, data);
+            }
+
+            public static void Detour()
+            {
+                __Internal.Detour();
             }
 
             public int Count
@@ -15379,8 +15399,24 @@ namespace UtinniCore
 
                 [SuppressUnmanagedCodeSecurity]
                 [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?forceOpenChatInputFromCpp@CuiChatWindow@utinni@@SAXXZ")]
+                internal static extern void ForceOpenChatInputFromCpp();
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?dumpActionStringSlotsFromCpp@CuiChatWindow@utinni@@SAXXZ")]
+                internal static extern void DumpActionStringSlotsFromCpp();
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
                     EntryPoint="?detour@CuiChatWindow@utinni@@SAXXZ")]
                 internal static extern void Detour();
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?isChatInputModeActive@CuiChatWindow@utinni@@SA_NXZ")]
+                [return: MarshalAs(UnmanagedType.I1)]
+                internal static extern bool IsChatInputModeActive();
             }
 
             public global::System.IntPtr __Instance { get; protected set; }
@@ -15477,9 +15513,28 @@ namespace UtinniCore
                 __Internal.SendMessage(msg, addToChatHistory);
             }
 
+            public static void ForceOpenChatInputFromCpp()
+            {
+                __Internal.ForceOpenChatInputFromCpp();
+            }
+
+            public static void DumpActionStringSlotsFromCpp()
+            {
+                __Internal.DumpActionStringSlotsFromCpp();
+            }
+
             public static void Detour()
             {
                 __Internal.Detour();
+            }
+
+            public static bool IsChatInputModeActive
+            {
+                get
+                {
+                    var __ret = __Internal.IsChatInputModeActive();
+                    return __ret;
+                }
             }
         }
     }
