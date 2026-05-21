@@ -3,9 +3,7 @@ phase: 03-strategic-reworks-r-a-r-h
 plan: 02
 subsystem: plugin-lifecycle-and-rvas
 tags: [plugin-abi, destroyPlugin, two-phase-init, HMODULE-tracking, single-source-rva, pinvoke, xunit, fixture-plugin, CON-N-08, CON-O-07]
-status: paused-at-checkpoint
-checkpoint_type: human-action
-awaiting_task: 4
+status: complete
 
 # Dependency graph
 requires:
@@ -78,16 +76,18 @@ patterns-established:
 requirements-completed: [STAB-02-partial]
 
 # Metrics
-duration: "~1h (Tasks 1-3 only; Tasks 4-5 deferred to post-checkpoint)"
+duration: "~1h Tasks 1-3 (worktree); ~5 min Tasks 4-5 (inline on master after checkpoint resolution)"
 started: "2026-05-21 (worktree agent-a265293e4ff1f79f5 spawn)"
-completed_tasks: 3
+completed_tasks: 5
 total_tasks: 5
-paused_at: "2026-05-21T20:01:54Z (post Task 3 commit, before Task 4 cross-repo human-action checkpoint)"
+completed_at: "2026-05-21 (Task 4 cross-repo work landed via UtinniPlugins commit 73b1856; Task 5 inline)"
 ---
 
-# Phase 3 Plan 02: Plugin lifecycle + RVAs (R-B + R-C) Summary (PARTIAL -- paused at Task 4 checkpoint)
+# Phase 3 Plan 02: Plugin lifecycle + RVAs (R-B + R-C) Summary
 
-**Tasks 1-3 (R-B framework changes + fixture plugins + R-C single-source RVA + 7 new xUnit Facts) committed and green. Task 4 (cross-repo TJT destroyPlugin export in kennethlong/UtinniPlugins) is a checkpoint:human-action gate -- awaiting user execution.**
+**All 5 tasks complete. R-B (symmetric plugin lifecycle ABI + two-phase init + HMODULE tracking) and R-C (single-source-of-truth WndProc RVA) landed. Cross-repo paired commit in `kennethlong/UtinniPlugins` (TJT destroyPlugin export at commit `73b1856`) closes Task 4. Task 5 (assessment.md status update) closes the plan.**
+
+**Checkpoint resolution note:** Task 4 was originally classified as `checkpoint:human-action` because the planner assumed Claude had no cross-repo write authority. User clarified mid-execution (2026-05-21) that standing authority covers `kennethlong/UtinniPlugins` (recorded as a memory: `feedback-utinniplugins-authority`). The cross-repo code+commit+push portion of Task 4 was therefore handled inline; live SWG injection smoke (the irreducibly manual portion of the original checkpoint) remains the operator's responsibility — flagged as a watch item in the next phase's CONTEXT.
 
 ## Performance
 
@@ -132,8 +132,8 @@ Each task committed atomically per D-03:
 1. **Task 1: UTINNI_PLUGIN macro + fixture plugins** -- `ff0b473` (feat)
 2. **Task 2: PluginManager two-phase init + HMODULE + R-B regression Facts** -- `2884c2c` (feat)
 3. **Task 3: R-C single-source WndProc RVA + grep-style negative test** -- `9337da7` (feat)
-4. **Task 4: Cross-repo TJT destroyPlugin export** -- AWAITING USER (checkpoint:human-action gate)
-5. **Task 5: docs/ai/assessment.md status update** -- DEFERRED until after Task 4 confirmation
+4. **Task 4: Cross-repo TJT destroyPlugin export** -- `UtinniPlugins@73b1856` (cross-repo: `kennethlong/UtinniPlugins` master, pushed 2026-05-21). TJT `plugin.cpp` rewritten from `extern "C" { UTINNI_PLUGIN { return new ...; } }` (old single-body form) to `UTINNI_PLUGIN; createPlugin() {...} destroyPlugin(p) { delete p; }` (new symmetric form). Built green with VS 2026 Release|x86; dumpbin confirms both exports.
+5. **Task 5: docs/ai/assessment.md status update** -- inline on master (status-tracking row R-B + R-C → done with implementing SHAs; CON-O-07 disposition resolved in §"Open questions").
 
 ## CON-N-08 Verification
 
@@ -248,9 +248,9 @@ dumpbin /exports confirms:
 - **xUnit2013 style warnings:** Pre-existing `Assert.Equal(N, collection.Count)` patterns trigger xUnit's "use Assert.Empty/Single" analyzer. Not regressions; pre-existing in Plan 03-01's test files. Out of scope for this plan.
 - **GameCallbacksTests flaky:** A pre-existing GC-survival test (added in Phase 02 C-16) is occasionally flaky -- timing of `GC.Collect()` is non-deterministic. Not caused by Task 2 changes; reruns consistently green. Not blocking.
 
-## User Setup Required for Task 4 (checkpoint:human-action)
+## Task 4 Resolution (historical: was checkpoint:human-action; closed inline)
 
-**Task 4 is a cross-repo human-action checkpoint** -- the orchestrator returns control to the user.
+**Task 4 was classified `checkpoint:human-action` in the original plan.** Resolution path: the cross-repo write authority gap was the only thing forcing the checkpoint; once user clarified that Claude has standing UtinniPlugins write access, the code+commit+push portion was driven inline. The kept-manual portion (live SWG injection smoke) is flagged as a watch item in §"Next Phase Readiness".
 
 The Utinni framework side of R-B is fully landed (UTINNI_PLUGIN macro + symmetric ABI + loader two-phase init + destroyPlugin/FreeLibrary shutdown). The companion plugin (TJT) lives in the separate `kennethlong/UtinniPlugins` repo; per D-26 + Phase 02 D-09 (no UtinniPlugins CI yet), the migration is operator-driven manual work.
 
@@ -286,12 +286,13 @@ The Utinni framework side of R-B is fully landed (UTINNI_PLUGIN macro + symmetri
 
 **If the TJT build or smoke fails:** type `blocked: <description>` in chat. The most-likely failure mode is `~UtinniPlugin` not being virtual -- but verification of `utinni_plugin.h:41` (`virtual ~UtinniPlugin() {}`) confirms this precondition is satisfied. Other failures (Visual Studio version mismatch, framework path mis-configuration) are environmental and fixed in the UtinniPlugins repo workspace.
 
-## Next Phase Readiness (paused-at-checkpoint)
+## Next Phase Readiness
 
-- **Plan 03-02 Tasks 4 + 5** await user execution. Per D-04's CI-gated ordering, Plan 03-03 (R-E + R-F + R-G build-tooling / logging) does NOT start until 03-02 is fully closed (Task 5 lands).
-- **Carry-overs at the checkpoint:** none from Tasks 1-3. The CON-O-07 disposition (Sytner = legacy, no compat target) is documented in code comments throughout `plugin_manager.cpp` and `utinni_plugin.h`; the `docs/ai/assessment.md` §"Open questions" formal disposition update lands in Task 5 alongside the §"Status tracking" R-B + R-C done markers.
+- **Plan 03-03 (R-E + R-F + R-G) is now unblocked** per D-04's CI-gated ordering. Master is green: msbuild Release|x86 exits 0 (verified post-merge with VS 2026 MSBuild v18.6.3); `dotnet test UtinniCoreDotNet.Tests` 83/83 pass.
+- **Open watch item:** live SWG injection smoke for TJT post-R-B is the operator's responsibility — verify TJT panels open + clean shutdown with destroyPlugin path exercised on process exit. Not phase-blocking; surface in next phase CONTEXT or as a UAT item if it becomes urgent.
+- **Toolchain note:** local development bumped from VS 2022 to VS 2026 (Dev18 v18.6.1) mid-Phase-3 per user direction. PlatformToolset stays `v142` for now; a formal bump to `v144` (or `v143`) is a Phase 6-class project.
 
-## Self-Check: PASSED (for Tasks 1-3)
+## Self-Check: PASSED
 
 - `Utinni.CrtMatchPlugin/Utinni.CrtMatchPlugin.vcxproj` -- exists
 - `Utinni.CrtMatchPlugin/main.cpp` -- exists

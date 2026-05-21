@@ -474,6 +474,15 @@ These need someone-who-was-there to answer:
    — what was the plan?
 7. **Sytner's plugin** — code elsewhere that was never merged, or always
    aspirational?
+
+   **Resolved 2026-05-21 (CON-O-07, Phase 3 Plan 03-02 Task 2 — D-15):** Sytner =
+   legacy plugin, no source-compat target preserved. R-B's symmetric `UTINNI_PLUGIN`
+   macro (Utinni commit 2884c2c) intentionally breaks at link for any plugin that
+   omits the `destroyPlugin` export. PluginManager's loader has a virtual-destructor
+   fallback path (`Utinni.LegacyPlugin` fixture exercises it) so a legacy DLL that
+   still ships with only `createPlugin` will load and run — it just won't get
+   symmetric CRT teardown. Upstream `ptklatt/UtinniPlugins` is dormant; no
+   community consumers depend on the old single-symbol ABI.
 8. **DXSDK June 2010 dependency** — could it be replaced with Windows 10
    SDK's d3d9 headers? (DXSDK has `d3dx9.h`, Windows SDK lacks it — check
    if Utinni actually uses `d3dx9` math helpers.)
@@ -566,8 +575,8 @@ doc in sync so future sessions (human or AI) can see what's done.
 | C-15  | CppSharp slnDir brittle                           | done       | 8a4d7f9 — Phase 2 Plan 02-02 Task 8 (ResolveSlnDir 3-mode function; post-build passes $(SolutionDir); 4 tests) |
 | C-16  | GameCallbacks delegate-pinning (CON-O-03)         | done       | bfddf7d — Phase 2 Plan 02-02 Task 9 (comment audit + GC-survival regression test; CON-O-03 resolved) |
 | R-A   | Symmetric Add/Remove for callbacks                | done       | Phase 3 Plan 03-01 Tasks 1-3 (b220e36 IN-05 Drain consolidation; 2e1b61d managed-side handle Subscribe/Unsubscribe + Log.cs typo fix; 5e81410 + e4b2b59 native-side handle Subscribe/Unsubscribe across 11 files / 32 registries; ddda9f0 utinni_test_* native bridge + NativeCallbacksHandleTests) |
-| R-B   | Plugin lifecycle contract                         | open       |       |
-| R-C   | Single source of truth for RVAs                   | open       |       |
+| R-B   | Plugin lifecycle contract                         | done       | Phase 3 Plan 03-02 Tasks 1-2 (ff0b473 UTINNI_PLUGIN macro extended with destroyPlugin + Utinni.CrtMatchPlugin /MD + Utinni.LegacyPlugin /MT fixture DLLs; 2884c2c PluginManager two-phase init with per-plugin try/catch + HMODULE tracking + LoadLibrary GetLastError logging + destroyPlugin/FreeLibrary shutdown + virtual-dtor legacy fallback; PluginManagerLifecycleTests 5 Facts); paired cross-repo commit UtinniPlugins@73b1856 (TJT destroyPlugin export); CON-O-07 disposition: Sytner = legacy, no compat target |
+| R-C   | Single source of truth for RVAs                   | done       | Phase 3 Plan 03-02 Task 3 (9337da7 Client::getSwgWndProc UTINNI_API getter + extern "C" getSwgWndProcExport shim mirrors getSwgHwndExport; PanelGame.cs P/Invoke-caches via Native.GetSwgWndProc; 0x00AA0970 literal eliminated from managed source; GetSwgWndProcTests 2 Facts + negative-grep gate) |
 | R-D   | Add CI                                            | open       |       |
 | R-E   | Log `[CallerMemberName]`                          | open       |       |
 | R-F   | CppSharp header auto-discovery                    | open       |       |
