@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 2 context gathered
-last_updated: "2026-05-21T09:45:00.000Z"
-last_activity: 2026-05-21 morning -- Issue #10 Phase B-bis LANDED (commits e9025fc + 1789400). SWG resizes with PanelGame end-to-end (drop SWP_NOSIZE, drop SWP_NOZORDER, use HWND_TOP). Verified live: SWG fills PanelGame at all sizes, drag tracks, login + Naboo scene load + WASD movement + chat enter + Esc untarget + clean /quit. Handoff sketch (pDevice->Reset) was unworkable; actual mechanism is D3D9 COPY's own stretching + HWND_TOP for Z-order. Issue #1 (WR-03 exit dialog) also RESOLVED implicitly as a Phase B ownership side effect -- clean exit chain, no dialog, no dump.
+stopped_at: Phase 3 context gathered
+last_updated: "2026-05-21T16:07:08.453Z"
+last_activity: 2026-05-19 -- Phase 02.1 marked complete
 progress:
   total_phases: 12
   completed_phases: 3
@@ -128,9 +128,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-05-16T23:04:55.398Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-critical-bug-burn-down-c-01-c-15/02-CONTEXT.md
+Last session: 2026-05-21T16:07:07.971Z
+Stopped at: Phase 3 context gathered
+Resume file: .planning/phases/03-strategic-reworks-r-a-r-h/03-CONTEXT.md
 
 ## Ingest Provenance
 
