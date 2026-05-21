@@ -37,6 +37,8 @@
 
 #include <cstdio>
 #include <intrin.h>
+#include <unordered_map>
+#include <vector>
 
 
 namespace swg::groundScene
@@ -66,10 +68,17 @@ pHandleInputMapEvent handleInputMapEvent = (pHandleInputMapEvent)0x0051AA40;
 pInit init = (pInit)0x00518EB0;
 }
 
-static std::vector<void(*)(utinni::GroundScene* pThis)> preDrawLoopCallbacks;
-static std::vector<void(*)(utinni::GroundScene* pThis)> postDrawLoopCallbacks;
-static std::vector<void(*)(utinni::GroundScene* pThis, float time)> updateLoopCallbacks;
-static std::vector<void(*)()> cameraChangeCallbacks;
+// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries
+// backed by std::unordered_map<int, fn_ptr>. Handle 0 reserved as invalid
+// sentinel.
+static std::unordered_map<int, void(*)(utinni::GroundScene* pThis)> preDrawLoopCallbacks;
+static std::unordered_map<int, void(*)(utinni::GroundScene* pThis)> postDrawLoopCallbacks;
+static std::unordered_map<int, void(*)(utinni::GroundScene* pThis, float time)> updateLoopCallbacks;
+static std::unordered_map<int, void(*)()> cameraChangeCallbacks;
+static int s_nextPreDrawId = 1;
+static int s_nextPostDrawId = 1;
+static int s_nextUpdateId = 1;
+static int s_nextCameraChangeId = 1;
 
 namespace utinni
 {
@@ -103,45 +112,134 @@ std::string GroundScene::getName()
     return terrainPath.substr(i, length);
 }
 
+// Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09. Add* retained
+// per D-10 as wrappers (return value discarded).
+int GroundScene::subscribePreDrawLoopCallback(void(*func)(GroundScene* pThis))
+{
+    int id = s_nextPreDrawId++;
+    preDrawLoopCallbacks[id] = func;
+    return id;
+}
+
+bool GroundScene::unsubscribePreDrawLoopCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return preDrawLoopCallbacks.erase(handle) > 0;
+}
+
+int GroundScene::subscribePostDrawLoopCallback(void(*func)(GroundScene* pThis))
+{
+    int id = s_nextPostDrawId++;
+    postDrawLoopCallbacks[id] = func;
+    return id;
+}
+
+bool GroundScene::unsubscribePostDrawLoopCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return postDrawLoopCallbacks.erase(handle) > 0;
+}
+
+int GroundScene::subscribeUpdateLoopCallback(void(*func)(GroundScene* pThis, float elapsedTime))
+{
+    int id = s_nextUpdateId++;
+    updateLoopCallbacks[id] = func;
+    return id;
+}
+
+bool GroundScene::unsubscribeUpdateLoopCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return updateLoopCallbacks.erase(handle) > 0;
+}
+
+int GroundScene::subscribeCameraChangeCallback(void(*func)())
+{
+    int id = s_nextCameraChangeId++;
+    cameraChangeCallbacks[id] = func;
+    return id;
+}
+
+bool GroundScene::unsubscribeCameraChangeCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return cameraChangeCallbacks.erase(handle) > 0;
+}
+
 void GroundScene::addPreDrawLoopCallback(void(*func)(GroundScene* pThis))
 {
-    preDrawLoopCallbacks.emplace_back(func);
-
+    subscribePreDrawLoopCallback(func);
 }
 
 void GroundScene::addPostDrawLoopCallback(void(*func)(GroundScene* pThis))
 {
-    postDrawLoopCallbacks.emplace_back(func);
+    subscribePostDrawLoopCallback(func);
 }
 
 void __fastcall hkDrawLoop(GroundScene* pThis, DWORD EDX)
 {
-    for (const auto& func : preDrawLoopCallbacks)
+    // R-H snapshot dispatch per D-12.
     {
-        func(pThis);
+        std::vector<void(*)(GroundScene*)> snapshot;
+        snapshot.reserve(preDrawLoopCallbacks.size());
+        for (const auto& kv : preDrawLoopCallbacks)
+        {
+            snapshot.push_back(kv.second);
+        }
+        for (const auto& func : snapshot)
+        {
+            func(pThis);
+        }
     }
 
     swg::groundScene::draw(pThis);
 
-    for (const auto& func : postDrawLoopCallbacks)
     {
-        func(pThis);
+        std::vector<void(*)(GroundScene*)> snapshot;
+        snapshot.reserve(postDrawLoopCallbacks.size());
+        for (const auto& kv : postDrawLoopCallbacks)
+        {
+            snapshot.push_back(kv.second);
+        }
+        for (const auto& func : snapshot)
+        {
+            func(pThis);
+        }
     }
 }
 
 void GroundScene::addUpdateLoopCallback(void(*func)(GroundScene* pThis, float elapsedTime))
 {
-    updateLoopCallbacks.emplace_back(func);
+    subscribeUpdateLoopCallback(func);
 }
 
 void GroundScene::addCameraChangeCallback(void(*func)())
 {
-    cameraChangeCallbacks.emplace_back(func);
+    subscribeCameraChangeCallback(func);
 }
 
 void __fastcall hkUpdateLoop(GroundScene* pThis, DWORD EDX, float time)
 {
-    for (const auto& func : updateLoopCallbacks)
+    // R-H snapshot dispatch per D-12.
+    std::vector<void(*)(GroundScene*, float)> snapshot;
+    snapshot.reserve(updateLoopCallbacks.size());
+    for (const auto& kv : updateLoopCallbacks)
+    {
+        snapshot.push_back(kv.second);
+    }
+    for (const auto& func : snapshot)
     {
         func(pThis, time);
     }
@@ -214,9 +312,18 @@ void GroundScene::toggleFreeCamera()
         swg::groundScene::changeCamera(this, Camera::Modes::cm_Free, 0);
     }
 
-    for (const auto& func : cameraChangeCallbacks)
+    // R-H snapshot dispatch per D-12.
     {
-        func();
+        std::vector<void(*)()> snapshot;
+        snapshot.reserve(cameraChangeCallbacks.size());
+        for (const auto& kv : cameraChangeCallbacks)
+        {
+            snapshot.push_back(kv.second);
+        }
+        for (const auto& func : snapshot)
+        {
+            func();
+        }
     }
 }
 

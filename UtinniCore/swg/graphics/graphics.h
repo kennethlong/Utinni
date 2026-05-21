@@ -33,6 +33,30 @@ namespace utinni
     class UTINNI_API Graphics
 {
 public:
+    // Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09): Subscribe returns an
+    // opaque int (handle 0 reserved as invalid sentinel); pair with Unsubscribe.
+    static int subscribePreUpdateLoopCallback(void (*func)(float elapsedTime));
+    static bool unsubscribePreUpdateLoopCallback(int handle);
+    static int subscribePostUpdateLoopCallback(void (*func)(float elapsedTime));
+    static bool unsubscribePostUpdateLoopCallback(int handle);
+    static int subscribePreBeginSceneCallback(void (*func)());
+    static bool unsubscribePreBeginSceneCallback(int handle);
+    static int subscribePostBeginSceneCallback(void (*func)());
+    static bool unsubscribePostBeginSceneCallback(int handle);
+    static int subscribePreEndSceneCallback(void (*func)());
+    static bool unsubscribePreEndSceneCallback(int handle);
+    static int subscribePostEndSceneCallback(void (*func)());
+    static bool unsubscribePostEndSceneCallback(int handle);
+    static int subscribePrePresentWindowCallback(void (*func)(HWND hwnd, int width, int height));
+    static bool unsubscribePrePresentWindowCallback(int handle);
+    static int subscribePostPresentWindowCallback(void (*func)(HWND hwnd, int width, int height));
+    static bool unsubscribePostPresentWindowCallback(int handle);
+    static int subscribePrePresentCallback(void (*func)());
+    static bool unsubscribePrePresentCallback(int handle);
+    static int subscribePostPresentCallback(void (*func)());
+    static bool unsubscribePostPresentCallback(int handle);
+
+    // Legacy add* API (D-10): thin wrappers around subscribe*.
     static void addPreUpdateLoopCallback(void (*func)(float elapsedTime));
     static void addPostUpdateLoopCallback(void (*func)(float elapsedTime));
     static void addPreBeginSceneCallback(void (*func)());
