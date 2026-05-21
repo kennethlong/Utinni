@@ -47,6 +47,27 @@ namespace utinni
 }
 
 
-#define UTINNI_PLUGIN extern "C" __declspec(dllexport) utinni::UtinniPlugin* createPlugin()
+// Phase 3 R-B (per 03-CONTEXT D-13): the UTINNI_PLUGIN macro declares BOTH
+// createPlugin() AND destroyPlugin(UtinniPlugin*) so plugins own both their
+// allocation AND deallocation in their own CRT. This eliminates the cross-CRT
+// delete crash class (CON-B-04 territory): when the host (UtinniCore.dll, /MD)
+// previously did `delete plugin` on an object new'd inside a /MT plugin, the
+// heap mismatch could AV at shutdown. Symmetric ABI = plugin allocates with
+// plugin's `new`, plugin frees with plugin's `delete`, host never touches the
+// allocator boundary.
+//
+// Plugins that use this macro must define a matching destroyPlugin body, e.g.:
+//   UTINNI_PLUGIN;
+//   utinni::UtinniPlugin* createPlugin() { return new MyPlugin(); }
+//   void destroyPlugin(utinni::UtinniPlugin* p) { delete p; }
+//
+// D-15 / CON-O-07 disposition: legacy plugins (Sytner — upstream dormant per
+// project_fork_strategy memory) that omit destroyPlugin compile-break-at-link
+// against the new macro. Acceptable; no ABI-compat target preserved. The host
+// loader has a virtual-destructor fallback path for legacy DLLs that only
+// export createPlugin (see plugin_manager.cpp ~PluginManager).
+#define UTINNI_PLUGIN \
+    extern "C" __declspec(dllexport) utinni::UtinniPlugin* createPlugin(); \
+    extern "C" __declspec(dllexport) void destroyPlugin(utinni::UtinniPlugin* p)
 
 //#define UTINNI_PLUGIN extern "C" UTINNI_API utinni::UtinniPlugin* createPlugin()

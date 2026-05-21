@@ -1,0 +1,8 @@
+# Phase 3 R-B (Plan 03-02 Task 1): native-fixture-DLL landing zone.
+#
+# Utinni.LegacyPlugin.dll (built by Utinni.LegacyPlugin.vcxproj at the
+# solution root) gets copied here at build time. The fixture deliberately
+# omits the destroyPlugin export to exercise the loader's virtual-destructor
+# fallback path (D-13 + CON-O-07 disposition D-15).
+#
+# This file exists so git tracks the empty directory.

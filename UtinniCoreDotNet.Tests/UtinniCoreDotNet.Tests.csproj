@@ -58,6 +58,13 @@
     <ItemGroup>
       <_NativeTestArtifacts Include="$(SolutionDir)bin\$(Configuration)\UtinniCore.dll" />
       <_NativeTestArtifacts Include="$(SolutionDir)bin\$(Configuration)\Utinni.LoaderLockHarness.exe" />
+      <!-- Phase 3 R-B fixture DLLs (Plan 03-02 Task 1): both are LoadLibrary'd at
+           runtime by PluginManagerLifecycleTests via a P/Invoke bridge that
+           points PluginManager at a temp Plugins/ directory. Co-locating the DLLs
+           next to UtinniCore.dll ensures Win32 LoadLibrary's directory search
+           finds them. -->
+      <_NativeTestArtifacts Include="$(SolutionDir)bin\$(Configuration)\Utinni.CrtMatchPlugin.dll" />
+      <_NativeTestArtifacts Include="$(SolutionDir)bin\$(Configuration)\Utinni.LegacyPlugin.dll" />
     </ItemGroup>
     <Copy SourceFiles="@(_NativeTestArtifacts)"
           DestinationFolder="$(TargetDir)"
