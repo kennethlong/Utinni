@@ -88,7 +88,7 @@ Plans:
   5. CppSharp generation auto-discovers headers (R-F); `Directory.Build.props` wizard is idempotent (R-G); logging adopts `[CallerMemberName]` (R-E).
 **Plans**: 3 plans
 **Plans**:
-- [ ] 03-01-PLAN.md — Callbacks: R-A handle-based Subscribe/Unsubscribe + R-H snapshot iteration (managed + native) + IN-05 Drain helper consolidation
+- [x] 03-01-PLAN.md — Callbacks: R-A handle-based Subscribe/Unsubscribe + R-H snapshot iteration (managed + native) + IN-05 Drain helper consolidation
 - [ ] 03-02-PLAN.md — Plugin lifecycle + RVAs: R-B symmetric createPlugin/destroyPlugin ABI + two-phase init + HMODULE tracking + R-C single-source WndProc RVA via UTINNI_API
 - [ ] 03-03-PLAN.md — Build-tooling + logging: R-E [CallerMemberName] logging + R-F CppSharp header auto-discovery + R-G idempotent Directory.Build.props merger
 
