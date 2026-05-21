@@ -24,8 +24,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using UtinniCore.Utinni.Log;
 using static UtinniCore.Utinni.utinni;
 
@@ -55,19 +56,25 @@ namespace UtinniCoreDotNet.Utility
             log.AddOutputSinkCallback(outputSinkCallbacksAction);
         }
 
-        private static string FormatText(string text)
+        // Phase 3 R-E (per 03-CONTEXT D-21 + PATTERNS.md §"R-E CallerMemberName"):
+        // FormatText no longer walks the runtime stack to discover the caller --
+        // method and file paths are resolved at compile time via [CallerMemberName]
+        // / [CallerFilePath] on each public Log method below. Zero runtime cost on
+        // the hot path; class name extracted from the file path via
+        // Path.GetFileNameWithoutExtension (stable across local/CI build machines
+        // because only the basename is used, never the absolute prefix).
+        private static string FormatText(string text, string callerName, string callerFile)
         {
             if (writeClassName)
             {
-                var method = new StackTrace().GetFrame(2).GetMethod();
-
+                string className = Path.GetFileNameWithoutExtension(callerFile);
                 if (writeFunctionName)
                 {
-                    return "[" + method.ReflectedType.Name + "][" + method.Name + "] " + text;
+                    return "[" + className + "][" + callerName + "] " + text;
                 }
                 else
                 {
-                    return "[" + method.ReflectedType.Name + "] " + text;
+                    return "[" + className + "] " + text;
                 }
             }
             else
@@ -76,29 +83,39 @@ namespace UtinniCoreDotNet.Utility
             }
         }
 
-        public static void Critical(string text)
+        public static void Critical(string text,
+            [CallerMemberName] string callerName = "",
+            [CallerFilePath] string callerFile = "")
         {
-            log.Critical(FormatText(text));
+            log.Critical(FormatText(text, callerName, callerFile));
         }
 
-        public static void Debug(string text)
+        public static void Debug(string text,
+            [CallerMemberName] string callerName = "",
+            [CallerFilePath] string callerFile = "")
         {
-            log.Debug(FormatText(text));
+            log.Debug(FormatText(text, callerName, callerFile));
         }
 
-        public static void Error(string text)
+        public static void Error(string text,
+            [CallerMemberName] string callerName = "",
+            [CallerFilePath] string callerFile = "")
         {
-            log.Error(FormatText(text));
+            log.Error(FormatText(text, callerName, callerFile));
         }
 
-        public static void Info(string text)
+        public static void Info(string text,
+            [CallerMemberName] string callerName = "",
+            [CallerFilePath] string callerFile = "")
         {
-            log.Info(FormatText(text));
+            log.Info(FormatText(text, callerName, callerFile));
         }
 
-        public static void Warning(string text)
+        public static void Warning(string text,
+            [CallerMemberName] string callerName = "",
+            [CallerFilePath] string callerFile = "")
         {
-            log.Warning(FormatText(text));
+            log.Warning(FormatText(text, callerName, callerFile));
         }
 
         public static void CriticalSimple(string text)
