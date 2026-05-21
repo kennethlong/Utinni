@@ -69,6 +69,9 @@
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
+    <!-- Phase 3 R-G: Props.CreateDotNetDirectoryProps now uses XDocument
+         (System.Xml.Linq) for the idempotent merge. -->
+    <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
     <!-- C-12: bumped from 16.0.206 / 16.8.3038 to the 17.0 stable line so the VSIX

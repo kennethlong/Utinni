@@ -44,6 +44,15 @@
   <ItemGroup>
     <Compile Include="..\UtinniCoreDotNetGen\SlnDirResolver.cs" Link="SlnDirResolver.cs" />
     <Compile Include="..\UtinniCoreDotNetGen\HeaderDiscovery.cs" Link="HeaderDiscovery.cs" />
+    <!-- Phase 3 R-G: link Props.cs into the Tests project so
+         DirectoryBuildPropsTests can call Props.CreateDotNetDirectoryProps
+         directly. A ProjectReference to Vsix.csproj is impractical: that
+         project carries the VsixV3 ProjectTypeGuid and pulls in
+         Microsoft.VisualStudio.SDK build-tooling that the test runner does not
+         need. The linked-source pattern matches SlnDirResolver / HeaderDiscovery
+         above; Props.cs is dependency-free (System.IO + System.Xml.Linq only).
+         -->
+    <Compile Include="..\sdk\UtinniPluginTemplates\Vsix\Utility\Props.cs" Link="Vsix\Props.cs" />
   </ItemGroup>
   <ItemGroup>
     <!-- HotkeyTests.cs uses Keys enum and key chord syntax from System.Windows.Forms,
