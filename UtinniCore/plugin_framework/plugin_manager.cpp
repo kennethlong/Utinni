@@ -68,11 +68,17 @@ namespace utinni
     {
         // Phase 3 R-B / D-13 + D-16: shutdown order is destroyPlugin (in
         // plugin's CRT) followed by FreeLibrary (host's ref-count decrement;
-        // not a CRT allocation, safe from host CRT). Legacy plugins (D-15
-        // CON-O-07 disposition: Sytner = no compat target) fall back to the
-        // virtual destructor -- best-effort, may crash if /MT plugin allocated
-        // through /MD host's heap, but the structural fix (destroyPlugin) is
-        // there for any new plugin that adopts the macro.
+        // not a CRT allocation, safe from host CRT).
+        //
+        // CR-02 (03-REVIEW): the previous "legacy fallback" `delete loaded.plugin`
+        // path was unsound by construction -- it ran in UtinniCore.dll's /MD CRT
+        // against memory that could have been allocated in any plugin's CRT
+        // (notably a /MT-built fixture's static CRT). The cross-CRT free is
+        // exactly the CON-B-04 crash class R-B was designed to eliminate, so
+        // we now REJECT plugins that don't export destroyPlugin at load time
+        // (see loadPlugins / test_loadFromDirectory). Anything still reaching
+        // this loop therefore has a non-null destroyFn -- assert that
+        // invariant and call destroyFn unconditionally.
         for (const auto& loaded : pImpl->plugins)
         {
             if (loaded.destroyFn != nullptr)
@@ -81,10 +87,16 @@ namespace utinni
             }
             else
             {
-                // Legacy fallback (D-15 / CON-O-07). May still crash if
-                // plugin allocated with a mismatched CRT -- but that's the
-                // legacy path's accepted-risk envelope.
-                delete loaded.plugin;
+                // Defense-in-depth: should be unreachable given the
+                // load-time rejection above. Log + leak the allocation
+                // rather than risk a cross-CRT delete crash. CON-N-08
+                // safety: not freeing the plugin memory here is the lesser
+                // evil; a true legacy plugin would not have reached this
+                // point post-fix.
+                log::critical(
+                    "PluginManager::~PluginManager: encountered plugin with null destroyFn "
+                    "(should have been rejected at load time per CR-02). Leaking allocation "
+                    "to avoid cross-CRT delete crash.");
             }
             if (loaded.hModule != nullptr)
             {
@@ -226,10 +238,38 @@ namespace utinni
                         continue;
                     }
 
-                    // D-13: cached destroyPlugin export (may be null for legacy
-                    // plugins -- CON-O-07 disposition D-15: Sytner shape, falls
-                    // back to virtual destructor in ~PluginManager).
+                    // D-13: cached destroyPlugin export. CR-02 (03-REVIEW):
+                    // plugins without destroyPlugin are rejected at load
+                    // time. The previous "legacy fallback" (`delete plugin`
+                    // in the host /MD CRT) was unsafe for plugins allocated
+                    // in a different CRT (notably /MT static CRT) -- that's
+                    // the CON-B-04 cross-CRT free crash class R-B was
+                    // designed to eliminate. Legacy plugins (CON-O-07
+                    // disposition D-15) must migrate to the symmetric ABI
+                    // (UTINNI_PLUGIN macro emits both createPlugin and
+                    // destroyPlugin).
                     const auto destroyPluginFn = (pDestroyPlugin) GetProcAddress(hDllInstance, "destroyPlugin");
+                    if (destroyPluginFn == nullptr)
+                    {
+                        char errMsg[768];
+                        std::snprintf(errMsg, sizeof(errMsg),
+                            "Rejecting plugin DLL '%s': no destroyPlugin export "
+                            "(legacy ABI is no longer supported -- the new "
+                            "UTINNI_PLUGIN macro emits both createPlugin and "
+                            "destroyPlugin; rebuild the plugin against the "
+                            "current SDK).",
+                            dllPath.c_str());
+                        log::error(errMsg);
+                        // The plugin's createPlugin already returned an
+                        // object allocated in the plugin's CRT. We CANNOT
+                        // call `delete` on it from here (that's the very
+                        // bug we're refusing to perpetuate). Leak the
+                        // allocation; FreeLibrary will tear down the
+                        // plugin's static heap on DLL unload anyway, so
+                        // process-lifetime impact is bounded.
+                        FreeLibrary(hDllInstance);
+                        continue;
+                    }
 
                     currentDirPlugins.push_back({ hDllInstance, plugin, destroyPluginFn });
                     pImpl->plugins.push_back({ hDllInstance, plugin, destroyPluginFn });
@@ -363,7 +403,22 @@ namespace utinni
                     continue;
                 }
 
+                // CR-02 (03-REVIEW) parity with production loadPlugins:
+                // reject plugins missing destroyPlugin. Mirrors the
+                // load-time rejection in loadPlugins to keep test behavior
+                // observably identical to production.
                 const auto destroyPluginFn = (pDestroyPlugin) GetProcAddress(hDllInstance, "destroyPlugin");
+                if (destroyPluginFn == nullptr)
+                {
+                    char errMsg[768];
+                    std::snprintf(errMsg, sizeof(errMsg),
+                        "Rejecting plugin DLL '%s': no destroyPlugin export "
+                        "(legacy ABI is no longer supported).",
+                        dllPath.c_str());
+                    log::error(errMsg);
+                    FreeLibrary(hDllInstance);
+                    continue;
+                }
                 currentDirPlugins.push_back({ hDllInstance, plugin, destroyPluginFn });
                 impl.plugins.push_back({ hDllInstance, plugin, destroyPluginFn });
             }
@@ -418,7 +473,13 @@ namespace utinni
                 }
                 else
                 {
-                    delete loaded.plugin;
+                    // CR-02 parity with ~PluginManager: should be unreachable
+                    // because test_loadFromDirectory now rejects plugins
+                    // without destroyPlugin. Leak rather than risk
+                    // cross-CRT free.
+                    log::critical(
+                        "test_disposeImpl: encountered plugin with null destroyFn "
+                        "(should have been rejected at load time per CR-02). Leaking.");
                 }
                 if (loaded.hModule != nullptr)
                 {

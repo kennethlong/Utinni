@@ -59,10 +59,13 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)external;$(SolutionDir)UtinniCore;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <!-- Phase 3 R-B: /MT deliberately MISMATCHES UtinniCore.dll's CRT (/MD).
-           This fixture's main.cpp also OMITS destroyPlugin entirely, exercising
-           the legacy fallback path in ~PluginManager (delete via virtual dtor).
-           See CON-O-07 disposition D-15: legacy plugins are best-effort. -->
+      <!-- Phase 3 R-B / CR-02 (03-REVIEW): /MT deliberately mismatches
+           UtinniCore.dll's /MD CRT and main.cpp OMITS destroyPlugin entirely.
+           Combined, these prove PluginManager's load-time rejection of
+           plugins without destroyPlugin (the previous "fallback to host
+           CRT delete" was the CON-B-04 cross-CRT-free crash class). See
+           CON-O-07 disposition D-15: legacy plugins must migrate to the
+           symmetric ABI (UTINNI_PLUGIN macro). -->
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -82,8 +85,9 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)external;$(SolutionDir)UtinniCore;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <!-- Phase 3 R-B: /MT deliberately mismatches UtinniCore.dll's CRT (/MD)
-           to exercise the legacy fallback path. -->
+      <!-- Phase 3 R-B / CR-02 (03-REVIEW): /MT deliberately mismatches
+           UtinniCore.dll's /MD CRT. Used together with the omitted
+           destroyPlugin export to test the load-time rejection path. -->
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>

@@ -23,26 +23,31 @@
 **/
 
 // Phase 3 R-B fixture: LegacyPlugin DELIBERATELY OMITS the destroyPlugin
-// export to exercise PluginManager's virtual-destructor fallback path (D-13
-// + CON-O-07 disposition D-15). This is the "Sytner shape" -- a plugin that
-// only exports createPlugin and relies on the host to delete via the base
-// UtinniPlugin virtual destructor.
+// export. CR-02 (03-REVIEW) disposition: PluginManager now REJECTS plugins
+// missing destroyPlugin at load time (the previous "delete via host CRT"
+// fallback was unsound for /MT plugins -- it was the very CON-B-04
+// cross-CRT-free crash class R-B was designed to eliminate). This fixture
+// therefore proves the rejection path: load attempt logs an error,
+// loadFromDirectory returns 0, dispose is a no-op.
 //
-// Built with /MT to MISMATCH UtinniCore.dll's /MD CRT -- proves the loader
-// correctly detects "destroyPlugin missing" via GetProcAddress returning
-// null and falls back to virtual destructor (vs the symmetric CrtMatchPlugin
-// which exports destroyPlugin and routes through it).
+// Built with /MT to demonstrate that the rejection works even for the
+// hardest case (a CRT-mismatched plugin where the old fallback would have
+// silently corrupted the heap on dispose).
 //
 // IMPORTANT: this fixture does NOT include "plugin_framework/utinni_plugin.h"
 // in a way that triggers the UTINNI_PLUGIN macro, because that macro now
 // REQUIRES a matching destroyPlugin definition (D-13). Instead, we declare a
 // minimal local copy of UtinniPlugin's interface that matches the ABI exactly
-// (same vtable layout, same Information struct). The host only ever calls
-// virtual functions through the UtinniPlugin* base pointer, so as long as
-// the vtable layout matches the host's expectations the legacy plugin works.
+// (same vtable layout, same Information struct). Because the fixture is
+// rejected before any vtable dispatch happens, layout drift between this
+// local struct and the host's utinni::UtinniPlugin no longer creates a
+// correctness hazard at runtime -- but the static_assert below still catches
+// gross size regressions (e.g. accidentally adding a data member here).
 //
 // Diagnostic counter: legacy_getInitCount lets the test confirm init() was
-// invoked even though destroyPlugin isn't exported.
+// invoked even though destroyPlugin isn't exported (currently unused under
+// the rejection regime, retained for any future test that re-enables the
+// load path).
 
 #include <new>
 #include <cstdint>
@@ -68,6 +73,23 @@ namespace utinni_legacy
         virtual void init() {}
         virtual const Information& getInformation() const = 0;
     };
+
+    // CR-02 (03-REVIEW) ABI sanity assert. The host's utinni::UtinniPlugin
+    // contains exactly one logical member: the vtable pointer (on x86, sizeof
+    // == 4). Any new data member added to either side (here OR in the host)
+    // would push this size past 4 and the static_assert fires. This is a
+    // weak check (it does not validate the vtable order, only the size),
+    // but it's the strongest thing we can do without including the host
+    // header (which would trip the UTINNI_PLUGIN macro requirement). The
+    // load-time rejection in PluginManager makes vtable-layout drift moot
+    // for this specific fixture (it never reaches a dispatch site), but
+    // the assert documents the contract.
+    static_assert(sizeof(UtinniPlugin) == sizeof(void*),
+                  "utinni_legacy::UtinniPlugin must be vtable-pointer-only "
+                  "(matches host utinni::UtinniPlugin layout on x86).");
+    static_assert(sizeof(UtinniPlugin::Information) == 3 * sizeof(void*),
+                  "utinni_legacy::UtinniPlugin::Information must be three "
+                  "const char* fields (matches host layout).");
 }
 
 namespace

@@ -241,37 +241,45 @@ namespace UtinniCoreDotNet.Tests
         // -- Tests ------------------------------------------------------------
 
         [Fact]
-        public void LoadPlugins_BothFixturesLoaded_BothInitsCalled()
+        public void LoadPlugins_CrtMatchLoaded_LegacyRejected_InitsCalledForSymmetricOnly()
         {
+            // CR-02 (03-REVIEW): the previous "both fixtures load" assertion
+            // was tied to the legacy fallback that has been removed. With
+            // /MT-mismatched LegacyPlugin now rejected at load time, this
+            // test asserts the surviving symmetric-ABI plugin still loads
+            // and inits correctly (the LegacyPlugin rejection is covered by
+            // LegacyPlugin_NoDestroyPlugin_RejectedAtLoadTime + the
+            // LegacyPlugin_AlongsideCrtMatch... fact).
             if (!TryEnsureNativeAvailable()) { return; }
 
             string tempDir = MakeTempDir();
             try
             {
                 string crtPath = StageFixture("Utinni.CrtMatchPlugin", tempDir);
-                string legacyPath = StageFixture("Utinni.LegacyPlugin", tempDir);
+                StageFixture("Utinni.LegacyPlugin", tempDir);
 
                 try
                 {
                     int loaded = NativeBridge.LoadFromDir(tempDir);
-                    Assert.Equal(2, loaded);
-                    Assert.Equal(2, NativeBridge.LoadedCount());
+                    Assert.Equal(1, loaded);
+                    Assert.Equal(1, NativeBridge.LoadedCount());
 
-                    // Bind bridges to the module instance PluginManager loaded.
+                    // Bind bridge to the module instance PluginManager loaded.
                     CrtMatchBridge crt = BindCrtMatch(GetStagedModule(crtPath));
-                    LegacyBridge legacy = BindLegacy(GetStagedModule(legacyPath));
 
-                    // D-14: init() invoked on each plugin.
+                    // D-14: init() invoked on the symmetric plugin.
                     Assert.Equal(1, crt.GetInitCount());
-                    Assert.Equal(1, legacy.GetInitCount());
 
                     // D-14 ordering: createPlugin returned BEFORE init ran
-                    // for each plugin (the fixtures increment their counters
-                    // in createPlugin and init respectively; both being 1
-                    // proves the loader sequenced create-then-init for each).
+                    // (the fixture increments createCount in createPlugin
+                    // and initCount in init; both being 1 proves create→init).
                     Assert.Equal(1, crt.GetCreateCount());
 
-                    // D-17: a successful load has lastLoadLibraryError = 0.
+                    // D-17: a successful LoadLibrary (even when followed by
+                    // a destroyPlugin-missing rejection) leaves
+                    // lastLoadLibraryError = 0 -- the rejection path doesn't
+                    // touch GetLastError, only the LoadLibrary-itself-failed
+                    // path does.
                     Assert.Equal(0u, NativeBridge.LastLoadLibraryError());
                 }
                 finally
@@ -326,15 +334,25 @@ namespace UtinniCoreDotNet.Tests
         }
 
         [Fact]
-        public void PluginInitThrows_OtherPluginsStillInit_NoCrash()
+        public void PluginInitThrows_LoadCompletes_NoCrash()
         {
+            // D-14 + C-06: per-plugin try/catch isolation around init() means
+            // a throwing init() doesn't bring down loadFromDirectory itself.
+            //
+            // CR-02 (03-REVIEW): the previous version of this fact asserted
+            // "LegacyPlugin's init still ran" as the isolation proof, but
+            // LegacyPlugin is now rejected at load time (no destroyPlugin
+            // export). The isolation invariant remains: a throwing init()
+            // must not crash the loader, the plugin counts as loaded, and
+            // dispose runs cleanly. We assert those structural properties
+            // here. (Future: add a second symmetric-ABI fixture to test
+            // multi-plugin isolation end-to-end.)
             if (!TryEnsureNativeAvailable()) { return; }
 
             string tempDir = MakeTempDir();
             try
             {
                 string crtPath = StageFixture("Utinni.CrtMatchPlugin", tempDir);
-                string legacyPath = StageFixture("Utinni.LegacyPlugin", tempDir);
 
                 // Arm the throw flag BEFORE LoadFromDir. To toggle it we need
                 // the CrtMatchPlugin module loaded; LoadLibrary it ourselves
@@ -352,22 +370,18 @@ namespace UtinniCoreDotNet.Tests
                     try
                     {
                         int loaded = NativeBridge.LoadFromDir(tempDir);
-                        Assert.Equal(2, loaded);
+                        Assert.Equal(1, loaded);
 
                         // CrtMatchPlugin's init incremented its counter BEFORE
                         // throwing (per the fixture's body); per-plugin
-                        // try/catch caught the exception.
+                        // try/catch caught the exception, so the load
+                        // completed without bringing down the harness.
                         Assert.Equal(1, crt.GetInitCount());
-
-                        // D-14 isolation: LegacyPlugin's init STILL ran even
-                        // though CrtMatchPlugin's threw.
-                        LegacyBridge legacy = BindLegacy(GetStagedModule(legacyPath));
-                        Assert.Equal(1, legacy.GetInitCount());
                     }
                     finally
                     {
-                        // Disarm before dispose so subsequent destroyPlugin/
-                        // virtual-destructor calls don't trip the flag.
+                        // Disarm before dispose so subsequent destroyPlugin
+                        // calls don't trip the flag.
                         crt.SetInitShouldThrow(0);
                         NativeBridge.Dispose();
                     }
@@ -428,8 +442,26 @@ namespace UtinniCoreDotNet.Tests
         }
 
         [Fact]
-        public void LegacyPlugin_NoDestroyPlugin_FallbackToVirtualDestructor_NoCrash()
+        public void LegacyPlugin_NoDestroyPlugin_RejectedAtLoadTime()
         {
+            // CR-02 (03-REVIEW) regression: the previous "legacy fallback"
+            // path in ~PluginManager called `delete loaded.plugin` from
+            // UtinniCore.dll's /MD CRT against memory allocated in the
+            // plugin's CRT (here, /MT static CRT). That is exactly the
+            // CON-B-04 cross-CRT-free crash class R-B was designed to
+            // eliminate; the fixture asserting "no crash" was a happy-path
+            // tautology because the cross-CRT free often "succeeds" silently
+            // while corrupting both heaps.
+            //
+            // Fix: PluginManager now rejects plugins missing destroyPlugin
+            // at load time (the symmetric ABI is the only sound shape per
+            // D-13). This test now asserts the rejection rather than the
+            // unsafe-but-doesn't-AV-deterministically fallback.
+            //
+            // CON-O-07 disposition D-15: legacy plugins (Sytner upstream is
+            // dormant) have no compat target. Authors must adopt the
+            // UTINNI_PLUGIN macro which emits both createPlugin and
+            // destroyPlugin.
             if (!TryEnsureNativeAvailable()) { return; }
 
             string tempDir = MakeTempDir();
@@ -438,19 +470,49 @@ namespace UtinniCoreDotNet.Tests
                 string legacyPath = StageFixture("Utinni.LegacyPlugin", tempDir);
 
                 int loaded = NativeBridge.LoadFromDir(tempDir);
-                Assert.Equal(1, loaded);
-
-                LegacyBridge legacy = BindLegacy(GetStagedModule(legacyPath));
-                Assert.Equal(1, legacy.GetInitCount());
-
-                // D-13 fallback (CON-O-07 D-15): LegacyPlugin doesn't export
-                // destroyPlugin, so the loader falls back to `delete plugin`
-                // through the virtual destructor. The absence of a crash here
-                // IS the regression case for the structural fix.
-                NativeBridge.Dispose();
-
-                // After dispose, loaded count is 0 (impl was destroyed).
+                Assert.Equal(0, loaded);
                 Assert.Equal(0, NativeBridge.LoadedCount());
+
+                // Dispose must remain a no-op when nothing loaded. (No
+                // crash from disposing an empty impl is the structural
+                // invariant we're preserving end-to-end.)
+                NativeBridge.Dispose();
+                Assert.Equal(0, NativeBridge.LoadedCount());
+            }
+            finally
+            {
+                TryDeleteDir(tempDir);
+            }
+        }
+
+        [Fact]
+        public void LegacyPlugin_AlongsideCrtMatch_LegacyRejected_CrtMatchStillLoads()
+        {
+            // CR-02 + D-17 (per-plugin isolation): one bad plugin in a dir
+            // doesn't sink the others. CrtMatchPlugin has destroyPlugin and
+            // loads; LegacyPlugin doesn't and is rejected. Same "log+continue"
+            // disposition as the LoadLibrary-failure case (Phase 02 C-06).
+            if (!TryEnsureNativeAvailable()) { return; }
+
+            string tempDir = MakeTempDir();
+            try
+            {
+                string crtPath = StageFixture("Utinni.CrtMatchPlugin", tempDir);
+                StageFixture("Utinni.LegacyPlugin", tempDir);
+
+                try
+                {
+                    int loaded = NativeBridge.LoadFromDir(tempDir);
+                    Assert.Equal(1, loaded);
+                    Assert.Equal(1, NativeBridge.LoadedCount());
+
+                    CrtMatchBridge crt = BindCrtMatch(GetStagedModule(crtPath));
+                    Assert.Equal(1, crt.GetInitCount());
+                }
+                finally
+                {
+                    NativeBridge.Dispose();
+                }
             }
             finally
             {
