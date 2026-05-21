@@ -27,6 +27,8 @@
 
 #include <d3dx9.h>
 #include <d3d9types.h>
+#include <unordered_map>
+#include <vector>
 #include "external/nvapi/nvapi.h"
 
 #pragma comment(lib, "nvapi/x86/nvapi.lib")
@@ -34,7 +36,14 @@
 #define FOURCC_INTZ ((D3DFORMAT)(MAKEFOURCC('I','N','T','Z')))
 #define RESZ_CODE 0x7FA05000
 
-static std::vector<void(*)()> depthResolveCallbacks;
+// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry.
+// D-08 noted that depth_texture's addDepthResolveCallback is a class-static
+// member of DepthTexture::, not a free function. Per the D-08 planner-discretion
+// clause ("handle stored per-instance OR static-class registry, planner's
+// discretion") we keep the static-class storage shape — every existing call
+// site treats this as a process-wide registry, not per-instance.
+static std::unordered_map<int, void(*)()> depthResolveCallbacks;
+static int s_nextDepthResolveId = 1;
 
 namespace directX
 {
@@ -203,9 +212,26 @@ void DepthTexture::resolveDepth(const LPDIRECT3DDEVICE9 pDevice, IDirect3DSurfac
 	 //copyTextureData(pTexture, textureDesc);
 }
 
+// Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
+int DepthTexture::subscribeDepthResolveCallback(void(*func)())
+{
+	 int id = s_nextDepthResolveId++;
+	 depthResolveCallbacks[id] = func;
+	 return id;
+}
+
+bool DepthTexture::unsubscribeDepthResolveCallback(int handle)
+{
+	 if (handle == 0)
+	 {
+		  return false;
+	 }
+	 return depthResolveCallbacks.erase(handle) > 0;
+}
+
 void DepthTexture::addDepthResolveCallback(void(* func)())
 {
-	 depthResolveCallbacks.emplace_back(func);
+	 subscribeDepthResolveCallback(func);
 }
 
 void DepthTexture::resolveDepth()
@@ -245,7 +271,14 @@ void DepthTexture::resolveDepth()
 	 _pDevice->SetTexture(14, pTextureColor);
 	 _pDevice->SetTexture(15, pTextureDepth);
 
-	 for (const auto& func : depthResolveCallbacks)
+	 // R-H snapshot dispatch per D-12.
+	 std::vector<void(*)()> snapshot;
+	 snapshot.reserve(depthResolveCallbacks.size());
+	 for (const auto& kv : depthResolveCallbacks)
+	 {
+		  snapshot.push_back(kv.second);
+	 }
+	 for (const auto& func : snapshot)
 	 {
 		  func();
 	 }

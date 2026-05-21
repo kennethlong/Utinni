@@ -30,6 +30,7 @@
 
 #include <cstdio>
 #include <vector>
+#include <unordered_map>
 
 #include "utility/log.h"
 #include "swg/ui/cui_chat_window.h"
@@ -56,7 +57,9 @@ using namespace swg::math;
 namespace imgui_impl
 {
 
-static std::vector<void(*)()> renderCallbacks;
+// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry.
+static std::unordered_map<int, void(*)()> renderCallbacks;
+static int s_nextRenderId = 1;
 
 bool enableUi;
 bool rendering;
@@ -359,9 +362,19 @@ bool isSetup = false;
 					  }
 				 }
 
-				 for (const auto& func : renderCallbacks) // ToDo add an additional callback to host controls in the future main ImGui window
+				 // R-H snapshot dispatch per D-12. ToDo add an additional
+				 // callback to host controls in the future main ImGui window.
 				 {
-					  func();
+					  std::vector<void(*)()> snapshot;
+					  snapshot.reserve(renderCallbacks.size());
+					  for (const auto& kv : renderCallbacks)
+					  {
+						   snapshot.push_back(kv.second);
+					  }
+					  for (const auto& func : snapshot)
+					  {
+						   func();
+					  }
 				 }
 			}
 
@@ -408,9 +421,26 @@ bool isRendering()
 	 return rendering;
 }
 
+// Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
+int subscribeRenderCallback(void(*func)())
+ {
+	  int id = s_nextRenderId++;
+	  renderCallbacks[id] = func;
+	  return id;
+ }
+
+bool unsubscribeRenderCallback(int handle)
+ {
+	  if (handle == 0)
+	  {
+		   return false;
+	  }
+	  return renderCallbacks.erase(handle) > 0;
+ }
+
 void addRenderCallback(void(*func)())
  {
-	  renderCallbacks.emplace_back(func);
+	  subscribeRenderCallback(func);
  }
 
 bool isInternalUiHovered()
@@ -421,10 +451,15 @@ bool isInternalUiHovered()
 
 }
 
-static std::vector<void(*)()> onGizmoEnabledCallbacks;
-static std::vector<void(*)()> onGizmoDisabledCallbacks;
-static std::vector<void(*)()> onGizmoPositionChangedCallbacks;
-static std::vector<void(*)()> onGizmoRotationChangedCallbacks;
+// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries.
+static std::unordered_map<int, void(*)()> onGizmoEnabledCallbacks;
+static std::unordered_map<int, void(*)()> onGizmoDisabledCallbacks;
+static std::unordered_map<int, void(*)()> onGizmoPositionChangedCallbacks;
+static std::unordered_map<int, void(*)()> onGizmoRotationChangedCallbacks;
+static int s_nextGizmoEnabledId = 1;
+static int s_nextGizmoDisabledId = 1;
+static int s_nextGizmoPositionChangedId = 1;
+static int s_nextGizmoRotationChangedId = 1;
 
 namespace imgui_gizmo
 {
@@ -446,7 +481,14 @@ void enable(Object* obj)
 	 object = obj;
 	 enabled = true;
 
-	 for (const auto& func : onGizmoEnabledCallbacks)
+	 // R-H snapshot dispatch per D-12.
+	 std::vector<void(*)()> snapshot;
+	 snapshot.reserve(onGizmoEnabledCallbacks.size());
+	 for (const auto& kv : onGizmoEnabledCallbacks)
+	 {
+		  snapshot.push_back(kv.second);
+	 }
+	 for (const auto& func : snapshot)
 	 {
 		  func();
 	 }
@@ -457,7 +499,14 @@ void disable()
 	 enabled = false;
 	 object = nullptr;
 
-	 for (const auto& func : onGizmoDisabledCallbacks)
+	 // R-H snapshot dispatch per D-12.
+	 std::vector<void(*)()> snapshot;
+	 snapshot.reserve(onGizmoDisabledCallbacks.size());
+	 for (const auto& kv : onGizmoDisabledCallbacks)
+	 {
+		  snapshot.push_back(kv.second);
+	 }
+	 for (const auto& func : snapshot)
 	 {
 		  func();
 	 }
@@ -476,24 +525,89 @@ bool hasMouseHover()
 	 return gizmoHasMouseHover;
 }
 
+// Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
+int subscribeOnEnabledCallback(void(*func)())
+{
+	 int id = s_nextGizmoEnabledId++;
+	 onGizmoEnabledCallbacks[id] = func;
+	 return id;
+}
+
+bool unsubscribeOnEnabledCallback(int handle)
+{
+	 if (handle == 0)
+	 {
+		  return false;
+	 }
+	 return onGizmoEnabledCallbacks.erase(handle) > 0;
+}
+
+int subscribeOnDisabledCallback(void(*func)())
+{
+	 int id = s_nextGizmoDisabledId++;
+	 onGizmoDisabledCallbacks[id] = func;
+	 return id;
+}
+
+bool unsubscribeOnDisabledCallback(int handle)
+{
+	 if (handle == 0)
+	 {
+		  return false;
+	 }
+	 return onGizmoDisabledCallbacks.erase(handle) > 0;
+}
+
+int subscribeOnPositionChangedCallback(void(*func)())
+{
+	 int id = s_nextGizmoPositionChangedId++;
+	 onGizmoPositionChangedCallbacks[id] = func;
+	 return id;
+}
+
+bool unsubscribeOnPositionChangedCallback(int handle)
+{
+	 if (handle == 0)
+	 {
+		  return false;
+	 }
+	 return onGizmoPositionChangedCallbacks.erase(handle) > 0;
+}
+
+int subscribeOnRotationChangedCallback(void(*func)())
+{
+	 int id = s_nextGizmoRotationChangedId++;
+	 onGizmoRotationChangedCallbacks[id] = func;
+	 return id;
+}
+
+bool unsubscribeOnRotationChangedCallback(int handle)
+{
+	 if (handle == 0)
+	 {
+		  return false;
+	 }
+	 return onGizmoRotationChangedCallbacks.erase(handle) > 0;
+}
+
 void addOnEnabledCallback(void(*func)())
 {
-	 onGizmoEnabledCallbacks.emplace_back(func);
+	 subscribeOnEnabledCallback(func);
 }
 
 void addOnDisabledCallback(void(*func)())
 {
-	 onGizmoDisabledCallbacks.emplace_back(func);
+	 subscribeOnDisabledCallback(func);
 }
 
 void addOnPositionChangedCallback(void(*func)())
 {
-	 onGizmoPositionChangedCallbacks.emplace_back(func);
+	 subscribeOnPositionChangedCallback(func);
 }
 
 void addOnRotationChangedCallback(void(*func)())
 {
-	 onGizmoRotationChangedCallbacks.emplace_back(func);
+	 subscribeOnRotationChangedCallback(func);
 }
 
 void toggleGizmoMode()
@@ -660,7 +774,14 @@ void draw()
 		  {
 				if (originalTransform.getPosition() != object->getTransform_o2w()->getPosition())
 				{
-					 for (const auto& func : onGizmoPositionChangedCallbacks)
+					 // R-H snapshot dispatch per D-12.
+					 std::vector<void(*)()> snapshot;
+					 snapshot.reserve(onGizmoPositionChangedCallbacks.size());
+					 for (const auto& kv : onGizmoPositionChangedCallbacks)
+					 {
+						  snapshot.push_back(kv.second);
+					 }
+					 for (const auto& func : snapshot)
 					 {
 						  func();
 					 }
@@ -668,7 +789,14 @@ void draw()
 
 				if (!object->getTransform_o2w()->isRotationEqual(originalTransform))
 				{
-					 for (const auto& func : onGizmoRotationChangedCallbacks)
+					 // R-H snapshot dispatch per D-12.
+					 std::vector<void(*)()> snapshot;
+					 snapshot.reserve(onGizmoRotationChangedCallbacks.size());
+					 for (const auto& kv : onGizmoRotationChangedCallbacks)
+					 {
+						  snapshot.push_back(kv.second);
+					 }
+					 for (const auto& func : snapshot)
 					 {
 						  func();
 					 }

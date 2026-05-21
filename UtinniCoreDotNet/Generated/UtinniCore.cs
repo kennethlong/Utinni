@@ -582,6 +582,17 @@ namespace UtinniCore
 
                     [SuppressUnmanagedCodeSecurity]
                     [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                        EntryPoint="?subscribeOutputSinkCallback@log@utinni@@YAHP6AXPBD@Z@Z")]
+                    internal static extern int SubscribeOutputSinkCallback(global::System.IntPtr func);
+
+                    [SuppressUnmanagedCodeSecurity]
+                    [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                        EntryPoint="?unsubscribeOutputSinkCallback@log@utinni@@YA_NH@Z")]
+                    [return: MarshalAs(UnmanagedType.I1)]
+                    internal static extern bool UnsubscribeOutputSinkCallback(int handle);
+
+                    [SuppressUnmanagedCodeSecurity]
+                    [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
                         EntryPoint="?addOutputSinkCallback@log@utinni@@YAXP6AXPBD@Z@Z")]
                     internal static extern void AddOutputSinkCallback(global::System.IntPtr func);
 
@@ -624,6 +635,19 @@ namespace UtinniCore
                 public static void Warning(string text)
                 {
                     __Internal.Warning(text);
+                }
+
+                public static int SubscribeOutputSinkCallback(global::UtinniCore.Delegates.Action_string func)
+                {
+                    var __arg0 = func == null ? global::System.IntPtr.Zero : Marshal.GetFunctionPointerForDelegate(func);
+                    var __ret = __Internal.SubscribeOutputSinkCallback(__arg0);
+                    return __ret;
+                }
+
+                public static bool UnsubscribeOutputSinkCallback(int handle)
+                {
+                    var __ret = __Internal.UnsubscribeOutputSinkCallback(handle);
+                    return __ret;
                 }
 
                 public static void AddOutputSinkCallback(global::UtinniCore.Delegates.Action_string func)
@@ -3720,6 +3744,17 @@ namespace UtinniCore
 
                 [SuppressUnmanagedCodeSecurity]
                 [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?subscribeDepthResolveCallback@DepthTexture@directX@@SAHP6AXXZ@Z")]
+                internal static extern int SubscribeDepthResolveCallback(global::System.IntPtr func);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?unsubscribeDepthResolveCallback@DepthTexture@directX@@SA_NH@Z")]
+                [return: MarshalAs(UnmanagedType.I1)]
+                internal static extern bool UnsubscribeDepthResolveCallback(int handle);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
                     EntryPoint="?addDepthResolveCallback@DepthTexture@directX@@SAXP6AXXZ@Z")]
                 internal static extern void AddDepthResolveCallback(global::System.IntPtr func);
 
@@ -3831,6 +3866,19 @@ namespace UtinniCore
             public void ResolveDepth()
             {
                 __Internal.ResolveDepth(__Instance);
+            }
+
+            public static int SubscribeDepthResolveCallback(global::UtinniCore.Delegates.Action_ func)
+            {
+                var __arg0 = func == null ? global::System.IntPtr.Zero : Marshal.GetFunctionPointerForDelegate(func);
+                var __ret = __Internal.SubscribeDepthResolveCallback(__arg0);
+                return __ret;
+            }
+
+            public static bool UnsubscribeDepthResolveCallback(int handle)
+            {
+                var __ret = __Internal.UnsubscribeDepthResolveCallback(handle);
+                return __ret;
             }
 
             public static void AddDepthResolveCallback(global::UtinniCore.Delegates.Action_ func)
@@ -15844,6 +15892,17 @@ namespace UtinniCore
 
                 [SuppressUnmanagedCodeSecurity]
                 [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?subscribeCreateCommandParserCallback@CuiChatWindow@utinni@@SAHP6AXPAVCommandParser@2@@Z@Z")]
+                internal static extern int SubscribeCreateCommandParserCallback(global::System.IntPtr func);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?unsubscribeCreateCommandParserCallback@CuiChatWindow@utinni@@SA_NH@Z")]
+                [return: MarshalAs(UnmanagedType.I1)]
+                internal static extern bool UnsubscribeCreateCommandParserCallback(int handle);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
                     EntryPoint="?addCreateCommandParserCallback@CuiChatWindow@utinni@@SAXP6AXPAVCommandParser@2@@Z@Z")]
                 internal static extern void AddCreateCommandParserCallback(global::System.IntPtr func);
 
@@ -15955,6 +16014,19 @@ namespace UtinniCore
                 if (__ownsNativeInstance)
                     Marshal.FreeHGlobal(__Instance);
                 __Instance = IntPtr.Zero;
+            }
+
+            public static int SubscribeCreateCommandParserCallback(global::UtinniCore.Delegates.Action_IntPtr_C func)
+            {
+                var __arg0 = func == null ? global::System.IntPtr.Zero : Marshal.GetFunctionPointerForDelegate(func);
+                var __ret = __Internal.SubscribeCreateCommandParserCallback(__arg0);
+                return __ret;
+            }
+
+            public static bool UnsubscribeCreateCommandParserCallback(int handle)
+            {
+                var __ret = __Internal.UnsubscribeCreateCommandParserCallback(handle);
+                return __ret;
             }
 
             public static void AddCreateCommandParserCallback(global::UtinniCore.Delegates.Action_IntPtr_C func)
@@ -16440,6 +16512,17 @@ namespace UtinniCore
 
                 [SuppressUnmanagedCodeSecurity]
                 [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?subscribeReceiveMessageCallback@SystemMessageManager@utinni@@SAHP6AXPBD@Z@Z")]
+                internal static extern int SubscribeReceiveMessageCallback(global::System.IntPtr func);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?unsubscribeReceiveMessageCallback@SystemMessageManager@utinni@@SA_NH@Z")]
+                [return: MarshalAs(UnmanagedType.I1)]
+                internal static extern bool UnsubscribeReceiveMessageCallback(int handle);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
                     EntryPoint="?addReceiveMessageCallback@SystemMessageManager@utinni@@SAXP6AXPBD@Z@Z")]
                 internal static extern void AddReceiveMessageCallback(global::System.IntPtr func);
 
@@ -16520,6 +16603,19 @@ namespace UtinniCore
                 if (__ownsNativeInstance)
                     Marshal.FreeHGlobal(__Instance);
                 __Instance = IntPtr.Zero;
+            }
+
+            public static int SubscribeReceiveMessageCallback(global::UtinniCore.Delegates.Action_string func)
+            {
+                var __arg0 = func == null ? global::System.IntPtr.Zero : Marshal.GetFunctionPointerForDelegate(func);
+                var __ret = __Internal.SubscribeReceiveMessageCallback(__arg0);
+                return __ret;
+            }
+
+            public static bool UnsubscribeReceiveMessageCallback(int handle)
+            {
+                var __ret = __Internal.UnsubscribeReceiveMessageCallback(handle);
+                return __ret;
             }
 
             public static void AddReceiveMessageCallback(global::UtinniCore.Delegates.Action_string func)
@@ -16615,6 +16711,17 @@ namespace UtinniCore
 
                 [SuppressUnmanagedCodeSecurity]
                 [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?subscribeRenderCallback@imgui_impl@@YAHP6AXXZ@Z")]
+                internal static extern int SubscribeRenderCallback(global::System.IntPtr func);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?unsubscribeRenderCallback@imgui_impl@@YA_NH@Z")]
+                [return: MarshalAs(UnmanagedType.I1)]
+                internal static extern bool UnsubscribeRenderCallback(int handle);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
                     EntryPoint="?addRenderCallback@imgui_impl@@YAXP6AXXZ@Z")]
                 internal static extern void AddRenderCallback(global::System.IntPtr func);
 
@@ -16638,6 +16745,19 @@ namespace UtinniCore
             public static bool IsRendering()
             {
                 var __ret = __Internal.IsRendering();
+                return __ret;
+            }
+
+            public static int SubscribeRenderCallback(global::UtinniCore.Delegates.Action_ func)
+            {
+                var __arg0 = func == null ? global::System.IntPtr.Zero : Marshal.GetFunctionPointerForDelegate(func);
+                var __ret = __Internal.SubscribeRenderCallback(__arg0);
+                return __ret;
+            }
+
+            public static bool UnsubscribeRenderCallback(int handle)
+            {
+                var __ret = __Internal.UnsubscribeRenderCallback(handle);
                 return __ret;
             }
 
@@ -16682,6 +16802,50 @@ namespace UtinniCore
                     EntryPoint="?hasMouseHover@imgui_gizmo@@YA_NXZ")]
                 [return: MarshalAs(UnmanagedType.I1)]
                 internal static extern bool HasMouseHover();
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?subscribeOnEnabledCallback@imgui_gizmo@@YAHP6AXXZ@Z")]
+                internal static extern int SubscribeOnEnabledCallback(global::System.IntPtr func);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?unsubscribeOnEnabledCallback@imgui_gizmo@@YA_NH@Z")]
+                [return: MarshalAs(UnmanagedType.I1)]
+                internal static extern bool UnsubscribeOnEnabledCallback(int handle);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?subscribeOnDisabledCallback@imgui_gizmo@@YAHP6AXXZ@Z")]
+                internal static extern int SubscribeOnDisabledCallback(global::System.IntPtr func);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?unsubscribeOnDisabledCallback@imgui_gizmo@@YA_NH@Z")]
+                [return: MarshalAs(UnmanagedType.I1)]
+                internal static extern bool UnsubscribeOnDisabledCallback(int handle);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?subscribeOnPositionChangedCallback@imgui_gizmo@@YAHP6AXXZ@Z")]
+                internal static extern int SubscribeOnPositionChangedCallback(global::System.IntPtr func);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?unsubscribeOnPositionChangedCallback@imgui_gizmo@@YA_NH@Z")]
+                [return: MarshalAs(UnmanagedType.I1)]
+                internal static extern bool UnsubscribeOnPositionChangedCallback(int handle);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?subscribeOnRotationChangedCallback@imgui_gizmo@@YAHP6AXXZ@Z")]
+                internal static extern int SubscribeOnRotationChangedCallback(global::System.IntPtr func);
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?unsubscribeOnRotationChangedCallback@imgui_gizmo@@YA_NH@Z")]
+                [return: MarshalAs(UnmanagedType.I1)]
+                internal static extern bool UnsubscribeOnRotationChangedCallback(int handle);
 
                 [SuppressUnmanagedCodeSecurity]
                 [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
@@ -16804,6 +16968,58 @@ namespace UtinniCore
             public static bool HasMouseHover()
             {
                 var __ret = __Internal.HasMouseHover();
+                return __ret;
+            }
+
+            public static int SubscribeOnEnabledCallback(global::UtinniCore.Delegates.Action_ func)
+            {
+                var __arg0 = func == null ? global::System.IntPtr.Zero : Marshal.GetFunctionPointerForDelegate(func);
+                var __ret = __Internal.SubscribeOnEnabledCallback(__arg0);
+                return __ret;
+            }
+
+            public static bool UnsubscribeOnEnabledCallback(int handle)
+            {
+                var __ret = __Internal.UnsubscribeOnEnabledCallback(handle);
+                return __ret;
+            }
+
+            public static int SubscribeOnDisabledCallback(global::UtinniCore.Delegates.Action_ func)
+            {
+                var __arg0 = func == null ? global::System.IntPtr.Zero : Marshal.GetFunctionPointerForDelegate(func);
+                var __ret = __Internal.SubscribeOnDisabledCallback(__arg0);
+                return __ret;
+            }
+
+            public static bool UnsubscribeOnDisabledCallback(int handle)
+            {
+                var __ret = __Internal.UnsubscribeOnDisabledCallback(handle);
+                return __ret;
+            }
+
+            public static int SubscribeOnPositionChangedCallback(global::UtinniCore.Delegates.Action_ func)
+            {
+                var __arg0 = func == null ? global::System.IntPtr.Zero : Marshal.GetFunctionPointerForDelegate(func);
+                var __ret = __Internal.SubscribeOnPositionChangedCallback(__arg0);
+                return __ret;
+            }
+
+            public static bool UnsubscribeOnPositionChangedCallback(int handle)
+            {
+                var __ret = __Internal.UnsubscribeOnPositionChangedCallback(handle);
+                return __ret;
+            }
+
+            public static int SubscribeOnRotationChangedCallback(global::UtinniCore.Delegates.Action_ func)
+            {
+                var __arg0 = func == null ? global::System.IntPtr.Zero : Marshal.GetFunctionPointerForDelegate(func);
+                var __ret = __Internal.SubscribeOnRotationChangedCallback(__arg0);
+                return __ret;
+            }
+
+            public static bool UnsubscribeOnRotationChangedCallback(int handle)
+            {
+                var __ret = __Internal.UnsubscribeOnRotationChangedCallback(handle);
                 return __ret;
             }
 

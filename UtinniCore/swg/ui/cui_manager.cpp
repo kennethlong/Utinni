@@ -26,6 +26,9 @@
 #include "swg/camera/camera.h"
 #include "swg/misc/swg_string.h"
 
+#include <unordered_map>
+#include <vector>
+
 namespace swg::cuiManager
 {
 using pRender = void(__thiscall*)(swgptr pThis);
@@ -63,7 +66,9 @@ pSendMessage sendMessage = (pSendMessage)0x008AC250;
 
 }
 
-static std::vector<void(*)(const char* msg)> receiveSystemMessageCallbacks;
+// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry.
+static std::unordered_map<int, void(*)(const char* msg)> receiveSystemMessageCallbacks;
+static int s_nextReceiveSystemMessageId = 1;
 
 namespace utinni
 {
@@ -127,9 +132,26 @@ void UiManager::drawCursor(bool value)
     swg::uiManager::drawCursor(this, value);
 }
 
+// Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
+int SystemMessageManager::subscribeReceiveMessageCallback(void(*func)(const char* msg))
+{
+    int id = s_nextReceiveSystemMessageId++;
+    receiveSystemMessageCallbacks[id] = func;
+    return id;
+}
+
+bool SystemMessageManager::unsubscribeReceiveMessageCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return receiveSystemMessageCallbacks.erase(handle) > 0;
+}
+
 void SystemMessageManager::addReceiveMessageCallback(void(* func)(const char* msg))
 {
-    receiveSystemMessageCallbacks.emplace_back(func);
+    subscribeReceiveMessageCallback(func);
 }
 
 void SystemMessageManager::sendMessage(const char* message, bool chatOnly)
@@ -153,7 +175,14 @@ void __cdecl hkReceiveMessage(swgptr pChatSystemMsg)
         swg::systemMessageManager::receiveMessage(pChatSystemMsg);
     }
 
-    for (const auto& func : receiveSystemMessageCallbacks)
+    // R-H snapshot dispatch per D-12.
+    std::vector<void(*)(const char*)> snapshot;
+    snapshot.reserve(receiveSystemMessageCallbacks.size());
+    for (const auto& kv : receiveSystemMessageCallbacks)
+    {
+        snapshot.push_back(kv.second);
+    }
+    for (const auto& func : snapshot)
     {
         func(msgStr.c_str());
     }

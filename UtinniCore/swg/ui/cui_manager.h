@@ -51,6 +51,10 @@ public:
 class UTINNI_API SystemMessageManager
 {
 public:
+    // Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09).
+    static int subscribeReceiveMessageCallback(void(*func)(const char* msg));
+    static bool unsubscribeReceiveMessageCallback(int handle);
+    // Legacy add* API (D-10): thin wrapper.
     static void addReceiveMessageCallback(void(*func)(const char* msg));
     static void sendMessage(const char* message, bool chatOnly);
 

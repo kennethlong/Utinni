@@ -33,6 +33,10 @@ class CommandParser;
 class UTINNI_API CuiChatWindow // ToDo change to non static with getChatWindow func
 {
 public:
+    // Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09).
+    static int subscribeCreateCommandParserCallback(void(*func)(CommandParser* commandParser));
+    static bool unsubscribeCreateCommandParserCallback(int handle);
+    // Legacy add* API (D-10): thin wrapper.
     static void addCreateCommandParserCallback(void(*func)(CommandParser* commandParser));
 
     static void enableTextInput(bool value);

@@ -38,6 +38,10 @@ UTINNI_API extern void enableInternalUi(bool enable);
 extern void setup(IDirect3DDevice9* pDevice);
 extern void render();
 extern bool isRendering();
+// Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09).
+UTINNI_API extern int subscribeRenderCallback(void(*func)());
+UTINNI_API extern bool unsubscribeRenderCallback(int handle);
+// Legacy add* API (D-10): thin wrapper.
 UTINNI_API extern void addRenderCallback(void(*func)());
 UTINNI_API extern bool isInternalUiHovered();
 
@@ -49,6 +53,16 @@ UTINNI_API extern void enable(utinni::Object* obj);
 UTINNI_API extern void disable();
 UTINNI_API extern bool isEnabled();
 UTINNI_API extern bool hasMouseHover();
+// Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09).
+UTINNI_API extern int subscribeOnEnabledCallback(void(*func)());
+UTINNI_API extern bool unsubscribeOnEnabledCallback(int handle);
+UTINNI_API extern int subscribeOnDisabledCallback(void(*func)());
+UTINNI_API extern bool unsubscribeOnDisabledCallback(int handle);
+UTINNI_API extern int subscribeOnPositionChangedCallback(void(*func)());
+UTINNI_API extern bool unsubscribeOnPositionChangedCallback(int handle);
+UTINNI_API extern int subscribeOnRotationChangedCallback(void(*func)());
+UTINNI_API extern bool unsubscribeOnRotationChangedCallback(int handle);
+// Legacy add* API (D-10): thin wrappers.
 UTINNI_API extern void addOnEnabledCallback(void(*func)());
 UTINNI_API extern void addOnDisabledCallback(void(*func)());
 UTINNI_API extern void addOnPositionChangedCallback(void(*func)());

@@ -36,6 +36,10 @@ UTINNI_API extern void error(const char* text);
 UTINNI_API extern void info(const char* text);
 UTINNI_API extern void warning(const char* text);
 
+// Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09).
+UTINNI_API extern int subscribeOutputSinkCallback(void(*func)(const char* msg));
+UTINNI_API extern bool unsubscribeOutputSinkCallback(int handle);
+// Legacy add* API (D-10): thin wrapper.
 UTINNI_API extern void addOutputSinkCallback(void(*func)(const char* msg));
 
 UTINNI_API extern int getMessageBufferCount();

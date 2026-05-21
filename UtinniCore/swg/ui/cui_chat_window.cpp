@@ -30,6 +30,8 @@
 
 #include <cstdio>
 #include <intrin.h>
+#include <unordered_map>
+#include <vector>
 
 namespace swg::cuiChatWindow
 {
@@ -64,7 +66,9 @@ pSendInput sendInput = (pSendInput)0x009141D0;
 
 static swgptr pCuiChatWindow; // ToDo use the getChatWindow function instead of the ctor detour?
 static swgptr pCuiConsoleHelper;
-static std::vector<void(*)(utinni::CommandParser* mainCommandParser)> addCommandParserCallback;
+// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry.
+static std::unordered_map<int, void(*)(utinni::CommandParser* mainCommandParser)> addCommandParserCallback;
+static int s_nextCommandParserId = 1;
 
 // Phase G (Issue #11): mirrors the last value SWG passed to enableTextInput.
 // Updated in hkEnableTextInput. Used by external code (imgui_impl
@@ -77,9 +81,26 @@ namespace utinni
 {
 bool enableInput;
 
+// Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
+int CuiChatWindow::subscribeCreateCommandParserCallback(void(*func)(CommandParser* commandParser))
+{
+    int id = s_nextCommandParserId++;
+    addCommandParserCallback[id] = func;
+    return id;
+}
+
+bool CuiChatWindow::unsubscribeCreateCommandParserCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return addCommandParserCallback.erase(handle) > 0;
+}
+
 void CuiChatWindow::addCreateCommandParserCallback(void(*func)(CommandParser* commandParser))
 {
-    addCommandParserCallback.emplace_back(func);
+    subscribeCreateCommandParserCallback(func);
 }
 
 void CuiChatWindow::enableTextInput(bool value) // Accepts color codes by prefixing them with \\, ie "\\#888888 test"
@@ -316,7 +337,14 @@ swgptr __fastcall hkCtor(swgptr pThis, swgptr EDX, swgptr uiPage, DWORD unk1, DW
 
     mainCommandParser->addSubCommand(swg_new<UtinniCommandParser>());
 
-    for (const auto& func : addCommandParserCallback)
+    // R-H snapshot dispatch per D-12.
+    std::vector<void(*)(CommandParser*)> snapshot;
+    snapshot.reserve(addCommandParserCallback.size());
+    for (const auto& kv : addCommandParserCallback)
+    {
+        snapshot.push_back(kv.second);
+    }
+    for (const auto& func : snapshot)
     {
         func(mainCommandParser);
     }

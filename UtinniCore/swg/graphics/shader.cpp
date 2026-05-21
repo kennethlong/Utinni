@@ -25,12 +25,36 @@
 #include "shader.h"
 #include "swg/graphics/directx9.h"
 
+#include <unordered_map>
+#include <vector>
+
 namespace swg::shaderPrimitiveSorter
 {
 
 }
 
-static std::vector<void(*)(int currentPhase)> drawPhaseCallbacks;
+// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry
+// with parameterized `void(*)(int)` callback type. Handle 0 reserved as
+// invalid sentinel.
+static std::unordered_map<int, void(*)(int currentPhase)> drawPhaseCallbacks;
+static int s_nextDrawPhaseId = 1;
+
+// Non-naked dispatch helper: called from inside the __declspec(naked)
+// midPopCell function below. Lives outside the naked function so std::vector
+// stack allocation + exception-unwind frames work normally.
+static void dispatchDrawPhaseCallbacks(int phase)
+{
+    std::vector<void(*)(int)> snapshot;
+    snapshot.reserve(drawPhaseCallbacks.size());
+    for (const auto& kv : drawPhaseCallbacks)
+    {
+        snapshot.push_back(kv.second);
+    }
+    for (const auto& func : snapshot)
+    {
+        func(phase);
+    }
+}
 
 namespace utinni::shaderPrimitiveSorter
 {
@@ -62,10 +86,11 @@ __declspec(naked) void midPopCell()
         }
     }
 
-    for (const auto& func : drawPhaseCallbacks)
-    {
-        func(phase);
-    }
+    // R-H snapshot dispatch per D-12: factored to a non-naked helper because
+    // MSVC C2489/C3068 reject local std::vector inside __declspec(naked)
+    // (the prologue elision means there is no exception-unwind frame). The
+    // helper builds the snapshot vector in its own frame, then iterates.
+    dispatchDrawPhaseCallbacks(phase);
 
     __asm
     {
@@ -77,9 +102,26 @@ __declspec(naked) void midPopCell()
 }
 
 
+// Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
+int subscribeDrawPhaseCallback(void(*func)(int currentPhase))
+{
+    int id = s_nextDrawPhaseId++;
+    drawPhaseCallbacks[id] = func;
+    return id;
+}
+
+bool unsubscribeDrawPhaseCallback(int handle)
+{
+    if (handle == 0)
+    {
+        return false;
+    }
+    return drawPhaseCallbacks.erase(handle) > 0;
+}
+
 void drawPhaseCallback(void(* func)(int currentPhase))
 {
-    drawPhaseCallbacks.emplace_back(func);
+    subscribeDrawPhaseCallback(func);
 }
 
 void detour()

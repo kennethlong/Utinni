@@ -35,6 +35,10 @@ public:
 	 int getStage() { return stage; }
 	 void setStage(int value) { stage = value; }
 
+	 // Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09).
+	 UTINNI_API static int subscribeDepthResolveCallback(void (*func)());
+	 UTINNI_API static bool unsubscribeDepthResolveCallback(int handle);
+	 // Legacy add* (D-10): thin wrapper.
 	 UTINNI_API static void addDepthResolveCallback(void (*func)());
 };
 
