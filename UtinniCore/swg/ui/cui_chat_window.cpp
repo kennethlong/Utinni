@@ -89,6 +89,7 @@ int CuiChatWindow::subscribeCreateCommandParserCallback(void(*func)(CommandParse
 {
     std::lock_guard<std::mutex> guard(addCommandParserCallbackMutex);
     int id = s_nextCommandParserId++;
+    if (id == 0) { id = s_nextCommandParserId++; } // WR-04 skip-zero
     addCommandParserCallback[id] = func;
     return id;
 }

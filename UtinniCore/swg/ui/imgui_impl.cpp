@@ -433,6 +433,7 @@ int subscribeRenderCallback(void(*func)())
  {
 	  std::lock_guard<std::mutex> guard(renderCallbacksMutex);
 	  int id = s_nextRenderId++;
+	  if (id == 0) { id = s_nextRenderId++; } // WR-04 skip-zero
 	  renderCallbacks[id] = func;
 	  return id;
  }
@@ -550,6 +551,7 @@ int subscribeOnEnabledCallback(void(*func)())
 {
 	 std::lock_guard<std::mutex> guard(onGizmoEnabledCallbacksMutex);
 	 int id = s_nextGizmoEnabledId++;
+	 if (id == 0) { id = s_nextGizmoEnabledId++; } // WR-04 skip-zero
 	 onGizmoEnabledCallbacks[id] = func;
 	 return id;
 }
@@ -568,6 +570,7 @@ int subscribeOnDisabledCallback(void(*func)())
 {
 	 std::lock_guard<std::mutex> guard(onGizmoDisabledCallbacksMutex);
 	 int id = s_nextGizmoDisabledId++;
+	 if (id == 0) { id = s_nextGizmoDisabledId++; } // WR-04 skip-zero
 	 onGizmoDisabledCallbacks[id] = func;
 	 return id;
 }
@@ -586,6 +589,7 @@ int subscribeOnPositionChangedCallback(void(*func)())
 {
 	 std::lock_guard<std::mutex> guard(onGizmoPositionChangedCallbacksMutex);
 	 int id = s_nextGizmoPositionChangedId++;
+	 if (id == 0) { id = s_nextGizmoPositionChangedId++; } // WR-04 skip-zero
 	 onGizmoPositionChangedCallbacks[id] = func;
 	 return id;
 }
@@ -604,6 +608,7 @@ int subscribeOnRotationChangedCallback(void(*func)())
 {
 	 std::lock_guard<std::mutex> guard(onGizmoRotationChangedCallbacksMutex);
 	 int id = s_nextGizmoRotationChangedId++;
+	 if (id == 0) { id = s_nextGizmoRotationChangedId++; } // WR-04 skip-zero
 	 onGizmoRotationChangedCallbacks[id] = func;
 	 return id;
 }

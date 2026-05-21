@@ -51,6 +51,7 @@ namespace UtinniCoreDotNet.Callbacks
             lock (onReceiveSystemMessageLock)
             {
                 int id = s_nextOnReceiveSystemMessageId++;
+                if (id == 0) { id = s_nextOnReceiveSystemMessageId++; } // WR-04 skip-zero
                 onReceiveSystemMessageSubscribers[id] = call;
                 return id;
             }

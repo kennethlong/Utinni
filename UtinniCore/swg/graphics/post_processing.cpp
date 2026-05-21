@@ -94,6 +94,7 @@ int subscribePreSceneRenderCallback(void(*func)())
 {
     std::lock_guard<std::mutex> guard(preSceneRenderCallbacksMutex);
     int id = s_nextPreSceneRenderId++;
+    if (id == 0) { id = s_nextPreSceneRenderId++; } // WR-04 skip-zero
     preSceneRenderCallbacks[id] = func;
     return id;
 }
@@ -112,6 +113,7 @@ int subscribePostSceneRenderCallback(void(*func)())
 {
     std::lock_guard<std::mutex> guard(postSceneRenderCallbacksMutex);
     int id = s_nextPostSceneRenderId++;
+    if (id == 0) { id = s_nextPostSceneRenderId++; } // WR-04 skip-zero
     postSceneRenderCallbacks[id] = func;
     return id;
 }

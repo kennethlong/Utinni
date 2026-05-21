@@ -114,6 +114,7 @@ int subscribeDrawPhaseCallback(void(*func)(int currentPhase))
 {
     std::lock_guard<std::mutex> guard(drawPhaseCallbacksMutex);
     int id = s_nextDrawPhaseId++;
+    if (id == 0) { id = s_nextDrawPhaseId++; } // WR-04 skip-zero
     drawPhaseCallbacks[id] = func;
     return id;
 }

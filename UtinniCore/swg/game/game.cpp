@@ -109,6 +109,13 @@ int Game::subscribeInstallCallback(void(*func)())
 {
     std::lock_guard<std::mutex> guard(installCallbacksMutex);
     int id = s_nextInstallId++;
+    // WR-04 (03-REVIEW): after 2^31 subscribes the post-increment wraps
+    // negative and eventually hits 0 -- which is D-09's reserved invalid
+    // sentinel. Skip 0 so handles emitted to callers are always non-zero.
+    if (id == 0)
+    {
+        id = s_nextInstallId++;
+    }
     installCallbacks[id] = func;
     return id;
 }
@@ -127,6 +134,7 @@ int Game::subscribePreMainLoopCallback(void(*func)())
 {
     std::lock_guard<std::mutex> guard(preMainLoopCallbacksMutex);
     int id = s_nextPreMainLoopId++;
+    if (id == 0) { id = s_nextPreMainLoopId++; } // WR-04 skip-zero
     preMainLoopCallbacks[id] = func;
     return id;
 }
@@ -145,6 +153,7 @@ int Game::subscribeMainLoopCallback(void(*func)())
 {
     std::lock_guard<std::mutex> guard(mainLoopCallbacksMutex);
     int id = s_nextMainLoopId++;
+    if (id == 0) { id = s_nextMainLoopId++; } // WR-04 skip-zero
     mainLoopCallbacks[id] = func;
     return id;
 }
@@ -163,6 +172,7 @@ int Game::subscribeSetSceneCallback(void(*func)())
 {
     std::lock_guard<std::mutex> guard(setSceneCallbacksMutex);
     int id = s_nextSetSceneId++;
+    if (id == 0) { id = s_nextSetSceneId++; } // WR-04 skip-zero
     setSceneCallbacks[id] = func;
     return id;
 }
@@ -181,6 +191,7 @@ int Game::subscribeCleanupSceneCallback(void(*func)())
 {
     std::lock_guard<std::mutex> guard(cleanUpSceneCallbacksMutex);
     int id = s_nextCleanUpSceneId++;
+    if (id == 0) { id = s_nextCleanUpSceneId++; } // WR-04 skip-zero
     cleanUpSceneCallbacks[id] = func;
     return id;
 }

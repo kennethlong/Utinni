@@ -51,6 +51,7 @@ int subscribeOnTargetCallback(void(*func)(Object* target))
 {
     std::lock_guard<std::mutex> guard(onTargetCallbacksMutex);
     int id = s_nextOnTargetId++;
+    if (id == 0) { id = s_nextOnTargetId++; } // WR-04 skip-zero
     onTargetCallbacks[id] = func;
     return id;
 }

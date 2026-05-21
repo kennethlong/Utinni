@@ -140,6 +140,7 @@ int SystemMessageManager::subscribeReceiveMessageCallback(void(*func)(const char
 {
     std::lock_guard<std::mutex> guard(receiveSystemMessageCallbacksMutex);
     int id = s_nextReceiveSystemMessageId++;
+    if (id == 0) { id = s_nextReceiveSystemMessageId++; } // WR-04 skip-zero
     receiveSystemMessageCallbacks[id] = func;
     return id;
 }

@@ -65,6 +65,7 @@ namespace UtinniCoreDotNet.Callbacks
             lock (onTargetLock)
             {
                 int id = s_nextOnTargetId++;
+                if (id == 0) { id = s_nextOnTargetId++; } // WR-04 skip-zero
                 onTargetSubscribers[id] = call;
                 return id;
             }

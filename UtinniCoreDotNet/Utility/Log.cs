@@ -151,6 +151,11 @@ namespace UtinniCoreDotNet.Utility
             lock (outputSinkLock)
             {
                 int id = s_nextOutputSinkId++;
+                // WR-04 (03-REVIEW): after 2^31 subscribes the post-increment
+                // wraps negative and eventually hits 0 (D-09's invalid
+                // sentinel). Skip 0 so handles emitted to callers stay
+                // non-zero; an Unsubscribe(0) would otherwise no-op forever.
+                if (id == 0) { id = s_nextOutputSinkId++; }
                 outputSinkSubscribers[id] = call;
                 return id;
             }

@@ -90,6 +90,7 @@ namespace UtinniCoreDotNet.Callbacks
             lock (cameraChangeLock)
             {
                 int id = s_nextCameraChangeId++;
+                if (id == 0) { id = s_nextCameraChangeId++; } // WR-04 skip-zero
                 cameraChangeSubscribers[id] = call;
                 return id;
             }

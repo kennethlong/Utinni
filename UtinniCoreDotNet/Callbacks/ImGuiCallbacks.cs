@@ -76,6 +76,7 @@ namespace UtinniCoreDotNet.Callbacks
             lock (onEnabledLock)
             {
                 int id = s_nextOnEnabledId++;
+                if (id == 0) { id = s_nextOnEnabledId++; } // WR-04 skip-zero
                 onEnabledSubscribers[id] = call;
                 return id;
             }
@@ -112,6 +113,7 @@ namespace UtinniCoreDotNet.Callbacks
             lock (onDisabledLock)
             {
                 int id = s_nextOnDisabledId++;
+                if (id == 0) { id = s_nextOnDisabledId++; } // WR-04 skip-zero
                 onDisabledSubscribers[id] = call;
                 return id;
             }
@@ -147,6 +149,7 @@ namespace UtinniCoreDotNet.Callbacks
             lock (onPositionChangedLock)
             {
                 int id = s_nextOnPositionChangedId++;
+                if (id == 0) { id = s_nextOnPositionChangedId++; } // WR-04 skip-zero
                 onPositionChangedSubscribers[id] = call;
                 return id;
             }
@@ -181,6 +184,7 @@ namespace UtinniCoreDotNet.Callbacks
             lock (onRotationChangedLock)
             {
                 int id = s_nextOnRotationChangedId++;
+                if (id == 0) { id = s_nextOnRotationChangedId++; } // WR-04 skip-zero
                 onRotationChangedSubscribers[id] = call;
                 return id;
             }

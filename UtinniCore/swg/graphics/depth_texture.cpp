@@ -220,6 +220,7 @@ int DepthTexture::subscribeDepthResolveCallback(void(*func)())
 {
 	 std::lock_guard<std::mutex> guard(depthResolveCallbacksMutex);
 	 int id = s_nextDepthResolveId++;
+	 if (id == 0) { id = s_nextDepthResolveId++; } // WR-04 skip-zero
 	 depthResolveCallbacks[id] = func;
 	 return id;
 }

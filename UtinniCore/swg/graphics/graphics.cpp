@@ -135,6 +135,7 @@ int Graphics::subscribePreUpdateLoopCallback(void(*func)(float elapsedTime))
 {
     std::lock_guard<std::mutex> guard(preUpdateCallbackMutex);
     int id = s_nextPreUpdateId++;
+    if (id == 0) { id = s_nextPreUpdateId++; } // WR-04 skip-zero
     preUpdateCallback[id] = func;
     return id;
 }
@@ -153,6 +154,7 @@ int Graphics::subscribePostUpdateLoopCallback(void(*func)(float elapsedTime))
 {
     std::lock_guard<std::mutex> guard(postUpdateCallbackMutex);
     int id = s_nextPostUpdateId++;
+    if (id == 0) { id = s_nextPostUpdateId++; } // WR-04 skip-zero
     postUpdateCallback[id] = func;
     return id;
 }
@@ -171,6 +173,7 @@ int Graphics::subscribePreBeginSceneCallback(void(*func)())
 {
     std::lock_guard<std::mutex> guard(preBeginSceneCallbackMutex);
     int id = s_nextPreBeginSceneId++;
+    if (id == 0) { id = s_nextPreBeginSceneId++; } // WR-04 skip-zero
     preBeginSceneCallback[id] = func;
     return id;
 }
@@ -189,6 +192,7 @@ int Graphics::subscribePostBeginSceneCallback(void(*func)())
 {
     std::lock_guard<std::mutex> guard(postBeginSceneCallbackMutex);
     int id = s_nextPostBeginSceneId++;
+    if (id == 0) { id = s_nextPostBeginSceneId++; } // WR-04 skip-zero
     postBeginSceneCallback[id] = func;
     return id;
 }
@@ -207,6 +211,7 @@ int Graphics::subscribePreEndSceneCallback(void(*func)())
 {
     std::lock_guard<std::mutex> guard(preEndSceneCallbackMutex);
     int id = s_nextPreEndSceneId++;
+    if (id == 0) { id = s_nextPreEndSceneId++; } // WR-04 skip-zero
     preEndSceneCallback[id] = func;
     return id;
 }
@@ -225,6 +230,7 @@ int Graphics::subscribePostEndSceneCallback(void(*func)())
 {
     std::lock_guard<std::mutex> guard(postEndSceneCallbackMutex);
     int id = s_nextPostEndSceneId++;
+    if (id == 0) { id = s_nextPostEndSceneId++; } // WR-04 skip-zero
     postEndSceneCallback[id] = func;
     return id;
 }
@@ -243,6 +249,7 @@ int Graphics::subscribePrePresentWindowCallback(void(*func)(HWND hwnd, int width
 {
     std::lock_guard<std::mutex> guard(prePresentWindowCallbackMutex);
     int id = s_nextPrePresentWindowId++;
+    if (id == 0) { id = s_nextPrePresentWindowId++; } // WR-04 skip-zero
     prePresentWindowCallback[id] = func;
     return id;
 }
@@ -261,6 +268,7 @@ int Graphics::subscribePostPresentWindowCallback(void(*func)(HWND hwnd, int widt
 {
     std::lock_guard<std::mutex> guard(postPresentWindowCallbackMutex);
     int id = s_nextPostPresentWindowId++;
+    if (id == 0) { id = s_nextPostPresentWindowId++; } // WR-04 skip-zero
     postPresentWindowCallback[id] = func;
     return id;
 }
@@ -279,6 +287,7 @@ int Graphics::subscribePrePresentCallback(void(*func)())
 {
     std::lock_guard<std::mutex> guard(prePresentCallbackMutex);
     int id = s_nextPrePresentId++;
+    if (id == 0) { id = s_nextPrePresentId++; } // WR-04 skip-zero
     prePresentCallback[id] = func;
     return id;
 }
@@ -297,6 +306,7 @@ int Graphics::subscribePostPresentCallback(void(*func)())
 {
     std::lock_guard<std::mutex> guard(postPresentCallbackMutex);
     int id = s_nextPostPresentId++;
+    if (id == 0) { id = s_nextPostPresentId++; } // WR-04 skip-zero
     postPresentCallback[id] = func;
     return id;
 }

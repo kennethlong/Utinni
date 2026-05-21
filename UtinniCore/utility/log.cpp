@@ -141,6 +141,7 @@ int subscribeOutputSinkCallback(void(*func)(const char* msg))
 {
     std::lock_guard<std::mutex> guard(outputSinkMutex);
     int id = s_nextOutputSinkId++;
+    if (id == 0) { id = s_nextOutputSinkId++; } // WR-04 skip-zero
     outputSinkCallbacks[id] = func;
     return id;
 }

@@ -127,6 +127,7 @@ int GroundScene::subscribePreDrawLoopCallback(void(*func)(GroundScene* pThis))
 {
     std::lock_guard<std::mutex> guard(preDrawLoopCallbacksMutex);
     int id = s_nextPreDrawId++;
+    if (id == 0) { id = s_nextPreDrawId++; } // WR-04 skip-zero
     preDrawLoopCallbacks[id] = func;
     return id;
 }
@@ -145,6 +146,7 @@ int GroundScene::subscribePostDrawLoopCallback(void(*func)(GroundScene* pThis))
 {
     std::lock_guard<std::mutex> guard(postDrawLoopCallbacksMutex);
     int id = s_nextPostDrawId++;
+    if (id == 0) { id = s_nextPostDrawId++; } // WR-04 skip-zero
     postDrawLoopCallbacks[id] = func;
     return id;
 }
@@ -163,6 +165,7 @@ int GroundScene::subscribeUpdateLoopCallback(void(*func)(GroundScene* pThis, flo
 {
     std::lock_guard<std::mutex> guard(updateLoopCallbacksMutex);
     int id = s_nextUpdateId++;
+    if (id == 0) { id = s_nextUpdateId++; } // WR-04 skip-zero
     updateLoopCallbacks[id] = func;
     return id;
 }
@@ -181,6 +184,7 @@ int GroundScene::subscribeCameraChangeCallback(void(*func)())
 {
     std::lock_guard<std::mutex> guard(cameraChangeCallbacksMutex);
     int id = s_nextCameraChangeId++;
+    if (id == 0) { id = s_nextCameraChangeId++; } // WR-04 skip-zero
     cameraChangeCallbacks[id] = func;
     return id;
 }

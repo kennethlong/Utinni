@@ -93,6 +93,9 @@ namespace UtinniCoreDotNet.Callbacks
             lock (installLock)
             {
                 int id = s_nextInstallId++;
+                // WR-04 (03-REVIEW) skip-zero: post-2^31 wrap produces D-09's
+                // invalid sentinel; advance past it.
+                if (id == 0) { id = s_nextInstallId++; }
                 installSubscribers[id] = call;
                 return id;
             }
@@ -148,6 +151,7 @@ namespace UtinniCoreDotNet.Callbacks
             lock (setupSceneLock)
             {
                 int id = s_nextSetupSceneId++;
+                if (id == 0) { id = s_nextSetupSceneId++; } // WR-04 skip-zero
                 setupSceneSubscribers[id] = call;
                 return id;
             }
@@ -197,6 +201,7 @@ namespace UtinniCoreDotNet.Callbacks
             lock (cleanupSceneLock)
             {
                 int id = s_nextCleanupSceneId++;
+                if (id == 0) { id = s_nextCleanupSceneId++; } // WR-04 skip-zero
                 cleanupSceneSubscribers[id] = call;
                 return id;
             }
