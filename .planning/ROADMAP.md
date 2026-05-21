@@ -90,7 +90,7 @@ Plans:
 **Plans**:
 - [x] 03-01-PLAN.md — Callbacks: R-A handle-based Subscribe/Unsubscribe + R-H snapshot iteration (managed + native) + IN-05 Drain helper consolidation
 - [x] 03-02-PLAN.md — Plugin lifecycle + RVAs: R-B symmetric createPlugin/destroyPlugin ABI + two-phase init + HMODULE tracking + R-C single-source WndProc RVA via UTINNI_API
-- [ ] 03-03-PLAN.md — Build-tooling + logging: R-E [CallerMemberName] logging + R-F CppSharp header auto-discovery + R-G idempotent Directory.Build.props merger
+- [x] 03-03-PLAN.md — Build-tooling + logging: R-E [CallerMemberName] logging + R-F CppSharp header auto-discovery + R-G idempotent Directory.Build.props merger
 
 ### Phase 4: Tier 2 CLI shim + golden fixtures
 **Goal**: A `utinni-cli` executable in the same solution references the same core libraries as the WinForms tool and exposes the operations the UI calls. Golden-file tests against checked-in fixtures convert an estimated 60–70% of manual "Kenny please verify" loops into unattended CI runs.
