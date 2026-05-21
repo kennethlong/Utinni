@@ -94,6 +94,17 @@ namespace UtinniCoreDotNet.UI.Controls
             // Issue #10 Phase B wiring. Start poll on handle creation, stop on
             // dispose, realign on resize, and hook FormMain.LocationChanged as
             // soon as the owning form is reachable.
+            //
+            // Phase B-bis (#10) -- 2026-05-21 revert: the IDirect3DDevice9::Reset
+            // approach (handoff sketch) is unworkable for SWG. SWG owns dozens
+            // of default-pool resources we can't enumerate, so Reset() returns
+            // D3DERR_INVALIDCALL and leaves the device in DEVICELOST -- next
+            // SetVertexShaderConstantF crashes the process. Live-verified
+            // crash on first launch of the Reset wiring. Going back to plain
+            // SetWindowPos (with size, no SWP_NOSIZE) and relying on D3D9
+            // windowed Present's natural stretch-to-pDestRect-or-client behavior;
+            // diagnostics added to hkPresent to confirm what SWG actually
+            // passes for pSourceRect/pDestRect/SwapEffect on the next run.
             reparentPollTimer.Tick += ReparentPollTimer_Tick;
             HandleCreated += PanelGame_HandleCreated_ForReparent;
             Resize += (s, e) => RepositionSwgWindow();
@@ -180,6 +191,7 @@ namespace UtinniCoreDotNet.UI.Controls
             // guard inside it doesn't early-return. Without this the SWP_FRAMECHANGED
             // never fires and the stripped frame stays visible.
             swgReparented = true;
+
             RepositionSwgWindow();
 
             Log.Info("PanelGame: reparented SWG hwnd=0x" + swgHwnd.ToInt64().ToString("X")
@@ -195,21 +207,22 @@ namespace UtinniCoreDotNet.UI.Controls
             IntPtr swgHwnd = Native.GetSwgHwnd();
             if (swgHwnd == IntPtr.Zero) return;
 
-            // 2026-05-20 Issue #10 Phase B (iter 2): position-only, NOT size.
-            // The first launch attempt (full SetWindowPos with PanelGame.ClientSize)
-            // produced a black SWG window: D3D9's swapchain was created at SWG's
-            // original window dimensions and Present() doesn't auto-rescale on
-            // window resize in windowed mode. Triggering IDirect3DDevice9::Reset()
-            // with new BackBufferWidth/Height + ImGui invalidate/recreate is a
-            // separate concern (Phase B-bis). For now: leave SWG at its native
-            // size, just move it over PanelGame to validate the owned-popup
-            // reparent + frame-strip + DirectInput coop-level survival.
+            // Phase B-bis (#10): position AND size + Z-order to TOP. 2026-05-21
+            // verify: SWG renders correctly at the new (smaller) size via D3D9's
+            // own stretching, BUT was getting buried behind FormMain in Z-order
+            // because the owned-popup relationship (set via post-creation
+            // GWLP_HWNDPARENT) doesn't always trigger Z-order recomputation.
+            // Drop SWP_NOZORDER and pass HWND_TOP (IntPtr.Zero) as hWndInsertAfter
+            // to bring SWG above FormMain. SWP_NOACTIVATE prevents focus theft;
+            // FormMain stays the active window, SWG is just visually on top.
+            // Subsequent FormMain activations carry SWG with them as a group
+            // via the ownership relationship.
             Point screenOrigin = PointToScreen(Point.Empty);
+            Size cs = ClientSize;
             bool ok = Native.SetWindowPos(swgHwnd, IntPtr.Zero,
                 screenOrigin.X, screenOrigin.Y,
-                0, 0, // ignored under SWP_NOSIZE
-                Native.SWP_NOSIZE | Native.SWP_FRAMECHANGED | Native.SWP_NOZORDER
-                | Native.SWP_SHOWWINDOW | Native.SWP_NOACTIVATE);
+                cs.Width, cs.Height,
+                Native.SWP_FRAMECHANGED | Native.SWP_SHOWWINDOW | Native.SWP_NOACTIVATE);
 
             // Diag: cap to first 8 calls to avoid log spam during drag.
             if (s_repositionLogCount < 8)
@@ -217,7 +230,8 @@ namespace UtinniCoreDotNet.UI.Controls
                 s_repositionLogCount++;
                 Log.Info("PanelGame.RepositionSwgWindow: SetWindowPos("
                     + "x=" + screenOrigin.X + ",y=" + screenOrigin.Y
-                    + ",NOSIZE) -> " + (ok ? "OK" : "FAIL"));
+                    + ",w=" + cs.Width + ",h=" + cs.Height
+                    + ",HWND_TOP) -> " + (ok ? "OK" : "FAIL"));
             }
         }
 
