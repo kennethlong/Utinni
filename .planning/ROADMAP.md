@@ -89,7 +89,7 @@ Plans:
 **Plans**: 3 plans
 **Plans**:
 - [x] 03-01-PLAN.md — Callbacks: R-A handle-based Subscribe/Unsubscribe + R-H snapshot iteration (managed + native) + IN-05 Drain helper consolidation
-- [ ] 03-02-PLAN.md — Plugin lifecycle + RVAs: R-B symmetric createPlugin/destroyPlugin ABI + two-phase init + HMODULE tracking + R-C single-source WndProc RVA via UTINNI_API
+- [x] 03-02-PLAN.md — Plugin lifecycle + RVAs: R-B symmetric createPlugin/destroyPlugin ABI + two-phase init + HMODULE tracking + R-C single-source WndProc RVA via UTINNI_API
 - [ ] 03-03-PLAN.md — Build-tooling + logging: R-E [CallerMemberName] logging + R-F CppSharp header auto-discovery + R-G idempotent Directory.Build.props merger
 
 ### Phase 4: Tier 2 CLI shim + golden fixtures
