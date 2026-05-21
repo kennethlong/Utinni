@@ -1,0 +1,10 @@
+# Phase 3 R-B (Plan 03-02 Task 1): native-fixture-DLL landing zone.
+#
+# Utinni.CrtMatchPlugin.dll (built by Utinni.CrtMatchPlugin.vcxproj at the
+# solution root) gets copied here at build time by the
+# CopyNativeArtifactsForTests target in UtinniCoreDotNet.Tests.csproj
+# alongside UtinniCore.dll. The fixture DLL itself is NOT checked in --
+# this directory just gives PluginManagerLifecycleTests a stable known
+# location to walk to from AppContext.BaseDirectory.
+#
+# This file exists so git tracks the empty directory.

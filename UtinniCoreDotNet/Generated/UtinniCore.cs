@@ -1973,6 +1973,11 @@ namespace UtinniCore
 
                 [SuppressUnmanagedCodeSecurity]
                 [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
+                    EntryPoint="?getSwgWndProc@Client@utinni@@SAPAXXZ")]
+                internal static extern global::System.IntPtr GetSwgWndProc();
+
+                [SuppressUnmanagedCodeSecurity]
+                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
                     EntryPoint="?getWidth@Client@utinni@@SAHXZ")]
                 internal static extern int GetWidth();
 
@@ -2102,6 +2107,15 @@ namespace UtinniCore
                 set
                 {
                     __Internal.SetEditorMode(value);
+                }
+            }
+
+            public static global::System.IntPtr SwgWndProc
+            {
+                get
+                {
+                    var __ret = __Internal.GetSwgWndProc();
+                    return __ret;
                 }
             }
 
