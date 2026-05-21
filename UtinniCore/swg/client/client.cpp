@@ -124,6 +124,20 @@ HWND Client::getSwgHwnd()
     return swgHwnd;
 }
 
+// Phase 3 R-C (per 03-CONTEXT D-18..D-20 / TD-18): return SWG's WndProc
+// code address (0x00AA0970) as a void*. Single source of truth: the
+// constant is declared once at line 43 above (`pWndProc wndProc =
+// (pWndProc)0x00AA0970`); managed callers read it via the
+// getSwgWndProcExport C-linkage shim (declared outside the utinni
+// namespace, mirroring the getSwgHwndExport precedent for the
+// CppSharp-drops-pointer-getter workaround). CON-N-04 invariant
+// preserved: this is a read-only constant-returning getter that touches
+// no protected memory and calls no VirtualProtect.
+void* Client::getSwgWndProc()
+{
+    return reinterpret_cast<void*>(swg::client::wndProc);
+}
+
 void Client::suspendInput()
 {
     // DIAG 2026-05-19 Issue #9: log every call. If Game::isRunning() is
@@ -290,4 +304,19 @@ void Client::detour()
 extern "C" __declspec(dllexport) HWND __cdecl getSwgHwndExport()
 {
     return swgHwnd;
+}
+
+// Phase 3 R-C (per 03-CONTEXT D-18..D-20 / TD-18): C-linkage export so
+// PanelGame.cs can read SWG's WndProc code address without going through
+// the auto-generated CppSharp bindings (the generator drops pointer-
+// returning getters -- same constraint as getSwgHwndExport above, same
+// pattern as getPresentBlockedEvent in directx9.cpp). Returns the
+// constant 0x00AA0970 (single source of truth: declared at client.cpp:43).
+// Returns void* on the C side; Native.cs marshals it as IntPtr.
+//
+// CON-N-04 verification: read-only constant-returning getter, no
+// VirtualProtect bracket required (no protected memory access).
+extern "C" __declspec(dllexport) void* __cdecl getSwgWndProcExport()
+{
+    return reinterpret_cast<void*>(swg::client::wndProc);
 }

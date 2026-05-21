@@ -122,6 +122,18 @@ namespace UtinniCoreDotNet.Utility
             EntryPoint = "getSwgHwndExport")]
         public static extern IntPtr GetSwgHwnd();
 
+        // Phase 3 R-C (per 03-CONTEXT D-18..D-20 / TD-18): read the
+        // SWG WndProc RVA (0x00AA0970) via the C-linkage export added
+        // in client.cpp. Replaces the literal `new IntPtr(0x00AA0970)`
+        // that PanelGame.cs previously hardcoded -- single source of
+        // truth lives in client.cpp:43. CppSharp drops pointer-returning
+        // getters so Client::getSwgWndProc() doesn't survive into
+        // Generated/UtinniCore.cs -- this hand-rolled P/Invoke replaces it
+        // (same pattern as GetSwgHwnd / getPresentBlockedEvent).
+        [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+            EntryPoint = "getSwgWndProcExport")]
+        public static extern IntPtr GetSwgWndProc();
+
         // 2026-05-19: signal the named ready event so the Launcher can restore
         // SWGEmu's PE entry bytes (originally patched to EB FE to stall the main
         // thread during injection). Called from Startup.EntryPoint right before

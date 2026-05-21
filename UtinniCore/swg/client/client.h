@@ -78,6 +78,18 @@ public:
     static void setSwgHwnd(void* hwnd);
     static HWND getSwgHwnd();
 
+    // Phase 3 R-C (per 03-CONTEXT D-18..D-20 / TD-18): single-source the
+    // SWG WndProc RVA (0x00AA0970). Previously duplicated as the literal
+    // `new IntPtr(0x00AA0970)` in UtinniCoreDotNet/UI/Controls/PanelGame.cs
+    // (drifts independently from the native-side declaration at
+    // swg/client/client.cpp:43). Surfacing the value once via this getter
+    // makes the native declaration the single source of truth; the
+    // C-linkage shim getSwgWndProcExport (in client.cpp outside the
+    // utinni namespace) is what PanelGame.cs's P/Invoke binds to,
+    // mirroring the getSwgHwndExport precedent because CppSharp drops
+    // pointer-returning getters from the generated bindings.
+    static void* getSwgWndProc();
+
     static void setSize(int width, int height);
     static int getWidth();
     static int getHeight();

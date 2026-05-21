@@ -36,10 +36,21 @@ namespace UtinniCoreDotNet.UI.Controls
 {
     public class PanelGame : Panel
     {
+        // Phase 3 R-C (per 03-CONTEXT D-18..D-20 / TD-18): cached at ctor
+        // time via Native.GetSwgWndProc() (P/Invoke into getSwgWndProcExport
+        // which returns the SWG WndProc RVA declared once in
+        // UtinniCore/swg/client/client.cpp). Previously this file held
+        // a duplicated literal for that RVA here -- the value could drift
+        // independently from the native-side declaration. Single source of
+        // truth now lives in client.cpp; this field is the cached read-once
+        // value, hot-path read in WndProc has zero per-message overhead.
+        // (A grep gate in UtinniCoreDotNet.Tests/GetSwgWndProcTests.cs
+        // asserts the literal RVA does not re-appear in this file.)
+        private readonly IntPtr swgWndProcAddr;
+
         protected override void WndProc(ref Message m)
         {
-            IntPtr swgWndProc = new IntPtr(0x00AA0970);
-            Native.CallWindowProc(swgWndProc, m.HWnd, m.Msg, m.WParam, m.LParam); // Call and handle SWG's WndProc
+            Native.CallWindowProc(swgWndProcAddr, m.HWnd, m.Msg, m.WParam, m.LParam); // Call and handle SWG's WndProc
             base.WndProc(ref m);
         }
 
@@ -74,6 +85,12 @@ namespace UtinniCoreDotNet.UI.Controls
 
         public PanelGame(PluginLoader pluginLoader)
         {
+            // Phase 3 R-C / D-20: resolve the SWG WndProc address once at
+            // ctor time and cache as the readonly field above. WndProc reads
+            // from the cache on the hot path -- no per-message P/Invoke
+            // overhead.
+            swgWndProcAddr = Native.GetSwgWndProc();
+
             base.Dock = DockStyle.Fill;
             base.AllowDrop = true;
 
