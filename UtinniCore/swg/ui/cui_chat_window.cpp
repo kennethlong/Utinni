@@ -28,6 +28,7 @@
 #include "swg/misc/swg_memory.h"
 #include "utility/log.h"
 
+#include <atomic>
 #include <cstdio>
 #include <intrin.h>
 #include <mutex>
@@ -78,7 +79,13 @@ static int s_nextCommandParserId = 1;
 // hkWndProcHandler VK_RETURN intercept) to decide whether to short-circuit
 // in-game Enter to forceOpenChatInputFromCpp. Default false: chat starts
 // in display mode at scene-load (scene-init calls enableTextInput(false)).
-static bool s_chatInputActive = false;
+//
+// WR-05 (03-REVIEW): read on the imgui WndProc thread (via
+// isChatInputModeActive + hkChatEnter) and written on the SWG main thread
+// (via hkEnableTextInput, forceOpenChatInputFromCpp, hkChatEnter). Promoted
+// to std::atomic<bool> with relaxed ordering -- the value alone is the
+// synchronization datum (a single-word bool flag).
+static std::atomic<bool> s_chatInputActive{false};
 
 namespace utinni
 {
@@ -260,8 +267,8 @@ void CuiChatWindow::forceOpenChatInputFromCpp()
     swg::cuiChatWindow::enableTextInput(pCuiChatWindow, true, true, false);
     // Phase H: enableTextInput pointer is the trampoline (post-detour), which
     // bypasses our hkEnableTextInput. Update tracker directly so downstream
-    // consumers (hkChatEnter, etc.) see the correct state.
-    s_chatInputActive = true;
+    // consumers (hkChatEnter, etc.) see the correct state. WR-05 atomic.
+    s_chatInputActive.store(true, std::memory_order_relaxed);
 }
 
 void CuiChatWindow::sendMessage(const char* msg, bool addToChatHistory)
@@ -305,21 +312,28 @@ void __fastcall hkEnableTextInput(swgptr pThis, swgptr EDX, bool value, bool set
     // chat-open but nothing fires for in-game Enter -> bug is in the SWG
     // upstream code that decides "Enter is pressed in game-mode, open chat"
     // (likely in CuiHud's keyboard handler or CuiActionMap dispatch).
-    static int s_logCount = 0;
-    if (s_logCount < 30)
+    // WR-05 companion: atomic counter so concurrent hkEnableTextInput firings
+    // (SWG main thread + any future detour-thread reentrancy) don't double-
+    // log a slot or miss the 30-cap.
+    static std::atomic<int> s_logCount{0};
+    int slot = s_logCount.load(std::memory_order_relaxed);
+    if (slot < 30)
     {
-        ++s_logCount;
-        const void* callerPC = _ReturnAddress();
-        char m[224];
-        snprintf(m, sizeof(m),
-            "hkEnableTextInput[%d]: pThis=0x%p value=%d setKbdInput=%d unfocus=%d caller=0x%p captured_pCuiChatWindow=0x%p",
-            s_logCount, (void*)pThis, value ? 1 : 0, setKeyboardInput ? 1 : 0,
-            unfocus ? 1 : 0, callerPC, (void*)pCuiChatWindow);
-        utinni::log::info(m);
+        slot = s_logCount.fetch_add(1, std::memory_order_relaxed);
+        if (slot < 30)
+        {
+            const void* callerPC = _ReturnAddress();
+            char m[224];
+            snprintf(m, sizeof(m),
+                "hkEnableTextInput[%d]: pThis=0x%p value=%d setKbdInput=%d unfocus=%d caller=0x%p captured_pCuiChatWindow=0x%p",
+                slot + 1, (void*)pThis, value ? 1 : 0, setKeyboardInput ? 1 : 0,
+                unfocus ? 1 : 0, callerPC, (void*)pCuiChatWindow);
+            utinni::log::info(m);
+        }
     }
 
-    // Phase G: mirror the most recent value for external consumers.
-    s_chatInputActive = value;
+    // Phase G: mirror the most recent value for external consumers (WR-05 atomic).
+    s_chatInputActive.store(value, std::memory_order_relaxed);
 
     // CODEX bug-fix: previous code called with pCuiChatWindow instead of
     // pThis. Wrong for an instance hook -- SWG might construct multiple
@@ -331,7 +345,7 @@ void __fastcall hkEnableTextInput(swgptr pThis, swgptr EDX, bool value, bool set
 
 bool CuiChatWindow::isChatInputModeActive()
 {
-    return s_chatInputActive;
+    return s_chatInputActive.load(std::memory_order_relaxed);
 }
 
 CommandParser* mainCommandParser;
@@ -393,14 +407,14 @@ __declspec(naked) void midCtor()
 // normally.
 void __fastcall hkChatEnter(swgptr pThis, swgptr EDX)
 {
-    if (!s_chatInputActive)
+    if (!s_chatInputActive.load(std::memory_order_relaxed))
     {
         utinni::log::info("hkChatEnter: chat is in display mode -- overriding to open chat input (was: submit+close)");
         // enableTextInput pointer is the post-detour trampoline; it goes
         // straight to SWG without re-entering our hook, so update tracker
-        // manually.
+        // manually. WR-05 atomic.
         swg::cuiChatWindow::enableTextInput(pThis, true, true, false);
-        s_chatInputActive = true;
+        s_chatInputActive.store(true, std::memory_order_relaxed);
         return;
     }
     // Input mode: pass through to original chatEnter (submit + close).
