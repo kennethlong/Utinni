@@ -10906,11 +10906,6 @@ namespace UtinniCore
 
                 [SuppressUnmanagedCodeSecurity]
                 [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
-                    EntryPoint="?triggerInstallCallbacks@Game@utinni@@SAXXZ")]
-                internal static extern void TriggerInstallCallbacks();
-
-                [SuppressUnmanagedCodeSecurity]
-                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
                     EntryPoint="?isRunning@Game@utinni@@SA_NXZ")]
                 [return: MarshalAs(UnmanagedType.I1)]
                 internal static extern bool IsRunning();
@@ -10955,11 +10950,6 @@ namespace UtinniCore
                     EntryPoint="?isSafeToUse@Game@utinni@@SA_NXZ")]
                 [return: MarshalAs(UnmanagedType.I1)]
                 internal static extern bool IsSafeToUse();
-
-                [SuppressUnmanagedCodeSecurity]
-                [DllImport("UtinniCore", CallingConvention = global::System.Runtime.InteropServices.CallingConvention.Cdecl,
-                    EntryPoint="?getInstallSubscriberCount@Game@utinni@@SAHXZ")]
-                internal static extern int GetInstallSubscriberCount();
             }
 
             public global::System.IntPtr __Instance { get; protected set; }
@@ -11150,11 +11140,6 @@ namespace UtinniCore
                 __Internal.CleanupScene();
             }
 
-            public static void TriggerInstallCallbacks()
-            {
-                __Internal.TriggerInstallCallbacks();
-            }
-
             public static bool IsRunning
             {
                 get
@@ -11262,15 +11247,6 @@ namespace UtinniCore
                 get
                 {
                     var __ret = __Internal.IsSafeToUse();
-                    return __ret;
-                }
-            }
-
-            public static int InstallSubscriberCount
-            {
-                get
-                {
-                    var __ret = __Internal.GetInstallSubscriberCount();
                     return __ret;
                 }
             }

@@ -32,6 +32,7 @@
 #include "swg/misc/config.h"
 #include "swg/misc/network.h"
 #include "swg/game/game.h"
+#include "swg/game/game_test_internal.h" // WR-03: test-only Game registry accessors
 #include "swg/graphics/directx9.h"
 // Note: windows.h (GetModuleHandleA, GetProcAddress) is available transitively via
 // directx9.h -> <d3d9.h> -> <windows.h>. No explicit include needed.
@@ -198,11 +199,13 @@ extern "C" __declspec(dllexport) int64_t __cdecl utinni_test_networkCast(int id)
 //   The managed GameCallbacks.Initialize() registers a callInstallCallbacksAction
 //   delegate via Game.AddInstallCallback. Since we cannot call hkInstall (it
 //   requires a live SWG game process), we directly iterate the install callbacks
-//   by calling Game::triggerInstallCallbacks (see game.cpp).
+//   by calling utinni::test_internal::triggerInstallCallbacks (WR-03:
+//   relocated from Game class into test_internal namespace; see
+//   game_test_internal.h).
 // ---------------------------------------------------------------------------
 extern "C" __declspec(dllexport) void __cdecl utinni_triggerInstallCallbacks()
 {
-    utinni::Game::triggerInstallCallbacks();
+    utinni::test_internal::triggerInstallCallbacks();
 }
 
 // ---------------------------------------------------------------------------
@@ -244,12 +247,12 @@ extern "C" __declspec(dllexport) bool __cdecl utinni_test_unsubscribeInstall(int
 
 extern "C" __declspec(dllexport) void __cdecl utinni_test_dispatchInstall()
 {
-    utinni::Game::triggerInstallCallbacks();
+    utinni::test_internal::triggerInstallCallbacks();
 }
 
 extern "C" __declspec(dllexport) int __cdecl utinni_test_installSubscriberCount()
 {
-    return utinni::Game::getInstallSubscriberCount();
+    return utinni::test_internal::getInstallSubscriberCount();
 }
 
 extern "C" __declspec(dllexport) void __cdecl utinni_test_addInstall(void(*fn)())

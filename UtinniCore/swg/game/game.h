@@ -79,12 +79,11 @@ public:
 
     static bool isSafeToUse();
 
-    // Test-only: fires all registered install callbacks (used by utinni_triggerInstallCallbacks).
-    static void triggerInstallCallbacks();
-
-    // Phase 3 R-A test-only: registry size accessor for the utinni_test_*
-    // bridge in test_exports.cpp. Not for production consumption.
-    static int getInstallSubscriberCount();
-
+    // WR-03 (03-REVIEW): the previously-public test-only accessors
+    // `triggerInstallCallbacks` and `getInstallSubscriberCount` have been
+    // relocated to `swg/game/game_test_internal.h` (utinni::test_internal
+    // namespace). They are NOT part of the plugin-facing surface. Mirrors
+    // the `test_internal::TestImpl` discipline used by plugin_manager.cpp
+    // (R-B) to keep test seams out of UTINNI_API headers.
 };
 }

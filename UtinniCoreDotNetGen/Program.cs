@@ -125,6 +125,14 @@ namespace UtinniCoreDotNetGen
                 ctx.IgnoreHeadersWithName("command_parser");
                 ctx.IgnoreHeadersWithName("utinni_command_parser");
                 ctx.IgnoreHeadersWithName("ui_textbox");
+                // WR-03 (03-REVIEW): game_test_internal.h declares the
+                // test-only Game registry accessors (triggerInstallCallbacks,
+                // getInstallSubscriberCount). It is consumed ONLY by
+                // test_exports.cpp; the managed bindings reach the same
+                // functionality via the utinni_test_* P/Invoke exports.
+                // Excluding it here keeps the test-only seam out of the
+                // generated UtinniCore.cs surface.
+                ctx.IgnoreHeadersWithName("game_test_internal");
                 // string_utility.h declares a `constexpr static const char*
                 // trimableChars` global; CppSharp projects it as a property
                 // getter that calls `CppSharp.SymbolResolver.ResolveSymbol`,

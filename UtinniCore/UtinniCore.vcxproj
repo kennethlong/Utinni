@@ -308,6 +308,7 @@ $(SolutionDir)UtinniCoreDotNetGen\bin\$(Configuration)\UtinniCoreDotNetGen.exe "
     <ClInclude Include="swg\scene\scene.h" />
     <ClInclude Include="swg\scene\ground_scene.h" />
     <ClInclude Include="swg\game\game.h" />
+    <ClInclude Include="swg\game\game_test_internal.h" />
     <ClInclude Include="swg\misc\swg_math.h" />
     <ClInclude Include="swg\misc\swg_utility.h" />
     <ClInclude Include="swg\misc\swg_misc.h" />

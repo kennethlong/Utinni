@@ -23,6 +23,7 @@
 **/
 
 #include "game.h"
+#include "game_test_internal.h"
 #include "utinni.h";
 #include <imgui/imgui_user.h>
 #include <mutex>
@@ -540,7 +541,13 @@ bool Game::isSafeToUse()
     return memory::read<bool>(0x01908858) && memory::read<bool>(0x01919410);
 }
 
-void Game::triggerInstallCallbacks()
+// WR-03 (03-REVIEW): test-only accessors relocated to the test_internal
+// namespace (declared in game_test_internal.h). They are NOT members of
+// the public Game class -- mirrors the R-B test_internal::TestImpl pattern
+// in plugin_manager.cpp.
+namespace test_internal
+{
+void triggerInstallCallbacks()
 {
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
     std::vector<void(*)()> snapshot;
@@ -558,13 +565,11 @@ void Game::triggerInstallCallbacks()
     }
 }
 
-// Phase 3 R-A test-bridge support: expose the registry size to native
-// test-only exports without leaking the registry symbol. Used by
-// utinni_test_installSubscriberCount in test_exports.cpp.
-int Game::getInstallSubscriberCount()
+int getInstallSubscriberCount()
 {
     std::lock_guard<std::mutex> guard(installCallbacksMutex);
     return static_cast<int>(installCallbacks.size());
+}
 }
 
 }
