@@ -61,7 +61,7 @@ namespace UtinniCoreDotNet.Callbacks
 
         private static void DequeueOnTargetCalls(IntPtr pTargetObject)
         {
-            Drain(onTargetCallQueue);
+            CallbackHelpers.Drain(onTargetCallQueue);
 
             foreach (Action callback in onTargetCallbacks)
             {
@@ -69,15 +69,13 @@ namespace UtinniCoreDotNet.Callbacks
             }
         }
 
-        // See GroundSceneCallbacks.Drain for the C-04 rationale. Duplicated per file
-        // intentionally (Phase 2 scope) — a cross-file shared helper is R-A territory
-        // (Phase 3 strategic rework).
+        // Phase 3 R-A / IN-05 (per 03-CONTEXT D-11): inline Drain body removed —
+        // consolidated into CallbackHelpers.Drain. Wrapper retained so any future
+        // test reach via `ObjectCallbacks.Drain(queue)` stays compatible.
+        // ToDo fix being able to set IntPtr to object, etc, to be able to pass it
         internal static void Drain(ConcurrentQueue<Action> queue)
         {
-            while (queue.TryDequeue(out var func))
-            {
-                func(); // ToDo fix being able to set IntPtr to object, etc, to be able to pass it
-            }
+            CallbackHelpers.Drain(queue);
         }
     }
 }

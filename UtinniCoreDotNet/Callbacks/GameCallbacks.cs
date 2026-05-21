@@ -102,23 +102,21 @@ namespace UtinniCoreDotNet.Callbacks
 
         private static void DequeuePreMainLoopCalls()
         {
-            Drain(preMainLoopCallQueue);
+            CallbackHelpers.Drain(preMainLoopCallQueue);
         }
 
         private static void DequeueMainLoopCalls()
         {
-            Drain(mainLoopCallQueue);
+            CallbackHelpers.Drain(mainLoopCallQueue);
         }
 
-        // See GroundSceneCallbacks.Drain for the C-04 rationale. Duplicated per file
-        // intentionally (Phase 2 scope) — a cross-file shared helper is R-A territory
-        // (Phase 3 strategic rework).
+        // Phase 3 R-A / IN-05 (per 03-CONTEXT D-11): inline Drain body removed —
+        // consolidated into CallbackHelpers.Drain along with the GroundSceneCallbacks
+        // and ObjectCallbacks duplicates. Wrapper retained so existing test reach via
+        // `GameCallbacks.Drain(queue)` keeps compiling.
         internal static void Drain(ConcurrentQueue<Action> queue)
         {
-            while (queue.TryDequeue(out var func))
-            {
-                func();
-            }
+            CallbackHelpers.Drain(queue);
         }
 
         private static void CallInstallCallbacks()
