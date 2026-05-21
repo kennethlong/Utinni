@@ -67,9 +67,12 @@ namespace UtinniCoreDotNet.Tests
         ///   utinni_signal_launcher_ready (added 2026-05-19 for signal-event sync),
         ///   utinni_test_subscribeInstall, utinni_test_unsubscribeInstall,
         ///   utinni_test_dispatchInstall, utinni_test_installSubscriberCount,
-        ///   utinni_test_addInstall (added 2026-05-21 Phase 3 R-A native bridge)
+        ///   utinni_test_addInstall (added 2026-05-21 Phase 3 R-A native bridge),
+        ///   utinni_test_pluginManagerLoadFromDir, utinni_test_pluginManagerLoadedCount,
+        ///   utinni_test_pluginManagerDispose, utinni_test_lastLoadLibraryError
+        ///       (added 2026-05-21 Phase 3 R-B native bridge)
         /// </summary>
-        private const int ExpectedExportCount = 18;
+        private const int ExpectedExportCount = 22;
 
         [Fact]
         public void ResolveExports_AllDocumentedCLinkageExports_ResolveByUndecoratedName()

@@ -326,7 +326,7 @@ extern "C" __declspec(dllexport) uintptr_t __cdecl utinni_test_getDepthTexturePt
 // for the xUnit assertion). Uses GetModuleHandleA (not LoadLibrary) because we are
 // already executing inside UtinniCore.dll — the module is already loaded.
 //
-// Expected exports (13 total as of 2026-05-19):
+// Expected exports (22 total as of 2026-05-21 -- Phase 3 R-B bridge):
 //   utinni_init               (decorated stdcall; resolved via /EXPORT alias)
 //   utinni_findPattern        (cdecl — no decoration on x86)
 //   utinni_getVtbl            (cdecl)
@@ -381,6 +381,13 @@ extern "C" __declspec(dllexport) int __cdecl utinni_test_resolveExports()
         "utinni_test_dispatchInstall",        // cdecl
         "utinni_test_installSubscriberCount", // cdecl
         "utinni_test_addInstall",             // cdecl
+        // Phase 3 R-B native bridge (Plan 03-02 Task 2) — exposes the
+        // standalone test PluginManager Impl to PluginManagerLifecycleTests
+        // via P/Invoke. Defined in plugin_framework/plugin_manager.cpp.
+        "utinni_test_pluginManagerLoadFromDir", // cdecl
+        "utinni_test_pluginManagerLoadedCount", // cdecl
+        "utinni_test_pluginManagerDispose",     // cdecl
+        "utinni_test_lastLoadLibraryError",     // cdecl
     };
 
     static constexpr int kExportCount =
