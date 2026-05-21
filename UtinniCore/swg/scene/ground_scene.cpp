@@ -35,6 +35,7 @@
 #include "swg/appearance/portal.h"
 #include "swg/camera/debug_camera.h"
 
+#include <atomic>
 #include <cstdio>
 #include <intrin.h>
 #include <mutex>
@@ -284,18 +285,34 @@ void __fastcall hkHandleInputEvent(GroundScene* pThis, DWORD EDX, IoEvent* ioEve
     // noisy continuous events; log everything else, capped at 40 entries.
     if (ioEvent != nullptr && ioEvent->type != IoEvent::t_Update)
     {
-        static int s_ioEventLogCount = 0;
-        if (s_ioEventLogCount < 40)
+        // WR-01 (03-REVIEW): the diag counter is read+modified from any
+        // thread that reaches GroundScene::handleInputMapEvent (typically
+        // SWG's main thread, but defensive against the event-handling
+        // chain crossing threads). std::atomic<int> with fetch_add gives
+        // us a race-free counter -- previously the non-atomic ++ could
+        // double-allocate a slot under interleaved RMW.
+        //
+        // _ReturnAddress() limitation (documented, not fixable without
+        // de-optimizing the whole function): with MSVC /O2 the captured
+        // PC may point inside a trampoline rather than the original
+        // caller. The diagnostic value here is "in what part of the
+        // input pipeline did this event arrive" -- the exact byte offset
+        // is best-effort and acknowledged.
+        static std::atomic<int> s_ioEventLogCount{0};
+        if (s_ioEventLogCount.load(std::memory_order_relaxed) < 40)
         {
-            ++s_ioEventLogCount;
-            const void* callerPC = _ReturnAddress();
-            char m[200];
-            snprintf(m, sizeof(m),
-                "hkHandleInputEvent[%d]: type=%d arg1=%d arg2=%d arg3=%.3f pThis=0x%p freeCam=%d caller=0x%p",
-                s_ioEventLogCount, ioEvent->type, ioEvent->arg1, ioEvent->arg2,
-                ioEvent->arg3, (void*)pThis, pThis->isFreeCameraActive() ? 1 : 0,
-                callerPC);
-            utinni::log::info(m);
+            int slot = s_ioEventLogCount.fetch_add(1, std::memory_order_relaxed);
+            if (slot < 40)
+            {
+                const void* callerPC = _ReturnAddress();
+                char m[200];
+                snprintf(m, sizeof(m),
+                    "hkHandleInputEvent[%d]: type=%d arg1=%d arg2=%d arg3=%.3f pThis=0x%p freeCam=%d caller=0x%p",
+                    slot + 1, ioEvent->type, ioEvent->arg1, ioEvent->arg2,
+                    ioEvent->arg3, (void*)pThis, pThis->isFreeCameraActive() ? 1 : 0,
+                    callerPC);
+                utinni::log::info(m);
+            }
         }
     }
 
