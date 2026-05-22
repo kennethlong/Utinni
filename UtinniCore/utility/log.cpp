@@ -27,11 +27,11 @@
 #include <spdlog/sinks/basic_file_sink.h>
 
 #include <mutex>
-#include <unordered_map>
 #include <vector>
 
 static std::vector<std::string> logMessageBuffer;
-// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry.
+// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry
+// backed by insertion-order std::vector<{handle, fn_ptr}>.
 //
 // CR-01 + WR-07 (03-REVIEW): the registry is touched from two distinct sites
 // without coordination -- (a) the dispatch site inside OutputSink::sink_it_
@@ -44,7 +44,60 @@ static std::vector<std::string> logMessageBuffer;
 // outputSinkMutex acquired by subscribe / unsubscribe AND the sink_it_
 // snapshot-build. Mirrors the per-registry mutex pattern across the rest of
 // the native callback layer.
-static std::unordered_map<int, void(*)(const char* msg)> outputSinkCallbacks;
+//
+// 2026-05-22 follow-up to ground_scene fix (commit 7201700): switched from
+// std::unordered_map to insertion-order vector with stack-allocated fixed-size
+// snapshot in dispatch sites. See [[project-rh-snapshot-no-heap-alloc]] memory.
+namespace
+{
+template <typename Fn>
+struct CallbackEntry
+{
+    int handle;
+    Fn func;
+};
+
+template <typename Fn, typename Invoke>
+void dispatchSnapshot(
+    const std::vector<CallbackEntry<Fn>>& registry,
+    std::mutex& mutex,
+    Invoke&& invoke)
+{
+    constexpr size_t kInlineCap = 16;
+    Fn stackSnap[kInlineCap];
+    Fn* snapshot = stackSnap;
+    std::vector<Fn> heapSnap;
+    size_t count = 0;
+    {
+        std::lock_guard<std::mutex> guard(mutex);
+        const size_t total = registry.size();
+        if (total <= kInlineCap)
+        {
+            count = total;
+            for (size_t i = 0; i < count; ++i)
+            {
+                stackSnap[i] = registry[i].func;
+            }
+        }
+        else
+        {
+            heapSnap.reserve(total);
+            for (const auto& e : registry)
+            {
+                heapSnap.push_back(e.func);
+            }
+            snapshot = heapSnap.data();
+            count = total;
+        }
+    }
+    for (size_t i = 0; i < count; ++i)
+    {
+        invoke(snapshot[i]);
+    }
+}
+} // namespace
+
+static std::vector<CallbackEntry<void(*)(const char* msg)>> outputSinkCallbacks;
 static std::mutex outputSinkMutex;
 static int s_nextOutputSinkId = 1;
 
@@ -69,22 +122,13 @@ protected:
         logMessageBuffer.emplace_back(formattedString);
         // R-H snapshot dispatch per D-12. CR-01 + WR-07: snapshot built under
         // outputSinkMutex so concurrent subscribe / unsubscribe (called from
-        // arbitrary threads, e.g. WinForms UI thread) can't race the map's
-        // bucket structure. Iteration outside the lock so callbacks can
-        // re-subscribe without deadlock.
-        std::vector<void(*)(const char*)> snapshot;
-        {
-            std::lock_guard<std::mutex> guard(outputSinkMutex);
-            snapshot.reserve(outputSinkCallbacks.size());
-            for (const auto& kv : outputSinkCallbacks)
-            {
-                snapshot.push_back(kv.second);
-            }
-        }
-        for (const auto& func : snapshot)
-        {
-            func(formattedString.c_str());
-        }
+        // arbitrary threads, e.g. WinForms UI thread) can't race the registry
+        // during iteration. Iteration outside the lock so callbacks can
+        // re-subscribe without deadlock. Stack-snapshot via dispatchSnapshot
+        // keeps the per-log path heap-free.
+        const char* msgCStr = formattedString.c_str();
+        dispatchSnapshot(outputSinkCallbacks, outputSinkMutex,
+            [msgCStr](void(*func)(const char*)) { func(msgCStr); });
     }
 
     void flush_() override { }
@@ -142,7 +186,7 @@ int subscribeOutputSinkCallback(void(*func)(const char* msg))
     std::lock_guard<std::mutex> guard(outputSinkMutex);
     int id = s_nextOutputSinkId++;
     if (id == 0) { id = s_nextOutputSinkId++; } // WR-04 skip-zero
-    outputSinkCallbacks[id] = func;
+    outputSinkCallbacks.push_back({id, func});
     return id;
 }
 
@@ -153,7 +197,15 @@ bool unsubscribeOutputSinkCallback(int handle)
         return false;
     }
     std::lock_guard<std::mutex> guard(outputSinkMutex);
-    return outputSinkCallbacks.erase(handle) > 0;
+    for (auto it = outputSinkCallbacks.begin(); it != outputSinkCallbacks.end(); ++it)
+    {
+        if (it->handle == handle)
+        {
+            outputSinkCallbacks.erase(it);
+            return true;
+        }
+    }
+    return false;
 }
 
 void addOutputSinkCallback(void(*func)(const char* msg))

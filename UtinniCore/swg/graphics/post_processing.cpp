@@ -25,7 +25,6 @@
 #include "post_processing.h"
 
 #include <mutex>
-#include <unordered_map>
 #include <vector>
 
 namespace swg::bloom
@@ -38,10 +37,64 @@ pPostSceneRender postSceneRender = (pPostSceneRender)0x0064B560;
 
 }
 
-// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries.
+// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries
+// backed by insertion-order std::vector<{handle, fn_ptr}>.
 // CR-01 (03-REVIEW): per-registry mutex for thread-safe Subscribe / Unsubscribe / snapshot.
-static std::unordered_map<int, void(*)()> preSceneRenderCallbacks;
-static std::unordered_map<int, void(*)()> postSceneRenderCallbacks;
+//
+// 2026-05-22 follow-up to ground_scene fix (commit 7201700): switched from
+// std::unordered_map to insertion-order vector with stack-allocated fixed-size
+// snapshot in dispatch sites. See [[project-rh-snapshot-no-heap-alloc]] memory.
+namespace
+{
+template <typename Fn>
+struct CallbackEntry
+{
+    int handle;
+    Fn func;
+};
+
+template <typename Fn, typename Invoke>
+void dispatchSnapshot(
+    const std::vector<CallbackEntry<Fn>>& registry,
+    std::mutex& mutex,
+    Invoke&& invoke)
+{
+    constexpr size_t kInlineCap = 16;
+    Fn stackSnap[kInlineCap];
+    Fn* snapshot = stackSnap;
+    std::vector<Fn> heapSnap;
+    size_t count = 0;
+    {
+        std::lock_guard<std::mutex> guard(mutex);
+        const size_t total = registry.size();
+        if (total <= kInlineCap)
+        {
+            count = total;
+            for (size_t i = 0; i < count; ++i)
+            {
+                stackSnap[i] = registry[i].func;
+            }
+        }
+        else
+        {
+            heapSnap.reserve(total);
+            for (const auto& e : registry)
+            {
+                heapSnap.push_back(e.func);
+            }
+            snapshot = heapSnap.data();
+            count = total;
+        }
+    }
+    for (size_t i = 0; i < count; ++i)
+    {
+        invoke(snapshot[i]);
+    }
+}
+} // namespace
+
+static std::vector<CallbackEntry<void(*)()>> preSceneRenderCallbacks;
+static std::vector<CallbackEntry<void(*)()>> postSceneRenderCallbacks;
 static std::mutex preSceneRenderCallbacksMutex;
 static std::mutex postSceneRenderCallbacksMutex;
 static int s_nextPreSceneRenderId = 1;
@@ -51,20 +104,10 @@ namespace utinni::postProcessing
 {
 void __cdecl hkPreSceneRender() // Originally a Bloom class function, repurposed to be a general PostProcessing function.
 {
-    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
-    std::vector<void(*)()> snapshot;
-    {
-        std::lock_guard<std::mutex> guard(preSceneRenderCallbacksMutex);
-        snapshot.reserve(preSceneRenderCallbacks.size());
-        for (const auto& kv : preSceneRenderCallbacks)
-        {
-            snapshot.push_back(kv.second);
-        }
-    }
-    for (const auto& func : snapshot)
-    {
-        func();
-    }
+    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
+    // via dispatchSnapshot keeps the per-frame path heap-free.
+    dispatchSnapshot(preSceneRenderCallbacks, preSceneRenderCallbacksMutex,
+        [](void(*func)()) { func(); });
 
     swg::bloom::preSceneRender();
 }
@@ -73,20 +116,10 @@ void __cdecl hkPostSceneRender() // Originally a Bloom class function, repurpose
 {
     swg::bloom::postSceneRender();
 
-    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
-    std::vector<void(*)()> snapshot;
-    {
-        std::lock_guard<std::mutex> guard(postSceneRenderCallbacksMutex);
-        snapshot.reserve(postSceneRenderCallbacks.size());
-        for (const auto& kv : postSceneRenderCallbacks)
-        {
-            snapshot.push_back(kv.second);
-        }
-    }
-    for (const auto& func : snapshot)
-    {
-        func();
-    }
+    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
+    // via dispatchSnapshot keeps the per-frame path heap-free.
+    dispatchSnapshot(postSceneRenderCallbacks, postSceneRenderCallbacksMutex,
+        [](void(*func)()) { func(); });
 }
 
 // Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
@@ -95,7 +128,7 @@ int subscribePreSceneRenderCallback(void(*func)())
     std::lock_guard<std::mutex> guard(preSceneRenderCallbacksMutex);
     int id = s_nextPreSceneRenderId++;
     if (id == 0) { id = s_nextPreSceneRenderId++; } // WR-04 skip-zero
-    preSceneRenderCallbacks[id] = func;
+    preSceneRenderCallbacks.push_back({id, func});
     return id;
 }
 
@@ -106,7 +139,15 @@ bool unsubscribePreSceneRenderCallback(int handle)
         return false;
     }
     std::lock_guard<std::mutex> guard(preSceneRenderCallbacksMutex);
-    return preSceneRenderCallbacks.erase(handle) > 0;
+    for (auto it = preSceneRenderCallbacks.begin(); it != preSceneRenderCallbacks.end(); ++it)
+    {
+        if (it->handle == handle)
+        {
+            preSceneRenderCallbacks.erase(it);
+            return true;
+        }
+    }
+    return false;
 }
 
 int subscribePostSceneRenderCallback(void(*func)())
@@ -114,7 +155,7 @@ int subscribePostSceneRenderCallback(void(*func)())
     std::lock_guard<std::mutex> guard(postSceneRenderCallbacksMutex);
     int id = s_nextPostSceneRenderId++;
     if (id == 0) { id = s_nextPostSceneRenderId++; } // WR-04 skip-zero
-    postSceneRenderCallbacks[id] = func;
+    postSceneRenderCallbacks.push_back({id, func});
     return id;
 }
 
@@ -125,7 +166,15 @@ bool unsubscribePostSceneRenderCallback(int handle)
         return false;
     }
     std::lock_guard<std::mutex> guard(postSceneRenderCallbacksMutex);
-    return postSceneRenderCallbacks.erase(handle) > 0;
+    for (auto it = postSceneRenderCallbacks.begin(); it != postSceneRenderCallbacks.end(); ++it)
+    {
+        if (it->handle == handle)
+        {
+            postSceneRenderCallbacks.erase(it);
+            return true;
+        }
+    }
+    return false;
 }
 
 void addPreSceneRenderCallback(void(* func)())

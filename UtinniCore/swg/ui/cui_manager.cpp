@@ -27,7 +27,6 @@
 #include "swg/misc/swg_string.h"
 
 #include <mutex>
-#include <unordered_map>
 #include <vector>
 
 namespace swg::cuiManager
@@ -67,9 +66,63 @@ pSendMessage sendMessage = (pSendMessage)0x008AC250;
 
 }
 
-// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry.
+// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry
+// backed by insertion-order std::vector<{handle, fn_ptr}>.
 // CR-01 (03-REVIEW): per-registry mutex protects Subscribe / Unsubscribe / snapshot.
-static std::unordered_map<int, void(*)(const char* msg)> receiveSystemMessageCallbacks;
+//
+// 2026-05-22 follow-up to ground_scene fix (commit 7201700): switched from
+// std::unordered_map to insertion-order vector with stack-allocated fixed-size
+// snapshot in dispatch sites. See [[project-rh-snapshot-no-heap-alloc]] memory.
+namespace
+{
+template <typename Fn>
+struct CallbackEntry
+{
+    int handle;
+    Fn func;
+};
+
+template <typename Fn, typename Invoke>
+void dispatchSnapshot(
+    const std::vector<CallbackEntry<Fn>>& registry,
+    std::mutex& mutex,
+    Invoke&& invoke)
+{
+    constexpr size_t kInlineCap = 16;
+    Fn stackSnap[kInlineCap];
+    Fn* snapshot = stackSnap;
+    std::vector<Fn> heapSnap;
+    size_t count = 0;
+    {
+        std::lock_guard<std::mutex> guard(mutex);
+        const size_t total = registry.size();
+        if (total <= kInlineCap)
+        {
+            count = total;
+            for (size_t i = 0; i < count; ++i)
+            {
+                stackSnap[i] = registry[i].func;
+            }
+        }
+        else
+        {
+            heapSnap.reserve(total);
+            for (const auto& e : registry)
+            {
+                heapSnap.push_back(e.func);
+            }
+            snapshot = heapSnap.data();
+            count = total;
+        }
+    }
+    for (size_t i = 0; i < count; ++i)
+    {
+        invoke(snapshot[i]);
+    }
+}
+} // namespace
+
+static std::vector<CallbackEntry<void(*)(const char* msg)>> receiveSystemMessageCallbacks;
 static std::mutex receiveSystemMessageCallbacksMutex;
 static int s_nextReceiveSystemMessageId = 1;
 
@@ -141,7 +194,7 @@ int SystemMessageManager::subscribeReceiveMessageCallback(void(*func)(const char
     std::lock_guard<std::mutex> guard(receiveSystemMessageCallbacksMutex);
     int id = s_nextReceiveSystemMessageId++;
     if (id == 0) { id = s_nextReceiveSystemMessageId++; } // WR-04 skip-zero
-    receiveSystemMessageCallbacks[id] = func;
+    receiveSystemMessageCallbacks.push_back({id, func});
     return id;
 }
 
@@ -152,7 +205,15 @@ bool SystemMessageManager::unsubscribeReceiveMessageCallback(int handle)
         return false;
     }
     std::lock_guard<std::mutex> guard(receiveSystemMessageCallbacksMutex);
-    return receiveSystemMessageCallbacks.erase(handle) > 0;
+    for (auto it = receiveSystemMessageCallbacks.begin(); it != receiveSystemMessageCallbacks.end(); ++it)
+    {
+        if (it->handle == handle)
+        {
+            receiveSystemMessageCallbacks.erase(it);
+            return true;
+        }
+    }
+    return false;
 }
 
 void SystemMessageManager::addReceiveMessageCallback(void(* func)(const char* msg))
@@ -181,20 +242,11 @@ void __cdecl hkReceiveMessage(swgptr pChatSystemMsg)
         swg::systemMessageManager::receiveMessage(pChatSystemMsg);
     }
 
-    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
-    std::vector<void(*)(const char*)> snapshot;
-    {
-        std::lock_guard<std::mutex> guard(receiveSystemMessageCallbacksMutex);
-        snapshot.reserve(receiveSystemMessageCallbacks.size());
-        for (const auto& kv : receiveSystemMessageCallbacks)
-        {
-            snapshot.push_back(kv.second);
-        }
-    }
-    for (const auto& func : snapshot)
-    {
-        func(msgStr.c_str());
-    }
+    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
+    // via dispatchSnapshot keeps the path heap-free.
+    const char* msgCStr = msgStr.c_str();
+    dispatchSnapshot(receiveSystemMessageCallbacks, receiveSystemMessageCallbacksMutex,
+        [msgCStr](void(*func)(const char*)) { func(msgCStr); });
 }
 
 void SystemMessageManager::detour()

@@ -28,7 +28,6 @@
 #include <d3dx9.h>
 #include <d3d9types.h>
 #include <mutex>
-#include <unordered_map>
 #include <vector>
 #include "external/nvapi/nvapi.h"
 
@@ -37,14 +36,68 @@
 #define FOURCC_INTZ ((D3DFORMAT)(MAKEFOURCC('I','N','T','Z')))
 #define RESZ_CODE 0x7FA05000
 
-// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry.
+// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry
+// backed by insertion-order std::vector<{handle, fn_ptr}>.
 // D-08 noted that depth_texture's addDepthResolveCallback is a class-static
 // member of DepthTexture::, not a free function. Per the D-08 planner-discretion
 // clause ("handle stored per-instance OR static-class registry, planner's
 // discretion") we keep the static-class storage shape — every existing call
 // site treats this as a process-wide registry, not per-instance.
 // CR-01 (03-REVIEW): per-registry mutex protects Subscribe / Unsubscribe / snapshot.
-static std::unordered_map<int, void(*)()> depthResolveCallbacks;
+//
+// 2026-05-22 follow-up to ground_scene fix (commit 7201700): switched from
+// std::unordered_map to insertion-order vector with stack-allocated fixed-size
+// snapshot in dispatch sites. See [[project-rh-snapshot-no-heap-alloc]] memory.
+namespace
+{
+template <typename Fn>
+struct CallbackEntry
+{
+    int handle;
+    Fn func;
+};
+
+template <typename Fn, typename Invoke>
+void dispatchSnapshot(
+    const std::vector<CallbackEntry<Fn>>& registry,
+    std::mutex& mutex,
+    Invoke&& invoke)
+{
+    constexpr size_t kInlineCap = 16;
+    Fn stackSnap[kInlineCap];
+    Fn* snapshot = stackSnap;
+    std::vector<Fn> heapSnap;
+    size_t count = 0;
+    {
+        std::lock_guard<std::mutex> guard(mutex);
+        const size_t total = registry.size();
+        if (total <= kInlineCap)
+        {
+            count = total;
+            for (size_t i = 0; i < count; ++i)
+            {
+                stackSnap[i] = registry[i].func;
+            }
+        }
+        else
+        {
+            heapSnap.reserve(total);
+            for (const auto& e : registry)
+            {
+                heapSnap.push_back(e.func);
+            }
+            snapshot = heapSnap.data();
+            count = total;
+        }
+    }
+    for (size_t i = 0; i < count; ++i)
+    {
+        invoke(snapshot[i]);
+    }
+}
+} // namespace
+
+static std::vector<CallbackEntry<void(*)()>> depthResolveCallbacks;
 static std::mutex depthResolveCallbacksMutex;
 static int s_nextDepthResolveId = 1;
 
@@ -221,7 +274,7 @@ int DepthTexture::subscribeDepthResolveCallback(void(*func)())
 	 std::lock_guard<std::mutex> guard(depthResolveCallbacksMutex);
 	 int id = s_nextDepthResolveId++;
 	 if (id == 0) { id = s_nextDepthResolveId++; } // WR-04 skip-zero
-	 depthResolveCallbacks[id] = func;
+	 depthResolveCallbacks.push_back({id, func});
 	 return id;
 }
 
@@ -232,7 +285,15 @@ bool DepthTexture::unsubscribeDepthResolveCallback(int handle)
 		  return false;
 	 }
 	 std::lock_guard<std::mutex> guard(depthResolveCallbacksMutex);
-	 return depthResolveCallbacks.erase(handle) > 0;
+	 for (auto it = depthResolveCallbacks.begin(); it != depthResolveCallbacks.end(); ++it)
+	 {
+		  if (it->handle == handle)
+		  {
+			   depthResolveCallbacks.erase(it);
+			   return true;
+		  }
+	 }
+	 return false;
 }
 
 void DepthTexture::addDepthResolveCallback(void(* func)())
@@ -277,19 +338,9 @@ void DepthTexture::resolveDepth()
 	 _pDevice->SetTexture(14, pTextureColor);
 	 _pDevice->SetTexture(15, pTextureDepth);
 
-	 // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
-	 std::vector<void(*)()> snapshot;
-	 {
-		  std::lock_guard<std::mutex> guard(depthResolveCallbacksMutex);
-		  snapshot.reserve(depthResolveCallbacks.size());
-		  for (const auto& kv : depthResolveCallbacks)
-		  {
-			   snapshot.push_back(kv.second);
-		  }
-	 }
-	 for (const auto& func : snapshot)
-	 {
-		  func();
-	 }
+	 // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
+	 // via dispatchSnapshot keeps the path heap-free.
+	 dispatchSnapshot(depthResolveCallbacks, depthResolveCallbacksMutex,
+		  [](void(*func)()) { func(); });
 }
 }

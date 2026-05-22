@@ -26,7 +26,6 @@
 #include "swg/graphics/directx9.h"
 
 #include <mutex>
-#include <unordered_map>
 #include <vector>
 
 namespace swg::shaderPrimitiveSorter
@@ -35,32 +34,74 @@ namespace swg::shaderPrimitiveSorter
 }
 
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry
-// with parameterized `void(*)(int)` callback type. Handle 0 reserved as
-// invalid sentinel.
+// backed by insertion-order std::vector<{handle, fn_ptr}> with parameterized
+// `void(*)(int)` callback type. Handle 0 reserved as invalid sentinel.
 // CR-01 (03-REVIEW): per-registry mutex protects Subscribe / Unsubscribe / snapshot.
-static std::unordered_map<int, void(*)(int currentPhase)> drawPhaseCallbacks;
+//
+// 2026-05-22 follow-up to ground_scene fix (commit 7201700): switched from
+// std::unordered_map to insertion-order vector with stack-allocated fixed-size
+// snapshot in dispatch sites. See [[project-rh-snapshot-no-heap-alloc]] memory.
+namespace
+{
+template <typename Fn>
+struct CallbackEntry
+{
+    int handle;
+    Fn func;
+};
+
+template <typename Fn, typename Invoke>
+void dispatchSnapshot(
+    const std::vector<CallbackEntry<Fn>>& registry,
+    std::mutex& mutex,
+    Invoke&& invoke)
+{
+    constexpr size_t kInlineCap = 16;
+    Fn stackSnap[kInlineCap];
+    Fn* snapshot = stackSnap;
+    std::vector<Fn> heapSnap;
+    size_t count = 0;
+    {
+        std::lock_guard<std::mutex> guard(mutex);
+        const size_t total = registry.size();
+        if (total <= kInlineCap)
+        {
+            count = total;
+            for (size_t i = 0; i < count; ++i)
+            {
+                stackSnap[i] = registry[i].func;
+            }
+        }
+        else
+        {
+            heapSnap.reserve(total);
+            for (const auto& e : registry)
+            {
+                heapSnap.push_back(e.func);
+            }
+            snapshot = heapSnap.data();
+            count = total;
+        }
+    }
+    for (size_t i = 0; i < count; ++i)
+    {
+        invoke(snapshot[i]);
+    }
+}
+} // namespace
+
+static std::vector<CallbackEntry<void(*)(int currentPhase)>> drawPhaseCallbacks;
 static std::mutex drawPhaseCallbacksMutex;
 static int s_nextDrawPhaseId = 1;
 
 // Non-naked dispatch helper: called from inside the __declspec(naked)
-// midPopCell function below. Lives outside the naked function so std::vector
-// stack allocation + exception-unwind frames work normally. CR-01: snapshot
-// built under lock, iteration runs outside the lock.
+// midPopCell function below. Lives outside the naked function so std::vector /
+// stack-snapshot work normally. CR-01: snapshot built under lock, iteration
+// runs outside the lock.
 static void dispatchDrawPhaseCallbacks(int phase)
 {
-    std::vector<void(*)(int)> snapshot;
-    {
-        std::lock_guard<std::mutex> guard(drawPhaseCallbacksMutex);
-        snapshot.reserve(drawPhaseCallbacks.size());
-        for (const auto& kv : drawPhaseCallbacks)
-        {
-            snapshot.push_back(kv.second);
-        }
-    }
-    for (const auto& func : snapshot)
-    {
-        func(phase);
-    }
+    dispatchSnapshot(drawPhaseCallbacks, drawPhaseCallbacksMutex,
+        [phase](void(*func)(int)) { func(phase); });
 }
 
 namespace utinni::shaderPrimitiveSorter
@@ -115,7 +156,7 @@ int subscribeDrawPhaseCallback(void(*func)(int currentPhase))
     std::lock_guard<std::mutex> guard(drawPhaseCallbacksMutex);
     int id = s_nextDrawPhaseId++;
     if (id == 0) { id = s_nextDrawPhaseId++; } // WR-04 skip-zero
-    drawPhaseCallbacks[id] = func;
+    drawPhaseCallbacks.push_back({id, func});
     return id;
 }
 
@@ -126,7 +167,15 @@ bool unsubscribeDrawPhaseCallback(int handle)
         return false;
     }
     std::lock_guard<std::mutex> guard(drawPhaseCallbacksMutex);
-    return drawPhaseCallbacks.erase(handle) > 0;
+    for (auto it = drawPhaseCallbacks.begin(); it != drawPhaseCallbacks.end(); ++it)
+    {
+        if (it->handle == handle)
+        {
+            drawPhaseCallbacks.erase(it);
+            return true;
+        }
+    }
+    return false;
 }
 
 void drawPhaseCallback(void(* func)(int currentPhase))
