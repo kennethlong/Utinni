@@ -2,6 +2,11 @@
 !/external/*
 Release/
 Debug/
+# Negate the Debug/ rule for .planning/debug/ — those are forensic
+# investigation notes (bisect logs, CODEX consults, bug triage queues)
+# with high archival value, accidentally caught by the global Debug/
+# rule meant for Visual Studio build outputs.
+!/.planning/debug/
 RelWithDbgInfo/
 tmp/
 bin/

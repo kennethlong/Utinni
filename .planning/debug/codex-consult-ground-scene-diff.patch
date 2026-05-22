@@ -1,0 +1,305 @@
+diff --git a/UtinniCore/swg/scene/ground_scene.cpp b/UtinniCore/swg/scene/ground_scene.cpp
+index 65ee390..dc2bab3 100644
+--- a/UtinniCore/swg/scene/ground_scene.cpp
++++ b/UtinniCore/swg/scene/ground_scene.cpp
+@@ -35,8 +35,12 @@
+ #include "swg/appearance/portal.h"
+ #include "swg/camera/debug_camera.h"
+ 
++#include <atomic>
+ #include <cstdio>
+ #include <intrin.h>
++#include <mutex>
++#include <unordered_map>
++#include <vector>
+ 
+ 
+ namespace swg::groundScene
+@@ -66,10 +70,24 @@ pHandleInputMapEvent handleInputMapEvent = (pHandleInputMapEvent)0x0051AA40;
+ pInit init = (pInit)0x00518EB0;
+ }
+ 
+-static std::vector<void(*)(utinni::GroundScene* pThis)> preDrawLoopCallbacks;
+-static std::vector<void(*)(utinni::GroundScene* pThis)> postDrawLoopCallbacks;
+-static std::vector<void(*)(utinni::GroundScene* pThis, float time)> updateLoopCallbacks;
+-static std::vector<void(*)()> cameraChangeCallbacks;
++// Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries
++// backed by std::unordered_map<int, fn_ptr>. Handle 0 reserved as invalid
++// sentinel.
++//
++// CR-01 (03-REVIEW): per-registry std::mutex serializes Subscribe / Unsubscribe
++// writes against the snapshot-build read in the dispatch sites.
++static std::unordered_map<int, void(*)(utinni::GroundScene* pThis)> preDrawLoopCallbacks;
++static std::unordered_map<int, void(*)(utinni::GroundScene* pThis)> postDrawLoopCallbacks;
++static std::unordered_map<int, void(*)(utinni::GroundScene* pThis, float time)> updateLoopCallbacks;
++static std::unordered_map<int, void(*)()> cameraChangeCallbacks;
++static std::mutex preDrawLoopCallbacksMutex;
++static std::mutex postDrawLoopCallbacksMutex;
++static std::mutex updateLoopCallbacksMutex;
++static std::mutex cameraChangeCallbacksMutex;
++static int s_nextPreDrawId = 1;
++static int s_nextPostDrawId = 1;
++static int s_nextUpdateId = 1;
++static int s_nextCameraChangeId = 1;
+ 
+ namespace utinni
+ {
+@@ -103,45 +121,155 @@ std::string GroundScene::getName()
+     return terrainPath.substr(i, length);
+ }
+ 
+-void GroundScene::addPreDrawLoopCallback(void(*func)(GroundScene* pThis))
++// Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09. Add* retained
++// per D-10 as wrappers (return value discarded).
++int GroundScene::subscribePreDrawLoopCallback(void(*func)(GroundScene* pThis))
++{
++    std::lock_guard<std::mutex> guard(preDrawLoopCallbacksMutex);
++    int id = s_nextPreDrawId++;
++    if (id == 0) { id = s_nextPreDrawId++; } // WR-04 skip-zero
++    preDrawLoopCallbacks[id] = func;
++    return id;
++}
++
++bool GroundScene::unsubscribePreDrawLoopCallback(int handle)
+ {
+-    preDrawLoopCallbacks.emplace_back(func);
++    if (handle == 0)
++    {
++        return false;
++    }
++    std::lock_guard<std::mutex> guard(preDrawLoopCallbacksMutex);
++    return preDrawLoopCallbacks.erase(handle) > 0;
++}
+ 
++int GroundScene::subscribePostDrawLoopCallback(void(*func)(GroundScene* pThis))
++{
++    std::lock_guard<std::mutex> guard(postDrawLoopCallbacksMutex);
++    int id = s_nextPostDrawId++;
++    if (id == 0) { id = s_nextPostDrawId++; } // WR-04 skip-zero
++    postDrawLoopCallbacks[id] = func;
++    return id;
++}
++
++bool GroundScene::unsubscribePostDrawLoopCallback(int handle)
++{
++    if (handle == 0)
++    {
++        return false;
++    }
++    std::lock_guard<std::mutex> guard(postDrawLoopCallbacksMutex);
++    return postDrawLoopCallbacks.erase(handle) > 0;
++}
++
++int GroundScene::subscribeUpdateLoopCallback(void(*func)(GroundScene* pThis, float elapsedTime))
++{
++    std::lock_guard<std::mutex> guard(updateLoopCallbacksMutex);
++    int id = s_nextUpdateId++;
++    if (id == 0) { id = s_nextUpdateId++; } // WR-04 skip-zero
++    updateLoopCallbacks[id] = func;
++    return id;
++}
++
++bool GroundScene::unsubscribeUpdateLoopCallback(int handle)
++{
++    if (handle == 0)
++    {
++        return false;
++    }
++    std::lock_guard<std::mutex> guard(updateLoopCallbacksMutex);
++    return updateLoopCallbacks.erase(handle) > 0;
++}
++
++int GroundScene::subscribeCameraChangeCallback(void(*func)())
++{
++    std::lock_guard<std::mutex> guard(cameraChangeCallbacksMutex);
++    int id = s_nextCameraChangeId++;
++    if (id == 0) { id = s_nextCameraChangeId++; } // WR-04 skip-zero
++    cameraChangeCallbacks[id] = func;
++    return id;
++}
++
++bool GroundScene::unsubscribeCameraChangeCallback(int handle)
++{
++    if (handle == 0)
++    {
++        return false;
++    }
++    std::lock_guard<std::mutex> guard(cameraChangeCallbacksMutex);
++    return cameraChangeCallbacks.erase(handle) > 0;
++}
++
++void GroundScene::addPreDrawLoopCallback(void(*func)(GroundScene* pThis))
++{
++    subscribePreDrawLoopCallback(func);
+ }
+ 
+ void GroundScene::addPostDrawLoopCallback(void(*func)(GroundScene* pThis))
+ {
+-    postDrawLoopCallbacks.emplace_back(func);
++    subscribePostDrawLoopCallback(func);
+ }
+ 
+ void __fastcall hkDrawLoop(GroundScene* pThis, DWORD EDX)
+ {
+-    for (const auto& func : preDrawLoopCallbacks)
++    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
+     {
+-        func(pThis);
++        std::vector<void(*)(GroundScene*)> snapshot;
++        {
++            std::lock_guard<std::mutex> guard(preDrawLoopCallbacksMutex);
++            snapshot.reserve(preDrawLoopCallbacks.size());
++            for (const auto& kv : preDrawLoopCallbacks)
++            {
++                snapshot.push_back(kv.second);
++            }
++        }
++        for (const auto& func : snapshot)
++        {
++            func(pThis);
++        }
+     }
+ 
+     swg::groundScene::draw(pThis);
+ 
+-    for (const auto& func : postDrawLoopCallbacks)
+     {
+-        func(pThis);
++        std::vector<void(*)(GroundScene*)> snapshot;
++        {
++            std::lock_guard<std::mutex> guard(postDrawLoopCallbacksMutex);
++            snapshot.reserve(postDrawLoopCallbacks.size());
++            for (const auto& kv : postDrawLoopCallbacks)
++            {
++                snapshot.push_back(kv.second);
++            }
++        }
++        for (const auto& func : snapshot)
++        {
++            func(pThis);
++        }
+     }
+ }
+ 
+ void GroundScene::addUpdateLoopCallback(void(*func)(GroundScene* pThis, float elapsedTime))
+ {
+-    updateLoopCallbacks.emplace_back(func);
++    subscribeUpdateLoopCallback(func);
+ }
+ 
+ void GroundScene::addCameraChangeCallback(void(*func)())
+ {
+-    cameraChangeCallbacks.emplace_back(func);
++    subscribeCameraChangeCallback(func);
+ }
+ 
+ void __fastcall hkUpdateLoop(GroundScene* pThis, DWORD EDX, float time)
+ {
+-    for (const auto& func : updateLoopCallbacks)
++    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
++    std::vector<void(*)(GroundScene*, float)> snapshot;
++    {
++        std::lock_guard<std::mutex> guard(updateLoopCallbacksMutex);
++        snapshot.reserve(updateLoopCallbacks.size());
++        for (const auto& kv : updateLoopCallbacks)
++        {
++            snapshot.push_back(kv.second);
++        }
++    }
++    for (const auto& func : snapshot)
+     {
+         func(pThis, time);
+     }
+@@ -161,18 +289,34 @@ void __fastcall hkHandleInputEvent(GroundScene* pThis, DWORD EDX, IoEvent* ioEve
+     // noisy continuous events; log everything else, capped at 40 entries.
+     if (ioEvent != nullptr && ioEvent->type != IoEvent::t_Update)
+     {
+-        static int s_ioEventLogCount = 0;
+-        if (s_ioEventLogCount < 40)
++        // WR-01 (03-REVIEW): the diag counter is read+modified from any
++        // thread that reaches GroundScene::handleInputMapEvent (typically
++        // SWG's main thread, but defensive against the event-handling
++        // chain crossing threads). std::atomic<int> with fetch_add gives
++        // us a race-free counter -- previously the non-atomic ++ could
++        // double-allocate a slot under interleaved RMW.
++        //
++        // _ReturnAddress() limitation (documented, not fixable without
++        // de-optimizing the whole function): with MSVC /O2 the captured
++        // PC may point inside a trampoline rather than the original
++        // caller. The diagnostic value here is "in what part of the
++        // input pipeline did this event arrive" -- the exact byte offset
++        // is best-effort and acknowledged.
++        static std::atomic<int> s_ioEventLogCount{0};
++        if (s_ioEventLogCount.load(std::memory_order_relaxed) < 40)
+         {
+-            ++s_ioEventLogCount;
+-            const void* callerPC = _ReturnAddress();
+-            char m[200];
+-            snprintf(m, sizeof(m),
+-                "hkHandleInputEvent[%d]: type=%d arg1=%d arg2=%d arg3=%.3f pThis=0x%p freeCam=%d caller=0x%p",
+-                s_ioEventLogCount, ioEvent->type, ioEvent->arg1, ioEvent->arg2,
+-                ioEvent->arg3, (void*)pThis, pThis->isFreeCameraActive() ? 1 : 0,
+-                callerPC);
+-            utinni::log::info(m);
++            int slot = s_ioEventLogCount.fetch_add(1, std::memory_order_relaxed);
++            if (slot < 40)
++            {
++                const void* callerPC = _ReturnAddress();
++                char m[200];
++                snprintf(m, sizeof(m),
++                    "hkHandleInputEvent[%d]: type=%d arg1=%d arg2=%d arg3=%.3f pThis=0x%p freeCam=%d caller=0x%p",
++                    slot + 1, ioEvent->type, ioEvent->arg1, ioEvent->arg2,
++                    ioEvent->arg3, (void*)pThis, pThis->isFreeCameraActive() ? 1 : 0,
++                    callerPC);
++                utinni::log::info(m);
++            }
+         }
+     }
+ 
+@@ -214,9 +358,21 @@ void GroundScene::toggleFreeCamera()
+         swg::groundScene::changeCamera(this, Camera::Modes::cm_Free, 0);
+     }
+ 
+-    for (const auto& func : cameraChangeCallbacks)
++    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
+     {
+-        func();
++        std::vector<void(*)()> snapshot;
++        {
++            std::lock_guard<std::mutex> guard(cameraChangeCallbacksMutex);
++            snapshot.reserve(cameraChangeCallbacks.size());
++            for (const auto& kv : cameraChangeCallbacks)
++            {
++                snapshot.push_back(kv.second);
++            }
++        }
++        for (const auto& func : snapshot)
++        {
++            func();
++        }
+     }
+ }
+ 
+diff --git a/UtinniCore/swg/scene/ground_scene.h b/UtinniCore/swg/scene/ground_scene.h
+index 093e85a..cd4e1f9 100644
+--- a/UtinniCore/swg/scene/ground_scene.h
++++ b/UtinniCore/swg/scene/ground_scene.h
+@@ -78,6 +78,18 @@ public:
+     static GroundScene* ctor(const char* terrainFilename, const char* avatarObjectFilename);
+     std::string getName();
+ 
++    // Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09): Subscribe returns an
++    // opaque int (handle 0 reserved as invalid sentinel); pair with Unsubscribe.
++    static int subscribePreDrawLoopCallback(void(*func)(GroundScene* pThis));
++    static bool unsubscribePreDrawLoopCallback(int handle);
++    static int subscribePostDrawLoopCallback(void(*func)(GroundScene* pThis));
++    static bool unsubscribePostDrawLoopCallback(int handle);
++    static int subscribeUpdateLoopCallback(void(*func)(GroundScene* pThis, float elapsedTime));
++    static bool unsubscribeUpdateLoopCallback(int handle);
++    static int subscribeCameraChangeCallback(void(*func)());
++    static bool unsubscribeCameraChangeCallback(int handle);
++
++    // Legacy add* API (D-10): thin wrappers around subscribe*.
+     static void addPreDrawLoopCallback(void(*func)(GroundScene* pThis));
+     static void addPostDrawLoopCallback(void(*func)(GroundScene* pThis));
+     static void addUpdateLoopCallback(void(*func)(GroundScene* pThis, float elapsedTime));
