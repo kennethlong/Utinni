@@ -1068,22 +1068,22 @@ namespace Utinni.Cli.Commands
 
 **Mitigation summary:** All assumptions are bounded to first-task-of-relevant-plan discovery. None blocks planning. The format-level assumptions (A1, A2, A3) are validated by the synthesized fixture being a known-byte sequence — any LE/BE or algorithm mistake fails the very first parser test.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **TRE v4000 support scope in Phase 4.**
    - What we know: v4000 is documented as "a different one that posed additional challenges" in public summary. v5000 and v6000 are well-understood.
    - What's unclear: Whether Phase 4's fixtures should support v4000 reading, or only document its existence as a negative case.
-   - Recommendation: **Negative case only for Phase 4** — `unsupported-version` fixture using version `0004` returns the structured error. v4000 support, if needed for any Phase 7+ TRE Browser use case, becomes a downstream Plan-class concern. Documenting in CONTEXT.md Deferred Ideas section is the right disposition.
+   - **RESOLVED:** **Negative case only for Phase 4** — `unsupported-version` fixture using version `0004` returns the structured error. v4000 support, if needed for any Phase 7+ TRE Browser use case, becomes a downstream Plan-class concern. Documenting in CONTEXT.md Deferred Ideas section is the right disposition.
 
 2. **`Checksum` validation in `parse-tre`.**
    - What we know: TRE TreInfo has a Checksum field. Algorithm not enumerated in this research.
    - What's unclear: Should `parse-tre` validate Checksums by default, or report them raw?
-   - Recommendation: **Report raw** for Phase 4. Validating requires knowing the algorithm (likely a CRC variant or SOE's own hash — see `swg-client-v2/TreeFile.cpp`); adding validation later is a non-breaking feature add (the field becomes "verified": "ok|mismatch" in the JSON output). Phase 4 puts the field through to JSON unmodified.
+   - **RESOLVED:** **Report raw** for Phase 4. Validating requires knowing the algorithm (likely a CRC variant or SOE's own hash — see `swg-client-v2/TreeFile.cpp`); adding validation later is a non-breaking feature add (the field becomes "verified": "ok|mismatch" in the JSON output). Phase 4 puts the field through to JSON unmodified.
 
 3. **Should the SWG IFF Viewer MIT extension's source be requested directly?**
    - What we know: Marketplace listing claims MIT; GitHub repo at expected location 404s; WPS dev-tools page provides no link.
    - What's unclear: Whether the extension is actually open source or merely uses MIT-licensed deps.
-   - Recommendation: **Don't depend on it for Phase 4.** Format references are sufficient. If a future phase wants to compare implementation approaches, a Discord/email reach-out is the right channel — outside Phase 4 scope.
+   - **RESOLVED:** **Don't depend on it for Phase 4.** Format references are sufficient. If a future phase wants to compare implementation approaches, a Discord/email reach-out is the right channel — outside Phase 4 scope.
 
 ## Environment Availability
 
@@ -1276,11 +1276,11 @@ namespace Utinni.Cli.Commands
 | Plugin manifest | HIGH | Reuses existing `PluginLoader.cs` — pure reflection layer needed. |
 | Security domain | HIGH | Standard binary-format-parser + DLL-loader threat model; mitigations follow well-known patterns. |
 
-### Open Questions
+### Open Questions (RESOLVED)
 
-1. TRE v4000 support scope in Phase 4 (recommendation: negative case only).
-2. Checksum validation in `parse-tre` (recommendation: report raw uint32; validate-later as non-breaking feature add).
-3. SWG IFF Viewer (Wasted Potential Studios) source request — out of Phase 4 scope; defer.
+1. **RESOLVED:** TRE v4000 support scope in Phase 4 — negative case only.
+2. **RESOLVED:** Checksum validation in `parse-tre` — report raw uint32; validate-later as non-breaking feature add.
+3. **RESOLVED:** SWG IFF Viewer (Wasted Potential Studios) source request — out of Phase 4 scope; defer.
 
 ### Most surprising finding
 
