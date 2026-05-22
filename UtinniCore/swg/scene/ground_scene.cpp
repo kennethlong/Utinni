@@ -39,7 +39,6 @@
 #include <cstdio>
 #include <intrin.h>
 #include <mutex>
-#include <unordered_map>
 #include <vector>
 
 
@@ -71,15 +70,82 @@ pInit init = (pInit)0x00518EB0;
 }
 
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries
-// backed by std::unordered_map<int, fn_ptr>. Handle 0 reserved as invalid
-// sentinel.
+// backed by insertion-order std::vector<{handle, fn_ptr}>. Handle 0 reserved as
+// invalid sentinel.
 //
 // CR-01 (03-REVIEW): per-registry std::mutex serializes Subscribe / Unsubscribe
 // writes against the snapshot-build read in the dispatch sites.
-static std::unordered_map<int, void(*)(utinni::GroundScene* pThis)> preDrawLoopCallbacks;
-static std::unordered_map<int, void(*)(utinni::GroundScene* pThis)> postDrawLoopCallbacks;
-static std::unordered_map<int, void(*)(utinni::GroundScene* pThis, float time)> updateLoopCallbacks;
-static std::unordered_map<int, void(*)()> cameraChangeCallbacks;
+//
+// 2026-05-22 (post-CODEX-consult): switched from std::unordered_map (heap-allocated
+// bucket nodes + per-frame std::vector::reserve() snapshot allocation in
+// hkDrawLoop/hkUpdateLoop) to insertion-order vector with stack-allocated
+// fixed-size snapshot. Per-frame heap allocation in the render hot path was
+// implicated in a scene-change AV at SWG 0x0051fb0a (inside GroundScene::ctor).
+// See .planning/debug/03-scene-change-av-0x0051fb0a.md and
+// .planning/debug/codex-consult-ground-scene-av.md for the 11-cycle bisect and
+// CODEX's fix recommendation.
+namespace
+{
+template <typename Fn>
+struct CallbackEntry
+{
+    int handle;
+    Fn func;
+};
+
+// Dispatch helper: build a stack-allocated snapshot under the registry's mutex,
+// release the lock, then invoke each callback via `invoke`. kInlineCap=16 gives
+// 16x headroom over the current native subscriber count (1 per registry: the
+// managed bridge in UtinniCoreDotNet/Callbacks/GroundSceneCallbacks.cs). If a
+// registry ever exceeds kInlineCap, fall back to a heap snapshot for that
+// dispatch -- heap allocation is gated to N>16, so the hot path stays heap-free
+// in practice. Lambda `invoke(Fn)` is called with each function pointer outside
+// the lock per R-H D-12 snapshot semantics: callback bodies may Subscribe /
+// Unsubscribe safely; new subscribers fire on the NEXT dispatch.
+template <typename Fn, typename Invoke>
+void dispatchSnapshot(
+    const std::vector<CallbackEntry<Fn>>& registry,
+    std::mutex& mutex,
+    Invoke&& invoke)
+{
+    constexpr size_t kInlineCap = 16;
+    Fn stackSnap[kInlineCap];
+    Fn* snapshot = stackSnap;
+    std::vector<Fn> heapSnap; // capacity 0 until reserve() -> no heap alloc on the hot path
+    size_t count = 0;
+    {
+        std::lock_guard<std::mutex> guard(mutex);
+        const size_t total = registry.size();
+        if (total <= kInlineCap)
+        {
+            count = total;
+            for (size_t i = 0; i < count; ++i)
+            {
+                stackSnap[i] = registry[i].func;
+            }
+        }
+        else
+        {
+            heapSnap.reserve(total);
+            for (const auto& e : registry)
+            {
+                heapSnap.push_back(e.func);
+            }
+            snapshot = heapSnap.data();
+            count = total;
+        }
+    }
+    for (size_t i = 0; i < count; ++i)
+    {
+        invoke(snapshot[i]);
+    }
+}
+} // namespace
+
+static std::vector<CallbackEntry<void(*)(utinni::GroundScene* pThis)>> preDrawLoopCallbacks;
+static std::vector<CallbackEntry<void(*)(utinni::GroundScene* pThis)>> postDrawLoopCallbacks;
+static std::vector<CallbackEntry<void(*)(utinni::GroundScene* pThis, float time)>> updateLoopCallbacks;
+static std::vector<CallbackEntry<void(*)()>> cameraChangeCallbacks;
 static std::mutex preDrawLoopCallbacksMutex;
 static std::mutex postDrawLoopCallbacksMutex;
 static std::mutex updateLoopCallbacksMutex;
@@ -128,7 +194,7 @@ int GroundScene::subscribePreDrawLoopCallback(void(*func)(GroundScene* pThis))
     std::lock_guard<std::mutex> guard(preDrawLoopCallbacksMutex);
     int id = s_nextPreDrawId++;
     if (id == 0) { id = s_nextPreDrawId++; } // WR-04 skip-zero
-    preDrawLoopCallbacks[id] = func;
+    preDrawLoopCallbacks.push_back({id, func});
     return id;
 }
 
@@ -139,7 +205,15 @@ bool GroundScene::unsubscribePreDrawLoopCallback(int handle)
         return false;
     }
     std::lock_guard<std::mutex> guard(preDrawLoopCallbacksMutex);
-    return preDrawLoopCallbacks.erase(handle) > 0;
+    for (auto it = preDrawLoopCallbacks.begin(); it != preDrawLoopCallbacks.end(); ++it)
+    {
+        if (it->handle == handle)
+        {
+            preDrawLoopCallbacks.erase(it);
+            return true;
+        }
+    }
+    return false;
 }
 
 int GroundScene::subscribePostDrawLoopCallback(void(*func)(GroundScene* pThis))
@@ -147,7 +221,7 @@ int GroundScene::subscribePostDrawLoopCallback(void(*func)(GroundScene* pThis))
     std::lock_guard<std::mutex> guard(postDrawLoopCallbacksMutex);
     int id = s_nextPostDrawId++;
     if (id == 0) { id = s_nextPostDrawId++; } // WR-04 skip-zero
-    postDrawLoopCallbacks[id] = func;
+    postDrawLoopCallbacks.push_back({id, func});
     return id;
 }
 
@@ -158,7 +232,15 @@ bool GroundScene::unsubscribePostDrawLoopCallback(int handle)
         return false;
     }
     std::lock_guard<std::mutex> guard(postDrawLoopCallbacksMutex);
-    return postDrawLoopCallbacks.erase(handle) > 0;
+    for (auto it = postDrawLoopCallbacks.begin(); it != postDrawLoopCallbacks.end(); ++it)
+    {
+        if (it->handle == handle)
+        {
+            postDrawLoopCallbacks.erase(it);
+            return true;
+        }
+    }
+    return false;
 }
 
 int GroundScene::subscribeUpdateLoopCallback(void(*func)(GroundScene* pThis, float elapsedTime))
@@ -166,7 +248,7 @@ int GroundScene::subscribeUpdateLoopCallback(void(*func)(GroundScene* pThis, flo
     std::lock_guard<std::mutex> guard(updateLoopCallbacksMutex);
     int id = s_nextUpdateId++;
     if (id == 0) { id = s_nextUpdateId++; } // WR-04 skip-zero
-    updateLoopCallbacks[id] = func;
+    updateLoopCallbacks.push_back({id, func});
     return id;
 }
 
@@ -177,7 +259,15 @@ bool GroundScene::unsubscribeUpdateLoopCallback(int handle)
         return false;
     }
     std::lock_guard<std::mutex> guard(updateLoopCallbacksMutex);
-    return updateLoopCallbacks.erase(handle) > 0;
+    for (auto it = updateLoopCallbacks.begin(); it != updateLoopCallbacks.end(); ++it)
+    {
+        if (it->handle == handle)
+        {
+            updateLoopCallbacks.erase(it);
+            return true;
+        }
+    }
+    return false;
 }
 
 int GroundScene::subscribeCameraChangeCallback(void(*func)())
@@ -185,7 +275,7 @@ int GroundScene::subscribeCameraChangeCallback(void(*func)())
     std::lock_guard<std::mutex> guard(cameraChangeCallbacksMutex);
     int id = s_nextCameraChangeId++;
     if (id == 0) { id = s_nextCameraChangeId++; } // WR-04 skip-zero
-    cameraChangeCallbacks[id] = func;
+    cameraChangeCallbacks.push_back({id, func});
     return id;
 }
 
@@ -196,7 +286,15 @@ bool GroundScene::unsubscribeCameraChangeCallback(int handle)
         return false;
     }
     std::lock_guard<std::mutex> guard(cameraChangeCallbacksMutex);
-    return cameraChangeCallbacks.erase(handle) > 0;
+    for (auto it = cameraChangeCallbacks.begin(); it != cameraChangeCallbacks.end(); ++it)
+    {
+        if (it->handle == handle)
+        {
+            cameraChangeCallbacks.erase(it);
+            return true;
+        }
+    }
+    return false;
 }
 
 void GroundScene::addPreDrawLoopCallback(void(*func)(GroundScene* pThis))
@@ -211,40 +309,16 @@ void GroundScene::addPostDrawLoopCallback(void(*func)(GroundScene* pThis))
 
 void __fastcall hkDrawLoop(GroundScene* pThis, DWORD EDX)
 {
-    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
-    {
-        std::vector<void(*)(GroundScene*)> snapshot;
-        {
-            std::lock_guard<std::mutex> guard(preDrawLoopCallbacksMutex);
-            snapshot.reserve(preDrawLoopCallbacks.size());
-            for (const auto& kv : preDrawLoopCallbacks)
-            {
-                snapshot.push_back(kv.second);
-            }
-        }
-        for (const auto& func : snapshot)
-        {
-            func(pThis);
-        }
-    }
+    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
+    // via dispatchSnapshot keeps the per-frame path heap-free (see file header
+    // comment for 2026-05-22 fix rationale).
+    dispatchSnapshot(preDrawLoopCallbacks, preDrawLoopCallbacksMutex,
+        [pThis](void(*func)(GroundScene*)) { func(pThis); });
 
     swg::groundScene::draw(pThis);
 
-    {
-        std::vector<void(*)(GroundScene*)> snapshot;
-        {
-            std::lock_guard<std::mutex> guard(postDrawLoopCallbacksMutex);
-            snapshot.reserve(postDrawLoopCallbacks.size());
-            for (const auto& kv : postDrawLoopCallbacks)
-            {
-                snapshot.push_back(kv.second);
-            }
-        }
-        for (const auto& func : snapshot)
-        {
-            func(pThis);
-        }
-    }
+    dispatchSnapshot(postDrawLoopCallbacks, postDrawLoopCallbacksMutex,
+        [pThis](void(*func)(GroundScene*)) { func(pThis); });
 }
 
 void GroundScene::addUpdateLoopCallback(void(*func)(GroundScene* pThis, float elapsedTime))
@@ -259,20 +333,11 @@ void GroundScene::addCameraChangeCallback(void(*func)())
 
 void __fastcall hkUpdateLoop(GroundScene* pThis, DWORD EDX, float time)
 {
-    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
-    std::vector<void(*)(GroundScene*, float)> snapshot;
-    {
-        std::lock_guard<std::mutex> guard(updateLoopCallbacksMutex);
-        snapshot.reserve(updateLoopCallbacks.size());
-        for (const auto& kv : updateLoopCallbacks)
-        {
-            snapshot.push_back(kv.second);
-        }
-    }
-    for (const auto& func : snapshot)
-    {
-        func(pThis, time);
-    }
+    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
+    // via dispatchSnapshot keeps the per-frame path heap-free.
+    dispatchSnapshot(updateLoopCallbacks, updateLoopCallbacksMutex,
+        [pThis, time](void(*func)(GroundScene*, float)) { func(pThis, time); });
+
     swg::groundScene::update(pThis, time);
 }
 
@@ -358,22 +423,11 @@ void GroundScene::toggleFreeCamera()
         swg::groundScene::changeCamera(this, Camera::Modes::cm_Free, 0);
     }
 
-    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
-    {
-        std::vector<void(*)()> snapshot;
-        {
-            std::lock_guard<std::mutex> guard(cameraChangeCallbacksMutex);
-            snapshot.reserve(cameraChangeCallbacks.size());
-            for (const auto& kv : cameraChangeCallbacks)
-            {
-                snapshot.push_back(kv.second);
-            }
-        }
-        for (const auto& func : snapshot)
-        {
-            func();
-        }
-    }
+    // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
+    // via dispatchSnapshot keeps the path heap-free (toggleFreeCamera is not
+    // per-frame, but uses the same pattern for consistency).
+    dispatchSnapshot(cameraChangeCallbacks, cameraChangeCallbacksMutex,
+        [](void(*func)()) { func(); });
 }
 
 void GroundScene::changeCameraMode(int cameraMode)
