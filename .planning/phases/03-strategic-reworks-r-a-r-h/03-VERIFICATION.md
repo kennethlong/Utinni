@@ -1,7 +1,7 @@
 ---
 phase: 03-strategic-reworks-r-a-r-h
-verified: 2026-05-21T00:00:00Z
-status: human_needed
+verified: 2026-05-22T15:35:00Z
+status: passed
 score: 38/38 must-haves verified (3 plan goals × ~12 truths each, deduplicated)
 must_haves_passed: 38/38
 overrides_applied: 0
@@ -12,18 +12,24 @@ verifier: claude-opus-4-7
 human_verification:
   - test: "Live SWG TJT smoke (R-B cross-repo destroyPlugin path exercised end-to-end)"
     expected: "SWG launches with Utinni injection + TJT loaded; TJT subpanels open and render; clean process exit invokes the new destroyPlugin path (no crash, no leak warning in log)."
-    why_human: "Requires live SWG client + Utinni injection — not runnable in CI. Operator-confirmed per Phase 02 D-09 / Phase 03 D-26 manual-verify posture. Both 03-02 and 03-03 SUMMARY.md flag this as the remaining watch item carried out of Phase 3."
+    result: "pass (2026-05-22). TJT loads end-to-end; scene change via TJT chat command parser (/warp) reaches the SWG scene-cleanup-then-setup path and completes without crash. Surfaced one regression unrelated to R-B lifecycle (a scene-change AV in the R-A native dispatch path) which was bisected over 11 cycles, CODEX-consulted, and fixed at commit 7201700. See .planning/debug/03-scene-change-av-0x0051fb0a.md."
 gaps: []
 deferred: []
+post_verification_fixes:
+  - commit: 7201700
+    title: "fix(03): ground_scene heap-free dispatch via vector + stack snapshot"
+    severity: regression (Phase 3 R-A introduced; not in original review)
+    discovered_by: live-SWG TJT smoke (this UAT)
+    summary: "Scene-change AV at SWG 0x0051fb0a (inside GroundScene::ctor) from per-frame heap allocation in hkDrawLoop/hkUpdateLoop's R-H snapshot dispatch. Swapped std::unordered_map<int, fn_ptr> -> std::vector<CallbackEntry<fn_ptr>>; std::vector::reserve() snapshot -> stack-allocated fixed-size buffer. R-A API + CR-01 mutex + R-H semantics preserved."
 ---
 
 # Phase 3: Strategic reworks (R-A..R-H) — Verification Report
 
 **Phase Goal (ROADMAP.md):** Land the 8 strategic reworks R-A..R-H so plugin authoring is "genuinely pleasant" and native code grows the testable seams Phase 4 (CLI shim) and Phase 5 (Catch2) depend on.
 
-**Verified:** 2026-05-21
-**Status:** **human_needed** — every code-verifiable must-have is VERIFIED; the only outstanding item is the operator-confirmed live-SWG TJT smoke (D-26 + Phase 02 D-09 manual-verify posture).
-**Re-verification:** No (initial verification).
+**Verified:** 2026-05-21 (initial) → 2026-05-22 (UAT pass + post-verification fix landed)
+**Status:** **passed** — all code-verifiable must-haves VERIFIED; live-SWG TJT smoke confirmed pass on 2026-05-22 after fixing one regression discovered during the smoke (`7201700` ground_scene heap-free dispatch).
+**Re-verification:** Yes (initial → human_needed → passed after UAT + post-verification fix).
 
 ---
 

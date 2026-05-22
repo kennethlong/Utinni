@@ -1,14 +1,14 @@
 ---
-status: partial
+status: pass
 phase: 03-strategic-reworks-r-a-r-h
 source: [03-VERIFICATION.md]
 started: 2026-05-21T20:54:00Z
-updated: 2026-05-21T20:54:00Z
+updated: 2026-05-22T15:35:00Z
 ---
 
 ## Current Test
 
-[awaiting human testing]
+[all passed]
 
 ## Tests
 
@@ -31,15 +31,17 @@ This UAT confirms the loader + lifecycle work end-to-end in a live SWG injection
 7. **Optionally:** if you can drop a `Utinni.LegacyPlugin.dll` into the plugins dir alongside TJT, confirm Utinni logs that the legacy plugin is **rejected** at load (CR-02 refuse-to-load policy) while TJT still loads normally. Skip this if it's annoying to set up — the unit test already covers it.
 
 expected: TJT loads and behaves identically to before Phase 3; clean exit; log shows no errors/warnings related to plugin lifecycle. If the optional legacy-rejection check is run, Utinni log shows the legacy plugin was refused with a clear `log::error` line.
-result: [pending]
+result: **pass (2026-05-22)** — TJT loads, scene-change via TJT `/warp` works without crash on Naboo. Surfaced and fixed an unrelated scene-change AV (Phase 3 R-A native dispatch path) during this smoke; see `.planning/debug/03-scene-change-av-0x0051fb0a.md` for the 11-cycle bisect + CODEX consult + fix commit `7201700`. The TJT lifecycle behavior itself was clean throughout the regression hunt (TJT loaded, command parser fired, no LoadLibrary/init errors, no plugin-related dumps).
 
 ## Summary
 
 total: 1
-passed: 0
+passed: 1
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
+
+(none — Phase 3 R-A/R-H/R-B/R-C/R-E/R-F/R-G all verified end-to-end)

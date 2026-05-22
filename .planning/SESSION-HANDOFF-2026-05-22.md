@@ -1,8 +1,10 @@
 # Session Handoff: 2026-05-22
 
-> Written mid-session to checkpoint a long Phase 3 execution + scene-change-AV bisect. Phase 3 LANDED on master (`b63fff1`) → code review found 2 Critical + 7 Warning → all fixed via gsd-code-fixer → verifier returned `human_needed` → live SWG smoke surfaced a NEW regression: AV on scene change at SWG `0x0051fb0a` / VEH int3 at `0x00AA1E3F`. Nine bisect cycles narrowed the regression to **commit `5e81410` (R-A native Task 3a)**, and within that to **either `creature_object.{cpp,h}` or `ground_scene.{cpp,h}`**. Next action: Cycle 10 reverts only `creature_object.{cpp,h}` first.
+> **RESOLVED (2026-05-22 ~16:00):** Cycles 10 + 11 completed the bisect (creature_object alone REFUTED, ground_scene alone CONFIRMED). CODEX consult on the ground_scene diff pinned per-frame heap allocation in R-H snapshot dispatch as the mechanism. Fix landed on master at **`7201700`** ("fix(03): ground_scene heap-free dispatch via vector + stack snapshot"): `std::unordered_map<int, fn_ptr>` → `std::vector<CallbackEntry<fn_ptr>>` + stack-allocated fixed-size snapshot via `dispatchSnapshot` template helper. Live SWG smoke green. Phase 3 verification flipped from `human_needed` to `passed`. See `.planning/debug/03-scene-change-av-0x0051fb0a.md` for the full bisect + resolution.
 
-Master at `1facb01`. Active investigation branch: `debug/03-scene-change-av-cycle9-creature-groundscene` at `ef974c3` (smoked = no crash; H13 confirmed).
+> Originally written mid-session as a checkpoint: Phase 3 LANDED on master (`b63fff1`) → code review found 2 Critical + 7 Warning → all fixed via gsd-code-fixer → verifier returned `human_needed` → live SWG smoke surfaced a NEW regression: AV on scene change at SWG `0x0051fb0a` / VEH int3 at `0x00AA1E3F`. Nine bisect cycles narrowed the regression to **commit `5e81410` (R-A native Task 3a)**, and within that to **either `creature_object.{cpp,h}` or `ground_scene.{cpp,h}`**.
+
+Master at `7201700` (was `1facb01` at write time). The 11-cycle bisect ran to completion and the fix landed in the same session. Active investigation branch retired.
 
 Supersedes `SESSION-HANDOFF-2026-05-21.md`.
 
