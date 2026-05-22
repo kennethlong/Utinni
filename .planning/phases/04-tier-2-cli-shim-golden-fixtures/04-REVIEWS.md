@@ -1,8 +1,11 @@
 ---
 phase: 4
+review_iteration: 2
 reviewers: [codex, cursor]
-reviewed_at: 2026-05-22T20:54:43Z
+reviewed_at: 2026-05-22T22:26:16Z
 plans_reviewed: [04-01-PLAN.md, 04-02-PLAN.md, 04-03-PLAN.md, 04-04-PLAN.md]
+prior_review_iteration: 1 (preserved in git: commit bb16090)
+revision_input: 04-REVISION-NOTES.md (planner iter-1 + iter-2 fix-status table)
 unavailable_reviewers:
   - gemini: not installed
   - coderabbit: not installed
@@ -10,88 +13,90 @@ unavailable_reviewers:
   - qwen: not installed
   - claude: skipped (self — this session runs in claude-code)
   - ollama / lm_studio / llama_cpp: no local server detected on default ports
-verdict: FAIL (both reviewers independently) — 8 HIGH-severity blockers (5 from Codex, 3 new from Cursor) + 11 MEDIUM concerns must be addressed before /gsd:execute-phase 4
+verdict: FAIL (both reviewers) — 20/22 prior findings CONCRETE FIX, 2 PARTIAL; 2 NEW HIGH (loaderObserved.loadErrors semantics + IFF error taxonomy mismatch) + 7 NEW MEDIUM + 3 NEW LOW must be addressed before /gsd:execute-phase 4
 ---
 
-# Cross-AI Plan Review — Phase 4
+# Cross-AI Plan Re-Review — Phase 4 (Iteration 2)
+
+**Context.** Iteration 1 of cross-AI review (commit `bb16090`) raised 22 findings (8 HIGH + 9 MEDIUM + 5 LOW). The planner ran `--reviews` mode and revised all four PLAN.md files; the plan-checker then ran two iterations of its own verification loop and surfaced one additional BLOCKER (04-01 task count) plus five WARNINGs which were also fixed. This is iteration-2 of cross-AI review against the REVISED plans, asking Codex + Cursor to verify the fixes landed concretely and surface anything new.
+
+**Consensus on iter-1 fixes:** Both reviewers independently confirm 20/22 findings are CONCRETE FIXES with executable task detail (file paths, API surfaces, regression test names, grep gates). HIGH-5 and HIGH-8 are PARTIAL (managed plugin validation is still dual-path; threat_model understates MEF directory scan side-effects on native DLLs).
+
+**Consensus on new issues:** Both reviewers independently flag the same critical new HIGH — the `loaderObserved.loadErrors: []` assumption in `valid-plugin/expected.json` conflicts with what `PluginLoader.LoadFromDirectory` actually does on a native-only directory. This is a real regression introduced by the HIGH-5 + WARNING-5 fixes.
+
+---
 
 ## Codex Review
 
-## Summary
+**Summary**
+The revision pass fixed most of the original cross-AI findings concretely: the envelope contract is now explicit, the CLI scaffold has an entry point, stdout capture is corrected, TRE eager-read is specified, PEReader replaces the bad Windows API path, and `validate-plugin` now intends to exercise `PluginLoader`. However, the revised plan set is not ready for `/gsd:execute-phase 4`. The new revisions introduce several execution blockers, especially in 04-03’s IFF error-kind expectations and 04-04’s `PluginLoader` behavior against native DLLs. These are likely to produce failing tests or mismatched goldens during execution.
 
-The Phase 4 plan is directionally strong: it decomposes the CLI, parser, fixture, and golden-test work into sensible waves, preserves Tier-1 vs Tier-2 separation, and treats JSON as a real contract. However, several execution-level issues are serious enough that the plans are not ready to run as written. The biggest blockers are in 04-01's scaffold/test harness, 04-02's lazy TRE data model, 04-03's malformed IFF handling/legal fixture risk, and 04-04's native export probing plus drift away from the stated PluginLoader reuse contract.
+**Fix Verification**
 
-## Strengths
+| Finding | Verdict | Evidence |
+|---|---|---|
+| HIGH-1 NativeExportProbe API bug | CONCRETE FIX | 04-04 Task 4.1 replaces `LoadLibraryExW/GetProcAddress` with `System.Reflection.Metadata.PEReader`, adds NuGet refs and grep gates forbidding `LoadLibraryEx` / `GetProcAddress`. |
+| HIGH-2 04-01 no `Main` / contradictory verify | CONCRETE FIX | 04-01 Task 1.1 lands stub `static int Main(string[] args) => 0;`; Task 1.4 replaces it with dispatch. |
+| HIGH-3 JsonOutput bypasses stdout capture | CONCRETE FIX | 04-01 Task 1.2 writes via `writer ?? Console.Out`; adds regression tests and grep gate for zero `Console.OpenStandardOutput`. |
+| HIGH-4 TRE stream lifetime | CONCRETE FIX | 04-02 Task 2.1 eager-reads record payloads into `byte[][]`; adds `GetRecordData_AfterOpenStreamDisposed_StillReturnsBytes`. |
+| HIGH-5 PluginLoader reuse drift | CONCRETE BUT NEW REGRESSION | 04-04 Task 4.1 now calls `new PluginLoader(autoLoad: false).Load(dir)`, but this likely breaks native fixture expectations. See New Finding HIGH-2. |
+| HIGH-6 schemaVersion placement | CONCRETE FIX | 04-01 `<json_contract>` locks root `{ command, result/error, schemaVersion }`; 04-02/03/04 all reference that envelope. |
+| HIGH-7 04-02 field drift | CONCRETE FIX | 04-02 `<json_contract>` and Task 2.2 use `header.recordCount`, `records[].id`, `compressionKind`, `objects[].id`. |
+| HIGH-8 threat model false PluginLoader claim | CONCRETE FIX | 04-04 threat model now says native path is PE parse, managed path executes through `PluginLoader` and may run static initializers. |
+| MED-9 `kind: unknown` drift | CONCRETE FIX | 04-04 JSON contract documents `managed|native|mixed|unknown`; Task 4.1 adds unknown branch. |
+| MED-10 managed reflection fragility | PARTIAL | `PluginLoader.Load` is now authoritative, but ReflectionOnly remains for classification and dependency-resolution edge cases remain documented. |
+| MED-11 IFF missing pad leniency | CONCRETE BUT NEW EDGE RISK | 04-03 chooses strict behavior and adds fixture/test, but pad-byte validation is specified against `stream.Length`, not `parentEnd`. See New Finding MEDIUM-1. |
+| MED-12 real-sample legal risk | CONCRETE FIX | 04-03 removes `real-sample.iff`; uses `synthetic-secondary.iff` only. |
+| MED-13 `list-objects` sentinel scan | PERFORMATIVE | 04-02 only documents the byte-scan as architectural debt. No executable boundary validation or false-positive regression test was added. |
+| MED-14 PROP container semantics | CONCRETE FIX | 04-03 `ContainerTypeIds = { FORM, LIST, CAT }`; PROP is a leaf with Tier-1 and fixture coverage. |
+| MED-15 fragile source-path grep | PARTIAL | 04-04 adds `[AssemblyMetadata]` marker, but still retains a source-walk grep test as secondary. Less risky, but not fully removed. |
+| MED-16 phase closure ordering | CONCRETE FIX | 04-04 frontmatter now depends on `[04-01, 04-02, 04-03]`; Task 4.4 also checks summary files before DEC-C3 promotion. |
+| MED-17 PEReader NuGet on net472 | CONCRETE FIX | 04-04 Task 4.1 adds `System.Reflection.Metadata` and `System.Collections.Immutable`. |
+| LOW-18 xUnit parallelization | CONCRETE FIX | 04-01 Task 1.1 adds `[assembly: CollectionBehavior(DisableTestParallelization = true)]`. |
+| LOW-19 Unix snippets | PARTIAL | Many snippets were converted to PowerShell, but some `grep` gates remain. Acceptable if Git tools are assumed, but still mixed. |
+| LOW-20 v0006 coverage | CONCRETE FIX | 04-02 adds `synthesized-2record-v0006.tre` and Tier-1/Tier-2 tests. |
+| LOW-21 misleading IFF fixture name | CONCRETE FIX | 04-03 renames to `synthetic-nested.iff`. |
+| LOW-22 help consistency | CONCRETE FIX | 04-04 adds both verb-specific and top-level help tests. |
 
-- Clear phased structure: 04-01 establishes the harness, then TRE/IFF/plugin commands build on it.
-- Good test layering: parser unit tests are separate from CLI golden tests.
-- Strong fixture discipline: small in-repo fixtures, expected JSON, artifact dumps on mismatch.
-- Security is explicitly modeled, especially malformed parser inputs and plugin inspection risk.
-- D-01 clean-room intent is explicit and repeated; no plan directly instructs copying SOE/AGPL code.
-- JSON contract thinking is mature: sorted keys, schema versioning, stable IDs, path masking.
-- React Flow portability is considered early, especially 04-03's tree + flat IFF projection.
+**New Findings**
 
-## Concerns
+**HIGH — 04-03 IFF negative fixture expectations conflict with parser check order.**  
+04-03 Task 3.1 specifies bounds checks in this order: negative length, `ChunkLengthExceedsCap`, `ChunkLengthExceedsFile`, `NestedChunkOverflow`. But the committed negative fixtures expect different errors:
 
-- **HIGH: 04-01 Task 1.1 likely will not build as written.** An SDK-style `OutputType=Exe` project with no `Main` generally fails with CS5001. Task 1.1 claims the empty exe project compiles, but `Program.cs` lands later in Task 1.4.
+- `malformed-chunk-overflow.iff` declares length `0x7FFFFFFF` and expects `ChunkLengthExceedsFile`; with a 64 MB cap checked first, it will throw `ChunkLengthExceedsCap`.
+- `malformed-truncated.iff` declares outer FORM length `100` in a ~30-byte file and expects `Truncated`; with file-bound checking, it will more likely throw `ChunkLengthExceedsFile`.
 
-- **HIGH: 04-01 JsonOutput bypasses test stdout capture.** `JsonOutput.EmitSuccess` writes to `Console.OpenStandardOutput()`, while `InProcessCliRunner` captures via `Console.SetOut`. Tests will likely see empty stdout for JSON commands. Use `Console.Out` or redesign the runner.
+This will produce failing goldens. Fix by either changing fixture lengths/error expectations or specifying a deterministic error taxonomy.
 
-- **HIGH: D-10 JSON schema placement is inconsistent.** D-10 says output includes a top-level `{ "schemaVersion": 1, ... }`, but 04-01's helper emits `{ command, result }` and pushes `schemaVersion` into `result`/`error`. 04-02's own contract examples conflict with its implementation notes.
+**HIGH — 04-04 native valid-plugin golden likely contradicts actual `PluginLoader.Load(dir)` behavior.**  
+04-04 requires `PluginLoader.Load(dir)` to run once for every directory and expects `valid-plugin/expected.json` to contain `loaderObserved: { pluginsCount: 0, loadErrors: [] }` for `Utinni.CrtMatchPlugin.dll`. A native C++ DLL in a MEF `DirectoryCatalog` is likely to produce a `BadImageFormatException`/load error, not an empty `LoadErrors` list. That means the new “true loader observation” fix can make the valid native fixture fail its own golden. Fix by proving the behavior before locking expected JSON, accepting the native load error in `loaderObserved`, or only running `PluginLoader` against managed-candidate assemblies.
 
-- **HIGH: 04-02 lazy `GetRecordData` conflicts with `Open(string)` disposing the FileStream.** The plan says `Open(string)` uses `using` and delegates, while `GetRecordData` lazily seeks later. That cannot work unless the parser copies the file bytes, stores the path, or owns a live stream.
+**MEDIUM — 04-03 strict pad-byte logic uses EOF instead of parent boundary.**  
+Task 3.1 says if an odd-length chunk has `br.BaseStream.Position < br.BaseStream.Length`, consume a pad byte. For nested chunks, the relevant boundary is `parentEnd`, not file EOF. This can consume a byte outside the parent container and hide malformed nested data. Fix the algorithm to require `Position < parentEnd` for nested chunks and throw if `Position == parentEnd`.
 
-- **HIGH: 04-04 NativeExportProbe is probably invalid.** `LoadLibraryExW(..., LOAD_LIBRARY_AS_DATAFILE)` handles are not suitable for normal `GetProcAddress` export lookup. This may make all native export checks fail. Use PE export-table parsing or a documented load mode that supports export lookup without running code.
+**MEDIUM — 04-04 verification gates contain false-fail grep patterns.**  
+04-04 final verification asks for `grep -nE "new PluginLoader\(autoLoad: ?false\)\.Load\("`, but Task 4.1’s implementation constructs `var loader = new PluginLoader(...)` and then calls `loader.Load(dir)` on a later line. That grep will fail even when the code is correct. Task 4.1 also asks for `public DirectoryReport InspectDirectory`, but the implementation is `public static DirectoryReport InspectDirectory`. Fix the verify gates to match the planned code.
 
-- **HIGH: 04-04 drifts from the stated PluginLoader reuse requirement.** Context says `validate-plugin` consumes `PluginLoader.cs`; key_links mention `new PluginLoader(autoLoad:false)`, but Task 4.1 switches to `ReflectionOnlyLoadFrom` and custom attribute inspection. That may not validate the same behavior the real loader uses.
+**MEDIUM — 04-04 Task 4.1 unknown-kind test depends on future Task 4.3 fixture.**  
+Task 4.1’s Test 7 says it consumes `wrong-iplugin-shape` “in a partial form OR builds an inline minimal DLL via Roslyn.” But `wrong-iplugin-shape` is not created until Task 4.3, and Roslyn is not otherwise specified as a dependency. This breaks the atomic task boundary. Make Task 4.1 build the DLL deterministically or move the unknown-kind test to Task 4.3.
 
-- **MEDIUM: 04-04 managed plugin detection is fragile.** `ReflectionOnlyLoadFrom` requires dependency resolution and `GetCustomAttributesData` may not reflect MEF inherited export semantics the same way MEF composition does. This risks false negatives for valid managed plugins.
+**LOW — 04-01 test count is internally inconsistent.**  
+04-01 Task 1.2 lists ten `JsonOutputTests` method names, but verification expects 9 tests. Later plan-level verification says 17 total tests from “9 JsonOutput + 4 dispatch Facts + 4 Theory rows,” while Task 1.5 actually describes 3 dispatch Facts plus 4 Theory rows. This is not a design bug, but it will confuse executors and summary gates.
 
-- **MEDIUM: 04-04 JSON contract allows only `managed|native|mixed`, but implementation introduces `unknown`.** Either document `unknown` in the stable schema or map unknown DLLs to a supported kind with failing checks.
+**Risk Assessment**
+Overall risk: **HIGH**.
 
-- **MEDIUM: 04-03 pad-byte handling may hide malformed IFF.** The parser is instructed not to throw if an odd-length chunk reaches EOF without a pad byte. For strict regression tooling, missing pad should probably be `Truncated`.
+Top risks:
 
-- **MEDIUM: 04-03 `real-sample.iff` is a redistribution/legal risk.** The fallback helps, but the plan still encourages committing a real SWG asset sample. Given the project's D-01/legal posture, default to synthesized fixtures unless a sample is confirmed legally safe.
+1. The 04-03 IFF malformed-fixture error kinds are internally inconsistent with the parser algorithm, so execute-phase will likely fail Tier-2 goldens.
+2. The 04-04 `PluginLoader` fix may make native plugin fixtures report loader errors, contradicting the expected JSON and making the “valid native plugin” golden unstable.
+3. Several verification gates are now stricter than the code they instruct the executor to write, creating false failures even if the implementation is otherwise correct.
 
-- **MEDIUM: 04-02 `list-objects` duplicates a partial IFF scan.** It intentionally avoids 04-03, but the raw `OBJS` byte scan is brittle and creates a second mini-IFF parser. This weakens the "same core libraries" goal and may break on real world snapshots.
+**REVIEW VERDICT**
+**FAIL** — more revision needed before `/gsd:execute-phase 4`.
 
-- **MEDIUM: WinForms preservation criterion is weakly verified.** The roadmap says the WinForms UI continues to function. The plans rely on existing tests/proxy coverage and defer real UI smoke to Phase 6. That may be acceptable, but it should be called a residual risk.
+The high-level architecture is now much stronger than the prior version, but the plan set still contains executable contradictions that are likely to waste implementation time. Fix the IFF error taxonomy, validate or revise the native-plugin `loaderObserved` expectation, and clean up the false-failing grep/test-boundary issues before execution.
 
-- **LOW: xUnit parallelization can make `Console.SetOut` tests flaky.** The in-process CLI runner mutates global console state. Disable test parallelization for `Utinni.Cli.Tests` or serialize runner calls.
-
-- **LOW: Several verify snippets use Unix tools or `/tmp` paths in a PowerShell/Windows project.** This is plan polish, but replacing with PowerShell-native commands will reduce executor friction.
-
-## Suggestions
-
-- **04-01 Task 1.1:** Land a minimal `Program.cs` in the first scaffold commit, or temporarily build `Utinni.Cli` as a library until Task 1.4.
-
-- **04-01 Task 1.2 / 1.3:** Change `JsonOutput` to write through `Console.Out`, or make `JsonOutput` accept a `TextWriter`. Add an assembly-level xUnit collection/parallelization setting for CLI tests.
-
-- **04-01 / all plans:** Decide one JSON envelope shape and enforce it everywhere. Recommended:
-  `{ "schemaVersion": 1, "command": "...", "result": ... }`
-  and `{ "schemaVersion": 1, "command": "...", "error": ... }`.
-
-- **04-02 Task 2.1:** Make `TreFile` own immutable bytes or keep a safe file handle lifecycle. Do not return a lazy reader backed by a disposed stream.
-
-- **04-02 Task 2.2:** Prefer making `list-objects` depend on the IFF reader once 04-03 lands, or explicitly mark the byte scan as temporary and add a Phase 4 cleanup task after 04-03.
-
-- **04-03 Task 3.1:** Treat missing odd-length pad bytes as malformed/truncated unless a documented SWG variant requires leniency.
-
-- **04-03 Task 3.3:** Make the "real sample" optional and default to a second synthesized fixture. Only commit real SWG-derived bytes after an explicit license note.
-
-- **04-04 Task 4.1:** Replace `LoadLibraryExW + GetProcAddress` with PE export parsing, or test the chosen Windows API approach before baking it into the plan.
-
-- **04-04 Task 4.1:** Either actually call `PluginLoader(autoLoad:false).Load(dir)` as a validation signal, or update the plan/context to say `validate-plugin` is static inspection only and does not assert loader equivalence.
-
-- **04-04 Task 4.1 / 4.3:** Commit source for the three fixture DLLs, not only binaries. Binary-only fixtures are harder to audit and reproduce.
-
-- **04-04 JSON contract:** Add `unknown` to the documented `kind` enum or remove the implementation branch.
-
-## Risk Assessment
-
-Overall risk: **HIGH** as written. The architecture and testing strategy are solid, but the current plans contain multiple likely build/test blockers and one major Windows API correctness issue. D-01 clean-room discipline looks acceptable, but the "real sample" fixture path needs tightening. The phase should be executable after targeted revisions to 04-01's scaffold/output capture, 04-02's TRE stream ownership, 04-03's fixture/legal and malformed-pad behavior, and 04-04's plugin inspection/export probing design.
-
-## REVIEW VERDICT: FAIL
 
 ---
 
@@ -99,159 +104,184 @@ Overall risk: **HIGH** as written. The architecture and testing strategy are sol
 
 ## Summary
 
-The four plans are well structured: wave-0 scaffold, parser/CLI split, golden harness, threat models, and D-01 clean-room posture are all sound. Execution detail is where they break. Codex's core technical findings hold up — especially `LoadLibraryExW` + `GetProcAddress`, `Console.OpenStandardOutput` vs test capture, and `TreFile` stream lifetime. This review adds **contract drift inside 04-02** (load-bearing React Flow field names documented but not implemented), **internal contradictions in 04-01 Task 1.1 verify**, and **04-04's false claim that `PluginLoader` is exercised**. Plans are not safe to execute as written; a focused replan pass (~half a day) fixes most blockers without re-architecting the phase.
-
-## Codex Cross-Check
-
-| # | Codex HIGH | Verdict | Evidence |
-|---|------------|---------|----------|
-| 1 | **04-01 Task 1.1 won't build** (Exe without `Main` → CS5001) | **CONFIRM** | Task 1.1 sets `OutputType=Exe` but `Program.cs` lands in Task 1.4. SDK-style net472 exe projects require an entry point. Task 1.1 `<done>` claims "empty exe … is fine" — false for `Exe`. Worse: Task 1.1 `<verify>` requires `bin\Release\utinni-cli.exe` while `<done>` says "No code yet" — self-contradictory. |
-| 2 | **JsonOutput bypasses `Console.SetOut` capture** | **CONFIRM** | Task 1.2 writes via `Console.OpenStandardOutput()`, which bypasses `Console.SetOut` redirection used by `InProcessCliRunner`. JsonOutputTests use `SetOut` directly (Task 1.2 behavior), so unit tests pass while golden/CLI integration tests see empty stdout. Classic .NET pitfall. |
-| 3 | **D-10 `schemaVersion` placement inconsistent** | **CONFIRM with NUANCE** | D-10 / some must_haves imply top-level `schemaVersion`. Plan 04-01 Task 1.2 (Pitfall 7) nests it in `result`/`error`; JsonOutput wraps `{ command, result \| error }` only. 04-02 `<json_contract>` shows *both* top-level and nested `schemaVersion` plus fields outside the JsonOutput envelope. Not unfixable — pick one envelope and update D-10 — but goldens will thrash until aligned. |
-| 4 | **04-02 `TreFile` stream lifecycle broken** | **CONFIRM** | Task 2.1: `Open(string)` uses `using var fs = …` then delegates to `Open(Stream)`; `GetRecordData` lazy-seeks later. Stream is disposed before lazy read. Fix: own bytes/stream on `TreFile` or eager-read in `Open`. |
-| 5 | **`LOAD_LIBRARY_AS_DATAFILE` + `GetProcAddress` invalid** | **CONFIRM** | [Microsoft `GetProcAddress` remarks](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getprocaddress): handles from `LOAD_LIBRARY_AS_DATAFILE` must not be passed to `GetProcAddress` — call fails. Same restriction in `LoadLibraryEx` docs. Plan 04-04 Task 4.1 explicitly pairs these; Tier-1 tests expecting `HasExport(createPlugin)==true` would fail on Windows. **Fix:** PE export-table parse (`System.Reflection.Metadata` on net472 — needs NuGet, see New Findings #8), or `LoadLibraryExW` with `DONT_RESOLVE_DLL_REFERENCES` (0x1) — DllMain not called, `GetProcAddress` works per MSDN. Codex's suggested flag change is valid; PE parsing is safer for "no code execution." |
-| 6 | **04-04 drifts from `PluginLoader` reuse** | **CONFIRM** | CONTEXT/key_links promise `new PluginLoader(autoLoad:false).Load(dir)`. Task 4.1 uses `ReflectionOnlyLoadFrom` + custom attribute scraping; `PluginLoader` never invoked. Native path uses `NativeExportProbe` only. "Same behavior as real loader" is not asserted — only partially equivalent static inspection. |
-
-**Codex MEDIUM items:** Mostly valid. `kind: "unknown"` vs JSON contract, pad-byte leniency, `list-objects` byte-scan brittleness, and `ReflectionOnlyLoadFrom` MEF fidelity are real. WinForms preservation gap is acceptable per D-09 but should stay explicit in must_haves.
-
-## New Findings (Cursor — not surfaced by Codex)
-
-### HIGH
-
-1. **04-02 `<json_contract>` vs Task 2.2 implementation — React Flow field drift.** Contract locks load-bearing keys: `records[].id`, `compressionKind`, `header.recordCount`, `objects[].id`. Task 2.2 `BuildResult` emits `name`, `dataCompression`, `resourceCount`, and list-objects objects have only `templateName` (no `id`). Executor will either violate the contract or re-baseline goldens against the wrong shape. **This is worse than D-10 envelope placement — it breaks the stated React Flow portability goal.** (Note: this drift was introduced by the post-plan-checker revision pass that added the `<json_contract>` block without updating Task 2.2's BuildResult call.)
-
-2. **04-01 Task 1.1 verify/done contradiction** (adjacent to Codex's CS5001 finding). Verify demands `utinni-cli.exe` exists; done says no source files yet. First commit cannot satisfy its own gate.
-
-3. **04-04 threat model / key_links misrepresent runtime behavior.** Threat table says managed path uses `PluginLoader.Load(dir)`; Task 4.1 does not. Documentation promises loader equivalence that tests won't enforce.
-
-### MEDIUM
-
-4. **`list-objects` OBJS sentinel scan** — `IndexOf("OBJS")` over raw bytes can false-positive inside payloads; no FORM boundary validation. Acceptable for synthesized fixture, risky for "tiny real" samples under D-03.
-
-5. **04-03 PROP listed as container** — SWG/EA-IFF edge cases around PROP semantics; worth validating against reference reads before locking Tier-1 tests.
-
-6. **Source-path grep test in CI** (`PluginInspectionTests` Test 5) — reads `Utinni.Cli/Commands/PluginInspection.cs` from repo via relative walk from `BaseDirectory`. Fragile if working directory/layout differs; prefer compiling against the built assembly or a `[assembly:]` attribute marker.
-
-7. **Phase-closure ordering** — 04-04 `depends_on: [04-01]` only, but DEC-C3 promotion + "Phase 4 close" assumes all four commands shipped. D-05 CI gates help, but nothing prevents 04-04 landing before 04-02/03 if waves misfire.
-
-8. **PEReader fix needs a net472 package** — if replan chooses PE export parsing, `System.Reflection.Metadata` is not in-framework on net472; add explicit NuGet (Codex suggested PEReader but omitted this dependency).
-
-### LOW
-
-9. **04-02 supports v0006 in artifacts but Tier-1 tests only exercise v0005** — version coverage gap.
-
-10. **04-03 "5-chunk" naming vs 7 leaf nodes** — documented but confusing for fixture maintenance.
-
-11. **Dispatch goldens mask assembly version** — good; but CommandLineParser help on `--help` vs `validate-plugin --help` differs — 04-04 tests both patterns correctly, worth keeping consistent across commands.
-
-## Codex Over-Claims (Cursor's False-Positive Calibration)
-
-| Codex item | Cursor assessment |
-|------------|-------------------|
-| **04-03 real-sample legal risk as default path** | **Partial over-claim.** Plan Task 3.3 includes synthesized fallback + `checkpoint:human-action`. Risk is real if executor commits SWG bytes without review, but plan already mitigates. Still worth defaulting to synth-only in executor instructions. |
-| **`list-objects` duplication "weakens same core libraries"** | **Nuanced, not a blocker.** Plan explicitly documents parallel-wave independence and Phase 6+ refactor. Architectural debt, not an execution failure — Codex severity as MEDIUM is fair; calling it a phase blocker would be overreach. |
-| **Pad-byte leniency hides corruption** | **Valid for strict tooling, not a build breaker.** Tier-1 can encode chosen behavior; pick strict vs lenient and document in goldens. |
-| **WinForms preservation weakly verified** | **Not over-claimed** — correctly scoped; D-09 explicitly allows this. |
-
-**Not a false positive:** Codex's `LOAD_LIBRARY_AS_DATAFILE` finding. This is documented Windows behavior, not folklore.
-
-## Risk Assessment
-
-**Overall: HIGH**
-
-| Area | Rating | Notes |
-|------|--------|-------|
-| Architecture / phasing | MEDIUM | Sound decomposition; parallel 02/03 is intentional |
-| 04-01 scaffold | **HIGH** | CS5001, stdout capture, verify contradiction |
-| 04-02 TRE | **HIGH** | Stream bug + JSON contract/implementation mismatch |
-| 04-03 IFF | MEDIUM | Parser plan is strong; PROP semantics + real-sample sourcing |
-| 04-04 validate-plugin | **HIGH** | Native export probe broken as specified; loader drift |
-| D-01 clean-room | LOW–MEDIUM | Discipline is explicit; executor compliance is the risk |
-| CI / golden harness | MEDIUM | Fixable once stdout + contracts align |
-
-**Minimum replan fixes before `/gsd:execute-phase 4`:**
-
-1. Stub `Program.cs` in Task 1.1 (or Library until 1.4); write JsonOutput to `Console.Out` or inject `TextWriter`; disable parallelization in `Utinni.Cli.Tests`.
-2. Freeze one JSON envelope spec; align 04-02 `<json_contract>`, Task 2.2, and goldens (especially load-bearing `id` fields).
-3. Fix `TreFile` ownership (byte buffer or `IDisposable` with live stream).
-4. Replace `LOAD_LIBRARY_AS_DATAFILE` probe with PE export parse or `DONT_RESOLVE_DLL_REFERENCES`; add a Windows API smoke test in Task 4.1 before goldens.
-5. Either call `PluginLoader` for managed validation or rewrite CONTEXT/key_links to "static inspection only — no loader equivalence."
-
-## REVIEW VERDICT: FAIL
+The `--reviews` revision pass is a major improvement: all eight original HIGH findings now have task-level fixes with file paths, API shapes, regression test names, and grep gates. The plans are **much closer to executable** than the pre-revision set. They are **not quite ready** for `/gsd:execute-phase 4` without one substantive fix: **`validate-plugin`'s `loaderObserved.loadErrors` contract conflicts with real `PluginLoader.Load()` behavior on native-only directories**, which will likely break Tier-1 Test 6 and the `valid-plugin` golden during execution. Everything else is either concrete or acceptable documented debt.
 
 ---
 
-## Consensus Summary (Codex + Cursor)
+## Fix Verification
 
-### Agreed Strengths
+| ID | Verdict | Evidence |
+|----|---------|----------|
+| **HIGH-1** NativeExportProbe | **CONCRETE FIX** | `04-04` Task 4.1: `NativeExportProbe.cs` via `PEReader`; grep forbids `LoadLibraryEx`/`GetProcAddress`; PRE-FLIGHT smoke on `Utinni.CrtMatchPlugin.dll`; NuGet `System.Reflection.Metadata` 1.6.0 + `System.Collections.Immutable` 1.5.0 in `Utinni.Cli.csproj`. |
+| **HIGH-2** CS5001 / verify contradiction | **CONCRETE FIX** | `04-01` Task 1.1: stub `static int Main(string[] args) => 0` in `Utinni.Cli/Program.cs`; verify requires exe + `static int Main` grep; Task 1.4 replaces body. |
+| **HIGH-3** JsonOutput stdout capture | **CONCRETE FIX** | `04-01` Task 1.2: `writer ?? Console.Out`; `EmitSuccess_DefaultWriter_RoutesThroughConsoleOutForSetOutCapture`; grep gate `Console.OpenStandardOutput` → zero matches. |
+| **HIGH-4** TreFile stream lifecycle | **CONCRETE FIX** | `04-02` Task 2.1: `byte[][] _recordCompressedBytes` eager-read; `GetRecordData_AfterOpenStreamDisposed_StillReturnsBytes`; verify greps cache field. |
+| **HIGH-5** PluginLoader reuse | **PARTIALLY CONCRETE / NEW REGRESSION** | `04-04` Task 4.1 **does** call `new PluginLoader(autoLoad: false).Load(dir)` with grep gates. But Test 6 + `valid-plugin/expected.json` assume `loadErrors: []` for a native-only dir. Actual `PluginLoader.LoadFromDirectory` MEF-composes every `.dll` and records failures via `Error()` → `LoadErrors` (see `PluginLoader.cs:128-139`, `173-177`). Native `CrtMatchPlugin.dll` will almost certainly produce a non-empty `LoadErrors`. Invocation is fixed; **golden semantics are wrong**. Per-plugin checks still use `ReflectionOnlyLoadFrom`, not `loader.Plugins`. |
+| **HIGH-6** schemaVersion placement | **CONCRETE FIX** | Locked envelope `{ schemaVersion, command, result \| error }` at root in all four plans; `JsonOutput.cs` wraps at root; envelope regression tests in 04-01, 04-02 Task 2.4, 04-03 Task 3.3, 04-04 Task 4.3. |
+| **HIGH-7** TRE JSON field drift | **CONCRETE FIX** | `04-02` Task 2.2 `BuildResult` snippet emits `recordCount`, `compressionKind`, `records[].id = "tre:"+ordinal`, `objects[].id`; matches `<json_contract>` and must_haves. |
+| **HIGH-8** threat_model false claim | **PARTIALLY CONCRETE** | Threat table updated for PE-parse native path + truthful `--help`. Still understates that **`PluginLoader.Load(dir)` runs on the whole directory**, so MEF still touches native DLLs even though export probing does not. |
+| **MED-9** `kind: unknown` | **CONCRETE FIX** | Documented in `04-04` `<json_contract>`; Test 7; grep gate for `"unknown"` branch. |
+| **MED-10** ReflectionOnly fragility | **PARTIALLY ADDRESSED** | `loaderObserved` mitigates observability, but `InspectSingle` still classifies managed shape via `ReflectionOnlyLoadFrom` + `CustomAttributeData`, not `loader.Plugins`. Residual risk documented in pitfalls — acceptable if acknowledged at execute time. |
+| **MED-11** pad-byte leniency | **CONCRETE FIX** | `04-03` Task 3.1 STRICT: odd-length EOF without pad → `Truncated`; fixture `malformed-missing-padbyte.iff`; Tier-1 + Tier-2 tests. |
+| **MED-12** real-sample legal risk | **CONCRETE FIX** | `real-sample.iff` removed; `synthetic-secondary.iff` only; verify gate `NO file named real-sample.iff`. |
+| **MED-13** list-objects byte scan | **DOCUMENTED DEBT** | Pitfall A + inline comment in Task 2.2; Phase 6+ IffReader refactor noted. Acceptable per prior review consensus. |
+| **MED-14** PROP as container | **CONCRETE FIX** | `ContainerTypeIds = { FORM, LIST, CAT }`; `Read_CatContainerWithPropChildren_PropClassifiedAsLeaf`; `synthetic-secondary.iff`. |
+| **MED-15** source-path grep fragility | **PARTIALLY ADDRESSED** | Primary fix: `[assembly: AssemblyMetadata("validate-plugin-version", "1")]` + Test 8. Test 9 source-walk retained as secondary (still cwd-sensitive). Artifacts block still says "Test 5" for metadata — stale numbering. |
+| **MED-16** phase-closure ordering | **CONCRETE FIX** | `04-04` `depends_on: [04-01, 04-02, 04-03]`; Task 4.4 `Test-Path` gate for `04-02-SUMMARY.md` + `04-03-SUMMARY.md`. |
+| **#17** PEReader NuGet | **CONCRETE FIX** | Folded into HIGH-1; explicit PackageReferences + lock file regen in Task 4.1. |
+| **LOW-18** xUnit parallelization | **CONCRETE FIX** | `04-01` Task 1.1: `[assembly: CollectionBehavior(DisableTestParallelization = true)]` in `Utinni.Cli.Tests/Properties/AssemblyInfo.cs`. |
+| **LOW-19** Unix verify snippets | **CONCRETE FIX** | PowerShell-native verify blocks across plans (`Test-Path`, `$env:TEMP`, etc.). |
+| **LOW-20** v0006 coverage | **CONCRETE FIX** | `synthesized-2record-v0006.tre` + golden + Tier-1/Tier-2 tests in `04-02` Task 2.3/2.4. |
+| **LOW-21** "5-chunk" naming | **CONCRETE FIX** | Renamed to `synthetic-nested.iff` throughout `04-03`. |
+| **LOW-22** help consistency | **CONCRETE FIX** | `04-04` Task 4.3: `Help_ContainsTEoPMitigationWarning` + `Help_TopLevelListsValidatePluginVerb`. |
 
-- Phased structure with clean Wave 1 scaffold → parallel Waves 2/3/4 commands.
-- Tier-1 (parser) vs Tier-2 (CLI golden) test separation is principled and matches CONTEXT.md D-08.
-- D-01 clean-room intent is explicit; no plan instructs copying SOE/AGPL code.
-- Stable JSON contract thinking (sorted keys, schemaVersion, stable IDs) — well-intentioned even where execution drifts.
-- Threat models present in every plan.
-- React Flow portability lens is baked in (04-03 tree+flat dual projection, 04-04 plugin→checks shape).
+---
 
-### Agreed Concerns — Priority-Ordered
+## New Findings
 
-**HIGH — all 8 must be addressed before /gsd:execute-phase 4:**
+### HIGH
 
-1. **04-04 NativeExportProbe Windows API bug** [Codex + Cursor, both with MSDN evidence]. `LoadLibraryExW(..., LOAD_LIBRARY_AS_DATAFILE)` returns a handle that **cannot be passed to `GetProcAddress`** (MSDN: "must not pass"). The planner added `LOAD_LIBRARY_AS_DATAFILE` as a T-04-EoP mitigation (avoid DllMain) but it breaks the export-lookup mechanism the Tier-1 tests assert. **Two viable fixes:**
-   - (a) **PE export-table parsing** via `System.Reflection.Metadata` `PEReader` (Cursor: needs explicit NuGet on net472 — Codex omitted this); safest, no DLL load.
-   - (b) `LoadLibraryExW(path, NULL, DONT_RESOLVE_DLL_REFERENCES)` (0x1); DllMain not called, `GetProcAddress` works per MSDN; one-flag change but still loads code pages.
+**1. `loaderObserved.loadErrors: []` is incompatible with `PluginLoader.Load()` on native-only fixture dirs** (`04-04-PLAN.md`, Task 4.1 Test 6, Task 4.3 `valid-plugin/expected.json`, json_contract line ~266)
 
-2. **04-01 Task 1.1 won't compile + has self-contradictory verify** [Codex: CS5001; Cursor: verify demands `utinni-cli.exe` while done says "no code yet"]. Stub `static void Main() {}` in Task 1.1, OR ship as Library until Task 1.4 flips OutputType.
+The plan assumes native-only directories yield empty `LoadErrors` because "MEF DirectoryCatalog scans for managed types only." That is not what the code does: `LoadFromDirectory` iterates every `*.dll` and calls `LoadCatalog(new DirectoryCatalog(...))`, which composes and catches exceptions into `LoadErrors` via `Error()`. Existing `PluginLoaderTests` only cover managed fixtures; there is no evidence native `CrtMatchPlugin.dll` produces empty errors.
 
-3. **04-01 JsonOutput bypasses test stdout capture** [Codex + Cursor confirm]. `Console.OpenStandardOutput()` writes past `Console.SetOut`. Fix: route through `Console.Out` or accept explicit `TextWriter`. Unit tests pass via direct SetOut; golden tests will see empty stdout.
+**Executor impact:** Tier-1 Test 6 and the `valid-plugin` golden will likely fail on first run unless goldens are baselined against actual loader output or the plan defines filtered/normalized `loadErrors` semantics.
 
-4. **04-02 TreFile stream lifecycle is broken** [Codex + Cursor confirm]. `Open(string)`'s `using FileStream` is disposed before `GetRecordData` lazy-seeks. Fix: eager-read bytes (D-08 fixtures <128KB make this trivial) or own the stream + `IDisposable`.
+### MEDIUM
 
-5. **04-04 drifts from PluginLoader.cs reuse contract** [Codex + Cursor confirm + Cursor adds threat-model false claim]. CONTEXT/key_links AND the `<threat_model>` block promise `new PluginLoader(autoLoad:false).Load(dir)`; Task 4.1 uses only `ReflectionOnlyLoadFrom`. Fix: either actually invoke `PluginLoader.Load(dir)` OR rewrite CONTEXT + threat_model + key_links to "static inspection only — loader equivalence NOT asserted."
+**2. Cross-plan wave-ordering contradiction** (`04-02-PLAN.md` verification §9 vs `04-04` frontmatter)
 
-6. **D-10 schema placement inconsistency** [Codex + Cursor confirm]. D-10 implies top-level `schemaVersion`; 04-01 JsonOutput pushes it into `result`/`error`; 04-02 `<json_contract>` shows BOTH placements. Fix: pick one shape — recommend top-level `{ "schemaVersion": 1, "command": "...", "result": ... | "error": ... }` — and patch every plan that documents an alternative.
+`04-04` now correctly has `depends_on: [04-01, 04-02, 04-03]`, but `04-02` verification still says *"04-03 and 04-04 depend only on 04-01 … may proceed in parallel with 04-02."* Stale text from pre-iter-2; could mislead an executor about legal plan order before DEC-C3 promotion.
 
-7. **[NEW from Cursor] 04-02 `<json_contract>` vs Task 2.2 React Flow field drift.** Contract locks `records[].id`, `compressionKind`, `header.recordCount`, `objects[].id`; Task 2.2 BuildResult uses `name`, `dataCompression`, `resourceCount`, with no `id` on objects. **This is a real regression introduced by the post-plan-checker revision pass — the planner added the `<json_contract>` block without re-aligning Task 2.2's emission code.** Fix: align Task 2.2 BuildResult to the contract field names, OR amend the contract to match the implementation (the contract is correct per the React Flow goal — Task 2.2 is what should change).
+**3. `ValidatePluginCommand` artifacts still describe old return type** (`04-04-PLAN.md`, artifacts ~line 59)
 
-8. **[NEW from Cursor] 04-04 threat_model misrepresents runtime.** The threat-model block claims managed path runs through `PluginLoader.Load(dir)` (relying on Phase 2 C-06 per-plugin try/catch). It does not. Fix: align with #5 — either invoke PluginLoader OR remove the threat-model claim.
+Artifacts say ValidatePluginCommand *"converts the `IReadOnlyList<PluginReport>`"* while Task 4.2 correctly uses `DirectoryReport`. Tasks are right; artifacts are stale.
 
-**MEDIUM (8 items, revise if time permits; document otherwise):**
+**4. Managed plugin validation is still dual-path, not loader-authoritative** (`04-04` Task 4.1 `InspectSingle`)
 
-9. **04-04 `kind: "unknown"` drift** [Codex] — undocumented fourth kind. Add to schema or map to failing checks.
-10. **04-04 managed plugin reflection fragility** [Codex] — `ReflectionOnlyLoadFrom` + `GetCustomAttributesData` may miss MEF inherited Exports. Runtime smoke test recommended.
-11. **04-03 odd-length-chunk pad-byte leniency** [Codex; Cursor: "not a build breaker but pick one"] — lenient = silently-acceptable corruption.
-12. **04-03 real-sample.iff legal posture** [Codex; Cursor partial over-claim — fallback exists] — strengthen by defaulting executor to synth-only.
-13. **04-02 list-objects OBJS-sentinel scan brittleness** [Codex; Cursor: "architectural debt, not blocker"] — `IndexOf("OBJS")` can false-positive inside payloads on real samples.
-14. **[NEW from Cursor] 04-03 PROP listed as container** — SWG/EA-IFF edge cases; validate against reference reads before locking Tier-1.
-15. **[NEW from Cursor] Source-path grep test fragility** — `PluginInspectionTests` Test 5 reads `PluginInspection.cs` via relative walk; flaky if working dir differs. Prefer `[assembly:]` attribute marker.
-16. **[NEW from Cursor] Phase-closure ordering** — 04-04's `depends_on: [04-01]` doesn't prevent 04-04 landing before 02/03. DEC-C3 promotion assumes all four commands shipped. Either add `depends_on: [04-01, 04-02, 04-03]` to 04-04 OR enforce wave order via D-05 CI gate.
-17. **[NEW from Cursor] PEReader needs `System.Reflection.Metadata` NuGet on net472** — important addendum to HIGH #1 fix path (a).
+`loaderObserved` captures loader output, but per-DLL `managedIPlugin` / check pass-fail still come from `ReflectionOnlyLoadFrom`. A valid managed plugin that loads via MEF but fails ReflectionOnly attribute scraping could report `kind=unknown` or failing checks while `pluginsCount >= 1`. MEDIUM-10 residual is real, not fully closed.
 
-**LOW (5 items, polish):**
+**5. `04-04` Task 4.3 native fixture build depends on `cl.exe`** (Task 4.3 PRE-FLIGHT)
 
-18. **xUnit parallelization + Console.SetOut** [Codex] — global state mutation races. `[assembly: CollectionBehavior(DisableTestParallelization = true)]` on `Utinni.Cli.Tests`.
-19. **`/tmp` + Unix tools in `<verify>` snippets** [Codex] — translate to PowerShell-native where appropriate.
-20. **[NEW from Cursor] 04-02 v0006 in artifacts but Tier-1 only tests v0005** — version coverage gap.
-21. **[NEW from Cursor] 04-03 "5-chunk" naming vs 7 leaf nodes** — fixture-maintenance confusion.
-22. **[NEW from Cursor] Dispatch goldens vs `validate-plugin --help` consistency** — keep CommandLineParser help shape consistent across commands.
+Three negative fixture DLLs need MSVC toolchain or a `checkpoint:human-action` fallback. Documented, but this is the highest execution-friction item after the loaderObserved issue.
 
-### Divergent Views (Cursor refines Codex severity)
+### LOW
 
-- **04-03 real-sample legal risk:** Codex flagged HIGH-ish; Cursor downgrades to "partial over-claim" because the plan already includes synthesized fallback + checkpoint. Net: MEDIUM with executor-side default change.
-- **04-02 list-objects byte-scan:** Codex framed as a goal-weakening concern; Cursor: "architectural debt, not blocker." Net: MEDIUM as architectural debt; document Phase 6+ refactor.
-- **04-03 pad-byte leniency:** Codex implied "should throw"; Cursor: "pick a behavior, document, lock in goldens" — either is defensible.
+**6. `04-01` JsonOutput test count mismatch** (`04-01` Task 1.2)
+
+Behavior lists **10** named `[Fact]` tests; verify/done say **9** passing; plan verification totals **17** CLI tests using 9 JsonOutput count. Off-by-one; won't block execution but verify gates will confuse the executor.
+
+**7. CON-O-09 resolution text still says "5-chunk IFF"** (`04-02` Task 2.5)
+
+Fixture was renamed to `synthetic-nested.iff` in `04-03`. Cosmetic doc drift only.
+
+**8. `04-04` artifacts reference "PluginInspectionTests Test 5" for AssemblyMetadata** (artifacts ~line 57)
+
+Task renumbering made metadata Test **8**. Stale cross-reference.
+
+---
+
+## Risk Assessment
+
+**Overall risk: MEDIUM**
+
+Top 3 risks:
+
+1. **`validate-plugin` golden mismatch on `loaderObserved.loadErrors`** — highest probability of a red CI lane on first `04-04` execution; fix is bounded (rebaseline golden + Test 6 against actual loader output, or define normalization rules in Task 4.1).
+
+2. **PEReader manual export-table walk on net472** — plan is detailed and PRE-FLIGHT gated, but PE RVA→file-offset math is easy to get wrong; mitigated by mandatory CrtMatchPlugin smoke test before goldens lock.
+
+3. **`list-objects` OBJS sentinel scan** — explicitly deferred architectural debt; fine for synthesized fixtures, risky if later real ws.iff samples are added without the Phase 6+ IffReader refactor.
+
+---
+
+## REVIEW VERDICT
+
+**FAIL** — one targeted revision pass needed before `/gsd:execute-phase 4`.
+
+The original eight HIGH blockers are substantively addressed with executable task detail (not performative one-liners). The revision pass did **not** introduce major architectural regressions. The remaining blocker is **new/regression-level**: iter-2's `loaderObserved` hoisting fixed per-plugin duplication but baked in an incorrect assumption about empty `LoadErrors` on native plugin directories, which contradicts the actual `PluginLoader.cs` contract the plan now correctly invokes.
+
+**Minimum fix to reach PASS:**
+
+1. Run `PluginLoader.Load()` against a temp dir containing only `Utinni.CrtMatchPlugin.dll` and record actual `LoadErrors`.
+2. Update `04-04` Task 4.1 Test 6, Task 4.3 `valid-plugin/expected.json`, and json_contract prose to match reality (or document explicit filtering if that is the intended semantics).
+3. Scrub stale cross-plan text in `04-02` verification §9 and `04-04` artifacts line 59.
+
+After that, the plan set is in good shape to execute. I would not recommend shipping as-is without fixing item 1 — it is the kind of issue that burns executor time on golden rebaseline churn mid-phase.
+
+
+---
+
+## Consensus Summary (Codex + Cursor, iter-2)
+
+### Agreed Strengths (both reviewers)
+
+- All 8 prior HIGH findings have task-level concrete fixes: file paths, API surfaces, regression test names, grep gates. Not performative.
+- D-01 clean-room posture STRENGTHENED (no real-sample.iff committed; purely synthesized fixtures).
+- Envelope shape locked uniformly across all 4 plans (top-level `schemaVersion` + `command`).
+- Wave structure preserved; depends_on bumped on 04-04 to capture phase-closure ordering.
+- NuGet additions for `System.Reflection.Metadata` 1.6.0 + `System.Collections.Immutable` 1.5.0 are explicit, lock file regenerated.
+
+### Agreed New Concerns — Priority-Ordered
+
+**HIGH (must fix before /gsd:execute-phase 4):**
+
+1. **`loaderObserved.loadErrors: []` is incompatible with `PluginLoader.LoadFromDirectory` on native-only fixture dirs** [Codex + Cursor, both reference `PluginLoader.cs:128-139, 173-177`]. The iter-2 WARNING-5 hoisting moved `loaderObserved` to top-level and added a regression-guard test (`LoaderObservedAtTopLevelResult`) — but the GOLDEN ASSUMES `loadErrors: []` for a native-only directory containing `Utinni.CrtMatchPlugin.dll`. Reality: `LoadFromDirectory` iterates every `*.dll` and creates a `DirectoryCatalog`, which composes managed types and catches exceptions into `LoadErrors` via the `Error()` callback. A native C++ DLL will almost certainly produce a non-empty `LoadErrors` (likely `BadImageFormatException` or a MEF compose failure). **The HIGH-5 invocation is correct; the goldens are wrong.** Fix: run `PluginLoader.Load()` against a temp dir with only `Utinni.CrtMatchPlugin.dll`, capture actual `LoadErrors`, baseline the goldens against that — OR define explicit `loadErrors` filtering/normalization semantics in Task 4.1 (e.g., filter out `BadImageFormatException` from native DLLs).
+
+2. **[Codex-only HIGH] 04-03 IFF negative fixture expectations conflict with parser check order** [Codex]. Task 3.1 specifies bounds checks in the order: negative length → `ChunkLengthExceedsCap` (64 MB) → `ChunkLengthExceedsFile` → `NestedChunkOverflow`. But the committed negative fixtures expect:
+   - `malformed-chunk-overflow.iff` declares length `0x7FFFFFFF` and expects `ChunkLengthExceedsFile` → will actually throw `ChunkLengthExceedsCap` (because 0x7FFFFFFF > 64MB cap, which is checked first).
+   - `malformed-truncated.iff` declares outer FORM length `100` in a ~30-byte file and expects `Truncated` → will more likely throw `ChunkLengthExceedsFile` (file-bound check fires first).
+   Fix: either reorder the parser checks, change the fixture declared lengths, or change the expected `error.kind` values to match what the algorithm actually produces.
+
+**MEDIUM:**
+
+3. **04-03 strict pad-byte uses EOF (`stream.Length`) instead of parent boundary (`parentEnd`)** [Codex]. For nested chunks, the relevant boundary is the parent container's end, not file EOF. The current spec can consume a pad byte that belongs to the parent's slack space and hide malformed nested data. Fix: pad-byte consumption must check `Position < parentEnd`, not `Position < stream.Length`. Throw if `Position == parentEnd` with odd-length.
+
+4. **04-04 verify gates contain false-fail grep patterns** [Codex]. Task 4.1's verify asks for a grep pattern that requires `new PluginLoader(autoLoad:false).Load(...)` on ONE line, but the implementation constructs `var loader = new PluginLoader(autoLoad: false); loader.Load(dir);` on TWO lines. The grep will report zero matches even when the code is correct. Also: verify asks for `public DirectoryReport InspectDirectory`, but the implementation is `public static DirectoryReport InspectDirectory`. Fix: relax grep patterns to match the actual code shape (allow split assignment + invocation; allow `static` modifier).
+
+5. **04-04 Task 4.1 Test 7 (unknown-kind) depends on Task 4.3 fixture (`wrong-iplugin-shape`)** [Codex]. Task 4.1's Test 7 says it consumes `wrong-iplugin-shape` "in a partial form OR builds an inline minimal DLL via Roslyn." Task 4.3 is where that fixture is created. Atomic task boundary broken. Fix: either move Test 7 to Task 4.3, or have Task 4.1 build a deterministic inline DLL (and add Roslyn as an explicit test-project dependency).
+
+6. **04-02 verification §9 stale "04-04 depends only on 04-01" text** [Cursor]. After the WARNING-4 depends_on bump, `04-02-PLAN.md` line 640 still says "04-03 and 04-04 depend only on 04-01 … may proceed in parallel with 04-02." Inconsistent with `04-04` frontmatter `depends_on: [04-01, 04-02, 04-03]`. Fix: update the prose to reflect the bumped contract.
+
+7. **04-04 artifacts still describe `IReadOnlyList<PluginReport>` return type** [Cursor]. After the WARNING-5 hoist, `ValidatePluginCommand.Run` correctly emits the new `DirectoryReport` shape, but `04-04-PLAN.md` line ~59 artifacts block still says ValidatePluginCommand "converts the `IReadOnlyList<PluginReport>`". Fix: update artifacts text.
+
+8. **04-04 managed plugin validation still dual-path; per-DLL checks remain ReflectionOnly-based** [Cursor]. `loaderObserved` captures whole-directory loader output, but per-DLL `managedIPlugin` shape checks in `InspectSingle` still use `ReflectionOnlyLoadFrom` + `CustomAttributeData` — NOT `loader.Plugins`. A managed plugin that loads via MEF (so `pluginsCount >= 1`) but fails ReflectionOnly attribute scraping (because of inherited Exports or dependency resolution) could report `kind=unknown` or failing checks. Document the residual risk in pitfalls OR use `loader.Plugins` for per-DLL signal.
+
+9. **04-04 Task 4.3 native fixture build depends on `cl.exe`** [Cursor]. Three negative fixture DLLs need MSVC toolchain or a `checkpoint:human-action` fallback. Documented, but this is the highest execution-friction item after the loaderObserved issue. Not a blocker — but worth pre-validating that `cl.exe` is available in the dev environment.
+
+**LOW:**
+
+10. **04-01 JsonOutput test count off-by-one** [Codex + Cursor]. Task 1.2 behavior names 10 `[Fact]` tests; verify/done assert "9 tests passing"; plan-level verification totals 17 (using "9 JsonOutput + 4 dispatch Facts + 4 Theory rows"). Pick one count, propagate consistently. Cosmetic for execution, will confuse executor briefly.
+
+11. **04-02 CON-O-09 resolution text references "5-chunk IFF"** [Cursor]. Stale after the LOW-21 rename to `synthetic-nested.iff`. Cosmetic doc drift.
+
+12. **04-04 artifacts reference "PluginInspectionTests Test 5" for AssemblyMetadata marker** [Cursor]. Task renumbering moved the test to Test 8 (per the MEDIUM-15 fix). Cosmetic stale cross-reference.
+
+13. **04-01/02/03/04 some grep verify gates still use Unix-style invocations** [Codex]. Mostly worked under git-bash's grep on Windows, but a few `grep -nE` calls with escaped backslash paths are fragile. Defer to Phase 6 polish — not a blocker.
+
+### Iter-1 Items Promoted from MEDIUM to "Residual"
+
+- **MED-10** (managed plugin reflection fragility) and **MED-15** (source-walk test) are PARTIALLY addressed. The HIGH-5 fix made PluginLoader.Load authoritative for directory-level observation, but per-DLL classification still uses ReflectionOnly. Acceptable if the residual is acknowledged at execute time; not blocking.
+
+### Divergent Views
+
+- **Codex** flagged the IFF error-taxonomy mismatch (New Finding HIGH-2) as a hard execute-phase failure. **Cursor** focused on the `loaderObserved` issue and didn't surface the IFF error-kind problem. Both are legitimate; the IFF issue is independently verifiable by tracing fixture byte counts against parser check ordering.
+- **Cursor** flagged the cross-plan stale-text drift (04-02 verification §9, 04-04 artifacts) as MEDIUM. **Codex** didn't surface these. They're real but cosmetic-tier — they could mislead an executor but won't break the build.
 
 ---
 
 ## Recommended Path Forward
 
-**Option A (recommended) — Replan with `--reviews`:**
+**Option A (recommended) — One more targeted `--reviews` pass:**
+
 ```
 /gsd:plan-phase 4 --reviews
 ```
-The planner re-reads REVIEWS.md as input and produces a revision pass addressing all 8 HIGH concerns + 8 MEDIUM concerns systematically. Estimated ~half-day per Cursor; bounded scope (no re-architecting — only fixing execution-detail issues).
 
-**Option B — Surgical patch:** Use the Edit tool against the specific tasks for the 8 HIGH concerns only; defer MEDIUM/LOW to execute-phase deviation log. Faster (~45 min) but spotty MEDIUM coverage.
+Fix: (a) `loaderObserved.loadErrors` semantics (validate against actual loader behavior + rebase goldens or define filter), (b) IFF parser check order vs fixture expectations, (c) verify-gate false-fail grep patterns, (d) cross-plan stale text in 04-02 §9 and 04-04 artifacts, (e) Task 4.1 Test 7 atomic-boundary fix. ~30 min planner pass.
 
-**Option C — Ship as-is:** Not recommended. Two independent AI reviewers reached FAIL with overlapping HIGH findings plus a verified Windows API correctness bug. Execute-phase would surface these as test failures, wasting executor time on retroactive plan fixes.
+**Option B — Surgical patch:** Use Edit tool against the specific tasks for the 2 NEW HIGH concerns + the 5 MEDIUMs. Faster (~15-20 min) but the IFF and PluginLoader fixes need real I/O validation, so Option A is lower-risk.
 
-**Two-reviewer adversarial coverage achieved this run:** Codex (Anthropic-trained baseline) + Cursor (different model family). Cursor confirmed 6 of 6 Codex HIGH findings and surfaced 3 NEW HIGH findings Codex missed — exactly the adversarial signal the cross-AI review pattern is designed to produce.
+**Option C — Ship as-is and fix during execute-phase:** NOT RECOMMENDED. Both reviewers independently flagged the same critical HIGH (`loaderObserved.loadErrors`), which will produce a red CI lane on first 04-04 execution. Fixing during execute means churning goldens mid-phase — slower than just fixing the plan now.
+
+**Two-reviewer adversarial coverage achieved this run:** Codex (OpenAI baseline) + Cursor (different model family). Both independently caught the `loaderObserved` regression introduced by the iter-2 WARNING-5 fix — exactly the signal the cross-AI review pattern is designed to produce. The iter-1 fixes themselves are confirmed substantive by both reviewers.
