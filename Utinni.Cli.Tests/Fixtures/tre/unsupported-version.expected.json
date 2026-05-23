@@ -1,0 +1,8 @@
+{
+  "command": "parse-tre",
+  "error": {
+    "kind": "UnsupportedVersion",
+    "message": "Unsupported TRE version '0009'. Phase 4 supports 0005 and 0006 only."
+  },
+  "schemaVersion": 1
+}
