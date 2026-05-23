@@ -227,6 +227,13 @@ Both confirmed present in docs/ai/assessment.md:
 - **Files modified:** `Utinni.Cli.Tests/Commands/ValidatePluginCommandTests.cs`
 - **Commit:** aecc849
 
+**9. [Rule 1 - Bug] Test 7 (InspectDirectory_WrongIPluginShapeFixture) temp-dir deletion raises UnauthorizedAccessException**
+- **Found during:** Post-Task 4.3 full test run
+- **Issue:** `Assembly.ReflectionOnlyLoadFrom` on WrongIPluginShape.dll holds a file lock until the CLR AppDomain is unloaded. `Directory.Delete(tempDir, recursive: true)` then fails with `UnauthorizedAccessException`.
+- **Fix:** Added GC.Collect() + GC.WaitForPendingFinalizers() before deletion, with `catch (UnauthorizedAccessException)` / `catch (IOException)` to leave temp dir for OS cleanup if still locked.
+- **Files modified:** `Utinni.Cli.Tests/Commands/PluginInspectionTests.cs`
+- **Commit:** db8ec20
+
 ## Threat Flags
 
 None. Plan 04-04 adds a plugin-inspection command. The T-04-EoP threat is documented in HelpText and the threat model:
