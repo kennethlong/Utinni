@@ -501,6 +501,20 @@ These need someone-who-was-there to answer:
 8. **DXSDK June 2010 dependency** — could it be replaced with Windows 10
    SDK's d3d9 headers? (DXSDK has `d3dx9.h`, Windows SDK lacks it — check
    if Utinni actually uses `d3dx9` math helpers.)
+9. **CON-O-11 — CLI shim distribution.** Public artifact, or test-harness-internal only?
+   (Source: docs/ai/test-harness-plan.md — resolved by Phase 4 Plan 04-01.)
+
+   **Resolved 2026-05-23 (CON-O-11, Phase 4 Plan 04-01 — D-02):** CLI distribution
+   policy = **public artifact**. `Utinni.Cli/utinni-cli.exe` ships alongside
+   `Launcher.exe` in the release bundle. Stable JSON output contract (sorted-key
+   indented, LF, UTF-8 no BOM, `schemaVersion: 1` at the envelope root per
+   REVIEWS HIGH-6) documented and regression-tested via the Tier-2 golden suite.
+   Public surface lets modders + plugin authors consume `parse-tre` /
+   `list-objects` / `inspect-iff` / `validate-plugin` as standalone tools
+   without injecting SWG. Format change = breaking change = goldens re-baselined
+   in the same PR (Phase 4 D-04). Reversal to test-harness-internal remains
+   possible in Phase 6+ at lower cost than the opposite direction (Phase 4
+   CONTEXT.md "Deferred Ideas").
 
 ---
 
