@@ -69,9 +69,15 @@ namespace Utinni.Cli.Tests.Commands
                 @"""loadErrors""\s*:\s*\[([^\[\]]+)\]",
                 match =>
                 {
-                    // Only mask if the array is non-empty.
-                    string content = match.Groups[1].Value.Trim();
-                    if (string.IsNullOrEmpty(content) || content == "")
+                    // WR-03: Only mask if the array contains at least one non-whitespace
+                    // character. A pretty-printed empty array such as "[\n      ]" has a
+                    // non-empty .Trim() result only because Trim drops trailing whitespace —
+                    // \s-matching is the load-bearing test. The previous
+                    // `IsNullOrEmpty(content) || content == ""` check was redundant
+                    // (the second clause is a strict subset of the first) AND missed
+                    // whitespace-only arrays that the JSON pretty printer might emit.
+                    string content = match.Groups[1].Value;
+                    if (!Regex.IsMatch(content, @"\S"))
                     {
                         return match.Value;
                     }
