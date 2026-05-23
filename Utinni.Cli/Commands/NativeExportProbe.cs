@@ -91,27 +91,24 @@ namespace Utinni.Cli.Commands
                 return false;
             }
 
-            // Locate the section containing the export directory.
+            // CR-01/WR-05: resolve each RVA against the section that actually contains
+            // it, rather than caching a single section for the whole function. The PE
+            // spec guarantees the IMAGE_EXPORT_DIRECTORY itself lives in one section, but
+            // the AddressOfNames array and the individual name strings it points at may
+            // live in a different section (e.g. AddressOfNames in .edata, name strings
+            // in .rdata for larger MSVC-built DLLs). Using a single section's
+            // PointerToRawData/VirtualAddress for all three would yield a wrong file
+            // offset whenever those pointers cross a section boundary.
             int exportRva = exportDir.RelativeVirtualAddress;
-            int sectionIndex = peHeaders.GetContainingSectionIndex(exportRva);
-            if (sectionIndex < 0)
+            int exportOffset = RvaToFileOffset(peHeaders, exportRva);
+            if (exportOffset < 0)
             {
                 return false;
             }
 
-            var section = peHeaders.SectionHeaders[sectionIndex];
-
             // Get the entire image bytes. PEReader.GetEntireImage() is available since 1.1.
             // It returns the full PE image as a PEMemoryBlock.
             var imageBlock = peReader.GetEntireImage();
-
-            // Convert to a byte array using the BlobReader approach.
-            // BlobReader.ReadBytes is available but we need the section offset within the image.
-            // Safer: use the file pointer (PointerToRawData) to locate the section in the image.
-            int sectionFileOffset = section.PointerToRawData;
-            int exportOffset = sectionFileOffset + (exportRva - section.VirtualAddress);
-
-            // imageBlock.GetReader() returns a BlobReader over the entire image.
             var imageReader = imageBlock.GetReader();
             int imageLength = imageBlock.Length;
 
@@ -127,7 +124,7 @@ namespace Utinni.Cli.Commands
             //   offset 28: AddressOfFunctions RVA (4 bytes)
             //   offset 32: AddressOfNames RVA (4 bytes)
             //   offset 36: AddressOfNameOrdinals RVA (4 bytes)
-            if (exportOffset < 0 || exportOffset + 40 > imageLength)
+            if (exportOffset + 40 > imageLength)
             {
                 return false;
             }
@@ -150,8 +147,8 @@ namespace Utinni.Cli.Commands
                 return false;
             }
 
-            // Convert AddressOfNames RVA to file offset.
-            int namesFileOffset = sectionFileOffset + ((int)addressOfNamesRva - section.VirtualAddress);
+            // CR-01/WR-05: per-RVA section lookup for the AddressOfNames array.
+            int namesFileOffset = RvaToFileOffset(peHeaders, (int)addressOfNamesRva);
             if (namesFileOffset < 0 || namesFileOffset + (long)numberOfNames * 4 > imageLength)
             {
                 return false;
@@ -168,7 +165,9 @@ namespace Utinni.Cli.Commands
 
                 imageReader.Offset = entryOffset;
                 uint nameRva = imageReader.ReadUInt32();
-                int nameFileOffset = sectionFileOffset + ((int)nameRva - section.VirtualAddress);
+                // CR-01: per-RVA section lookup for each name string — the strings
+                // may live in a different section than the names array itself.
+                int nameFileOffset = RvaToFileOffset(peHeaders, (int)nameRva);
                 if (nameFileOffset < 0 || nameFileOffset >= imageLength)
                 {
                     continue;
@@ -184,6 +183,24 @@ namespace Utinni.Cli.Commands
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// CR-01/WR-05: resolves an image-relative virtual address (RVA) to a file
+        /// offset by looking up the section that actually contains the RVA. Returns
+        /// -1 if no section contains the RVA (which indicates a malformed PE or an
+        /// RVA pointing at uninitialised image bytes such as a BSS-style section).
+        /// </summary>
+        private static int RvaToFileOffset(PEHeaders peHeaders, int rva)
+        {
+            int idx = peHeaders.GetContainingSectionIndex(rva);
+            if (idx < 0)
+            {
+                return -1;
+            }
+
+            var sec = peHeaders.SectionHeaders[idx];
+            return sec.PointerToRawData + (rva - sec.VirtualAddress);
         }
 
         private static string ReadNullTerminatedAscii(BlobReader reader, int maxEnd)
