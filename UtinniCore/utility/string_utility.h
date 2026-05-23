@@ -43,7 +43,7 @@ inline std::string toString(bool b)
 
 inline bool toBool(const std::string& input)
 {
-    bool result;
+    bool result = false;
     std::istringstream(input) >> std::boolalpha >> result;
     return result;
 }
