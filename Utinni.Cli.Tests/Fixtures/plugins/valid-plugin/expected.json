@@ -1,0 +1,59 @@
+{
+  "command": "validate-plugin",
+  "result": {
+    "directory": "<TEST_FIXTURE_DIR>",
+    "directoryChecks": [
+      {
+        "detail": "Loader and reflection agree.",
+        "id": "loader-vs-reflection-agreement",
+        "status": "pass"
+      }
+    ],
+    "loaderObserved": {
+      "loadErrors": [],
+      "pluginsCount": 0
+    },
+    "plugins": [
+      {
+        "checks": [
+          {
+            "detail": "createPlugin export found.",
+            "id": "createplugin-export",
+            "status": "pass"
+          },
+          {
+            "detail": "destroyPlugin export found.",
+            "id": "destroyplugin-export",
+            "status": "pass"
+          },
+          {
+            "detail": "Plugin is native; MEF [InheritedExport] does not apply.",
+            "id": "iplugin-export-shape",
+            "status": "n/a"
+          },
+          {
+            "detail": "Plugin is native; MEF [InheritedExport] does not apply.",
+            "id": "editor-plugin-export-shape",
+            "status": "n/a"
+          }
+        ],
+        "exports": {
+          "createPlugin": true,
+          "destroyPlugin": true,
+          "managedIEditorPlugin": false,
+          "managedIPlugin": false
+        },
+        "id": "Utinni.CrtMatchPlugin",
+        "kind": "native",
+        "overallStatus": "pass",
+        "path": "<TEST_FIXTURE_DIR>\\Utinni.CrtMatchPlugin.dll"
+      }
+    ],
+    "summary": {
+      "failing": 0,
+      "passing": 1,
+      "totalPlugins": 1
+    }
+  },
+  "schemaVersion": 1
+}

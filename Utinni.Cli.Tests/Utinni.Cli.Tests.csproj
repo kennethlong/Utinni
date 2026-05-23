@@ -30,6 +30,17 @@
   <ItemGroup>
     <Content Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <!-- TASK 4.3 (Plan 04-04): Copy Utinni.CrtMatchPlugin.dll to valid-plugin/ fixture dir.
+       This is the Phase 3 R-B "real plugin" fixture that validate-plugin should classify as kind=native pass. -->
+  <Target Name="CopyValidPluginFixture" AfterTargets="Build">
+    <ItemGroup>
+      <_ValidPluginArtifacts Include="$(SolutionDir)bin\$(Configuration)\Utinni.CrtMatchPlugin.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_ValidPluginArtifacts)"
+          DestinationFolder="$(TargetDir)Fixtures\plugins\valid-plugin\"
+          SkipUnchangedFiles="true"
+          Condition="Exists('%(_ValidPluginArtifacts.Identity)')" />
+  </Target>
   <!-- Force copy System.Reflection.Metadata 1.6.0 and System.Collections.Immutable 1.5.0
        over the older versions that Microsoft.TestPlatform places in the output directory.
        This ensures the binding redirects in app.config can resolve to 1.6.0.0 physically. -->

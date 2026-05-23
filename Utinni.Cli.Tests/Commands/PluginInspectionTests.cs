@@ -28,6 +28,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Utinni.Cli.Commands;
+using Utinni.Cli.Tests.Infrastructure;
 using Xunit;
 
 namespace Utinni.Cli.Tests.Commands
@@ -208,8 +209,57 @@ namespace Utinni.Cli.Tests.Commands
             }
         }
 
-        // Test 7 lives in Task 4.3 (iter-3 MED-5 + iter-4 MED-2 — kind=managed+shape-fail
-        // against wrong-iplugin-shape fixture; atomic-task boundary restored).
+        // ---------------------------------------------------------------------------
+        // Test 7 (iter-3 MED-5 moved here from Task 4.1; iter-4 MED-2 — kind=managed not unknown):
+        // InspectDirectory against wrong-iplugin-shape fixture → kind=managed + iplugin-export-shape=fail
+        // ---------------------------------------------------------------------------
+
+        [Fact]
+        public void InspectDirectory_WrongIPluginShapeFixture_ManagedWithShapeFail()
+        {
+            // Resolve the wrong-iplugin-shape fixture DLL.
+            string wrongDll = FixturePath.Resolve("plugins/wrong-iplugin-shape/WrongIPluginShape.dll");
+            string tempDir = Path.Combine(Path.GetTempPath(), "utinni-test-wis-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+            string destPath = Path.Combine(tempDir, "WrongIPluginShape.dll");
+
+            try
+            {
+                File.Copy(wrongDll, destPath);
+                var dirReport = PluginInspection.InspectDirectory(tempDir);
+
+                Assert.Equal(1, dirReport.Plugins.Count);
+                var entry = dirReport.Plugins[0];
+
+                // Iter-4 MED-2: kind=managed (attribute present → managedIPlugin=true → managed).
+                Assert.Equal("managed", entry.Kind);
+
+                // Dual-signal: attribute present but interface NOT implemented.
+                Assert.True(entry.Exports.ManagedIPlugin, "ManagedIPlugin should be true (attribute present)");
+                Assert.False(entry.Exports.CreatePlugin, "No native createPlugin export");
+                Assert.False(entry.Exports.DestroyPlugin, "No native destroyPlugin export");
+
+                // Checks: createPlugin/destroyPlugin are n/a (managed plugin, no native exports expected).
+                var createCheck = System.Linq.Enumerable.FirstOrDefault(entry.Checks, c => c.Id == "createplugin-export");
+                var destroyCheck = System.Linq.Enumerable.FirstOrDefault(entry.Checks, c => c.Id == "destroyplugin-export");
+                Assert.NotNull(createCheck);
+                Assert.Equal("n/a", createCheck.Status);
+                Assert.NotNull(destroyCheck);
+                Assert.Equal("n/a", destroyCheck.Status);
+
+                // iplugin-export-shape must fail (attribute present but interface not implemented).
+                var shapeCheck = System.Linq.Enumerable.FirstOrDefault(entry.Checks, c => c.Id == "iplugin-export-shape");
+                Assert.NotNull(shapeCheck);
+                Assert.Equal("fail", shapeCheck.Status);
+
+                // Overall must fail (shape check fails).
+                Assert.Equal("fail", entry.OverallStatus);
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, recursive: true);
+            }
+        }
 
         // ---------------------------------------------------------------------------
         // Test 8: REVIEWS MEDIUM-15 — AssemblyMetadata marker read via reflection

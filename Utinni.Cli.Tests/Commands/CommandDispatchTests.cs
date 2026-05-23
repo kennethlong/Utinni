@@ -80,29 +80,9 @@ namespace Utinni.Cli.Tests.Commands
             Assert.Equal(1, result.ExitCode);
         }
 
-        // parse-tre, list-objects (Plan 04-02), and inspect-iff (Plan 04-03) are now implemented
-        // and no longer return NotImplemented. Only validate-plugin remains as a stub.
-        [Theory]
-        [InlineData("validate-plugin", "/tmp/somedir")]
-        public void Run_WithVerbStub_ExitsOneAndEmitsNotImplementedJson(string verb, string path)
-        {
-            var result = InProcessCliRunner.Run(verb, path);
-            Assert.Equal(1, result.ExitCode);
-
-            // stdout must be valid JSON with the REVIEWS HIGH-6 locked envelope
-            var root = JObject.Parse(result.Stdout);
-
-            // schemaVersion at the envelope ROOT (HIGH-6)
-            Assert.Equal(1, root["schemaVersion"].Value<int>());
-
-            // command at the envelope ROOT (HIGH-6)
-            Assert.Equal(verb, root["command"].Value<string>());
-
-            // error.kind == "NotImplemented"
-            Assert.Equal("NotImplemented", root["error"]["kind"].Value<string>());
-
-            // No nested schemaVersion inside error (HIGH-6)
-            Assert.Null(root["error"]["schemaVersion"]);
-        }
+        // Plan 04-04 Rule 1 auto-fix: removed validate-plugin InlineData stub row.
+        // All four verbs are now implemented (validate-plugin exits 3 for non-existent dir,
+        // not 1 like the NotImplemented stub). Same as Plans 04-02 + 04-03 auto-fix pattern.
+        // No stub rows remain — Run_WithVerbStub test is no longer needed.
     }
 }

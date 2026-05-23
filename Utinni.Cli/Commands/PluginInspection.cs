@@ -262,58 +262,101 @@ namespace Utinni.Cli.Commands
             bool hasDestroyPlugin = NativeExportProbe.HasExport(dllPath, "destroyPlugin");
 
             // Managed probe via ReflectionOnlyLoadFrom (secondary fast-path for kind classification).
+            // ReflectionOnly context requires all assembly dependencies to be pre-loaded or
+            // resolved via ReflectionOnlyAssemblyResolve. We register a resolver to handle
+            // System.ComponentModel.Composition (for InheritedExportAttribute) and other deps.
             bool iPluginAttributePresent = false;
             bool iPluginInterfaceImplemented = false;
             bool iEditorPluginAttributePresent = false;
             bool iEditorPluginInterfaceImplemented = false;
 
+            // Alternative approach for managed attribute detection: read raw binary attribute data.
+            // We use a two-pass strategy:
+            //   Pass 1: Try ReflectionOnlyLoadFrom with dependency resolver.
+            //   Pass 2 (fallback): If CustomAttributeData fails, scan the raw assembly byte stream
+            //           for the InheritedExportAttribute type reference strings.
             try
             {
-                var asm = Assembly.ReflectionOnlyLoadFrom(dllPath);
-                foreach (var t in asm.GetTypes())
+                ResolveEventHandler resolver = (sender, args) =>
                 {
-                    foreach (var cad in CustomAttributeData.GetCustomAttributes(t))
+                    try
                     {
-                        var attrType = cad.Constructor.DeclaringType;
-                        if (attrType == null)
-                        {
-                            continue;
-                        }
+                        return Assembly.ReflectionOnlyLoad(args.Name);
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                };
 
-                        bool isInheritedExport = attrType.FullName != null &&
-                            attrType.FullName.EndsWith("InheritedExportAttribute", StringComparison.Ordinal);
-                        if (!isInheritedExport)
-                        {
-                            continue;
-                        }
+                AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += resolver;
 
-                        // Check constructor argument (the exported type).
-                        if (cad.ConstructorArguments.Count < 1)
+                try
+                {
+                    var asm = Assembly.ReflectionOnlyLoadFrom(dllPath);
+                    foreach (var t in asm.GetTypes())
+                    {
+                        foreach (var cad in CustomAttributeData.GetCustomAttributes(t))
                         {
-                            continue;
-                        }
+                            var attrType = cad.Constructor.DeclaringType;
+                            if (attrType == null)
+                            {
+                                continue;
+                            }
 
-                        var arg = cad.ConstructorArguments[0].Value;
-                        var argType = arg as Type;
-                        if (argType == null)
-                        {
-                            continue;
-                        }
+                            bool isInheritedExport = attrType.FullName != null &&
+                                attrType.FullName.EndsWith("InheritedExportAttribute", StringComparison.Ordinal);
+                            if (!isInheritedExport)
+                            {
+                                continue;
+                            }
 
-                        if (argType.FullName != null && argType.FullName.EndsWith(".IPlugin", StringComparison.Ordinal))
-                        {
-                            iPluginAttributePresent = true;
-                            // Check if the type actually implements IPlugin.
-                            iPluginInterfaceImplemented = t.GetInterfaces()
-                                .Any(i => i.FullName != null && i.FullName.EndsWith(".IPlugin", StringComparison.Ordinal));
-                        }
-                        else if (argType.FullName != null && argType.FullName.EndsWith(".IEditorPlugin", StringComparison.Ordinal))
-                        {
-                            iEditorPluginAttributePresent = true;
-                            iEditorPluginInterfaceImplemented = t.GetInterfaces()
-                                .Any(i => i.FullName != null && i.FullName.EndsWith(".IEditorPlugin", StringComparison.Ordinal));
+                            // Check constructor argument (the exported type).
+                            if (cad.ConstructorArguments.Count < 1)
+                            {
+                                continue;
+                            }
+
+                            var arg = cad.ConstructorArguments[0].Value;
+                            var argType = arg as Type;
+                            if (argType == null)
+                            {
+                                // Argument may be a string if the Type couldn't be resolved —
+                                // try string matching.
+                                var argStr = arg as string;
+                                if (argStr != null)
+                                {
+                                    if (argStr.EndsWith(".IPlugin", StringComparison.Ordinal))
+                                    {
+                                        iPluginAttributePresent = true;
+                                    }
+                                    else if (argStr.EndsWith(".IEditorPlugin", StringComparison.Ordinal))
+                                    {
+                                        iEditorPluginAttributePresent = true;
+                                    }
+                                }
+                                continue;
+                            }
+
+                            if (argType.FullName != null && argType.FullName.EndsWith(".IPlugin", StringComparison.Ordinal))
+                            {
+                                iPluginAttributePresent = true;
+                                // Check if the type actually implements IPlugin.
+                                iPluginInterfaceImplemented = t.GetInterfaces()
+                                    .Any(i => i.FullName != null && i.FullName.EndsWith(".IPlugin", StringComparison.Ordinal));
+                            }
+                            else if (argType.FullName != null && argType.FullName.EndsWith(".IEditorPlugin", StringComparison.Ordinal))
+                            {
+                                iEditorPluginAttributePresent = true;
+                                iEditorPluginInterfaceImplemented = t.GetInterfaces()
+                                    .Any(i => i.FullName != null && i.FullName.EndsWith(".IEditorPlugin", StringComparison.Ordinal));
+                            }
                         }
                     }
+                }
+                finally
+                {
+                    AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve -= resolver;
                 }
             }
             catch (BadImageFormatException)
@@ -331,6 +374,17 @@ namespace Utinni.Cli.Commands
             catch
             {
                 // Any other reflection error — safe fallback.
+            }
+
+            // Fallback: if ReflectionOnly attribute scan returned no managed signals AND the
+            // DLL is managed (no native exports), scan the raw bytes for known attribute strings.
+            // This handles cases where ReflectionOnly fails due to missing transitive deps.
+            if (!iPluginAttributePresent && !iEditorPluginAttributePresent
+                && !hasCreatePlugin && !hasDestroyPlugin)
+            {
+                iPluginAttributePresent = RawBytesHasPluginAttributeString(dllPath, "UtinniCoreDotNet.PluginFramework.IPlugin");
+                iEditorPluginAttributePresent = RawBytesHasPluginAttributeString(dllPath, "UtinniCoreDotNet.PluginFramework.IEditorPlugin");
+                // Interface implementation cannot be determined from raw bytes — leave false.
             }
 
             // Kind discrimination (REVIEWS MEDIUM-9 — kind=unknown documented).
@@ -512,6 +566,44 @@ namespace Utinni.Cli.Commands
                 Checks = checks,
                 OverallStatus = overallStatus
             };
+        }
+
+        /// <summary>
+        /// Fallback: scan the raw bytes of a DLL for a UTF-8 string that would indicate
+        /// an InheritedExport attribute referencing a specific type name.
+        /// Used when ReflectionOnly fails due to missing transitive assembly dependencies.
+        /// Returns true if the typeFullName string appears in the DLL's metadata stream.
+        /// </summary>
+        private static bool RawBytesHasPluginAttributeString(string dllPath, string typeFullName)
+        {
+            try
+            {
+                var bytes = System.IO.File.ReadAllBytes(dllPath);
+                var needle = System.Text.Encoding.UTF8.GetBytes(typeFullName);
+                int limit = bytes.Length - needle.Length;
+                for (int i = 0; i <= limit; i++)
+                {
+                    bool match = true;
+                    for (int j = 0; j < needle.Length; j++)
+                    {
+                        if (bytes[i + j] != needle[j])
+                        {
+                            match = false;
+                            break;
+                        }
+                    }
+                    if (match)
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                // File read failure — safe fallback.
+            }
+
+            return false;
         }
     }
 }

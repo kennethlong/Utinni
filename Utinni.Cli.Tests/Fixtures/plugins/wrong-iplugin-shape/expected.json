@@ -1,0 +1,61 @@
+{
+  "command": "validate-plugin",
+  "result": {
+    "directory": "<TEST_FIXTURE_DIR>",
+    "directoryChecks": [
+      {
+        "detail": "Loader and reflection agree.",
+        "id": "loader-vs-reflection-agreement",
+        "status": "pass"
+      }
+    ],
+    "loaderObserved": {
+      "loadErrors": [
+        "<LOAD_ERROR_MASKED>"
+      ],
+      "pluginsCount": 0
+    },
+    "plugins": [
+      {
+        "checks": [
+          {
+            "detail": "Plugin is managed; native createPlugin/destroyPlugin do not apply.",
+            "id": "createplugin-export",
+            "status": "n/a"
+          },
+          {
+            "detail": "Plugin is managed; native createPlugin/destroyPlugin do not apply.",
+            "id": "destroyplugin-export",
+            "status": "n/a"
+          },
+          {
+            "detail": "Type carries [InheritedExport(typeof(IPlugin))] but does not implement IPlugin interface. MEF would discover this DLL but composition would fail downstream.",
+            "id": "iplugin-export-shape",
+            "status": "fail"
+          },
+          {
+            "detail": "[InheritedExport(typeof(IEditorPlugin))] attribute not found.",
+            "id": "editor-plugin-export-shape",
+            "status": "fail"
+          }
+        ],
+        "exports": {
+          "createPlugin": false,
+          "destroyPlugin": false,
+          "managedIEditorPlugin": false,
+          "managedIPlugin": true
+        },
+        "id": "WrongIPluginShape",
+        "kind": "managed",
+        "overallStatus": "fail",
+        "path": "<TEST_FIXTURE_DIR>\\WrongIPluginShape.dll"
+      }
+    ],
+    "summary": {
+      "failing": 1,
+      "passing": 0,
+      "totalPlugins": 1
+    }
+  },
+  "schemaVersion": 1
+}
