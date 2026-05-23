@@ -154,6 +154,16 @@ namespace Utinni.Cli.Commands
 
     public static class PluginInspection
     {
+        // CR-03: serialize AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += / -=
+        // pairs across InspectSingle invocations. xunit may run separate test
+        // collections (different test classes/assemblies) on different threads even
+        // with CollectionBehavior(DisableTestParallelization = true), which only
+        // serializes within a collection. Without this lock, two concurrent
+        // InspectSingle calls can interleave registrations and remove each other's
+        // handlers (multicast delegate -= removes the most-recently-added matching
+        // handler by target+method, not by identity).
+        private static readonly object _reflectionOnlyResolveLock = new object();
+
         /// <summary>
         /// Inspects all .dll files in the given directory and returns a DirectoryReport.
         /// Plan-checker iter-2 WARNING-5: return type is DirectoryReport (NOT IReadOnlyList&lt;PluginReport&gt;).
@@ -275,22 +285,33 @@ namespace Utinni.Cli.Commands
             //   Pass 1: Try ReflectionOnlyLoadFrom with dependency resolver.
             //   Pass 2 (fallback): If CustomAttributeData fails, scan the raw assembly byte stream
             //           for the InheritedExportAttribute type reference strings.
+            //
+            // CR-03: the ReflectionOnlyAssemblyResolve event is AppDomain-global, so we
+            // (1) serialize registration/unregistration with `_reflectionOnlyResolveLock`
+            //     to prevent cross-collection xunit parallelism from interleaving += and
+            //     -= calls (which dispatch by the most-recently-added handler, not by
+            //     identity, when MulticastDelegate handlers share a target+method), and
+            // (2) keep the `-=` in the OUTERMOST finally so it runs even if any of the
+            //     subsequent reflection calls or catch blocks throw before reaching the
+            //     inner cleanup.
+            ResolveEventHandler resolver = (sender, args) =>
+            {
+                try
+                {
+                    return Assembly.ReflectionOnlyLoad(args.Name);
+                }
+                catch
+                {
+                    return null;
+                }
+            };
+
+            lock (_reflectionOnlyResolveLock)
+            {
+                AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += resolver;
+            }
             try
             {
-                ResolveEventHandler resolver = (sender, args) =>
-                {
-                    try
-                    {
-                        return Assembly.ReflectionOnlyLoad(args.Name);
-                    }
-                    catch
-                    {
-                        return null;
-                    }
-                };
-
-                AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += resolver;
-
                 try
                 {
                     var asm = Assembly.ReflectionOnlyLoadFrom(dllPath);
@@ -354,26 +375,32 @@ namespace Utinni.Cli.Commands
                         }
                     }
                 }
-                finally
+                catch (BadImageFormatException)
+                {
+                    // Native DLL — expected; continue with managed flags all false.
+                }
+                catch (ReflectionTypeLoadException)
+                {
+                    // Malformed managed DLL — expected.
+                }
+                catch (FileLoadException)
+                {
+                    // Dependency resolution failure — expected.
+                }
+                catch
+                {
+                    // Any other reflection error — safe fallback.
+                }
+            }
+            finally
+            {
+                // CR-03: outermost finally — runs even if a catch block above re-throws
+                // or a non-caught exception escapes. Serialized under the same lock to
+                // pair with the registration above.
+                lock (_reflectionOnlyResolveLock)
                 {
                     AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve -= resolver;
                 }
-            }
-            catch (BadImageFormatException)
-            {
-                // Native DLL — expected; continue with managed flags all false.
-            }
-            catch (ReflectionTypeLoadException)
-            {
-                // Malformed managed DLL — expected.
-            }
-            catch (FileLoadException)
-            {
-                // Dependency resolution failure — expected.
-            }
-            catch
-            {
-                // Any other reflection error — safe fallback.
             }
 
             // Fallback: if ReflectionOnly attribute scan returned no managed signals AND the
