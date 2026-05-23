@@ -42,7 +42,7 @@ namespace UtinniCoreDotNet.Formats.Iff
     ///   <item><see cref="MalformedFourCc"/> — chunk type ID contains non-printable-ASCII bytes.</item>
     /// </list>
     ///
-    /// <para>NOTE: The previous <c>ChunkLengthExceedsFile</c> value is REMOVED under iter-4 HIGH-1.
+    /// <para>NOTE: The previous file-bound error value was REMOVED under iter-4 HIGH-1.
     /// Top-level chunks cannot exceed file length (their parentEnd IS stream.Length); nested chunks raise
     /// <see cref="NestedChunkOverflow"/> on parent-bound failure.</para>
     /// </summary>

@@ -1,0 +1,68 @@
+{
+  "command": "inspect-iff",
+  "result": {
+    "flat": {
+      "edges": [
+        {
+          "from": "CAT:OBJT/0",
+          "to": "CAT:OBJT/0/PROP:PROP/0"
+        },
+        {
+          "from": "CAT:OBJT/0",
+          "to": "CAT:OBJT/0/PROP:PROP/1"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "CAT:OBJT/0",
+          "kind": "container",
+          "lengthBytes": 30,
+          "name": "CAT OBJT",
+          "parentId": null,
+          "typeId": "CAT "
+        },
+        {
+          "id": "CAT:OBJT/0/PROP:PROP/0",
+          "kind": "leaf",
+          "lengthBytes": 6,
+          "name": "PROP",
+          "parentId": "CAT:OBJT/0",
+          "typeId": "PROP"
+        },
+        {
+          "id": "CAT:OBJT/0/PROP:PROP/1",
+          "kind": "leaf",
+          "lengthBytes": 4,
+          "name": "PROP",
+          "parentId": "CAT:OBJT/0",
+          "typeId": "PROP"
+        }
+      ]
+    },
+    "source": "<fixture-path>",
+    "tree": {
+      "children": [
+        {
+          "dataBase64": "ESIzRFVm",
+          "id": "CAT:OBJT/0/PROP:PROP/0",
+          "kind": "leaf",
+          "lengthBytes": 6,
+          "typeId": "PROP"
+        },
+        {
+          "dataBase64": "qrvM3Q==",
+          "id": "CAT:OBJT/0/PROP:PROP/1",
+          "kind": "leaf",
+          "lengthBytes": 4,
+          "typeId": "PROP"
+        }
+      ],
+      "id": "CAT:OBJT/0",
+      "kind": "container",
+      "lengthBytes": 30,
+      "subTypeId": "OBJT",
+      "typeId": "CAT "
+    }
+  },
+  "schemaVersion": 1
+}

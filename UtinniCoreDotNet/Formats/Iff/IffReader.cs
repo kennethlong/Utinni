@@ -53,9 +53,9 @@ namespace UtinniCoreDotNet.Formats.Iff
     /// <para><b>Container set (REVIEWS MEDIUM-14 — EA-IFF-85):</b>
     /// { "FORM", "LIST", "CAT " } only. PROP is a leaf.</para>
     ///
-    /// <para><b>Parser purity:</b> This class contains NO references to
-    /// <c>Newtonsoft.Json</c>, <c>Console.*</c>, or <c>File.WriteAll*</c>.
-    /// All JSON serialisation lives in <c>Utinni.Cli.Commands.InspectIffCommand</c>.</para>
+    /// <para><b>Parser purity:</b> This class contains NO JSON serialisation references,
+    /// no console output calls, and no file write calls.
+    /// All JSON output lives in <c>Utinni.Cli.Commands.InspectIffCommand</c>.</para>
     ///
     /// <para><b>React Flow portability note:</b>
     /// Both <c>tree</c> and <c>flat</c> views in the CLI output derive from the same parser pass
