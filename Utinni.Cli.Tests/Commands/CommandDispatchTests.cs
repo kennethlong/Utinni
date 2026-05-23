@@ -80,9 +80,9 @@ namespace Utinni.Cli.Tests.Commands
             Assert.Equal(1, result.ExitCode);
         }
 
+        // parse-tre and list-objects are now implemented (Plan 04-02) and no longer return
+        // NotImplemented. Only inspect-iff and validate-plugin remain as stubs.
         [Theory]
-        [InlineData("parse-tre", "/tmp/anything.tre")]
-        [InlineData("list-objects", "/tmp/anything.iff")]
         [InlineData("inspect-iff", "/tmp/anything.iff")]
         [InlineData("validate-plugin", "/tmp/somedir")]
         public void Run_WithVerbStub_ExitsOneAndEmitsNotImplementedJson(string verb, string path)
