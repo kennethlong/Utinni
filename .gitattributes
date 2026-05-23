@@ -3,3 +3,11 @@
 Utinni.Cli.Tests/Fixtures/**/*.expected.json text eol=lf
 Utinni.Cli.Tests/Fixtures/**/*.expected.txt  text eol=lf
 Utinni.Cli.Tests/Fixtures/**/*.json          text eol=lf
+
+# Phase 5 (post-execution fix per 05-VERIFICATION.md): preserve upstream LF
+# byte-equivalence on vendored Catch2 amalgamated files so the SHA-256 hashes
+# documented in external/catch2/README.md match Get-FileHash output on Windows.
+# Without this, autocrlf=true rewrites checked-out bytes to CRLF and the
+# audit-trail-strength claim from 05-REVIEWS.md U6 is partially undermined.
+external/catch2/catch_amalgamated.hpp text eol=lf
+external/catch2/catch_amalgamated.cpp text eol=lf
