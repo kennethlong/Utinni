@@ -1,0 +1,18 @@
+CommandLine <version>
+Copyright (c) 2005 - 2020 Giacomo Stelluti Scala & Contributors
+
+  parse-tre          Parse a .tre archive and emit sorted-key JSON to stdout.
+
+  list-objects       List world-snapshot objects from a ws.iff via the TRE
+                     reader.
+
+  inspect-iff        Emit the chunk tree of an IFF file as JSON.
+
+  validate-plugin    Reflect on a plugin directory and report compliance.
+                     WARNING: loads each .dll under the given directory; only
+                     run against trusted plugin directories.
+
+  help               Display more information on a specific command.
+
+  version            Display version information.
+

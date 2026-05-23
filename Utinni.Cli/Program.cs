@@ -30,17 +30,28 @@ namespace Utinni.Cli
     {
         public static int Main(string[] args)
         {
-            return Parser.Default.ParseArguments<
-                    Commands.ParseTreOptions,
-                    Commands.ListObjectsOptions,
-                    Commands.InspectIffOptions,
-                    Commands.ValidatePluginOptions>(args)
-                .MapResult(
-                    (Commands.ParseTreOptions o)       => Commands.ParseTreCommand.Run(o),
-                    (Commands.ListObjectsOptions o)    => Commands.ListObjectsCommand.Run(o),
-                    (Commands.InspectIffOptions o)     => Commands.InspectIffCommand.Run(o),
-                    (Commands.ValidatePluginOptions o) => Commands.ValidatePluginCommand.Run(o),
-                    errs => 1);  // exit 1 on usage error per D-02
+            // Use new Parser(...) rather than Parser.Default so that HelpWriter
+            // resolves Console.Error at call time (after InProcessCliRunner.SetError).
+            // Parser.Default is a singleton that caches Console.Error at first access,
+            // which breaks in-process stdout/stderr capture in tests.
+            using (var parser = new Parser(settings =>
+            {
+                settings.HelpWriter = System.Console.Error;
+                settings.CaseSensitive = false;
+            }))
+            {
+                return parser.ParseArguments<
+                        Commands.ParseTreOptions,
+                        Commands.ListObjectsOptions,
+                        Commands.InspectIffOptions,
+                        Commands.ValidatePluginOptions>(args)
+                    .MapResult(
+                        (Commands.ParseTreOptions o)       => Commands.ParseTreCommand.Run(o),
+                        (Commands.ListObjectsOptions o)    => Commands.ListObjectsCommand.Run(o),
+                        (Commands.InspectIffOptions o)     => Commands.InspectIffCommand.Run(o),
+                        (Commands.ValidatePluginOptions o) => Commands.ValidatePluginCommand.Run(o),
+                        errs => 1);  // exit 1 on usage error per D-02
+            }
         }
     }
 }

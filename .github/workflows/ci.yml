@@ -90,3 +90,19 @@ jobs:
           name: test-results
           path: UtinniCoreDotNet.Tests/TestResults/*.trx
           if-no-files-found: warn
+
+      - name: Run CLI golden tests (net472 / x86)
+        run: dotnet test Utinni.Cli.Tests/Utinni.Cli.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal" --logger "trx;LogFileName=cli-test-results.trx"
+        # Phase 4 D-11: second test lane gates `master` on the CLI golden suite.
+        # Project-targeted form per RESEARCH §Pitfall 2; --no-build because msbuild above already produced bin/Release/net472/Utinni.Cli.Tests.dll.
+
+      - name: Upload CLI test artifacts (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-test-results
+          path: |
+            Utinni.Cli.Tests/TestResults/cli-test-results.trx
+            Utinni.Cli.Tests/bin/Release/net472/TestResults/**/*.json
+            Utinni.Cli.Tests/bin/Release/net472/TestResults/**/*.txt
+          if-no-files-found: warn
