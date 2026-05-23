@@ -53,11 +53,12 @@ Requirements derived from the 2026-05-16 ingest of `docs/ai/vision.md`, `docs/ai
   - **Acceptance:** Catch2 builds in CI; at least one native parser or helper has coverage; CI runs both `dotnet test` and `ctest` and is green on master.
   - **Milestone:** V1
 
-- [ ] **TEST-03 — Tier 2 CLI shim with golden fixtures**
+- [x] **TEST-03 — Tier 2 CLI shim with golden fixtures** (Validated in Phase 4, 2026-05-23)
   - **Source:** test-harness-plan.md "Tier 2"
   - **Statement:** A `utinni-cli` executable in the same solution, referencing the same core libraries as the WinForms tool, exposing the operations the UI calls. Commands include: `parse-tre`, `list-objects`, `validate-plugin`, `inspect-iff`. Paired with golden-file tests against checked-in fixtures. Resolves CON-O-09 (fixture storage) and CON-O-10 (test project layout) and CON-O-11 (CLI public vs internal) as part of this requirement.
   - **Acceptance:** CLI builds in CI; at least one command per surface (`parse-tre`, `list-objects`, `validate-plugin`, `inspect-iff`) has a golden test; CLI converts an estimated 60–70% of manual "Kenny please verify" loops into unattended runs; UI becomes one of two consumers of the core (not the sole consumer).
   - **Milestone:** V1
+  - **Evidence:** `utinni-cli.exe` ships 4 verbs with stable sorted-key JSON envelopes; 50 Utinni.Cli.Tests + new Tier-1 parser tests (25 TRE + IFF) green; `.github/workflows/ci.yml` runs both test lanes per push; CON-O-09 (fixture storage = in-repo synth, no LFS) + CON-O-11 (CLI public vs internal) dispositioned in `docs/ai/assessment.md`; DEC-C3 (tiered testing strategy) promoted to LOCKED in PROJECT.md.
 
 - [ ] **TEST-04 — Explicit Tier 4 boundary documented**
   - **Source:** test-harness-plan.md "Tier 4"
@@ -152,7 +153,7 @@ Each V1 requirement maps to exactly one phase. Phase numbers refer to ROADMAP.md
 | TEST-01 (Tier 1 C# scaffold) | Phase 1 | Pending |
 | STAB-01 (Fix C-01..C-15) | Phase 2 | Pending |
 | STAB-02 (R-A..R-H reworks) | Phase 3 | Pending |
-| TEST-03 (Tier 2 CLI shim) | Phase 4 | Pending |
+| TEST-03 (Tier 2 CLI shim) | Phase 4 | Validated 2026-05-23 |
 | TEST-02 (Tier 1 C++ unit tests) | Phase 5 | Pending |
 | STAB-03 (Cleanups + dep bumps) | Phase 6 | Pending |
 | TEST-04 (Tier 4 boundary doc) | Phase 6 | Pending |

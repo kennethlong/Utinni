@@ -27,13 +27,14 @@ Stability work sequences before plugin work per vision.md's "What that means for
 <!-- Shipped and confirmed valuable. -->
 
 - [x] **TEST-01 (Tier 1 C# scaffold + CI green on master)** — Validated in Phase 1: GitHub Actions `windows-2022` workflow builds `Utinni.sln /p:Configuration=Release /p:Platform=x86` and runs `dotnet test` on every push/PR to master; CON-T-01 post-build chain (`xcopy data\` + `UtinniCoreDotNetGen.exe`) confirmed firing under CI; xUnit smoke project `UtinniCoreDotNet.Tests` discovers and runs `HotkeyTests.cs`; test-the-tester procedure exercised on throwaway PR proving red-on-failure surfaces and master badge stays green. Foundation enabling every subsequent phase's "gate on green pipeline" contract.
+- [x] **TEST-03 (Tier 2 CLI shim with golden fixtures)** — Validated in Phase 4 (2026-05-23): `utinni-cli.exe` ships four verbs (`parse-tre`, `list-objects`, `inspect-iff`, `validate-plugin`) producing stable sorted-key JSON envelopes (top-level `schemaVersion`/`command` per REVIEWS HIGH-6); 50 `Utinni.Cli.Tests` Tier-2 goldens + 25 new Tier-1 parser tests (10 TRE + 15 IFF) in `UtinniCoreDotNet.Tests`; CI extended with second `dotnet test` lane (`.github/workflows/ci.yml:94-108`); 18 synthesized fixtures (5 dispatch + 5 TRE + 5 IFF + 4 plugin + 1 ws.iff, all ≤200 bytes per D-03); 4-cycle adversarial cross-AI plan review (Codex + Cursor PASS at iter-4). Closes CON-O-09 (fixture storage = in-repo synth, no LFS), CON-O-10, CON-O-11 in `docs/ai/assessment.md`. DEC-C3 (tiered testing strategy) promoted from Candidate to LOCKED ✓.
 
 ### Active
 
 <!-- V1 scope. See REQUIREMENTS.md for full requirement IDs and acceptance criteria. -->
 
 - [ ] Framework stability: fix C-01..C-15, land R-A..R-H, complete ~30 cleanups, preserve 24 foundations
-- [ ] Test harness: Tier 1 C# unit tests, Tier 1 C++ unit tests, Tier 2 CLI shim with golden fixtures
+- [ ] Test harness: Tier 1 C++ unit tests (Tier 1 C# + Tier 2 CLI shim validated; see Validated above)
 - [ ] Wave-1 plugin: TRE Browser (read-only asset browse)
 - [ ] Wave-1 plugin: IFF Editor (read + write)
 - [ ] Wave-1 plugin: Datatable Editor (`.tab`)
@@ -123,4 +124,4 @@ Eight inherited open questions (CON-O-01..CON-O-08 from assessment.md) plus thre
 Additional non-locked candidate decisions (D-02 foundations-before-features, D-05 wave-1-plugin-set, D-07 CI-before-anything-else-strategic, D-09 ~6–8 person-week effort estimate) are encoded as **roadmap phase ordering** in ROADMAP.md rather than as ADRs. D-03 (sovereign fork) and D-06 (Jawa Toolbox `*Impl` separation as canonical) are captured here as the Sovereign-Fork Stance section above and as CON-T-05 respectively.
 
 ---
-*Last updated: 2026-05-17 — Phase 2 complete (15 critical bugs burned down + CI green); Phase 02.1 teed up (gap closure for 02-REVIEW.md findings); DEC-C4 locked (Wave-1 ships inside TJT). Initial creation via `/gsd:new-project` after `/gsd:ingest-docs` synthesis of vision.md + assessment.md + test-harness-plan.md.*
+*Last updated: 2026-05-23 — Phase 4 complete (Tier-2 CLI shim with 4 verbs + golden fixtures + DEC-C3 LOCKED + CON-O-09/10/11 dispositioned); TEST-03 validated; 75% of milestone plans complete (12/16). Previous updates: 2026-05-17 (Phase 2 complete + DEC-C4 locked); initial creation via `/gsd:new-project` after `/gsd:ingest-docs` synthesis of vision.md + assessment.md + test-harness-plan.md.*
