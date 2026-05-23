@@ -292,14 +292,14 @@ namespace Utinni.Cli.Commands
             //   Pass 2 (fallback): If CustomAttributeData fails, scan the raw assembly byte stream
             //           for the InheritedExportAttribute type reference strings.
             //
-            // CR-03: the ReflectionOnlyAssemblyResolve event is AppDomain-global, so we
-            // (1) serialize registration/unregistration with `_reflectionOnlyResolveLock`
-            //     to prevent cross-collection xunit parallelism from interleaving += and
-            //     -= calls (which dispatch by the most-recently-added handler, not by
-            //     identity, when MulticastDelegate handlers share a target+method), and
-            // (2) keep the `-=` in the OUTERMOST finally so it runs even if any of the
-            //     subsequent reflection calls or catch blocks throw before reaching the
-            //     inner cleanup.
+            // CR-03: the ReflectionOnlyAssemblyResolve event is AppDomain-global. To
+            // guarantee that each InspectSingle call sees ONLY its own resolver during
+            // the reflection probe (and to ensure -= runs on every exit path), we hold
+            // `_reflectionOnlyResolveLock` for the ENTIRE add/use/remove span. The
+            // outer-finally with paired += / -= inside one critical section avoids the
+            // multi-installed-handler interleave that a narrower lock (around += and -=
+            // only) would still permit. Reflection-only probes are short, so serializing
+            // them across threads has negligible throughput cost.
             ResolveEventHandler resolver = (sender, args) =>
             {
                 try
@@ -315,95 +315,89 @@ namespace Utinni.Cli.Commands
             lock (_reflectionOnlyResolveLock)
             {
                 AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += resolver;
-            }
-            try
-            {
                 try
                 {
-                    var asm = Assembly.ReflectionOnlyLoadFrom(dllPath);
-                    foreach (var t in asm.GetTypes())
+                    try
                     {
-                        foreach (var cad in CustomAttributeData.GetCustomAttributes(t))
+                        var asm = Assembly.ReflectionOnlyLoadFrom(dllPath);
+                        foreach (var t in asm.GetTypes())
                         {
-                            var attrType = cad.Constructor.DeclaringType;
-                            if (attrType == null)
+                            foreach (var cad in CustomAttributeData.GetCustomAttributes(t))
                             {
-                                continue;
-                            }
-
-                            bool isInheritedExport = attrType.FullName != null &&
-                                attrType.FullName.EndsWith("InheritedExportAttribute", StringComparison.Ordinal);
-                            if (!isInheritedExport)
-                            {
-                                continue;
-                            }
-
-                            // Check constructor argument (the exported type).
-                            if (cad.ConstructorArguments.Count < 1)
-                            {
-                                continue;
-                            }
-
-                            var arg = cad.ConstructorArguments[0].Value;
-                            var argType = arg as Type;
-                            if (argType == null)
-                            {
-                                // Argument may be a string if the Type couldn't be resolved —
-                                // try string matching.
-                                var argStr = arg as string;
-                                if (argStr != null)
+                                var attrType = cad.Constructor.DeclaringType;
+                                if (attrType == null)
                                 {
-                                    if (argStr.EndsWith(".IPlugin", StringComparison.Ordinal))
-                                    {
-                                        iPluginAttributePresent = true;
-                                    }
-                                    else if (argStr.EndsWith(".IEditorPlugin", StringComparison.Ordinal))
-                                    {
-                                        iEditorPluginAttributePresent = true;
-                                    }
+                                    continue;
                                 }
-                                continue;
-                            }
 
-                            if (argType.FullName != null && argType.FullName.EndsWith(".IPlugin", StringComparison.Ordinal))
-                            {
-                                iPluginAttributePresent = true;
-                                // Check if the type actually implements IPlugin.
-                                iPluginInterfaceImplemented = t.GetInterfaces()
-                                    .Any(i => i.FullName != null && i.FullName.EndsWith(".IPlugin", StringComparison.Ordinal));
-                            }
-                            else if (argType.FullName != null && argType.FullName.EndsWith(".IEditorPlugin", StringComparison.Ordinal))
-                            {
-                                iEditorPluginAttributePresent = true;
-                                iEditorPluginInterfaceImplemented = t.GetInterfaces()
-                                    .Any(i => i.FullName != null && i.FullName.EndsWith(".IEditorPlugin", StringComparison.Ordinal));
+                                bool isInheritedExport = attrType.FullName != null &&
+                                    attrType.FullName.EndsWith("InheritedExportAttribute", StringComparison.Ordinal);
+                                if (!isInheritedExport)
+                                {
+                                    continue;
+                                }
+
+                                // Check constructor argument (the exported type).
+                                if (cad.ConstructorArguments.Count < 1)
+                                {
+                                    continue;
+                                }
+
+                                var arg = cad.ConstructorArguments[0].Value;
+                                var argType = arg as Type;
+                                if (argType == null)
+                                {
+                                    // Argument may be a string if the Type couldn't be resolved —
+                                    // try string matching.
+                                    var argStr = arg as string;
+                                    if (argStr != null)
+                                    {
+                                        if (argStr.EndsWith(".IPlugin", StringComparison.Ordinal))
+                                        {
+                                            iPluginAttributePresent = true;
+                                        }
+                                        else if (argStr.EndsWith(".IEditorPlugin", StringComparison.Ordinal))
+                                        {
+                                            iEditorPluginAttributePresent = true;
+                                        }
+                                    }
+                                    continue;
+                                }
+
+                                if (argType.FullName != null && argType.FullName.EndsWith(".IPlugin", StringComparison.Ordinal))
+                                {
+                                    iPluginAttributePresent = true;
+                                    // Check if the type actually implements IPlugin.
+                                    iPluginInterfaceImplemented = t.GetInterfaces()
+                                        .Any(i => i.FullName != null && i.FullName.EndsWith(".IPlugin", StringComparison.Ordinal));
+                                }
+                                else if (argType.FullName != null && argType.FullName.EndsWith(".IEditorPlugin", StringComparison.Ordinal))
+                                {
+                                    iEditorPluginAttributePresent = true;
+                                    iEditorPluginInterfaceImplemented = t.GetInterfaces()
+                                        .Any(i => i.FullName != null && i.FullName.EndsWith(".IEditorPlugin", StringComparison.Ordinal));
+                                }
                             }
                         }
                     }
+                    catch (BadImageFormatException)
+                    {
+                        // Native DLL — expected; continue with managed flags all false.
+                    }
+                    catch (ReflectionTypeLoadException)
+                    {
+                        // Malformed managed DLL — expected.
+                    }
+                    catch (FileLoadException)
+                    {
+                        // Dependency resolution failure — expected.
+                    }
+                    catch
+                    {
+                        // Any other reflection error — safe fallback.
+                    }
                 }
-                catch (BadImageFormatException)
-                {
-                    // Native DLL — expected; continue with managed flags all false.
-                }
-                catch (ReflectionTypeLoadException)
-                {
-                    // Malformed managed DLL — expected.
-                }
-                catch (FileLoadException)
-                {
-                    // Dependency resolution failure — expected.
-                }
-                catch
-                {
-                    // Any other reflection error — safe fallback.
-                }
-            }
-            finally
-            {
-                // CR-03: outermost finally — runs even if a catch block above re-throws
-                // or a non-caught exception escapes. Serialized under the same lock to
-                // pair with the registration above.
-                lock (_reflectionOnlyResolveLock)
+                finally
                 {
                     AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve -= resolver;
                 }
