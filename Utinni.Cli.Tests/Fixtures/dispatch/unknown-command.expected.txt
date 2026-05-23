@@ -1,0 +1,10 @@
+CommandLine <version>
+Copyright (c) 2005 - 2020 Giacomo Stelluti Scala & Contributors
+
+ERROR(S):
+  Verb 'totally-unknown-verb' is not recognized.
+
+  --help       Display this help screen.
+
+  --version    Display version information.
+

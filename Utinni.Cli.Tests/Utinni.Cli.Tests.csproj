@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <PlatformTarget>x86</PlatformTarget>
+    <Platforms>x86</Platforms>
+    <!-- Without this, SDK-style emits to bin\x86\Release\net472\ when built via
+         msbuild /p:Platform=x86, but `dotnet test` (with the no-build flag)
+         probes bin\Release\net472\. Omitting Platform from the path keeps the
+         build output and the test discovery in sync. -->
+    <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
+    <LangVersion>7.3</LangVersion>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Utinni.Cli.Tests</RootNamespace>
+    <AssemblyName>Utinni.Cli.Tests</AssemblyName>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Utinni.Cli\Utinni.Cli.csproj" />
+    <ProjectReference Include="..\UtinniCoreDotNet\UtinniCoreDotNet.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
