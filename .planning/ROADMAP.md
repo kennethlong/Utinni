@@ -105,7 +105,7 @@ Plans:
   4. CI runs both `dotnet test` (TEST-01) and the CLI golden suite on every push.
 **Plans**: TBD
 **Plans (placeholder)**:
-- [ ] 04-01: TBD
+- [x] 04-01: TBD
 
 ### Phase 5: Tier 1 C++ unit tests
 **Goal**: Catch2 wired through `ctest` (or `vcpkg`) for UtinniCore. At least one native parser or helper has non-trivial coverage. CI runs the native test target on every push.
