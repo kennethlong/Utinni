@@ -1,0 +1,8 @@
+{
+  "command": "inspect-iff",
+  "error": {
+    "kind": "Truncated",
+    "message": "Stream truncated mid-leaf-payload. TypeID='DATA', Declared=80, Read=30."
+  },
+  "schemaVersion": 1
+}

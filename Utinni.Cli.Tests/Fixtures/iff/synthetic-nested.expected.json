@@ -1,0 +1,146 @@
+{
+  "command": "inspect-iff",
+  "result": {
+    "flat": {
+      "edges": [
+        {
+          "from": "FORM:WSNP/0",
+          "to": "FORM:WSNP/0/DATA:DATA/0"
+        },
+        {
+          "from": "FORM:WSNP/0",
+          "to": "FORM:WSNP/0/NAME:NAME/1"
+        },
+        {
+          "from": "FORM:WSNP/0",
+          "to": "FORM:WSNP/0/DESC:DESC/2"
+        },
+        {
+          "from": "FORM:WSNP/0",
+          "to": "FORM:WSNP/0/FORM:OBJS/3"
+        },
+        {
+          "from": "FORM:WSNP/0/FORM:OBJS/3",
+          "to": "FORM:WSNP/0/FORM:OBJS/3/INFO:INFO/0"
+        },
+        {
+          "from": "FORM:WSNP/0/FORM:OBJS/3",
+          "to": "FORM:WSNP/0/FORM:OBJS/3/BODY:BODY/1"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "FORM:WSNP/0",
+          "kind": "container",
+          "lengthBytes": 92,
+          "name": "FORM WSNP",
+          "parentId": null,
+          "typeId": "FORM"
+        },
+        {
+          "id": "FORM:WSNP/0/DATA:DATA/0",
+          "kind": "leaf",
+          "lengthBytes": 8,
+          "name": "DATA",
+          "parentId": "FORM:WSNP/0",
+          "typeId": "DATA"
+        },
+        {
+          "id": "FORM:WSNP/0/NAME:NAME/1",
+          "kind": "leaf",
+          "lengthBytes": 4,
+          "name": "NAME",
+          "parentId": "FORM:WSNP/0",
+          "typeId": "NAME"
+        },
+        {
+          "id": "FORM:WSNP/0/DESC:DESC/2",
+          "kind": "leaf",
+          "lengthBytes": 13,
+          "name": "DESC",
+          "parentId": "FORM:WSNP/0",
+          "typeId": "DESC"
+        },
+        {
+          "id": "FORM:WSNP/0/FORM:OBJS/3",
+          "kind": "container",
+          "lengthBytes": 30,
+          "name": "FORM OBJS",
+          "parentId": "FORM:WSNP/0",
+          "typeId": "FORM"
+        },
+        {
+          "id": "FORM:WSNP/0/FORM:OBJS/3/INFO:INFO/0",
+          "kind": "leaf",
+          "lengthBytes": 4,
+          "name": "INFO",
+          "parentId": "FORM:WSNP/0/FORM:OBJS/3",
+          "typeId": "INFO"
+        },
+        {
+          "id": "FORM:WSNP/0/FORM:OBJS/3/BODY:BODY/1",
+          "kind": "leaf",
+          "lengthBytes": 6,
+          "name": "BODY",
+          "parentId": "FORM:WSNP/0/FORM:OBJS/3",
+          "typeId": "BODY"
+        }
+      ]
+    },
+    "source": "<fixture-path>",
+    "tree": {
+      "children": [
+        {
+          "dataBase64": "AQIDBAUGBwg=",
+          "id": "FORM:WSNP/0/DATA:DATA/0",
+          "kind": "leaf",
+          "lengthBytes": 8,
+          "typeId": "DATA"
+        },
+        {
+          "dataBase64": "aGkAAA==",
+          "id": "FORM:WSNP/0/NAME:NAME/1",
+          "kind": "leaf",
+          "lengthBytes": 4,
+          "typeId": "NAME"
+        },
+        {
+          "dataBase64": "SGVsbG8sIFdvcmxkIQ==",
+          "id": "FORM:WSNP/0/DESC:DESC/2",
+          "kind": "leaf",
+          "lengthBytes": 13,
+          "typeId": "DESC"
+        },
+        {
+          "children": [
+            {
+              "dataBase64": "oaKjpA==",
+              "id": "FORM:WSNP/0/FORM:OBJS/3/INFO:INFO/0",
+              "kind": "leaf",
+              "lengthBytes": 4,
+              "typeId": "INFO"
+            },
+            {
+              "dataBase64": "sbKztLW2",
+              "id": "FORM:WSNP/0/FORM:OBJS/3/BODY:BODY/1",
+              "kind": "leaf",
+              "lengthBytes": 6,
+              "typeId": "BODY"
+            }
+          ],
+          "id": "FORM:WSNP/0/FORM:OBJS/3",
+          "kind": "container",
+          "lengthBytes": 30,
+          "subTypeId": "OBJS",
+          "typeId": "FORM"
+        }
+      ],
+      "id": "FORM:WSNP/0",
+      "kind": "container",
+      "lengthBytes": 92,
+      "subTypeId": "WSNP",
+      "typeId": "FORM"
+    }
+  },
+  "schemaVersion": 1
+}

@@ -1,0 +1,8 @@
+{
+  "command": "inspect-iff",
+  "error": {
+    "kind": "NestedChunkOverflow",
+    "message": "Chunk TypeID='FORM' at offset 12 declares length 90; declared end 110 exceeds parent end 100."
+  },
+  "schemaVersion": 1
+}
