@@ -9,8 +9,10 @@ Copyright (c) 2005 - 2020 Giacomo Stelluti Scala & Contributors
   inspect-iff        Emit the chunk tree of an IFF file as JSON.
 
   validate-plugin    Reflect on a plugin directory and report compliance.
-                     WARNING: loads each .dll under the given directory; only
-                     run against trusted plugin directories.
+                     WARNING: Loads each .dll under the given directory; only
+                     run against trusted plugin directories. PluginLoader
+                     composition + managed-DLL inspection execute static
+                     initialisers as a side effect.
 
   help               Display more information on a specific command.
 

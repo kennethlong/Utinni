@@ -1,0 +1,59 @@
+{
+  "command": "validate-plugin",
+  "result": {
+    "directory": "<TEST_FIXTURE_DIR>",
+    "directoryChecks": [
+      {
+        "detail": "Loader and reflection agree.",
+        "id": "loader-vs-reflection-agreement",
+        "status": "pass"
+      }
+    ],
+    "loaderObserved": {
+      "loadErrors": [],
+      "pluginsCount": 0
+    },
+    "plugins": [
+      {
+        "checks": [
+          {
+            "detail": "createPlugin export found.",
+            "id": "createplugin-export",
+            "status": "pass"
+          },
+          {
+            "detail": "destroyPlugin export missing.",
+            "id": "destroyplugin-export",
+            "status": "fail"
+          },
+          {
+            "detail": "Plugin is native; MEF [InheritedExport] does not apply.",
+            "id": "iplugin-export-shape",
+            "status": "n/a"
+          },
+          {
+            "detail": "Plugin is native; MEF [InheritedExport] does not apply.",
+            "id": "editor-plugin-export-shape",
+            "status": "n/a"
+          }
+        ],
+        "exports": {
+          "createPlugin": true,
+          "destroyPlugin": false,
+          "managedIEditorPlugin": false,
+          "managedIPlugin": false
+        },
+        "id": "MissingDestroyPlugin",
+        "kind": "native",
+        "overallStatus": "fail",
+        "path": "<TEST_FIXTURE_DIR>\\MissingDestroyPlugin.dll"
+      }
+    ],
+    "summary": {
+      "failing": 1,
+      "passing": 0,
+      "totalPlugins": 1
+    }
+  },
+  "schemaVersion": 1
+}

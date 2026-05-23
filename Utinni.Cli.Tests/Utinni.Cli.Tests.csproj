@@ -19,6 +19,9 @@
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- Force 1.6.0 to win over transitive 1.4.x dependency from test platform -->
+    <PackageReference Include="System.Reflection.Metadata" Version="1.6.0" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Utinni.Cli\Utinni.Cli.csproj" />
@@ -27,4 +30,26 @@
   <ItemGroup>
     <Content Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <!-- TASK 4.3 (Plan 04-04): Copy Utinni.CrtMatchPlugin.dll to valid-plugin/ fixture dir.
+       This is the Phase 3 R-B "real plugin" fixture that validate-plugin should classify as kind=native pass. -->
+  <Target Name="CopyValidPluginFixture" AfterTargets="Build">
+    <ItemGroup>
+      <_ValidPluginArtifacts Include="$(SolutionDir)bin\$(Configuration)\Utinni.CrtMatchPlugin.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_ValidPluginArtifacts)"
+          DestinationFolder="$(TargetDir)Fixtures\plugins\valid-plugin\"
+          SkipUnchangedFiles="true"
+          Condition="Exists('%(_ValidPluginArtifacts.Identity)')" />
+  </Target>
+  <!-- Force copy System.Reflection.Metadata 1.6.0 and System.Collections.Immutable 1.5.0
+       over the older versions that Microsoft.TestPlatform places in the output directory.
+       This ensures the binding redirects in app.config can resolve to 1.6.0.0 physically. -->
+  <Target Name="ForceReflectionMetadataVersion" AfterTargets="Build">
+    <ItemGroup>
+      <_SRM160 Include="$(NuGetPackageRoot)system.reflection.metadata\1.6.0\lib\netstandard2.0\System.Reflection.Metadata.dll" />
+      <_SCI150 Include="$(NuGetPackageRoot)system.collections.immutable\1.5.0\lib\netstandard2.0\System.Collections.Immutable.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_SRM160)" DestinationFolder="$(OutputPath)" Condition="Exists('%(_SRM160.Identity)')" OverwriteReadOnlyFiles="true" />
+    <Copy SourceFiles="@(_SCI150)" DestinationFolder="$(OutputPath)" Condition="Exists('%(_SCI150.Identity)')" OverwriteReadOnlyFiles="true" />
+  </Target>
 </Project>
