@@ -60,6 +60,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Formats\Iff\IffChunk.cs" />
+    <Compile Include="Formats\Iff\IffContainerChunk.cs" />
+    <Compile Include="Formats\Iff\IffDocument.cs" />
+    <Compile Include="Formats\Iff\IffLeafChunk.cs" />
+    <Compile Include="Formats\Iff\IffParseException.cs" />
+    <Compile Include="Formats\Iff\IffReader.cs" />
     <Compile Include="Formats\Tre\TreFile.cs" />
     <Compile Include="Formats\Tre\TreHeader.cs" />
     <Compile Include="Formats\Tre\TreParseException.cs" />
