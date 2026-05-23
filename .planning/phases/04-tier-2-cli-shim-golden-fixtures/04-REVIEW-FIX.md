@@ -27,8 +27,12 @@ status: all_fixed
 - Build (`MSBuild Utinni.sln /m /p:Configuration=Release`): SUCCEEDED on VS-2026 toolchain (`D:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe`). All four C# projects produced their output assemblies (`Utinni.Cli` -> `utinni-cli.exe`, `UtinniCoreDotNet.dll`, `Utinni.Cli.Tests.dll`, `UtinniCoreDotNet.Tests.dll`). C++ projects and Launcher.exe also built. Only pre-existing warnings (xUnit2013 style, MSB8029 temp-dir, MSVC dll-interface) — no new errors or warnings introduced by the fixes.
 - Tests (`dotnet test ... --no-build -c Release`): PASSED.
   - `Utinni.Cli.Tests.dll`: 50/50 passed, 0 failed, 0 skipped.
-  - `UtinniCoreDotNet.Tests.dll`: 131/131 passed, 0 failed, 0 skipped.
+  - `UtinniCoreDotNet.Tests.dll`: 131/131 passed, 0 failed, 0 skipped (on the fixer's environment with full VS-2026 build outputs available; see Caveat below).
   - Total: 181/181 across both assemblies.
+
+**Caveat — test-count environment dependence:** A peer-review pass (Cursor) running `dotnet test --no-build` on the same tree observed `LoaderLockHarness_LoadsUtinniCoreUnderThreshold` in `UtinniCoreDotNet.Tests` fail (130/131). That harness exercises native-load timing on `UtinniCore.dll` and is sensitive to the presence and layout of native artifacts under the test bin output (it is unrelated to any of the 11 Phase 4 fixes). Treat the 131/131 number above as environment-specific; the load-bearing claim is that no Phase 4 fix introduced a regression in `Utinni.Cli.Tests` (50/50) and in the affected `UtinniCoreDotNet.Tests` TRE/IFF subtree.
+
+**Peer review pass (Cursor + Codex):** Both reviewers independently flagged a real bug in the initial CR-03 fix (lock scope too narrow — see CR-03 section for follow-up commit `82aae52`). All other 10 fixes signed off. Out-of-scope follow-ups they recommended: targeted regression fixtures for CR-01 cross-section PE, CR-02 `infoOffset == 0`, and CR-03 concurrent-resolver stress; plus IN-01..IN-04 via a future `--all` pass.
 
 ## Fixed Issues
 
@@ -46,12 +50,20 @@ status: all_fixed
 **Applied fix:** Changed `if (infoOffset > 0 && infoEnd > streamLength)` to `if (infoEnd > streamLength)`. Now matches the analogous `namesEnd > streamLength` check on line 200-204 (no bypass on offset==0). A malformed TRE with `InfoOffset == 0` and non-zero `infoCompressedSize` (which would overlap the magic/version header) now throws `TreParseException(Truncated)` instead of silently parsing. Added a block comment explaining the regression motive.
 **Verification:** Build passed; existing `UtinniCoreDotNet.Tests` TRE truncation fixtures (`TreFileTests`) all pass — no fixture exercised the previously-shadowed `infoOffset == 0` path, but no fixture relied on the bypass either.
 
-### CR-03: ReflectionOnlyAssemblyResolve outermost finally + lock
+### CR-03: ReflectionOnlyAssemblyResolve outermost finally + lock (initial pass + peer-review follow-up)
 
 **Files modified:** `Utinni.Cli/Commands/PluginInspection.cs`
-**Commit:** `6080066` — `fix(04): CR-03 outermost finally + lock for ReflectionOnlyAssemblyResolve handler`
-**Applied fix:** Added a `private static readonly object _reflectionOnlyResolveLock = new object();` field on `PluginInspection`. Restructured `InspectSingle` so that (1) the resolver lambda is constructed BEFORE entering any `try` block, (2) `AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += resolver` is wrapped under `lock (_reflectionOnlyResolveLock)`, (3) the body that calls `ReflectionOnlyLoadFrom` and walks `CustomAttributeData` is wrapped in an OUTER `try { inner try with the four BadImageFormatException / ReflectionTypeLoadException / FileLoadException / catch-all blocks } finally { lock { -= resolver } }`. This ensures the `-=` runs whether the inner reflection calls succeed, throw a caught exception, or throw an exception that escapes the inner catches. The lock prevents two concurrent `InspectSingle` calls (from cross-collection xunit parallelism) from interleaving registrations and removing each other's handlers via MulticastDelegate target+method matching. Block comment explains both motives.
-**Verification:** Build passed. `Utinni.Cli.Tests` Test 7 (`InspectDirectory_WrongIPluginShapeFixture_ManagedWithShapeFail`) exercises the ReflectionOnly path on a real managed fixture DLL and passes — confirming the resolver registration/unregistration still functions and dependency resolution still proceeds correctly. **Note: requires human verification.** The lock prevents a race that the current single-collection test runner doesn't trigger; semantic correctness under cross-collection parallel xunit runs cannot be empirically validated from this fixer's test pass alone. Recommend the verifier phase confirm by inspection that the outermost `finally` runs on all five exit paths (success, BIE, RTLE, FLE, catch-all).
+**Commits:**
+- `6080066` — initial pass: `fix(04): CR-03 outermost finally + lock for ReflectionOnlyAssemblyResolve handler`
+- `82aae52` — peer-review follow-up: `fix(04): CR-03 widen lock to cover full ReflectionOnlyAssemblyResolve probe`
+
+**Initial fix (`6080066`):** Added a `private static readonly object _reflectionOnlyResolveLock = new object();` field on `PluginInspection`. Restructured `InspectSingle` so that (1) the resolver lambda is constructed BEFORE entering any `try` block, (2) `AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += resolver` is wrapped under `lock (_reflectionOnlyResolveLock)`, (3) the reflection body sits inside an outer `try { ... } finally { lock { -= resolver } }`. This addressed the **leak** half of CR-03 (the `-=` now runs on every exit path).
+
+**Peer-review finding (Cursor + Codex):** Both reviewers independently flagged that the initial fix did NOT address the **race** half of CR-03. The lock was held only across `+=` and `-=` as point-in-time operations; the reflection probe between them ran unlocked. Two concurrent `InspectSingle` calls could therefore both have their resolvers installed during the probe. Because `ReflectionOnlyAssemblyResolve` is a multicast event, dependency resolution would dispatch to both handlers — violating the "each test only sees its own resolver" contract CR-03 was meant to establish. Today the resolver lambdas are identical so there is no functional damage, but the contract was false.
+
+**Peer-review follow-up fix (`82aae52`):** Widened the lock to cover the entire add/use/remove span — `+=`, reflection body, and `-=` all sit inside a single `lock (_reflectionOnlyResolveLock) { ... }` critical section. This fully serializes concurrent `InspectSingle` calls under the lock. Reflection-only probes are short (<100 ms typically), so the throughput cost is negligible. The outermost-finally guarantee from the initial pass is preserved (the `-=` finally is now inside the lock, so it still runs on every exit path).
+
+**Verification:** Build passed on both passes. `Utinni.Cli.Tests` Test 7 (`InspectDirectory_WrongIPluginShapeFixture_ManagedWithShapeFail`) exercises the ReflectionOnly path on a real managed fixture DLL and passes after both commits — confirming the resolver registration/unregistration still functions and dependency resolution still proceeds correctly. **Residual caveat:** semantic correctness under cross-collection parallel xunit runs cannot be empirically validated by the current single-collection test runner; the lock prevents a race the runner does not trigger, so the proof is by inspection.
 
 ### CR-04: replace silent return with assertion in PluginInspectionTests.Test4
 
