@@ -155,9 +155,15 @@ namespace UtinniCoreDotNet.Formats.Tre
                 ValidateLength(nameCompressedSize, streamLength, TreParseError.NegativeLength,         TreParseError.ChunkLengthExceedsCap, "nameCompressedSize");
                 ValidateLength(nameSize,           MaxBlockSize, TreParseError.NegativeLength,         TreParseError.ChunkLengthExceedsCap, "nameSize");
 
-                // infoOffset + infoCompressedSize must fit within the stream.
+                // CR-02: infoOffset + infoCompressedSize must fit within the stream.
+                // The previous form was `infoOffset > 0 && infoEnd > streamLength`, which
+                // silently bypassed the bounds check whenever infoOffset == 0 — letting a
+                // malformed TRE with a non-zero infoCompressedSize claim that the info
+                // block starts at offset 0 (overlapping the magic/version header). Drop
+                // the leading guard and let the end-of-block check stand on its own,
+                // mirroring the analogous namesEnd > streamLength check below.
                 long infoEnd = (long)infoOffset + infoCompressedSize;
-                if (infoOffset > 0 && infoEnd > streamLength)
+                if (infoEnd > streamLength)
                 {
                     throw new TreParseException(TreParseError.Truncated,
                         "Info block at offset " + infoOffset + " with size " + infoCompressedSize + " exceeds stream length " + streamLength + ".");
