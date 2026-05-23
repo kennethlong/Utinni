@@ -501,7 +501,25 @@ These need someone-who-was-there to answer:
 8. **DXSDK June 2010 dependency** — could it be replaced with Windows 10
    SDK's d3d9 headers? (DXSDK has `d3dx9.h`, Windows SDK lacks it — check
    if Utinni actually uses `d3dx9` math helpers.)
-9. **CON-O-11 — CLI shim distribution.** Public artifact, or test-harness-internal only?
+9. **CON-O-09 — Test fixture storage.** In-repo (small files) vs Git LFS (binary TRE
+   samples can be large)?
+   (Source: docs/ai/test-harness-plan.md — resolved by Phase 4 Plan 04-02.)
+
+   **Resolved 2026-05-23 (CON-O-09, Phase 4 Plan 04-02 — D-03):** Fixture storage =
+   **in-repo synthesized + tiny real samples, no LFS**. Synthesized fixtures (hand-
+   crafted minimal cases — 3-record TRE v0005, 2-record TRE v0006, synthetic-nested IFF,
+   3-object world-snapshot, 4 plugin sub-fixtures) are the primary suite and always-
+   run in CI. Small (<128KB each, <256KB cap per file) real samples supplement when
+   synthesized-only would miss real-world edge cases. Synthesized-first policy
+   sidesteps redistribution-rights questions on SWG game assets; committed real
+   samples are format-trivial enough to be defensible as "minimal reproducer"
+   rather than "redistributed game content". No `.gitattributes`-LFS pointer files,
+   no env-var bring-your-own path, no opt-in 'live-snapshot' tier. If Phase 5
+   (Catch2 C++) or Phase 7+ (Wave-1 subpanels) surface needs that synthesized
+   fixtures can't satisfy, LFS revisit is a Phase 6+ decision (Phase 4 CONTEXT.md
+   "Deferred Ideas").
+
+10. **CON-O-11 — CLI shim distribution.** Public artifact, or test-harness-internal only?
    (Source: docs/ai/test-harness-plan.md — resolved by Phase 4 Plan 04-01.)
 
    **Resolved 2026-05-23 (CON-O-11, Phase 4 Plan 04-01 — D-02):** CLI distribution
