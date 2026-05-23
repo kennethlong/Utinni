@@ -36,6 +36,19 @@ namespace Utinni.Cli.Tests.Infrastructure
 
     public static class InProcessCliRunner
     {
+        // CR-05: Console.Out / Console.Error are process-global singletons. xunit can
+        // run tests from separate collections (or separate assemblies, when a future
+        // dotnet test run wires this assembly into a multi-project invocation) on
+        // different threads, and Console.SetOut / Console.SetError are not safe to
+        // interleave: two concurrent Run() calls would both save the real stdout as
+        // `prevOut`, then both set their own StringWriter, and the second restore
+        // would put back the real stdout — leaving the first caller's StringWriter
+        // empty while the second caller's StringWriter captured whatever the
+        // serialized writes happened to land on. Serialize the whole capture/run/
+        // restore body under a single static lock so the redirection is always
+        // paired against itself.
+        private static readonly object _consoleLock = new object();
+
         /// <summary>
         /// Runs Utinni.Cli.Program.Main in-process with the given args, capturing
         /// stdout and stderr via Console.SetOut / Console.SetError.
@@ -44,31 +57,34 @@ namespace Utinni.Cli.Tests.Infrastructure
         /// </summary>
         public static CliResult Run(params string[] args)
         {
-            var prevOut = Console.Out;
-            var prevErr = Console.Error;
-
-            var swOut = new StringWriter();
-            var swErr = new StringWriter();
-            int exitCode;
-
-            try
+            lock (_consoleLock)
             {
-                Console.SetOut(swOut);
-                Console.SetError(swErr);
-                exitCode = Utinni.Cli.Program.Main(args);
+                var prevOut = Console.Out;
+                var prevErr = Console.Error;
+
+                var swOut = new StringWriter();
+                var swErr = new StringWriter();
+                int exitCode;
+
+                try
+                {
+                    Console.SetOut(swOut);
+                    Console.SetError(swErr);
+                    exitCode = Utinni.Cli.Program.Main(args);
+                }
+                finally
+                {
+                    Console.SetOut(prevOut);
+                    Console.SetError(prevErr);
+                }
+
+                return new CliResult
+                {
+                    ExitCode = exitCode,
+                    Stdout = swOut.ToString().Replace("\r\n", "\n").Replace("\r", "\n"),
+                    Stderr = swErr.ToString().Replace("\r\n", "\n").Replace("\r", "\n")
+                };
             }
-            finally
-            {
-                Console.SetOut(prevOut);
-                Console.SetError(prevErr);
-            }
-
-            return new CliResult
-            {
-                ExitCode = exitCode,
-                Stdout = swOut.ToString().Replace("\r\n", "\n").Replace("\r", "\n"),
-                Stderr = swErr.ToString().Replace("\r\n", "\n").Replace("\r", "\n")
-            };
         }
     }
 }
