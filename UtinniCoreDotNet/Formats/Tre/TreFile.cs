@@ -303,8 +303,10 @@ namespace UtinniCoreDotNet.Formats.Tre
         /// <para><b>T-04-DoS:</b> Deflate output is capped at min(256 MB, record.UncompressedSize).
         /// If deflate produces more bytes than declared, <see cref="TreParseException"/>
         /// (<see cref="TreParseError.DeflateExpansionExceedsCap"/>) is thrown.</para>
-        /// <para><b>Mutation warning:</b> Callers MUST NOT mutate the returned byte[].
-        /// For uncompressed records, the cached byte[] is returned directly.</para>
+        /// <para><b>WR-01:</b> Every call returns a fresh byte[] — callers may mutate the
+        /// returned array freely without corrupting the internal cache. For uncompressed
+        /// records this means a defensive copy of the cached bytes; for deflate records
+        /// the inflated output is already a fresh allocation per call.</para>
         /// </summary>
         public byte[] GetRecordData(int index)
         {
@@ -318,8 +320,15 @@ namespace UtinniCoreDotNet.Formats.Tre
 
             if (rec.CompressionKind == "none")
             {
-                // Return the cached bytes directly (no copy per the xmldoc contract).
-                return compressed;
+                // WR-01: defensive copy of the cached bytes. Returning the cached array
+                // directly would let a caller mutate the cache, corrupting the bytes
+                // returned to every subsequent caller for the same record. The IFF
+                // parser already makes a defensive copy on its side, but plumbing the
+                // copy through here makes GetRecordData's mutation-safety contract
+                // self-enforcing rather than caller-trust.
+                var copy = new byte[compressed.Length];
+                Buffer.BlockCopy(compressed, 0, copy, 0, compressed.Length);
+                return copy;
             }
 
             // T-04-DoS: reject records claiming more bytes than the 256 MB cap.
