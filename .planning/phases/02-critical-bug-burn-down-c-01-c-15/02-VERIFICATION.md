@@ -1,23 +1,31 @@
 ---
 phase: 02-critical-bug-burn-down-c-01-c-15
 verified: 2026-05-17T00:00:00Z
-status: human_needed
+status: passed
+human_uat_resolved: 2026-05-18T18:05:10Z
+human_uat_resolution_artifact: .planning/phases/02-critical-bug-burn-down-c-01-c-15/02-HUMAN-UAT.md
 score: 4/4 must-haves verified
 overrides_applied: 0
 human_verification:
   - test: "Inject UtinniCore.dll into live SWG client via Launcher.exe. Confirm: SWG client window appears within ~2s, editor UI is visible, at least one plugin loads (shown in editor UI or utinni.log), and no thread is blocked on LdrpDrainWorkQueue in Resource Monitor Wait Chain Analysis."
     expected: "SWG launches cleanly, editor comes up with plugins loaded, no loader-lock hang."
     why_human: "LoaderLockHarness proves DllMain timing is under 50ms but cannot prove no deadlock under actual loader-lock contention. Full proof requires injection into a live SWG client process. Deferred to Tier-4 per CONTEXT.md D-06 and confirmed in STATE.md."
+    result: passed
+    resolved: 2026-05-18T18:03:09Z
+    evidence: "Editor host + The Jawa Toolbox plugin came up alongside the SWG client window; control flowed past LoadLibrary -> utinni_init -> CLR -> MEF plugin discovery -> FormMain -> TJT visible. User resume signal: 'both windows came up and I can select Jawa Toolbox'. Full record in 02-HUMAN-UAT.md."
   - test: "With UtinniCore.dll injected into a live SWG client, minimize and restore the SWG client window 5+ times in quick succession. Optionally repeat 20 times without pause."
     expected: "No UI hang (window animates smoothly), no CPU spike on UI thread, editor remains responsive. Confirms EventWaitHandle.WaitOne(100ms) replaced the Thread.Sleep(1) spin correctly end-to-end."
     why_human: "Mock-signaller tests (FormMainSignallerTests.cs) prove timeout and signal semantics via a fake EventWaitHandle, but the actual SetEvent signal path requires the real D3D9 hkPresent detour running inside a live SWG client. Deferred to Tier-4 per CONTEXT.md D-06 and confirmed in STATE.md."
+    result: passed
+    resolved: 2026-05-18T18:05:10Z
+    evidence: "Minimize/restore stress test against the live SWG client window; editor host stayed responsive throughout, no UI thread CPU spike. User resume signal: 'C-09 complete'. Full record in 02-HUMAN-UAT.md."
 ---
 
 # Phase 02: Critical Bug Burn-Down (C-01..C-15) Verification Report
 
 **Phase Goal:** All 15 critical bugs enumerated in assessment.md are closed. Framework no longer exhibits the listed silent failures, crashes, or data losses; class-of-bug constraints CON-H-01..-05, CON-L-01..-04, CON-B-04, CON-D-01 are honoured going forward.
 **Verified:** 2026-05-17
-**Status:** human_needed
+**Status:** passed (Tier-4 UAT resolved 2026-05-18; see `human_uat_resolved` in frontmatter)
 **Re-verification:** No — initial verification
 
 ---
