@@ -205,7 +205,20 @@ namespace Utinni.Cli.Tests.Commands
             }
             finally
             {
-                System.IO.Directory.Delete(tempDir, recursive: true);
+                try
+                {
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    System.IO.Directory.Delete(tempDir, recursive: true);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // File still locked by CLR — leave for OS cleanup.
+                }
+                catch (IOException)
+                {
+                    // Similar lock scenario — leave for OS cleanup.
+                }
             }
         }
 
@@ -257,7 +270,23 @@ namespace Utinni.Cli.Tests.Commands
             }
             finally
             {
-                System.IO.Directory.Delete(tempDir, recursive: true);
+                // ReflectionOnlyLoadFrom holds a file lock on the DLL until the AppDomain
+                // is unloaded (or GC runs). Try GC + retry; if still locked, leave the temp dir
+                // for OS cleanup rather than failing the test assertion.
+                try
+                {
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    System.IO.Directory.Delete(tempDir, recursive: true);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // Lock still held by CLR reflection machinery — leave temp dir for OS cleanup.
+                }
+                catch (IOException)
+                {
+                    // Similar lock scenario — leave for OS cleanup.
+                }
             }
         }
 
