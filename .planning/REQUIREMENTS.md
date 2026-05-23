@@ -49,8 +49,8 @@ Requirements derived from the 2026-05-16 ingest of `docs/ai/vision.md`, `docs/ai
 
 - [ ] **TEST-02 — Tier 1 C++ unit-test scaffold**
   - **Source:** test-harness-plan.md "Tier 1"
-  - **Statement:** Catch2 (header-only) wired through `ctest` or `vcpkg` for UtinniCore. Folds in once UtinniCore has the refactored seams produced by STAB-02 (R-A..R-H).
-  - **Acceptance:** Catch2 builds in CI; at least one native parser or helper has coverage; CI runs both `dotnet test` and `ctest` and is green on master.
+  - **Statement:** Catch2 (header-only amalgamated) wired through MSBuild + direct exe invocation for UtinniCore per Phase 5 D-03 (no CMake, no package manager). Folds in once UtinniCore has the refactored seams produced by STAB-02 (R-A..R-H).
+  - **Acceptance:** Catch2 builds in CI under all three native configs (Debug + Release + RelWithDbgInfo); at least one native parser or helper has coverage; CI runs both `dotnet test` and the native test exe `UtinniCore.Tests.exe` (Catch2 self-runner per Phase 5 D-03) and is green on master.
   - **Milestone:** V1
 
 - [x] **TEST-03 — Tier 2 CLI shim with golden fixtures** (Validated in Phase 4, 2026-05-23)

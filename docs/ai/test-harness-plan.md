@@ -23,13 +23,12 @@ Blanket TDD does not fit a project where half the surface is D3D9 detours, in-pr
 ### Tier 1 — Pure unit tests (fully autonomous)
 
 - **C# side:** xUnit (or NUnit) test project alongside Utinni's main solution. `dotnet test` runs in CI and locally without a game client.
-- **C++ side:** Catch2 (header-only, easy to drop into UtinniCore's solution) wired through `ctest` or a `vcpkg`-managed dependency.
+- **C++ side:** **[Closed in Phase 5, 2026-05-23]** Catch2 v3.15.0 vendored amalgamated at `external/catch2/` (D-02). Sibling MSBuild test exe `UtinniCore.Tests.vcxproj` produces `UtinniCore.Tests.exe` self-runner (D-03; no CMake, no package manager). Third lane in `.github/workflows/ci.yml` gates master from day one (D-04). Seed coverage: 4 TEST_CASEs (6 conceptual cases via SECTIONs) across `stringUtility::toBool/toString/toHexString/trim*` with documented PluginManager-regression failure modes per D-06 max-harness (D-01). See `.planning/phases/05-tier-1-c-unit-tests/` for full details.
 - **Targets:**
-  - TRE / IFF parsers
-  - Plugin manifest loading and discovery
-  - Settings serialization / migration
-  - Math helpers (transforms, quaternions, vector ops)
-  - Pure data-model logic
+  - **C# side:** TRE / IFF parsers (Phase 4 D-06 moved these from native to managed), settings serialization / migration, plugin manifest validation, hotkey parsing, pure data-model logic.
+  - **C++ side (Phase 5 / closed):** `stringUtility::toBool` / `toString(int, fillCount)` / `toHexString` / `trim` round-trip — exercised under PluginManager's `[Plugins]` line idiom.
+  - **C++ side (Phase 6 STAB-03 candidates, deferred):** `utility/log` R-A subscribe/unsubscribe registry (RESEARCH.md §D-01 "Backup pick"); broader `utility/utility.cpp` formatting helpers; `string_utility.h:89-102` `trim_*_copy` helpers (names appear swapped or logic incomplete per 05-REVIEWS.md Cursor LOW); math helpers if any seam emerges.
+  - **C++ side (out-of-scope; Tier-3 V2):** `swg/*` shim (RVA-bound, untestable without a fake SWG process); `utility/memory::*` (VirtualProtect / live-process semantics).
 - **Wins:** Catches every regression in pure logic with no manual loop.
 
 ### Tier 2 — CLI shim around the core (highest-leverage)
@@ -70,7 +69,7 @@ When this becomes a GSD phase (or phases), the natural sequence is:
 
 1. **Tier 1 C# unit-test project** — smallest, unblocks everything else. Pick 2–3 parsers as the first targets.
 2. **CLI shim (Tier 2)** — depends on tier 1 having extracted testable seams. Biggest payoff.
-3. **Tier 1 C++ unit tests** — fold in once UtinniCore has refactored seams (the prior audit flagged native code quality, so this likely pairs with cleanup).
+3. **Tier 1 C++ unit tests** — **[Closed in Phase 5, 2026-05-23]** Catch2 v3.15.0 vendored, MSBuild + direct exe, third CI lane green on master. See `.planning/phases/05-tier-1-c-unit-tests/`.
 4. **Tier 3 fixtures + mock D3D9** — only worth doing when we are touching hook code intentionally.
 
 ## Open questions to resolve at planning time
