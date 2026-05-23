@@ -1,0 +1,21 @@
+{
+  "command": "list-objects",
+  "result": {
+    "objects": [
+      {
+        "id": "object/creature/player/shared_player_human_male.iff",
+        "templateName": "object/creature/player/shared_player_human_male.iff"
+      },
+      {
+        "id": "object/tangible/utility/shared_chronicle_repository_s1.iff",
+        "templateName": "object/tangible/utility/shared_chronicle_repository_s1.iff"
+      },
+      {
+        "id": "object/tangible/utility/shared_kiosk_unique_corellia_basicvar01.iff",
+        "templateName": "object/tangible/utility/shared_kiosk_unique_corellia_basicvar01.iff"
+      }
+    ],
+    "source": "<fixture-path>"
+  },
+  "schemaVersion": 1
+}

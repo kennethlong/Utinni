@@ -1,0 +1,8 @@
+{
+  "command": "parse-tre",
+  "error": {
+    "kind": "BadMagic",
+    "message": "TRE magic bytes not found. Expected 'EERT' at offset 0."
+  },
+  "schemaVersion": 1
+}

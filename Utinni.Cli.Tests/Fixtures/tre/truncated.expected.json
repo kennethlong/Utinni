@@ -1,0 +1,8 @@
+{
+  "command": "parse-tre",
+  "error": {
+    "kind": "Truncated",
+    "message": "Info block is 24 bytes but need 72 for 3 records."
+  },
+  "schemaVersion": 1
+}

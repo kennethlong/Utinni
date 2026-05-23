@@ -1,0 +1,37 @@
+{
+  "command": "parse-tre",
+  "result": {
+    "header": {
+      "infoCompressedSize": 48,
+      "infoCompression": 0,
+      "infoOffset": 36,
+      "nameCompressedSize": 18,
+      "nameCompression": 0,
+      "nameSize": 18,
+      "recordCount": 2,
+      "version": "0006"
+    },
+    "records": [
+      {
+        "checksum": 0,
+        "compressedSize": 12,
+        "compressionKind": "none",
+        "id": "tre:0",
+        "name": "marker.txt",
+        "offset": 102,
+        "uncompressedSize": 12
+      },
+      {
+        "checksum": 0,
+        "compressedSize": 24,
+        "compressionKind": "deflate",
+        "id": "tre:1",
+        "name": "v6.txt",
+        "offset": 114,
+        "uncompressedSize": 22
+      }
+    ],
+    "source": "<fixture-path>"
+  },
+  "schemaVersion": 1
+}

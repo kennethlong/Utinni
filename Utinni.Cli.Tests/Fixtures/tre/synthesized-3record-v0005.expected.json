@@ -1,0 +1,46 @@
+{
+  "command": "parse-tre",
+  "result": {
+    "header": {
+      "infoCompressedSize": 72,
+      "infoCompression": 0,
+      "infoOffset": 36,
+      "nameCompressedSize": 30,
+      "nameCompression": 0,
+      "nameSize": 30,
+      "recordCount": 3,
+      "version": "0005"
+    },
+    "records": [
+      {
+        "checksum": 0,
+        "compressedSize": 13,
+        "compressionKind": "none",
+        "id": "tre:0",
+        "name": "hello.txt",
+        "offset": 138,
+        "uncompressedSize": 13
+      },
+      {
+        "checksum": 0,
+        "compressedSize": 45,
+        "compressionKind": "deflate",
+        "id": "tre:1",
+        "name": "quick.txt",
+        "offset": 151,
+        "uncompressedSize": 44
+      },
+      {
+        "checksum": 0,
+        "compressedSize": 0,
+        "compressionKind": "none",
+        "id": "tre:2",
+        "name": "empty.bin",
+        "offset": 196,
+        "uncompressedSize": 0
+      }
+    ],
+    "source": "<fixture-path>"
+  },
+  "schemaVersion": 1
+}
