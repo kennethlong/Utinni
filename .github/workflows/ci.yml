@@ -106,3 +106,41 @@ jobs:
             Utinni.Cli.Tests/bin/Release/net472/TestResults/**/*.json
             Utinni.Cli.Tests/bin/Release/net472/TestResults/**/*.txt
           if-no-files-found: warn
+
+      - name: Build native tests (Debug|x86) — triple-config verification per 05-REVIEWS.md item C3
+        shell: pwsh
+        run: msbuild Utinni.sln /m /p:Configuration=Debug /p:Platform=x86 /t:UtinniCore_Tests
+        # Targeted build (only the test exe project), not full solution rebuild.
+        # Satisfies ROADMAP Phase 5 success criterion #1 literal reading: "builds in CI under all three native configs."
+
+      - name: Build native tests (RelWithDbgInfo|x86) — triple-config verification per 05-REVIEWS.md item C3
+        shell: pwsh
+        run: msbuild Utinni.sln /m /p:Configuration=RelWithDbgInfo /p:Platform=x86 /t:UtinniCore_Tests
+        # Targeted build (only the test exe project). RelWithDbgInfo is the CON-T-02 / D-07 config most prone to
+        # silent collapse-to-Release at the sln-mapping layer; building it in CI catches regressions early.
+
+      - name: Create native test results directory (per 05-REVIEWS.md item U4)
+        working-directory: ${{ github.workspace }}
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path UtinniCore.Tests\TestResults | Out-Null
+        # Catch2's std::ofstream-based junit reporter does NOT create parent dirs. Codex review (HIGH) caught this.
+
+      - name: Run native unit tests (UtinniCore.Tests.exe, Release|x86)
+        shell: pwsh
+        run: |
+          # Phase 5 D-04: third CI lane gates `master` on the native test suite.
+          # Direct exe invocation (not `dotnet test`) because the runner is Catch2 self-runner.
+          # Stacked --reporter flags: console sets the exit code on failure (RESEARCH §Pitfall 5);
+          # junit writes XML for triage. Output dir was created in the preceding step.
+          # Only Release runs the exe; Debug + RelWithDbgInfo are build-only verification per 05-REVIEWS.md item C3.
+          & bin\Release\UtinniCore.Tests.exe `
+            --reporter console `
+            --reporter "junit::out=UtinniCore.Tests\TestResults\junit-results.xml"
+
+      - name: Upload native test artifacts (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-test-results
+          path: UtinniCore.Tests/TestResults/junit-results.xml
+          if-no-files-found: warn
