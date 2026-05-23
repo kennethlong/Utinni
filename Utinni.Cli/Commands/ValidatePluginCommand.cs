@@ -23,24 +23,22 @@
 **/
 
 using CommandLine;
+using Utinni.Cli.Output;
 
-namespace Utinni.Cli
+namespace Utinni.Cli.Commands
 {
-    public static class Program
+    [Verb("validate-plugin", HelpText = "Reflect on a plugin directory and report compliance. WARNING: loads each .dll under the given directory; only run against trusted plugin directories.")]
+    public class ValidatePluginOptions
     {
-        public static int Main(string[] args)
+        [Value(0, MetaName = "dir", Required = true, HelpText = "Plugin directory.")]
+        public string Dir { get; set; }
+    }
+
+    public static class ValidatePluginCommand
+    {
+        public static int Run(ValidatePluginOptions o)
         {
-            return Parser.Default.ParseArguments<
-                    Commands.ParseTreOptions,
-                    Commands.ListObjectsOptions,
-                    Commands.InspectIffOptions,
-                    Commands.ValidatePluginOptions>(args)
-                .MapResult(
-                    (Commands.ParseTreOptions o)       => Commands.ParseTreCommand.Run(o),
-                    (Commands.ListObjectsOptions o)    => Commands.ListObjectsCommand.Run(o),
-                    (Commands.InspectIffOptions o)     => Commands.InspectIffCommand.Run(o),
-                    (Commands.ValidatePluginOptions o) => Commands.ValidatePluginCommand.Run(o),
-                    errs => 1);  // exit 1 on usage error per D-02
+            return JsonOutput.EmitError("validate-plugin", "NotImplemented", "validate-plugin command lands in Plan 04-04.", exitCode: 1);
         }
     }
 }

@@ -23,24 +23,22 @@
 **/
 
 using CommandLine;
+using Utinni.Cli.Output;
 
-namespace Utinni.Cli
+namespace Utinni.Cli.Commands
 {
-    public static class Program
+    [Verb("parse-tre", HelpText = "Parse a .tre archive and emit sorted-key JSON to stdout.")]
+    public class ParseTreOptions
     {
-        public static int Main(string[] args)
+        [Value(0, MetaName = "path", Required = true, HelpText = "Path to the .tre file.")]
+        public string Path { get; set; }
+    }
+
+    public static class ParseTreCommand
+    {
+        public static int Run(ParseTreOptions o)
         {
-            return Parser.Default.ParseArguments<
-                    Commands.ParseTreOptions,
-                    Commands.ListObjectsOptions,
-                    Commands.InspectIffOptions,
-                    Commands.ValidatePluginOptions>(args)
-                .MapResult(
-                    (Commands.ParseTreOptions o)       => Commands.ParseTreCommand.Run(o),
-                    (Commands.ListObjectsOptions o)    => Commands.ListObjectsCommand.Run(o),
-                    (Commands.InspectIffOptions o)     => Commands.InspectIffCommand.Run(o),
-                    (Commands.ValidatePluginOptions o) => Commands.ValidatePluginCommand.Run(o),
-                    errs => 1);  // exit 1 on usage error per D-02
+            return JsonOutput.EmitError("parse-tre", "NotImplemented", "parse-tre command lands in Plan 04-02.", exitCode: 1);
         }
     }
 }

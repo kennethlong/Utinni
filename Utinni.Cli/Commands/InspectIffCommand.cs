@@ -23,24 +23,22 @@
 **/
 
 using CommandLine;
+using Utinni.Cli.Output;
 
-namespace Utinni.Cli
+namespace Utinni.Cli.Commands
 {
-    public static class Program
+    [Verb("inspect-iff", HelpText = "Emit the chunk tree of an IFF file as JSON.")]
+    public class InspectIffOptions
     {
-        public static int Main(string[] args)
+        [Value(0, MetaName = "path", Required = true, HelpText = "Path to the .iff file.")]
+        public string Path { get; set; }
+    }
+
+    public static class InspectIffCommand
+    {
+        public static int Run(InspectIffOptions o)
         {
-            return Parser.Default.ParseArguments<
-                    Commands.ParseTreOptions,
-                    Commands.ListObjectsOptions,
-                    Commands.InspectIffOptions,
-                    Commands.ValidatePluginOptions>(args)
-                .MapResult(
-                    (Commands.ParseTreOptions o)       => Commands.ParseTreCommand.Run(o),
-                    (Commands.ListObjectsOptions o)    => Commands.ListObjectsCommand.Run(o),
-                    (Commands.InspectIffOptions o)     => Commands.InspectIffCommand.Run(o),
-                    (Commands.ValidatePluginOptions o) => Commands.ValidatePluginCommand.Run(o),
-                    errs => 1);  // exit 1 on usage error per D-02
+            return JsonOutput.EmitError("inspect-iff", "NotImplemented", "inspect-iff command lands in Plan 04-03.", exitCode: 1);
         }
     }
 }
