@@ -52,6 +52,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Utinni.LegacyPlugin", "Utin
 		{AEFED7F6-4BA9-44FC-A353-71A463A82FDE} = {AEFED7F6-4BA9-44FC-A353-71A463A82FDE}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UtinniCore.Tests", "UtinniCore.Tests\UtinniCore.Tests.vcxproj", "{345DFD73-E6CD-4B2F-81AF-6F643193B5F8}"
+	ProjectSection(ProjectDependencies) = postProject
+		{AEFED7F6-4BA9-44FC-A353-71A463A82FDE} = {AEFED7F6-4BA9-44FC-A353-71A463A82FDE}
+	EndProjectSection
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Utinni.Cli", "Utinni.Cli\Utinni.Cli.csproj", "{3C6A1162-DADD-4CBE-9ACC-ECE2B2030FF8}"
 	ProjectSection(ProjectDependencies) = postProject
 		{39AB8A43-B916-4C6E-87DD-928B438CAE68} = {39AB8A43-B916-4C6E-87DD-928B438CAE68}
@@ -151,6 +156,12 @@ Global
 		{43082BFF-53F1-4CB6-837E-7ACA8468C12D}.Release|x86.ActiveCfg = Release|x86
 		{43082BFF-53F1-4CB6-837E-7ACA8468C12D}.Release|x86.Build.0 = Release|x86
 		{43082BFF-53F1-4CB6-837E-7ACA8468C12D}.RelWithDbgInfo|x86.ActiveCfg = Release|x86
+		{345DFD73-E6CD-4B2F-81AF-6F643193B5F8}.Debug|x86.ActiveCfg = Debug|Win32
+		{345DFD73-E6CD-4B2F-81AF-6F643193B5F8}.Debug|x86.Build.0 = Debug|Win32
+		{345DFD73-E6CD-4B2F-81AF-6F643193B5F8}.Release|x86.ActiveCfg = Release|Win32
+		{345DFD73-E6CD-4B2F-81AF-6F643193B5F8}.Release|x86.Build.0 = Release|Win32
+		{345DFD73-E6CD-4B2F-81AF-6F643193B5F8}.RelWithDbgInfo|x86.ActiveCfg = RelWithDbgInfo|Win32
+		{345DFD73-E6CD-4B2F-81AF-6F643193B5F8}.RelWithDbgInfo|x86.Build.0 = RelWithDbgInfo|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
