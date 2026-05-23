@@ -122,6 +122,18 @@ static int s_nextRenderId = 1;
 bool enableUi;
 bool rendering;
 
+// DIAG 06-01 Task 2: ImGui::ShowDemoWindow exit-criterion probe.
+// Initially `true` so that Tasks 1+2's diag instrumentation lights up by
+// default the next time the maintainer launches a live SWG session against
+// this build. Plan 06-01 Task 3 flips this to `false` post-Tier-4 sign-off
+// (Demo screen fully exercised end-to-end) so that the dormant call site
+// remains for future Wave-1 work that wants to re-enable by flipping the
+// flag. Per D-11 in 06-CONTEXT.md, the Demo screen is the highest-bar exit
+// criterion because it exercises menus + sliders + buttons + tabs + plots
+// + popups + drag-and-drop end-to-end (proves render + input + state-mgmt
+// all healthy in the injection model).
+static bool g_showDemoWindowProbe = true;
+
 void enableInternalUi(bool enable)
 {
 	 enableUi = enable;
@@ -425,6 +437,19 @@ bool isSetup = false;
 			ImGui_ImplDX9_NewFrame();
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
+
+			// DIAG 06-01 Task 2: ImGui::ShowDemoWindow exit-criterion probe.
+			// Additive instrumentation -- the existing renderCallbacks dispatch
+			// (further down in the !enableUi branch) is unchanged. Gated behind
+			// the file-scope g_showDemoWindowProbe flag so Task 3's Tier-4
+			// sign-off can flip it off without recompiling once Demo screen has
+			// been exercised end-to-end over a live SWG client. ShowDemoWindow
+			// is self-contained (calls ImGui::Begin/End internally), so it
+			// composes safely with the surrounding Begin("Tests")/End().
+			if (g_showDemoWindowProbe)
+			{
+				ImGui::ShowDemoWindow(nullptr);
+			}
 
 			static bool showDepthWindow = false;
 			static bool showColorWindow = false;
