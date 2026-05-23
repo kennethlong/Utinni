@@ -119,7 +119,7 @@ Plans:
   3. CI gates `main` on `dotnet test` (Phase 1) + CLI golden tests (Phase 4) + `ctest` (this phase) — all green.
 **Plans**: 2 plans
 **Plans**:
-- [ ] 05-01-PLAN.md - Scaffold + smoke: vendor Catch2 v3.15.0 at external/catch2/, create UtinniCore.Tests.vcxproj (triple-config Application), register in Utinni.sln with full Debug+Release+RelWithDbgInfo postSolution mappings (NOT the LoaderLockHarness collapse pattern), 3 smoke TEST_CASEs (REQUIRE/REQUIRE_THROWS_AS/SECTION re-entry), third CI lane in ci.yml with stacked --reporter console + junit::out=...
+- [x] 05-01-PLAN.md - Scaffold + smoke: vendor Catch2 v3.15.0 at external/catch2/, create UtinniCore.Tests.vcxproj (triple-config Application), register in Utinni.sln with full Debug+Release+RelWithDbgInfo postSolution mappings (NOT the LoaderLockHarness collapse pattern), 3 smoke TEST_CASEs (REQUIRE/REQUIRE_THROWS_AS/SECTION re-entry), third CI lane in ci.yml with stacked --reporter console + junit::out=...
 - [ ] 05-02-PLAN.md - Seed coverage: 6 TEST_CASEs in StringUtilityTests.cpp covering stringUtility::toBool/toString(int,fillCount)/toHexString/trim* with D-06 max-harness failure-mode table; docs/ai/test-harness-plan.md Tier 1 C++ side row closed; phase-end /gsd:code-review 05 checkpoint
 
 ### Phase 6: Cleanups, dep bumps, open questions, Tier 4 doc, 1.0 cut
