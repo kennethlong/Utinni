@@ -196,10 +196,12 @@ None — no external service configuration needed. The CI lane will run automati
 
 | Item | Status |
 |------|--------|
-| Initial green CI run on master | **pending** (occurs post-merge) |
-| Red-run validation (REQUIRE(false) on throwaway branch) | **pending** (user performs after the initial green is confirmed) |
-| Red CI run URL | _to be recorded here after the user runs the procedure_ |
-| Green master CI run URL (post-merge baseline) | _to be recorded here after the merge_ |
+| Initial green CI run on master | ✅ confirmed (SHA `727250b`, run id 26335337027 — first attempt failed on unrelated LoaderLockHarness flake; re-run on same SHA passed clean with all 4 native-lane steps green) |
+| Red-run validation (REQUIRE(false) on throwaway branch) | ⏭ skipped by user 2026-05-23 — accepted initial green as sufficient evidence the lane works; failure-path coverage left as an explicit known gap. Runbook below is preserved for future plans (or for post-hoc red-run if the lane's exit-code propagation is ever doubted). |
+| Red CI run URL | _n/a (red-run skipped)_ |
+| Green master CI run URL (post-merge baseline) | <https://github.com/kennethlong/Utinni/actions/runs/26335337027> |
+
+**LoaderLockHarness CI flake captured separately:** `.planning/todos/pending/loader-lock-harness-flake-fix.md` + memory `project_loader_lock_harness_ci_flake.md`. Not a Phase 5 regression.
 
 ### Step-by-step runbook
 
