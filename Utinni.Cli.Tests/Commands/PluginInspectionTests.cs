@@ -121,11 +121,14 @@ namespace Utinni.Cli.Tests.Commands
             // Use UtinniCoreDotNet.dll (managed, no native createPlugin export).
             string baseDir = AppContext.BaseDirectory;
             string managedDll = Path.Combine(baseDir, "UtinniCoreDotNet.dll");
-            if (!File.Exists(managedDll))
-            {
-                // Skip gracefully if the managed DLL isn't in bin (shouldn't happen in normal builds).
-                return;
-            }
+
+            // CR-04: a silent `return` here would let xunit report this test as PASSED
+            // even though no assertion ever ran — a vacuous pass on any build that
+            // doesn't place UtinniCoreDotNet.dll in the test output directory. Fail
+            // loudly with an explicit prerequisite assertion instead.
+            Assert.True(File.Exists(managedDll),
+                "Prerequisite UtinniCoreDotNet.dll not found at " + managedDll +
+                ". Ensure the solution is built before running tests.");
 
             Assert.False(NativeExportProbe.HasExport(managedDll, "createPlugin"),
                 "Managed DLL should not have a native createPlugin export");
