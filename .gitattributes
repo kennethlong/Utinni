@@ -1,0 +1,5 @@
+# Phase 4 D-10: force LF line endings on golden fixtures so cross-platform
+# checkout doesn't insert CRLF and break JToken.DeepEquals/text comparison.
+Utinni.Cli.Tests/Fixtures/**/*.expected.json text eol=lf
+Utinni.Cli.Tests/Fixtures/**/*.expected.txt  text eol=lf
+Utinni.Cli.Tests/Fixtures/**/*.json          text eol=lf
