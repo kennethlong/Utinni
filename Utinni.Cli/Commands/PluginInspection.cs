@@ -206,9 +206,15 @@ namespace Utinni.Cli.Commands
 
             var filteredErrors = PluginInspectionFilters.FilterNativeLoadErrors(
                 loader.LoadErrors as IReadOnlyList<string> ?? new List<string>(loader.LoadErrors));
+            // WR-06: PluginLoader.Plugins is typed as IEnumerable<IPlugin> (not a
+            // collection interface), so .Count() would enumerate the sequence in
+            // full. Materialize once into a List<IPlugin> and read .Count off it —
+            // this avoids any chance of a second enumeration if the underlying
+            // sequence is lazy or stateful, and is O(n) just once.
+            var pluginsMaterialized = loader.Plugins?.ToList();
             var loaderObs = new LoaderObservation
             {
-                PluginsCount = loader.Plugins == null ? 0 : loader.Plugins.Count(),
+                PluginsCount = pluginsMaterialized?.Count ?? 0,
                 LoadErrors = filteredErrors
             };
 
