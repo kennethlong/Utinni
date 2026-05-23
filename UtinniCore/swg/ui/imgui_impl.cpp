@@ -323,6 +323,22 @@ bool isSetup = false;
 	  style.GrabMinSize = 5.f;
 
 	  isSetup = true;
+
+	  // DIAG 06-01 Task 1: one-shot info log on first setup() completion.
+	  // Confirms (a) hkPresent reached imgui_impl::setup() at least once and
+	  // (b) the isSetup gate has flipped true. Pair with the render-entry
+	  // one-shot below to triangulate where the overlay state machine is
+	  // stalling. Static-bool guard ensures exactly one fire per process
+	  // lifetime even though setup() is invoked from hkPresent every frame
+	  // (early-return on isSetup prevents the body re-running, but the
+	  // tripwire lives below the body, so the guard is a belt-and-braces
+	  // safety against any future code reordering).
+	  static bool sLoggedOnce = false;
+	  if (!sLoggedOnce)
+	  {
+		  sLoggedOnce = true;
+		  utinni::log::info("imgui_impl::setup complete, isSetup=true");
+	  }
  }
 
 
@@ -393,6 +409,18 @@ bool isSetup = false;
  {
 	  if (isSetup)
 	  {
+			// DIAG 06-01 Task 1: one-shot debug log on first render() entry into
+			// the isSetup branch. Confirms hkPresent's call to imgui_impl::render
+			// crosses the gate at least once. Static-bool guard ensures exactly
+			// one fire per process lifetime; debug-level keeps utinni.log clean
+			// while still letting the maintainer grep for the line.
+			static bool sLoggedOnceRender = false;
+			if (!sLoggedOnceRender)
+			{
+				sLoggedOnceRender = true;
+				utinni::log::debug("imgui_impl::render entered isSetup branch");
+			}
+
 			rendering = true;
 			ImGui_ImplDX9_NewFrame();
 			ImGui_ImplWin32_NewFrame();
