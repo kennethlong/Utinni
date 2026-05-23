@@ -108,15 +108,15 @@ Plans:
 - [x] 04-01: TBD
 
 ### Phase 5: Tier 1 C++ unit tests
-**Goal**: Catch2 wired through `ctest` (or `vcpkg`) for UtinniCore. At least one native parser or helper has non-trivial coverage. CI runs the native test target on every push.
+**Goal**: Catch2 wired into CI (MSBuild + direct exe invocation per 05-CONTEXT.md D-03; ctest+vcpkg deferred to Phase 6 STAB-03) for UtinniCore. At least one native parser or helper has non-trivial coverage. CI runs the native test target on every push.
 **Depends on**: Phase 3 (refactored seams from R-A..R-H make native testing tractable) and Phase 4 (CI pipeline already runs multi-language tests, just add the C++ target).
 **Requirements**: TEST-02
 **Open questions to resolve**: None new — CON-O-09/-10/-11 already resolved in Phase 4.
 **Preservation guard-rails**: Catch2 must not poison CON-T-02 (`RelWithDbgInfo` configuration plumbed end-to-end) — pick a Catch2 wiring strategy that respects the three-config layout. No refactor of CON-N-01..-09.
 **Success Criteria** (what must be TRUE):
-  1. A Catch2 test executable builds in CI under all three native configs and runs under `ctest`.
+  1. A Catch2 test executable builds in CI under all three native configs (Debug + Release + RelWithDbgInfo) and runs via direct exe invocation (`bin\Release\UtinniCore.Tests.exe`) per 05-CONTEXT.md D-03 — Catch2 as its own self-runner with stacked `--reporter console + junit::out=...`, no `ctest` wrapper.
   2. At least one UtinniCore parser or helper has Catch2 coverage (target candidates: TRE/IFF parsers in native, math helpers, `utility/memory::copy` round-trip).
-  3. CI gates `main` on `dotnet test` (Phase 1) + CLI golden tests (Phase 4) + `ctest` (this phase) — all green.
+  3. CI gates `master` on `dotnet test` (Phase 1) + CLI golden tests (Phase 4) + native unit tests via direct exe invocation (this phase, per D-03) — all green.
 **Plans**: 2 plans
 **Plans**:
 - [x] 05-01-PLAN.md - Scaffold + smoke: vendor Catch2 v3.15.0 at external/catch2/, create UtinniCore.Tests.vcxproj (triple-config Application), register in Utinni.sln with full Debug+Release+RelWithDbgInfo postSolution mappings (NOT the LoaderLockHarness collapse pattern), 3 smoke TEST_CASEs (REQUIRE/REQUIRE_THROWS_AS/SECTION re-entry), third CI lane in ci.yml with stacked --reporter console + junit::out=...
