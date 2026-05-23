@@ -102,11 +102,12 @@ namespace UtinniCoreDotNet.Formats.Iff
         /// </summary>
         public static IffDocument Read(Stream input)
         {
-            // Phase 4 runs on Windows x86; document the endianness assumption.
-            if (!BitConverter.IsLittleEndian)
-            {
-                throw new NotSupportedException("IffReader requires a little-endian host (Windows x86 only in Phase 4).");
-            }
+            // WR-02: no endianness guard here. The IFF parser reads all multi-byte
+            // integers via ReadInt32Be (manual shift-and-OR over byte[4]), which is
+            // host-endianness-independent — every read is explicitly big-endian by
+            // construction. The analogous guard in TreFile.Open IS load-bearing
+            // because that parser uses BinaryReader.ReadInt32() (little-endian) for
+            // header fields and would silently mis-parse on a big-endian host.
 
             long streamLength = input.Length;
             var preorderAccumulator = new List<IffChunk>();
