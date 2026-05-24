@@ -122,17 +122,15 @@ static int s_nextRenderId = 1;
 bool enableUi;
 bool rendering;
 
-// DIAG 06-01 Task 2: ImGui::ShowDemoWindow exit-criterion probe.
-// Initially `true` so that Tasks 1+2's diag instrumentation lights up by
-// default the next time the maintainer launches a live SWG session against
-// this build. Plan 06-01 Task 3 flips this to `false` post-Tier-4 sign-off
-// (Demo screen fully exercised end-to-end) so that the dormant call site
-// remains for future Wave-1 work that wants to re-enable by flipping the
-// flag. Per D-11 in 06-CONTEXT.md, the Demo screen is the highest-bar exit
-// criterion because it exercises menus + sliders + buttons + tabs + plots
-// + popups + drag-and-drop end-to-end (proves render + input + state-mgmt
-// all healthy in the injection model).
-static bool g_showDemoWindowProbe = true;
+// DIAG 2026-05-23 Plan 06-01 Task 2: additive ShowDemoWindow probe gated
+// behind this flag so it can be flipped off without recompiling. Lives at
+// file scope inside namespace imgui_impl so future Wave-1 work can grep
+// `g_showDemoWindowProbe` deterministically and re-enable as needed.
+// Task 3 sign-off (2026-05-23) flipped this to false after the maintainer
+// verified the Demo screen rendered end-to-end (menus + sliders + buttons +
+// tabs + plots + popups + drag-and-drop) over live SWG. Call site retained
+// so a one-line edit re-enables for future Wave-1 plugin styling work.
+static bool g_showDemoWindowProbe = false;
 
 void enableInternalUi(bool enable)
 {
@@ -336,20 +334,21 @@ bool isSetup = false;
 
 	  isSetup = true;
 
-	  // DIAG 06-01 Task 1: one-shot info log on first setup() completion.
-	  // Confirms (a) hkPresent reached imgui_impl::setup() at least once and
-	  // (b) the isSetup gate has flipped true. Pair with the render-entry
-	  // one-shot below to triangulate where the overlay state machine is
-	  // stalling. Static-bool guard ensures exactly one fire per process
-	  // lifetime even though setup() is invoked from hkPresent every frame
-	  // (early-return on isSetup prevents the body re-running, but the
-	  // tripwire lives below the body, so the guard is a belt-and-braces
-	  // safety against any future code reordering).
+	  // DIAG 2026-05-23 Plan 06-01 Task 1: one-shot probe that fires the first
+	  // time isSetup flips true. Pair with the render() probe below to confirm
+	  // both the imgui setup path AND the per-frame render-gate are reached in
+	  // a live SWG-injected session. Static-bool guarded — fires exactly once.
+	  // Per 06-01-DEMO-PROBE-NOTES.md: the d3d9 pattern-scan suspicion is
+	  // resolved (Phase 02.1 commit 2c57d38 replaced it with the dummy-device
+	  // approach), so this probe is the next link in the chain.
+	  // Task 3 sign-off (2026-05-23): demoted from info -> debug; kept behind
+	  // the one-shot guard so the diag stays dormant in normal runs but
+	  // surfaces in debug logs if the regression returns.
 	  static bool sLoggedOnce = false;
 	  if (!sLoggedOnce)
 	  {
-		  sLoggedOnce = true;
-		  utinni::log::info("imgui_impl::setup complete, isSetup=true");
+		   sLoggedOnce = true;
+		   utinni::log::debug("imgui_impl::setup complete, isSetup=true");
 	  }
  }
 
@@ -421,16 +420,17 @@ bool isSetup = false;
  {
 	  if (isSetup)
 	  {
-			// DIAG 06-01 Task 1: one-shot debug log on first render() entry into
-			// the isSetup branch. Confirms hkPresent's call to imgui_impl::render
-			// crosses the gate at least once. Static-bool guard ensures exactly
-			// one fire per process lifetime; debug-level keeps utinni.log clean
-			// while still letting the maintainer grep for the line.
+			// DIAG 2026-05-23 Plan 06-01 Task 1: one-shot probe that fires the
+			// first time render() actually crosses the isSetup gate. Static-
+			// bool guarded; debug-level so it never floods utinni.log. Pair
+			// with the setup-complete probe above to confirm the per-frame
+			// render path is alive in live SWG sessions. See
+			// 06-01-DEMO-PROBE-NOTES.md for the d3d9 pattern-scan disposition.
 			static bool sLoggedOnceRender = false;
 			if (!sLoggedOnceRender)
 			{
-				sLoggedOnceRender = true;
-				utinni::log::debug("imgui_impl::render entered isSetup branch");
+				 sLoggedOnceRender = true;
+				 utinni::log::debug("imgui_impl::render entered isSetup branch");
 			}
 
 			rendering = true;
@@ -438,17 +438,15 @@ bool isSetup = false;
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
 
-			// DIAG 06-01 Task 2: ImGui::ShowDemoWindow exit-criterion probe.
-			// Additive instrumentation -- the existing renderCallbacks dispatch
-			// (further down in the !enableUi branch) is unchanged. Gated behind
-			// the file-scope g_showDemoWindowProbe flag so Task 3's Tier-4
-			// sign-off can flip it off without recompiling once Demo screen has
-			// been exercised end-to-end over a live SWG client. ShowDemoWindow
-			// is self-contained (calls ImGui::Begin/End internally), so it
-			// composes safely with the surrounding Begin("Tests")/End().
+			// DIAG 2026-05-23 Plan 06-01 Task 2: additive ShowDemoWindow probe
+			// gated behind g_showDemoWindowProbe (file-scope). Exercises the
+			// full imgui Demo screen (menus + sliders + buttons + tabs + plots
+			// + popups + drag-and-drop) over live SWG to confirm render + input
+			// + state-mgmt end-to-end. Additive — the renderCallbacks dispatch
+			// below (in the !enableUi branch) is untouched.
 			if (g_showDemoWindowProbe)
 			{
-				ImGui::ShowDemoWindow(nullptr);
+				 ImGui::ShowDemoWindow(nullptr);
 			}
 
 			static bool showDepthWindow = false;

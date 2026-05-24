@@ -1,227 +1,135 @@
 ---
 phase: 06-cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut
 plan: 01
-subsystem: imgui-overlay-investigation
-tags: [diag, imgui, d3d9, tier4, overlay-debug, paused-at-checkpoint]
-status: paused-at-checkpoint
-checkpoint:
-  type: human-verify
-  gate: blocking
-  task: 3
-dependency_graph:
-  requires:
-    - Phase 02.1 d3d9 dummy-device approach (commit 2c57d38) — pattern-scan
-      already-not-the-cause baseline
-    - utinni::log::info / utinni::log::debug facade (UtinniCore/utility/log.h)
-  provides:
-    - 06-01-DEMO-PROBE-NOTES.md (live disposition write-up + placeholders for
-      maintainer observations)
-    - imgui_impl::setup one-shot info tripwire (`imgui_impl::setup complete,
-      isSetup=true`)
-    - imgui_impl::render one-shot debug tripwire (`imgui_impl::render entered
-      isSetup branch`)
-    - file-scope `static bool g_showDemoWindowProbe = true;` flag in
-      imgui_impl.cpp
-    - ImGui::ShowDemoWindow(nullptr) call site gated behind the probe flag
-  affects:
-    - 06-02 imgui docking-branch switch (gated on this plan's exit criterion)
-tech_stack:
+subsystem: ui
+tags: [imgui, d3d9, overlay, tier-4, manual-uat, swg-injection, demo-window]
+
+requires:
+  - phase: 02.1-critical-bug-burn-down
+    provides: "d3d9 dummy-device getVtbl (commit 2c57d38) replacing the broken byte-pattern scan"
+  - phase: 02.1-critical-bug-burn-down
+    provides: "Phase B/B-bis owned-popup window-ownership work (commits 2ce028c, 1789400) with HWND_TOP Z-order fix"
+  - phase: 02.1-critical-bug-burn-down
+    provides: "Phase H chat-context fix (commit 6047416) so WantTextInput-bound widgets route keyboard input correctly"
+provides:
+  - "Tier-4 sign-off that the imgui in-game overlay renders end-to-end over live SWG (D-11 exit criterion satisfied)"
+  - ".planning/codebase/TESTING.md Tier 4 — Manual Residual Enumeration section with the first canonical row"
+  - "Latent regression detectors in imgui_impl.cpp (two one-shot static-bool-guarded log lines) at debug level"
+  - "g_showDemoWindowProbe gate (dormant at false; one-line edit re-enables for Wave-1 plugin styling work)"
+  - "06-01-DEMO-PROBE-NOTES.md investigation log with d3d9 pattern-scan disposition + live-SWG transcript + Wave-1 transparency design notes"
+  - "06-01-VERIFICATION.md maintainer-signed Tier-4 evidence"
+affects: [06-02-dep-bumps, 06-06-tier-4-doc-1-0-cut, phase-07-tre-browser, phase-08-iff-editor, phase-09-datatable-editor, phase-10-stringtable-editor, phase-11-object-template-editor]
+
+tech-stack:
   added: []
   patterns:
-    - one-shot static-bool guarded log tripwire (matches existing
-      `s_firstBeginScene` / `s_firstPresent` pattern in directx9.cpp)
-    - file-scope flag-gated additive ImGui probe (preserves existing
-      renderCallbacks dispatch unchanged)
-key_files:
+    - "Tier-4 row template (#, Scenario, Procedure, Success Criterion, Last-Verified SHA) — D-19 enumeration grows from this row as Phases 6-02 through 6-06 land their procedures"
+    - "Probe-then-rollback pattern: ship diag instrumentation behind a gate (g_showDemoWindowProbe + static-bool one-shots), maintainer-verify, then flip the gate off and demote logs to debug while leaving the call sites in place for future re-enablement"
+
+key-files:
   created:
     - .planning/phases/06-cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut/06-01-DEMO-PROBE-NOTES.md
+    - .planning/phases/06-cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut/06-01-VERIFICATION.md
   modified:
-    - UtinniCore/swg/ui/imgui_impl.cpp (Task 1: 2 one-shot log lines + guards;
-      Task 2: file-scope probe flag + ShowDemoWindow call site)
-decisions:
-  - "Pattern-scan disposition recorded ALREADY-NOT-THE-CAUSE (Phase 02.1 commit
-    2c57d38 retired the broken pattern-scan; dummy-device approach in
-    directx9.cpp::getVtbl is the canonical path). Per
-    [[feedback-d3d9-hook-diagnosis]] 30-sec first move, this resolved in
-    seconds, not multi-day investigation."
-  - "ShowDemoWindow probe defaults to enabled (`g_showDemoWindowProbe = true`)
-    so the next maintainer launch against this build lights up the Demo
-    screen automatically. Task 3 (continuation agent) flips to `false` after
-    Tier-4 sign-off but keeps the call site for re-enablement."
-  - "Codegen drift in UtinniCoreDotNet/Generated/UtinniCore.cs (2084 lines of
-    churn per build run) treated as out-of-scope per SCOPE BOUNDARY rule.
-    Reverted from both Task 1 and Task 2 commits — drift is pre-existing
-    CppSharp-regen noise, not caused by imgui_impl.cpp changes."
-metrics:
-  duration_minutes: ~20
-  tasks_completed: 2
-  tasks_total: 3
-  tasks_remaining: 1
-  files_created: 1
-  files_modified: 1
-  commits: 2
-  builds: 2
-  completed_date: "2026-05-23"
-  paused_at: "Task 3 (checkpoint:human-verify, gate=blocking)"
+    - UtinniCore/swg/ui/imgui_impl.cpp
+    - .planning/codebase/TESTING.md
+
+key-decisions:
+  - "D-11 exit criterion (full ImGui::ShowDemoWindow over live SWG with all seven widget categories) confirmed satisfied — no fix required for the overlay render path"
+  - "d3d9 pattern-scan suspicion resolved as already-not-the-cause (Phase 02.1 commit 2c57d38 replaced byte-pattern scan with dummy-device approach) — recorded in DEMO-PROBE-NOTES per [[feedback-d3d9-hook-diagnosis]] memory"
+  - "Diag instrumentation retained at debug level behind static-bool one-shot guards as latent regression detectors — silent in normal play, fires once if regression returns"
+  - "g_showDemoWindowProbe flag retained in source (flipped false) so Wave-1 TJT subpanel styling work can re-enable Demo with a one-line edit + rebuild"
+  - "Wave-1 transparency / chromeless HUD-style overlay options captured as deferred design item — not 06-01 scope"
+
+patterns-established:
+  - "Tier-4 row table format in TESTING.md (#, Scenario, Procedure, Success Criterion, Last-Verified SHA)"
+  - "Maintainer-signed VERIFICATION.md companion per Tier-4 row (date, machine identifier, GPU vendor, signature, one-paragraph exercise description, cross-links)"
+
+requirements-completed: [STAB-03]
+
+duration: 70min
+completed: 2026-05-23
 ---
 
-# Phase 6 Plan 1: Overlay-debug investigation — ImGui::ShowDemoWindow exit criterion Summary
+# Phase 6 Plan 01: Overlay-Debug Investigation Summary
 
-**One-liner:** Diag tripwires + `ImGui::ShowDemoWindow` probe shipped on
-`worktree-agent-aedca507c501c71b9` for the imgui-overlay-never-displays
-investigation; pattern-scan disposition recorded as already-resolved by Phase
-02.1 commit `2c57d38`; Tasks 1+2 atomic-committed; Task 3 PAUSED awaiting
-maintainer live-SWG Demo-screen exercise.
+**ImGui::ShowDemoWindow rendered end-to-end over live SWG with all seven D-11 widget categories functional; d3d9 pattern-scan suspicion resolved as already-not-the-cause; D-11 exit criterion satisfied and 06-02 imgui docking-branch switch unblocked.**
 
-## Completed Tasks
+## Performance
 
-| Task | Name                                                    | Status   | Commit    |
-| ---- | ------------------------------------------------------- | -------- | --------- |
-| 1    | d3d9 pattern-scan disposition + isSetup observation probe | done   | `d5d1e7e` |
-| 2    | ShowDemoWindow probe additive to render()                | done    | `b1bc760` |
-| 3    | Tier-4 sign-off + TESTING.md Tier-4 row + diag rollback  | **paused (checkpoint:human-verify, blocking)** | — |
+- **Duration:** ~70 min (continuation execution; planning + investigation across the day per maintainer)
+- **Started:** 2026-05-23 (continuation agent spawn-time)
+- **Completed:** 2026-05-23T22:30Z (approx; per commit timestamp on 2e0dcf5)
+- **Tasks:** 3 (2 diag-probe tasks + 1 sign-off checkpoint task)
+- **Files modified:** 4 (`UtinniCore/swg/ui/imgui_impl.cpp`, `.planning/codebase/TESTING.md`, plus two new planning files)
 
-### Task 1: d3d9 pattern-scan disposition + isSetup observation probe (`d5d1e7e`)
+## Accomplishments
 
-- Created `.planning/phases/06-cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut/06-01-DEMO-PROBE-NOTES.md` with:
-  - Verbatim quote of `directX::getVtbl()` body from `UtinniCore/swg/graphics/directx9.cpp` lines 426-526 (dummy-device approach).
-  - Verbatim quote of `.planning/STATE.md` "Blockers/Concerns" item #2 (resolved 2026-05-19 by commit `2c57d38`).
-  - Explicit conclusion: **pattern-scan is NOT the cause of imgui not rendering** (the `[[feedback-d3d9-hook-diagnosis]]` "30-second first move" resolves immediately to "already not the cause").
-  - Placeholder sections for maintainer's live-SWG observation transcripts (Task 1 log lines + Task 2 Demo-screen YES/NO exercise result).
-- Added two diag tripwires to `UtinniCore/swg/ui/imgui_impl.cpp`:
-  - `setup(IDirect3DDevice9*)`: one-shot `utinni::log::info("imgui_impl::setup complete, isSetup=true")` gated by `static bool sLoggedOnce`. Fires exactly once when the `isSetup` gate flips true.
-  - `render()`: one-shot `utinni::log::debug("imgui_impl::render entered isSetup branch")` gated by `static bool sLoggedOnceRender`, placed at the top of the `if (isSetup)` branch. Fires exactly once when render() first crosses the gate.
-- **Pattern parity:** these match the existing `s_firstBeginScene` / `s_firstPresent` one-shot static-bool guarded tripwires already in `directx9.cpp:242, 278`. Same idiom, same intent.
+- **Tier-4 sign-off recorded** that the imgui in-game overlay renders end-to-end in Utinni-injected SWG sessions. All seven D-11 exit-criterion widget categories (menus, sliders, buttons, tabs, plots, popups, drag-and-drop) verified functional over live SWG. Stale "imgui overlay has never displayed" belief disposed of as superseded by Phase 02.1 + Phase B/B-bis + Phase H landings; no separate fix needed.
+- **30-second [[feedback-d3d9-hook-diagnosis]] memory honoured.** Pattern-scan check resolved in seconds (already not the cause per Phase 02.1 commit `2c57d38`'s dummy-device approach) — recorded with verbatim quotes of `directx9.cpp::getVtbl` header and STATE.md "Blockers/Concerns" item #2 in `06-01-DEMO-PROBE-NOTES.md`.
+- **Latent regression detectors landed** in `imgui_impl.cpp`: two one-shot static-bool-guarded log lines (`imgui_impl::setup complete, isSetup=true` + `imgui_impl::render entered isSetup branch`) at debug level. Dormant in normal play; surface once each if the regression returns.
+- **Probe gate retained for Wave-1.** `g_showDemoWindowProbe` (file-scope inside `namespace imgui_impl`, flipped `false`) keeps the `ImGui::ShowDemoWindow(nullptr)` call site in source so Wave-1 TJT subpanel styling work (Phases 7-11) can re-enable Demo with a one-line flag flip + rebuild.
+- **Tier-4 row #1 authored** in `.planning/codebase/TESTING.md` per D-19; the full residual enumeration grows from this row as Phases 6-02 through 6-06 land their procedures.
+- **Maintainer-signed VERIFICATION.md** captures the Tier-4 evidence (date, machine, signature, exercise paragraph, cross-links).
 
-### Task 2: ShowDemoWindow probe additive to render() (`b1bc760`)
+## Task Commits
 
-- Added file-scope `static bool g_showDemoWindowProbe = true;` near the top of `namespace imgui_impl` in `imgui_impl.cpp` (next to `bool enableUi;` / `bool rendering;`).
-- Added `ImGui::ShowDemoWindow(nullptr)` call immediately after `ImGui::NewFrame()` inside the `if (isSetup)` branch of `render()`, gated by `if (g_showDemoWindowProbe)`.
-- Existing `renderCallbacks` dispatch path is **unchanged** — the Demo window is additive instrumentation, not a replacement. `ShowDemoWindow` is self-contained (calls `ImGui::Begin/End` internally), so it composes safely with the surrounding `Begin("Tests")` / `End()` in the existing render() body.
-- Default value `true` so the Demo screen lights up by default on the next maintainer live-SWG session. Task 3 will flip to `false` post-Tier-4 sign-off (preserves re-enable path).
+Each task committed atomically:
 
-## Verification Status
+1. **Task 1: d3d9 pattern-scan disposition + isSetup observation probe** — `2694d3f` (diag)
+2. **Task 2: ShowDemoWindow probe additive to render()** — `23ac35f` (diag)
+3. **Task 3: Tier-4 sign-off + TESTING.md row + diag rollback** — `2e0dcf5` (docs)
 
-| Criterion                                                                              | Status        |
-| -------------------------------------------------------------------------------------- | ------------- |
-| 06-01-DEMO-PROBE-NOTES.md exists + quotes `directx9.cpp::getVtbl` verbatim             | ✓ passed      |
-| 06-01-DEMO-PROBE-NOTES.md quotes STATE.md Blockers item #2 verbatim                    | ✓ passed      |
-| imgui_impl.cpp grep `imgui_impl::setup complete` returns 1 match inside static guard   | ✓ passed (1 match @ line 340 inside `if (!sLoggedOnce)`) |
-| imgui_impl.cpp grep `render entered isSetup branch` returns 1 match inside guard       | ✓ passed (1 match @ line 433 inside `if (!sLoggedOnceRender)` inside `if (isSetup)`) |
-| Task 1: imgui_impl.cpp grep `ShowDemoWindow` returns no matches                        | ✓ passed at Task 1 commit (Task 2 then added the call site as planned) |
-| Task 2: imgui_impl.cpp grep `ShowDemoWindow` returns ≥1 match inside render() body     | ✓ passed (1 match @ line 451 inside `if (g_showDemoWindowProbe)`) |
-| Task 2: imgui_impl.cpp grep `g_showDemoWindowProbe` returns 1 declaration + ≥1 read    | ✓ passed (1 decl @ line 135, 1 read @ line 449) |
-| Release x86 build succeeds (`msbuild Utinni.sln /p:Configuration=Release /p:Platform=x86 /t:UtinniCore` exit code 0) | ✓ passed (Task 1 build + Task 2 build both `MSBUILD_EXIT=0`) |
-| Task 1 commit prefix `diag(06-01):`                                                    | ✓ passed (`d5d1e7e diag(06-01): imgui isSetup + render-entry one-shot probe`) |
-| Task 2 commit prefix `diag(06-01):`                                                    | ✓ passed (`b1bc760 diag(06-01): ShowDemoWindow probe additive to render()`) |
-| Task 1 + Task 2 human-check (live-SWG observation)                                     | **deferred — placeholders left for maintainer in 06-01-DEMO-PROBE-NOTES.md** |
-| Task 3 (Tier-4 sign-off + TESTING.md row + diag rollback)                              | **paused — checkpoint:human-verify gate=blocking** |
+CppSharp regenerates `UtinniCoreDotNet/Generated/UtinniCore.cs` (~2084 lines) on every full-sln build via the post-build chain (`CON-T-01`). That drift was deliberately excluded from all three commits — staging was done with explicit per-file `git add`, never `git add -A`. The codegen drift is unrelated to 06-01's behavior changes; it would regenerate identically from any clean post-build of master.
 
-The two `human-check` lines from Tasks 1 and 2 (one-shot log lines + Demo
-screen YES/NO disposition) are explicitly deferred to maintainer live-SWG
-observation per `plan_specific_guidance`. They are NOT blocking for the
-executor — Task 1 and Task 2 are atomically committed once build passes and
-the verify-able acceptance criteria (greps, file existence, build exit code,
-commit prefix) pass.
+## Files Created/Modified
+
+- `UtinniCore/swg/ui/imgui_impl.cpp` — added two one-shot static-bool-guarded log probes (setup-complete + render-entry); added `g_showDemoWindowProbe` file-scope gate + `ImGui::ShowDemoWindow(nullptr)` call site immediately after `ImGui::NewFrame()` inside the `if (isSetup)` branch; flipped probe gate to `false` and demoted setup-complete log to `debug` at Task 3 sign-off.
+- `.planning/codebase/TESTING.md` — appended new `## Tier 4 — Manual Residual Enumeration` section with one row ("Imgui overlay Demo screen over live SWG") containing procedure, success criterion, and last-verified SHA placeholder. D-19's full enumeration grows from here.
+- `.planning/phases/06-cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut/06-01-DEMO-PROBE-NOTES.md` (new) — investigation log: d3d9 pattern-scan disposition (verbatim quotes), Task 1 diag-instrumentation description, Task 2 ShowDemoWindow probe description, live-SWG observation transcript with utinni.log session timeline, root-cause disposition for the stale "never displayed" belief, and a Wave-1 TJT subpanel transparency / chromeless HUD design-options note (deferred — not 06-01 scope).
+- `.planning/phases/06-cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut/06-01-VERIFICATION.md` (new) — maintainer-signed Tier-4 evidence: 2026-05-23 date, Windows 11 26200.8457 machine identifier, GPU vendor (TBD by maintainer per session-log capture), Kenneth Long signature, one-paragraph exercise description, cross-links to DEMO-PROBE-NOTES + TESTING.md + 06-01-PLAN.md + 06-CONTEXT.md decisions D-06 / D-11. CI-green post-merge note flagging the orchestrator's owed validation.
+
+## Decisions Made
+
+- **No code-level fix required for the overlay render path.** D-11's exit criterion was satisfied by previously-landed work (Phase 02.1's d3d9 dummy-device + Phase B/B-bis owned-popup ownership + Phase H chat-context). Confirmed with live-SWG verification; no architectural escalation triggered.
+- **Diag instrumentation retained at debug level rather than removed entirely.** Two static-bool one-shot probes survive into production as latent regression detectors — silent in normal play, fire once each if the regression returns. Chosen over the "remove" option in the plan's "convert to debug level only OR remove" guidance per [[feedback-max-harness]] (any future regression must be detectable without re-instrumenting from scratch).
+- **`g_showDemoWindowProbe` call site retained behind a `false` gate.** Re-enabling for Wave-1 TJT subpanel styling work is a one-line edit + rebuild — cheaper than re-authoring the probe code from memory each time a styling question comes up.
+- **Tier-4 row #1 lives in TESTING.md as a growable table.** D-19's full enumeration extends row-by-row across Phases 6-02 through 6-06, with the final list owned by plan 06-06.
+- **GPU vendor in VERIFICATION.md marked "TBD by maintainer"** rather than guessed. The utinni.log capture would carry the adapter info; the orchestrator can fill it in if the verification session log is available, otherwise the field stays explicit-unknown rather than potentially-wrong.
 
 ## Deviations from Plan
 
-### Auto-fixed Issues
+**None — plan executed exactly as written.** All three tasks landed per their plan-spec acceptance criteria; the only out-of-scope notes captured are:
 
-**1. [Rule 3 - Blocking issue] Reverted codegen drift in `UtinniCoreDotNet/Generated/UtinniCore.cs`**
+- The two-day-old previous-executor work (commits `d5d1e7e`, `b1bc760`, `171a5ec`) on a now-stale worktree branch was redone identically here (Tasks 1 + 2 commits `2694d3f` + `23ac35f`) and extended with Task 3 (`2e0dcf5`) on the current worktree branch. This is not a deviation — it's continuation-agent behavior per the orchestrator's spawn spec.
+- The `UtinniCoreDotNet/Generated/UtinniCore.cs` CppSharp codegen drift (~2084 lines of unrelated churn produced by every full-sln post-build) was deliberately excluded from all three commits per the orchestrator's spawn instructions. Explicit per-file `git add` calls never `-A` / `.`.
+- The `build_06_01.bat` VsDevCmd wrapper used to invoke msbuild from inside this Linux-style worktree shell stays untracked per orchestrator instruction; not committed.
 
-- **Found during:** Task 1 build (and again during Task 2 build).
-- **Issue:** Running the Release x86 UtinniCore build also runs the
-  CppSharp-driven post-build step that regenerates
-  `UtinniCoreDotNet/Generated/UtinniCore.cs`. Each regeneration produces
-  ~2084 lines of churn (including removal of a `NewPlaceholder` class that
-  was last committed in commit `9248a1a`). This drift is **pre-existing**
-  (visible in every build invocation across the repo's history) and is
-  unrelated to my imgui_impl.cpp changes — my edits only added two
-  `utinni::log::*` call sites and a new file-scope flag inside
-  UtinniCore, none of which alter the UtinniCore.dll public API surface
-  consumed by CppSharp.
-- **Fix:** `git checkout -- UtinniCoreDotNet/Generated/UtinniCore.cs`
-  before staging both Task 1 and Task 2 commits. Per SCOPE BOUNDARY
-  rule, pre-existing unrelated drift is out of scope for plan 06-01 — it
-  belongs in a future "stabilize generated file" effort (a candidate for
-  Phase 6 Plan 5 STAB-03 cleanups per D-16 polish bundle, or a separate
-  STAB-03 item if it persists).
-- **Files modified:** none (revert restored to base).
-- **Commits:** —
+## Issues Encountered
 
-**2. [Rule 3 - Blocking issue] Created `build_06_01.bat` helper for VsDevCmd
-+ msbuild invocation**
+- **`msbuild` not on PATH** in the worktree's PowerShell/Bash environment. Resolved by authoring `build_06_01.bat` calling `VsDevCmd.bat -arch=x86 -no_logo` then `msbuild Utinni.sln /p:Configuration=Release /p:Platform=x86 /t:UtinniCore`. The bat lives in the worktree root untracked (per spawn-spec).
+- **Three builds total** across Tasks 1 + 2 + 3, all exited cleanly (exit code 0). The only build warnings are pre-existing C4309 / C4091 / C4251 / C4099 / C4018 / C4244 (truncation, dll-interface, signed/unsigned, conversion) in unrelated translation units — same warnings as the master baseline at `0dc8646`. Not Phase 6 scope.
 
-- **Found during:** Task 1 build setup.
-- **Issue:** `msbuild` is not on PATH in this worktree's shell; the local
-  VS toolchain is VS 2026 (Dev18 at `D:\Program Files\Microsoft Visual
-  Studio\18\Community\`) per `[[project-vs2026-toolchain]]`. Initial
-  attempts to invoke msbuild via `cmd.exe /c` or PowerShell wrappers had
-  output-capture issues (the cmd banner echoed but the build output was
-  swallowed before printing).
-- **Fix:** Authored a small `build_06_01.bat` that `call`s
-  `VsDevCmd.bat -arch=x86 -no_logo` then runs the documented msbuild
-  command. Executing the batch file directly (`./build_06_01.bat`)
-  produced clean output and `MSBUILD_EXIT=0` on both Task 1 and Task 2
-  builds.
-- **Files modified:** untracked helper at repo root; intentionally
-  **not committed** (transient scaffolding, not a deliverable). Belongs
-  in a `tools/` folder if it survives the cleanup pass — current
-  positioning is intentional to keep it out of the commit and signal
-  "throwaway".
-- **Commits:** —
+## User Setup Required
 
-### No Deviations vs. Plan Acceptance Criteria
+None - no external service configuration required.
 
-Every acceptance criterion in Task 1 and Task 2 was hit exactly as written.
-The `<human-check>` lines (one-shot log observation + Demo screen YES/NO)
-are explicitly maintainer post-commit observations per
-`plan_specific_guidance` and are intentionally left as placeholders in
-`06-01-DEMO-PROBE-NOTES.md`.
+## Next Phase Readiness
 
-## Authentication Gates
-
-None. This plan touches no external service; all changes are local source +
-build.
-
-## Known Stubs
-
-None. The two diag log lines and the `g_showDemoWindowProbe`-gated
-`ShowDemoWindow` call are intentional, fully wired, and exercised by the
-build. They are NOT stubs — they are observation instrumentation expected to
-fire on the maintainer's next live SWG session.
-
-## Checkpoint Pause — Task 3
-
-Per `<task type="checkpoint:human-verify" gate="blocking">` and
-`plan_specific_guidance`, **Task 3 is paused.** A continuation agent will be
-spawned by the orchestrator AFTER the maintainer's live-SWG sign-off to:
-
-1. Confirm `06-01-DEMO-PROBE-NOTES.md` "Demo Screen Exercise Result"
-   maintainer-signed YES across all seven widget categories.
-2. Flip `g_showDemoWindowProbe = false` in `imgui_impl.cpp` (literal
-   `static bool g_showDemoWindowProbe = false;`) AND remove the two
-   one-shot static-bool diag log lines from `setup()` + `render()` (or
-   convert them to `debug` level — planner discretion at sign-off, pick
-   one and stay consistent). **Keep the `ShowDemoWindow` call site
-   itself** so future Wave-1 work can re-enable by flipping the flag.
-3. Author the `.planning/codebase/TESTING.md` Tier-4 enumeration row
-   "Imgui overlay Demo screen over live SWG" with procedure + success
-   criterion + last-verified SHA.
-4. Write `06-01-VERIFICATION.md` as the maintainer-signed Tier-4
-   evidence (date + machine identifier + GPU vendor + paragraph
-   describing the exercise).
-5. Commit atomically as `docs(06-01): Tier-4 overlay Demo signoff +
-   TESTING.md row + diag rollback`.
-6. Confirm CI green on master post-merge.
-
-## Self-Check
-
-- [x] `.planning/phases/06-cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut/06-01-DEMO-PROBE-NOTES.md` exists
-- [x] Commit `d5d1e7e` exists on `worktree-agent-aedca507c501c71b9`
-- [x] Commit `b1bc760` exists on `worktree-agent-aedca507c501c71b9`
-- [x] `UtinniCore/swg/ui/imgui_impl.cpp` modified (4 changes: 2 from Task 1, 2 from Task 2)
-- [x] Release x86 UtinniCore.dll built successfully on both Task 1 and Task 2 builds
+- **06-02 imgui docking-branch switch (D-06) is unblocked.** The base imgui render path is now confirmed healthy; the docking-branch port via vcpkg can proceed at plan-time without an "is it even rendering?" prerequisite hanging over it.
+- **Wave-1 (Phases 7-11) gains a one-line Demo screen tool.** Maintainers and reviewers can flip `g_showDemoWindowProbe = true` + rebuild to compare a new TJT subpanel's appearance against the canonical imgui Demo as a known-good reference.
+- **CI green confirmation on master is OWED by the orchestrator post-merge.** This executor cannot meaningfully run `gh run list --branch master --limit 1 --json conclusion -q '.[0].conclusion'` because the relevant commits only land on master after the worktree merge. The orchestrator should verify CI returns `"success"` on the merge commit before marking 06-01 done in `STATE.md`. Recorded in `06-01-VERIFICATION.md` § "Post-Merge Validation Owed by Orchestrator".
 
 ## Self-Check: PASSED
+
+- File: `UtinniCore/swg/ui/imgui_impl.cpp` — present, contains `g_showDemoWindowProbe = false` (post-rollback) and `ImGui::ShowDemoWindow(nullptr)` call site (retained) and two static-bool one-shot debug probes
+- File: `.planning/codebase/TESTING.md` — present, contains "Imgui overlay Demo screen over live SWG" Tier-4 row
+- File: `.planning/phases/06-cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut/06-01-DEMO-PROBE-NOTES.md` — present
+- File: `.planning/phases/06-cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut/06-01-VERIFICATION.md` — present
+- Commit: `2694d3f` (Task 1) — present in `git log --oneline`
+- Commit: `23ac35f` (Task 2) — present in `git log --oneline`
+- Commit: `2e0dcf5` (Task 3) — present in `git log --oneline`
+
+---
+*Phase: 06-cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut*
+*Completed: 2026-05-23*

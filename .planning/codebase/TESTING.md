@@ -132,4 +132,18 @@ Do not attempt to write tests that load the SWG client. That is an integration-t
 
 ---
 
-*Testing analysis: 2026-05-16*
+## Tier 4 — Manual Residual Enumeration
+
+**Added:** 2026-05-23 (Phase 6 plan 06-01 Tier-4 sign-off; D-19 anticipates this section growing to the full residual enumeration as the remaining Phase 6 plans land their Tier-4 procedures).
+
+Tier 4 captures the manual verifications that Tiers 1–3 cannot cover — typically because they require a live SWG-injected session, GPU-driver-specific behavior, or maintainer visual evaluation. Each row records the scenario, the manual procedure, the success criterion, and the SHA at which it was last verified.
+
+| # | Scenario | Procedure | Success Criterion | Last-Verified SHA |
+|---|----------|-----------|-------------------|-------------------|
+| 1 | Imgui overlay Demo screen over live SWG | (1) Flip `g_showDemoWindowProbe` to `true` in `UtinniCore/swg/ui/imgui_impl.cpp` (file-scope inside `namespace imgui_impl`, near `bool enableUi;` / `bool rendering;`). (2) Rebuild Release x86: `msbuild Utinni.sln /p:Configuration=Release /p:Platform=x86 /t:UtinniCore`. (3) Launch via `Launcher.exe` against live SWGEmu; log in; load any scene. (4) Exercise the imgui Demo window's seven widget categories: menus, sliders, buttons, tabs, plots, popups, drag-and-drop. (5) Flip the flag back to `false`, rebuild. | Each of the seven widget categories behaves as it does in a standalone imgui demo application: menus cascade and dispatch; sliders drag smoothly with live updates and accept keyboard editing; buttons click and dispatch callbacks; tabs switch on click and render distinct content; plots render their animated waveforms; popups open as modals and dismiss cleanly; drag-and-drop source-to-target works with payload preview. The Demo window is draggable, resizable, and correctly layered atop SWG's client window (Z-order via `HWND_TOP`). | `<this-commit>` (2026-05-23, Kenneth Long; see `.planning/phases/06-cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut/06-01-VERIFICATION.md`) |
+
+*Tier-4 enumeration grows as Phases 6-02 through 6-06 land their Tier-4 procedures per D-19. The final full residual list is owned by plan 06-06.*
+
+---
+
+*Testing analysis: 2026-05-16; Tier-4 section added 2026-05-23.*
