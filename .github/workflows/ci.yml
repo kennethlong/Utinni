@@ -1,4 +1,4 @@
-# Source: github.com/microsoft/setup-msbuild (README v2), docs.github.com/en/actions/how-tos/monitor-workflows/add-a-status-badge
+﻿# Source: github.com/microsoft/setup-msbuild (README v2), docs.github.com/en/actions/how-tos/monitor-workflows/add-a-status-badge
 # Verified action versions as of 2026-05-16: actions/checkout@v4, actions/cache@v4,
 # actions/upload-artifact@v4, microsoft/setup-msbuild@v2.
 name: CI
@@ -104,45 +104,46 @@ jobs:
           vcpkg install --triplet x86-windows --x-manifest-root="${{ github.workspace }}" --x-install-root="${{ github.workspace }}\vcpkg_installed"
           if ($LASTEXITCODE -ne 0) { throw "vcpkg install failed (exit $LASTEXITCODE)" }
 
-      # Phase 6 D-09 + 06-02 Task 3: PlatformToolset is v144 (VS 2026 / Dev18) across every .vcxproj.
-      # windows-2022 ships VS 2022 Build Tools (v142/v143) by default; v144 is the VS 2026 era toolset
+      # Phase 6 D-09 + 06-02 Task 3: PlatformToolset is v145 (VS 2026 / Dev18) across every .vcxproj.
+      # windows-2022 ships VS 2022 Build Tools (v142/v143) by default; v145 is the VS 2026 era toolset
       # that must be installed via the Build Tools installer if absent.
-      - name: Verify v144 build tools
+      - name: Verify v145 build tools
         shell: pwsh
         run: |
-          # Probe-first per 06-02-VCPKG-RESEARCH.md "Toolchain v144 availability for CI" §.
+          # Probe-first per 06-02-VCPKG-RESEARCH.md "Toolchain v145 availability for CI" §.
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          $hasV144 = $false
+          $hasV145 = $false
           if (Test-Path $vswhere) {
-            $msvcDirs = & $vswhere -products * -find "VC\Tools\MSVC\14.4*\bin" 2>$null
-            if ($msvcDirs) { $hasV144 = $true }
+            # v145 PlatformToolset corresponds to MSVC 14.5x (confirmed on VS 2026 Dev18: 14.51 + 14.52 installed).
+            $msvcDirs = & $vswhere -products * -find "VC\Tools\MSVC\14.5*\bin" 2>$null
+            if ($msvcDirs) { $hasV145 = $true }
           }
-          if (-not $hasV144) {
+          if (-not $hasV145) {
             # Also check fallback default install path (covers Build Tools-only installs vswhere can miss).
-            if (Test-Path "${env:ProgramFiles}\Microsoft Visual Studio\2022\*\VC\Tools\MSVC\14.4*") { $hasV144 = $true }
-            if (Test-Path "${env:ProgramFiles}\Microsoft Visual Studio\18\*\VC\Tools\MSVC\14.4*") { $hasV144 = $true }
+            if (Test-Path "${env:ProgramFiles}\Microsoft Visual Studio\2022\*\VC\Tools\MSVC\14.5*") { $hasV145 = $true }
+            if (Test-Path "${env:ProgramFiles}\Microsoft Visual Studio\18\*\VC\Tools\MSVC\14.5*") { $hasV145 = $true }
           }
-          if (-not $hasV144) {
-            Write-Host "v144 build tools missing on runner; installing VS 2026 Build Tools workload Microsoft.VisualStudio.Component.VC.144.x86.x64"
+          if (-not $hasV145) {
+            Write-Host "v145 build tools missing on runner; installing VS 2026 Build Tools workload Microsoft.VisualStudio.Component.VC.145.x86.x64"
             $bootstrapper = Join-Path $env:RUNNER_TEMP "vs_BuildTools.exe"
             Invoke-WebRequest -Uri "https://aka.ms/vs/18/release/vs_buildtools.exe" -OutFile $bootstrapper -UseBasicParsing
             Start-Process -FilePath $bootstrapper -ArgumentList @(
               "--quiet", "--wait", "--norestart", "--nocache",
-              "--add", "Microsoft.VisualStudio.Component.VC.144.x86.x64",
+              "--add", "Microsoft.VisualStudio.Component.VC.145.x86.x64",
               "--add", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
             ) -Wait -NoNewWindow
-            # Re-probe; fail explicitly if installer did not produce v144 tools (clearer than a downstream MSBuild error).
-            $msvcDirs = & $vswhere -products * -find "VC\Tools\MSVC\14.4*\bin" 2>$null
-            if (-not $msvcDirs) { throw "VS Build Tools installer ran but v144 toolset still not found." }
-            Write-Host "v144 build tools installed successfully."
+            # Re-probe; fail explicitly if installer did not produce v145 tools (clearer than a downstream MSBuild error).
+            $msvcDirs = & $vswhere -products * -find "VC\Tools\MSVC\14.5*\bin" 2>$null
+            if (-not $msvcDirs) { throw "VS Build Tools installer ran but v145 toolset still not found." }
+            Write-Host "v145 build tools installed successfully."
           } else {
-            Write-Host "v144 build tools already present on runner."
+            Write-Host "v145 build tools already present on runner."
           }
 
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
-        # Post-Phase 6 D-09 sweep, PlatformToolset=v144 is declared in every .vcxproj so MSBuild auto-selects
-        # v144. The "Verify v144 build tools" step above guarantees v144 is available on the runner.
+        # Post-Phase 6 D-09 sweep, PlatformToolset=v145 is declared in every .vcxproj so MSBuild auto-selects
+        # v145. The "Verify v145 build tools" step above guarantees v145 is available on the runner.
 
       - name: Build solution (Release|x86)
         run: msbuild Utinni.sln /m /restore /p:Configuration=Release /p:Platform=x86 /p:RestorePackagesConfig=true

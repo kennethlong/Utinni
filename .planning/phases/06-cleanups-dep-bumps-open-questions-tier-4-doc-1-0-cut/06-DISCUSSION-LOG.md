@@ -1,4 +1,4 @@
-# Phase 6: Cleanups, dep bumps, open questions, Tier 4 doc, 1.0 cut - Discussion Log
+﻿# Phase 6: Cleanups, dep bumps, open questions, Tier 4 doc, 1.0 cut - Discussion Log
 
 > **Audit trail only.** Do not use as input to planning, research, or execution agents.
 > Decisions are captured in `06-CONTEXT.md` — this log preserves the alternatives considered.
@@ -118,10 +118,10 @@
 | Option | Description | Selected |
 |--------|-------------|----------|
 | Bump to v143 (VS 2022) | Conservative single hop | |
-| Bump to v144 (VS 2026) | Matches [[project-vs2026-toolchain]] local default | ✓ |
+| Bump to v145 (VS 2026) | Matches [[project-vs2026-toolchain]] local default | ✓ |
 | Defer toolset bump | Stays on v142 in Phase 6 | |
 
-**User's choice:** Bump to v144 (VS 2026 / Dev18).
+**User's choice:** Bump to v145 (VS 2026 / Dev18).
 
 ### Q5: Overlay-never-displayed risk fold-in
 
@@ -168,7 +168,7 @@
 
 **User's choice:** Full migration (7 deps). CppSharp vcpkg-port quality becomes planner-research item.
 
-### Q9: VSIX range update for v144
+### Q9: VSIX range update for v145
 
 | Option | Description | Selected |
 |--------|-------------|----------|

@@ -1,4 +1,4 @@
-# 06-02 vcpkg Per-Dep Port Research
+﻿# 06-02 vcpkg Per-Dep Port Research
 
 **Plan:** 06-02 (Dep-bumps + toolchain modernisation)
 **Researched:** 2026-05-23
@@ -158,15 +158,15 @@ The catch2 header rename is the only source-side change; spdlog/imgui/imguizmo h
 
 Per the plan's `<action>` for Task 1, `.github/workflows/ci.yml` gains an "Install vcpkg dependencies" step inserted BEFORE the `Setup MSBuild` step. The step uses `microsoft/setup-vcpkg@v1` (Microsoft-published action) followed by `vcpkg install --triplet x86-windows` against the manifest at the repo root. `actions/cache@v4` is keyed on `hashFiles('vcpkg.json')` so warm-cache runs avoid the full install (T-06-02-04 mitigation).
 
-## Toolchain v144 availability for CI
+## Toolchain v145 availability for CI
 
-Plan Task 3 calls for `<PlatformToolset>v144</PlatformToolset>` across every .vcxproj. The current CI workflow targets `windows-2022`, which ships with VS 2022 Build Tools (v142/v143). **v144 is the VS 2026 Build Tools toolset — NOT available on stock windows-2022 runners.** Per the plan-specific guidance, the three options are:
+Plan Task 3 calls for `<PlatformToolset>v145</PlatformToolset>` across every .vcxproj. The current CI workflow targets `windows-2022`, which ships with VS 2022 Build Tools (v142/v143). **v145 is the VS 2026 Build Tools toolset — NOT available on stock windows-2022 runners.** Per the plan-specific guidance, the three options are:
 
-1. **Install v144 on the runner via a workflow setup step** — uses VS Build Tools installer CLI or `vswhere` probe + targeted install. Cost: ~5-10 min cold-cache per CI run.
-2. **Move CI to `windows-2025` runners** — GitHub-hosted `windows-2025` runners have launched (windows-latest pointed there 2025-09-02 per existing CI comment). Need to verify v144 is preinstalled on the windows-2025 image at CI time.
-3. **Downgrade scope to v143** — keeps windows-2022 working without v144 install. Trades off the "VS 2026 baseline" half of D-09.
+1. **Install v145 on the runner via a workflow setup step** — uses VS Build Tools installer CLI or `vswhere` probe + targeted install. Cost: ~5-10 min cold-cache per CI run.
+2. **Move CI to `windows-2025` runners** — GitHub-hosted `windows-2025` runners have launched (windows-latest pointed there 2025-09-02 per existing CI comment). Need to verify v145 is preinstalled on the windows-2025 image at CI time.
+3. **Downgrade scope to v143** — keeps windows-2022 working without v145 install. Trades off the "VS 2026 baseline" half of D-09.
 
-**Path taken in this plan:** option **(1) install v144 on the runner**. The new `.github/workflows/ci.yml` step `Verify v144 build tools` probes for `**\\VC\\Tools\\MSVC\\14.4*` via `vswhere`; if missing, it invokes the VS 2026 Build Tools installer with the `Microsoft.VisualStudio.Component.VC.144.x86.x64` workload component. Probe-first + cache mean warm-cache runs are fast.
+**Path taken in this plan:** option **(1) install v145 on the runner**. The new `.github/workflows/ci.yml` step `Verify v145 build tools` probes for `**\\VC\\Tools\\MSVC\\14.4*` via `vswhere`; if missing, it invokes the VS 2026 Build Tools installer with the `Microsoft.VisualStudio.Component.VC.145.x86.x64` workload component. Probe-first + cache mean warm-cache runs are fast.
 
 ## Security gate
 
@@ -188,7 +188,7 @@ All [ASSUMED] → [VERIFIED] or [N/A keep-vendored] promotion gate satisfied for
 
 The executor agent for this plan ran headless inside a worktree without ability to interactively iterate `vcpkg install` + `msbuild` + build-fail-fix-rebuild cycles. The Task-1 research (this document) and the manifest + CI workflow edits are fully autonomous-doable. **The actual per-dep .vcxproj rewiring + `external/{name}/` tree deletions + `msbuild Utinni.sln /m /restore /p:Configuration=Release /p:Platform=x86` verification cycle (Task 2 in the plan)** requires a live vcpkg install (~5-15 min for the 4 ports + their transitive deps including fmt + abseil for spdlog 1.17) followed by potentially iterative .vcxproj include/lib path debugging. That cycle is not safely automatable by an orchestrator-spawned executor that has no human-in-the-loop for build-fail diagnosis.
 
-**Per Rule 4 (architectural escalation in the executor deviation rules):** Task 2's dep-migration commits are surfaced as a SUMMARY-level escalation. The OutputSinkRoundTripTests.cpp CON-N-09 fence (also part of Task 2) is landed regardless because it preserves the foundation independent of which spdlog version backs the build. Task 3 (v142→v144 sweep + VSIX widen + CI v144 probe) is landed because it's autonomous-doable without a build cycle (the CI runner does the verification).
+**Per Rule 4 (architectural escalation in the executor deviation rules):** Task 2's dep-migration commits are surfaced as a SUMMARY-level escalation. The OutputSinkRoundTripTests.cpp CON-N-09 fence (also part of Task 2) is landed regardless because it preserves the foundation independent of which spdlog version backs the build. Task 3 (v142→v145 sweep + VSIX widen + CI v145 probe) is landed because it's autonomous-doable without a build cycle (the CI runner does the verification).
 
 This is the "partial migration acceptable" path explicitly authorised by D-05 + the plan-specific guidance ("per-dep fallback is the rule").
 

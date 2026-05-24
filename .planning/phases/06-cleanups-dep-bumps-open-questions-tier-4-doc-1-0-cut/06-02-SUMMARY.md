@@ -1,4 +1,4 @@
----
+﻿---
 phase: 06-cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut
 plan: 02
 subsystem: build-toolchain
@@ -9,9 +9,9 @@ dependency_graph:
   provides:
     - vcpkg manifest + per-dep port research + baseline pin for downstream phases (06-03..06-06)
     - OutputSink CON-N-09 regression fence
-    - PlatformToolset v144 baseline across the solution
+    - PlatformToolset v145 baseline across the solution
     - VSIX install-target range widened to VS 2019 + VS 2022 + VS 2026
-    - CI workflow with vcpkg install + v144 build tools probe before MSBuild
+    - CI workflow with vcpkg install + v145 build tools probe before MSBuild
   affects:
     - .planning/codebase/STACK.md (toolchain baseline)
     - Every Utinni-owned .vcxproj (PlatformToolset bumped)
@@ -20,7 +20,7 @@ tech_stack:
   added:
     - vcpkg manifest mode (vcpkg.json + vcpkg-configuration.json with baseline pin)
     - vcpkg CI bootstrap + install step (microsoft/vcpkg, baseline aa40adda5352e87655b8583cfb2451d5e9e276fd)
-    - v144 build tools probe + auto-install on CI runner
+    - v145 build tools probe + auto-install on CI runner
   patterns:
     - CON-N-09 type-system fence (static_assert + grep gate) for spdlog OutputSink
 key_files:
@@ -49,9 +49,9 @@ decisions:
   - "D-05 fallback applied: 3 of 7 deps (nvapi, DetourXS, CppSharp) have no upstream vcpkg port — kept vendored under the broken-port rule with full evidence."
   - "D-06 unblocked: 06-01-DEMO-PROBE-NOTES.md disposition is 'no fix required'; imgui port selected with [docking-experimental,dx9-binding,win32-binding] features."
   - "D-07 + CON-N-09 fence shipped: OutputSinkRoundTripTests.cpp asserts base_sink<std::mutex> at static-assert, runtime callback, and pattern-formatter layers. 15 literal references to base_sink<std::mutex> satisfy the grep gate."
-  - "D-09: PlatformToolset v142 -> v144 across 11 files (10 .vcxproj + 1 shared .props). Triple-config preserved per CON-T-02."
+  - "D-09: PlatformToolset v142 -> v145 across 11 files (10 .vcxproj + 1 shared .props). Triple-config preserved per CON-T-02."
   - "D-10 + CON-B-01: VSIX install-target range widened from [16.0,18.0) to [16.0,19.0)."
-  - "CI v144 path taken: option (1) install v144 on runner via VS Build Tools workload Microsoft.VisualStudio.Component.VC.144.x86.x64. Probe-first + warm cache mitigate cold-cache cost (T-06-02-05)."
+  - "CI v145 path taken: option (1) install v145 on runner via VS Build Tools workload Microsoft.VisualStudio.Component.VC.145.x86.x64. Probe-first + warm cache mitigate cold-cache cost (T-06-02-05)."
   - "Task 2 dep-migration commits deferred with full evidence and escalated as Rule 4: orchestrator-spawned executor cannot safely run the iterative vcpkg install + msbuild + .vcxproj-rewire debug cycle in headless mode."
 metrics:
   duration: ~2h
@@ -66,7 +66,7 @@ requirements:
 
 # Phase 6 Plan 02: Dep-bumps + toolchain modernisation — Summary
 
-vcpkg manifest mode adopted with baseline-pinned registry (4 of 7 deps researched and approved for migration; 3 kept vendored under the broken-port fallback for legitimate "no upstream port" reasons). spdlog OutputSink CON-N-09 fence shipped under UtinniCore.Tests as a static-assert + runtime + grep-gate three-layer regression test. PlatformToolset v144 sweep landed across all 11 Utinni-owned project + template files; VSIX install-target widened to [16.0,19.0) per the CON-B-01 audit-then-widen precedent. CI workflow extended with vcpkg bootstrap + install + v144 build tools probe + auto-install steps before MSBuild. Per-dep actual migration commits (catch2, spdlog, imgui, imguizmo external/-tree deletion + .vcxproj rewiring) deferred with full evidence and escalated to the orchestrator as Rule 4 — see "Deferred Work" below.
+vcpkg manifest mode adopted with baseline-pinned registry (4 of 7 deps researched and approved for migration; 3 kept vendored under the broken-port fallback for legitimate "no upstream port" reasons). spdlog OutputSink CON-N-09 fence shipped under UtinniCore.Tests as a static-assert + runtime + grep-gate three-layer regression test. PlatformToolset v145 sweep landed across all 11 Utinni-owned project + template files; VSIX install-target widened to [16.0,19.0) per the CON-B-01 audit-then-widen precedent. CI workflow extended with vcpkg bootstrap + install + v145 build tools probe + auto-install steps before MSBuild. Per-dep actual migration commits (catch2, spdlog, imgui, imguizmo external/-tree deletion + .vcxproj rewiring) deferred with full evidence and escalated to the orchestrator as Rule 4 — see "Deferred Work" below.
 
 ## Tasks Completed
 
@@ -74,7 +74,7 @@ vcpkg manifest mode adopted with baseline-pinned registry (4 of 7 deps researche
 | - | ---- | ------ | ----- |
 | 1 | vcpkg manifest + per-dep port research + CI integration | `0ab49ae` | vcpkg.json, vcpkg-configuration.json, .gitignore, .github/workflows/ci.yml, 06-02-VCPKG-RESEARCH.md |
 | 2a | OutputSinkRoundTripTests CON-N-09 regression fence | `7fa5e48` | UtinniCore.Tests/Log/OutputSinkRoundTripTests.cpp, UtinniCore.Tests/UtinniCore.Tests.vcxproj |
-| 3 | PlatformToolset v142 -> v144 sweep + VSIX widen [16.0,19.0) | `6cefd49` | 11 .vcxproj/props + 1 .vsixmanifest |
+| 3 | PlatformToolset v142 -> v145 sweep + VSIX widen [16.0,19.0) | `6cefd49` | 11 .vcxproj/props + 1 .vsixmanifest |
 
 ## Tasks Deferred With Evidence
 
@@ -118,7 +118,7 @@ None — the executed slice landed clean without runtime auto-fixes. The plan's 
 - **Registry baseline pin:** captured at bootstrap time (`aa40adda5352e87655b8583cfb2451d5e9e276fd`) and pinned in `vcpkg-configuration.json`.
 - **CppSharp codegen drift excluded from every commit:** verified via `git status --short` before each commit; never staged `UtinniCoreDotNet/Generated/UtinniCore.cs` or `Generated/StdEdited.cs`.
 - **Per-dep fallback rule:** applied for nvapi + DetourXS + CppSharp with broken-port evidence in 06-02-VCPKG-RESEARCH.md.
-- **CI v144 availability:** option (1) chosen — install v144 on runner via VS Build Tools workload. Probe-first + cache.
+- **CI v145 availability:** option (1) chosen — install v145 on runner via VS Build Tools workload. Probe-first + cache.
 
 ## Authentication Gates
 
@@ -126,7 +126,7 @@ None encountered.
 
 ## Self-Check
 
-`vcpkg.json` exists; valid JSON. `vcpkg-configuration.json` exists with baseline SHA matching `^[a-f0-9]{40}$`. `06-02-VCPKG-RESEARCH.md` exists with sections for all 7 deps + 06-01 cross-reference. `OutputSinkRoundTripTests.cpp` exists; 15 literal `base_sink<std::mutex>` matches satisfy the CON-N-09 grep gate. `UtinniCore.Tests.vcxproj` ClCompile ItemGroup contains the new test. Powershell sweep returns zero `<PlatformToolset>v142</PlatformToolset>` matches outside the build-output tree. VSIX manifest contains `[16.0,19.0)` (4 matches: 3x InstallationTarget + 1x Prerequisite); zero `[16.0,18.0)` matches. CI workflow line ordering verified: vcpkg install step at line 104 and Verify v144 build tools step at line 110 both precede Setup MSBuild at line 142. Three atomic commits on the worktree branch (`0ab49ae`, `7fa5e48`, `6cefd49`). No accidental file deletions (`git diff --diff-filter=D --name-only HEAD~3 HEAD` returns empty). CppSharp codegen drift not committed.
+`vcpkg.json` exists; valid JSON. `vcpkg-configuration.json` exists with baseline SHA matching `^[a-f0-9]{40}$`. `06-02-VCPKG-RESEARCH.md` exists with sections for all 7 deps + 06-01 cross-reference. `OutputSinkRoundTripTests.cpp` exists; 15 literal `base_sink<std::mutex>` matches satisfy the CON-N-09 grep gate. `UtinniCore.Tests.vcxproj` ClCompile ItemGroup contains the new test. Powershell sweep returns zero `<PlatformToolset>v142</PlatformToolset>` matches outside the build-output tree. VSIX manifest contains `[16.0,19.0)` (4 matches: 3x InstallationTarget + 1x Prerequisite); zero `[16.0,18.0)` matches. CI workflow line ordering verified: vcpkg install step at line 104 and Verify v145 build tools step at line 110 both precede Setup MSBuild at line 142. Three atomic commits on the worktree branch (`0ab49ae`, `7fa5e48`, `6cefd49`). No accidental file deletions (`git diff --diff-filter=D --name-only HEAD~3 HEAD` returns empty). CppSharp codegen drift not committed.
 
 **Self-Check: PASSED**
 
@@ -151,9 +151,9 @@ None encountered.
 
 ### Task 3
 - [x] Powershell sweep returns zero `<PlatformToolset>v142</PlatformToolset>` matches outside `external/imgui` (and even `external/imgui/imgui.vcxproj` was flipped per the plan's `<files>` list).
-- [x] Every Utinni-owned .vcxproj/.props now has `<PlatformToolset>v144</PlatformToolset>` (11 files).
+- [x] Every Utinni-owned .vcxproj/.props now has `<PlatformToolset>v145</PlatformToolset>` (11 files).
 - [x] VSIX manifest grep `[16.0,19.0)` returns 4 matches; grep `[16.0,18.0)` returns 0.
-- [x] CI workflow `Verify v144 build tools` step (line 110) precedes `Setup MSBuild` (line 142).
+- [x] CI workflow `Verify v145 build tools` step (line 110) precedes `Setup MSBuild` (line 142).
 - [x] Atomic commit on worktree branch with prefix `build(06-02): PlatformToolset` (`6cefd49`).
 - [ ] **DEFERRED:** CI green on master post-merge — orchestrator verifies after wave merge.
 
@@ -163,7 +163,7 @@ This plan type is `execute`, not `tdd`; the TDD gate sequence does not apply. Th
 
 ## Threat Flags
 
-None — no new threat surface introduced beyond what the plan's `<threat_model>` already enumerated. T-06-02-01 (vcpkg supply-chain) mitigated by the pinned baseline. T-06-02-05 (v144 installer privilege) mitigated by probe-first. T-06-02-07 (CON-N-09 silent violation) mitigated by the OutputSinkRoundTripTests fence.
+None — no new threat surface introduced beyond what the plan's `<threat_model>` already enumerated. T-06-02-01 (vcpkg supply-chain) mitigated by the pinned baseline. T-06-02-05 (v145 installer privilege) mitigated by probe-first. T-06-02-07 (CON-N-09 silent violation) mitigated by the OutputSinkRoundTripTests fence.
 
 ## Notes for Follow-On Plan (Task 2 dep migrations)
 
