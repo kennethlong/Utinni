@@ -205,20 +205,28 @@ namespace UtinniCoreDotNetGen
                 // The vendored CppSharp ships clang 11 builtins at
                 // external/CppSharp/lib/lib/clang/11.0.0/include/ which CppSharp's
                 // driver populates into ParserOptions.BuiltinsDir during Driver.Setup().
+                // Fail hard if it's missing -- silently skipping would lose the clang
+                // intrinsics (__builtin_*, type_traits builtins) and produce silent
+                // codegen drift downstream rather than a clear setup error here.
                 string builtinsDir = driver.ParserOptions.BuiltinsDir;
-                if (!string.IsNullOrEmpty(builtinsDir) && Directory.Exists(builtinsDir))
+                if (string.IsNullOrEmpty(builtinsDir) || !Directory.Exists(builtinsDir))
                 {
-                    driver.ParserOptions.AddSystemIncludeDirs(builtinsDir);
+                    throw new InvalidOperationException(
+                        "CppSharp builtins directory not populated by Driver.Setup() " +
+                        "(ParserOptions.BuiltinsDir='" + (builtinsDir ?? "<null>") + "'). " +
+                        "Expected vendored clang 11 builtins under " +
+                        "external/CppSharp/lib/lib/clang/11.0.0/include/. " +
+                        "Without builtins, NoStandardIncludes=true would strip clang's " +
+                        "intrinsics from the parser include path and the codegen would " +
+                        "silently produce broken bindings.");
                 }
+                driver.ParserOptions.AddSystemIncludeDirs(builtinsDir);
 
                 // Diagnostic logging so future regressions are self-diagnosing in the
                 // MSBuild PostBuildEvent log.
                 Console.WriteLine("CppSharp parser STL pinned to MSVC 14.29 at " + msvc1429);
                 Console.WriteLine("CppSharp parser Windows SDK pinned to " + sdkInclude);
-                if (!string.IsNullOrEmpty(builtinsDir))
-                {
-                    Console.WriteLine("CppSharp parser clang builtins re-attached at " + builtinsDir);
-                }
+                Console.WriteLine("CppSharp parser clang builtins re-attached at " + builtinsDir);
             }
 
             private static string ResolveVs2019Root()
@@ -302,9 +310,15 @@ namespace UtinniCoreDotNetGen
                         "' does not contain VC\\Tools\\MSVC -- the MSVC v142 workload is missing. " +
                         "Re-run the VS Installer and add 'MSVC v142 - VS 2019 C++ x64/x86 build tools'.");
                 }
+                // Use System.Version for numeric ordering: e.g. "14.29.30137" > "14.29.30133"
+                // > "14.29.9" lexically would fail because "9" > "3". Version handles all
+                // three- and four-part forms naturally.
                 string match = Directory.EnumerateDirectories(msvcRoot, "14.29.*")
                     .Where(d => Directory.Exists(Path.Combine(d, "include")))
-                    .OrderByDescending(d => d, StringComparer.OrdinalIgnoreCase)
+                    .Select(d => new { Path = d, Version = TryParseVersion(Path.GetFileName(d)) })
+                    .Where(x => x.Version != null)
+                    .OrderByDescending(x => x.Version)
+                    .Select(x => x.Path)
                     .FirstOrDefault();
                 if (string.IsNullOrEmpty(match))
                 {
@@ -313,6 +327,15 @@ namespace UtinniCoreDotNetGen
                         "VC\\Tools\\MSVC. Install component 'Microsoft.VisualStudio.Component.VC.v142'.");
                 }
                 return match;
+            }
+
+            // Fully-qualified System.Version: CppSharp also exposes a `Version` type at
+            // the top of its namespace which CS0104-clashes with the BCL when both are
+            // in scope via the `using CppSharp;` directive at the top of this file.
+            private static System.Version TryParseVersion(string name)
+            {
+                System.Version v;
+                return System.Version.TryParse(name, out v) ? v : null;
             }
 
             private static string ResolveLatestWindowsSdkInclude()
@@ -327,14 +350,20 @@ namespace UtinniCoreDotNetGen
                         "Install via VS Installer component 'Microsoft.VisualStudio.Component.Windows10SDK.19041'.");
                 }
 
-                // Filter to versions with the four canonical sub-include dirs CppSharp
-                // needs (ucrt + shared + um; winrt is optional). Prefer 10.0.19041.* per
-                // the research note (the SDK that 14.29 was originally validated against),
+                // Filter to versions with the canonical sub-include dirs CppSharp needs
+                // (ucrt + shared + um; winrt is optional). Prefer 10.0.19041.* per the
+                // research note (the SDK that 14.29 was originally validated against),
                 // otherwise fall back to the highest installed.
+                //
+                // Use System.Version for numeric ordering: SDK dirs like "10.0.19041.0"
+                // vs "10.0.22621.0" must compare numerically (19041 < 22621). String
+                // ordering happens to work for current SDK numbering but is fragile.
                 var candidates = Directory.EnumerateDirectories(sdkBase, "10.0.*")
                     .Where(d => Directory.Exists(Path.Combine(d, "ucrt"))
                              && Directory.Exists(Path.Combine(d, "shared"))
                              && Directory.Exists(Path.Combine(d, "um")))
+                    .Select(d => new { Path = d, Version = TryParseVersion(Path.GetFileName(d)) })
+                    .Where(x => x.Version != null)
                     .ToList();
                 if (candidates.Count == 0)
                 {
@@ -343,17 +372,22 @@ namespace UtinniCoreDotNetGen
                         "' (must contain ucrt + shared + um subdirs). Install via VS Installer " +
                         "component 'Microsoft.VisualStudio.Component.Windows10SDK.19041'.");
                 }
-                string preferred = candidates
-                    .Where(d => Path.GetFileName(d).StartsWith("10.0.19041", StringComparison.OrdinalIgnoreCase))
-                    .OrderByDescending(d => d, StringComparer.OrdinalIgnoreCase)
+
+                // Preferred: 10.0.19041.* (research-note pairing for MSVC 14.29).
+                var preferred = candidates
+                    .Where(x => x.Version.Major == 10 && x.Version.Minor == 0 && x.Version.Build == 19041)
+                    .OrderByDescending(x => x.Version)
                     .FirstOrDefault();
-                if (!string.IsNullOrEmpty(preferred))
+                if (preferred != null)
                 {
-                    return preferred;
+                    return preferred.Path;
                 }
+
+                // Fallback: highest installed 10.0.* version.
                 return candidates
-                    .OrderByDescending(d => d, StringComparer.OrdinalIgnoreCase)
-                    .First();
+                    .OrderByDescending(x => x.Version)
+                    .First()
+                    .Path;
             }
         }
 

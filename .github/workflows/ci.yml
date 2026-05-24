@@ -1,4 +1,4 @@
-﻿# Source: github.com/microsoft/setup-msbuild (README v2), docs.github.com/en/actions/how-tos/monitor-workflows/add-a-status-badge
+# Source: github.com/microsoft/setup-msbuild (README v2), docs.github.com/en/actions/how-tos/monitor-workflows/add-a-status-badge
 # Verified action versions as of 2026-05-16: actions/checkout@v4, actions/cache@v4,
 # actions/upload-artifact@v4, microsoft/setup-msbuild@v2.
 name: CI
