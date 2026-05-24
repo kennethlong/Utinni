@@ -122,6 +122,14 @@ static int s_nextRenderId = 1;
 bool enableUi;
 bool rendering;
 
+// DIAG 2026-05-23 Plan 06-01 Task 2: additive ShowDemoWindow probe gated
+// behind this flag so it can be flipped off without recompiling. Lives at
+// file scope inside namespace imgui_impl so future Wave-1 work can grep
+// `g_showDemoWindowProbe` deterministically and re-enable as needed.
+// Maintainer flips this to false at Task 3 sign-off once the Demo screen
+// has been exercised end-to-end over live SWG.
+static bool g_showDemoWindowProbe = true;
+
 void enableInternalUi(bool enable)
 {
 	 enableUi = enable;
@@ -424,6 +432,17 @@ bool isSetup = false;
 			ImGui_ImplDX9_NewFrame();
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
+
+			// DIAG 2026-05-23 Plan 06-01 Task 2: additive ShowDemoWindow probe
+			// gated behind g_showDemoWindowProbe (file-scope). Exercises the
+			// full imgui Demo screen (menus + sliders + buttons + tabs + plots
+			// + popups + drag-and-drop) over live SWG to confirm render + input
+			// + state-mgmt end-to-end. Additive — the renderCallbacks dispatch
+			// below (in the !enableUi branch) is untouched.
+			if (g_showDemoWindowProbe)
+			{
+				 ImGui::ShowDemoWindow(nullptr);
+			}
 
 			static bool showDepthWindow = false;
 			static bool showColorWindow = false;
