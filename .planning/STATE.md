@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 6 context gathered
-last_updated: "2026-05-23T20:06:42.459Z"
-last_activity: 2026-05-23 -- Phase 06 planning complete
+last_updated: "2026-05-23T22:57:01.247Z"
+last_activity: 2026-05-23 -- Phase 6 execution started
 progress:
   total_phases: 12
   completed_phases: 6
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 05 — tier-1-c-unit-tests
+**Current focus:** Phase 6 — cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-05-23 -- Phase 06 planning complete
+Phase: 6 (cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 6
+Last activity: 2026-05-23 -- Phase 6 execution started
 Next action: `/gsd:discuss-phase 02.1` or `/gsd:plan-phase 02.1`
 
 Progress: [░░░░░░░░░░] 0%
