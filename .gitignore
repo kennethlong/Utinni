@@ -38,3 +38,9 @@ ipch/
 # Per-machine snapshot of SWGEmu.exe RVA state; not a build-output but
 # still local-machine state. Tool is checked in; its CSV output is not.
 scripts/rva-audit.csv
+# GSD project-level config holds API keys (brave_search, firecrawl, exa_search)
+# as plaintext. Never commit. See /gsd-config --integrations to (re)seed locally.
+/.planning/config.json
+# Claude Code's worktree-isolation working directories. Ephemeral; cleaned up
+# by the runtime after agent runs. Never commit.
+/.claude/
