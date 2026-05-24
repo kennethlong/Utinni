@@ -1,4 +1,4 @@
-# Phase 6: Cleanups, dep bumps, open questions, Tier 4 doc, 1.0 cut - Context
+﻿# Phase 6: Cleanups, dep bumps, open questions, Tier 4 doc, 1.0 cut - Context
 
 **Gathered:** 2026-05-23
 **Status:** Ready for planning
@@ -9,7 +9,7 @@
 Final pre-plugin sweep before the framework 1.0 cut. Phase delivers five inter-locked workstreams:
 
 1. **STAB-05 open-question closure** — CON-O-06 (LeksysINI replaced with a ~200-LOC custom INI parser inside `UtINI/utini.cpp`'s PIMPL Impl) and CON-O-08 (DXSDK June 2010 fully removed; `depth_texture.cpp`'s sole `D3DXVECTOR3` usage replaced with a local 3-float struct; DXSDK include/lib paths stripped from every `.vcxproj` — side-effect closes CON-B-03 structurally). The other six CON-O-* questions are already dispositioned by Phases 2/3/4 per assessment.md.
-2. **STAB-03 dep bumps + toolchain modernisation** — Full vcpkg migration (7 deps: catch2, CppSharp, DetourXS, nvapi, imgui, spdlog, ImGuizmo; LeksysINI excluded because it's being replaced, not bumped). imgui switches to the docking branch (gated on 06-01 overlay-debug; see below). spdlog 1.6 → 1.14 with CON-N-09 regression-test fence on `OutputSink`. PlatformToolset v142 → v144 (VS 2026 / Dev18). VSIX `[16.0,18.0)` → `[16.0,19.0)` per CON-B-01 audit-then-widen precedent.
+2. **STAB-03 dep bumps + toolchain modernisation** — Full vcpkg migration (7 deps: catch2, CppSharp, DetourXS, nvapi, imgui, spdlog, ImGuizmo; LeksysINI excluded because it's being replaced, not bumped). imgui switches to the docking branch (gated on 06-01 overlay-debug; see below). spdlog 1.6 → 1.14 with CON-N-09 regression-test fence on `OutputSink`. PlatformToolset v142 → v145 (VS 2026 / Dev18). VSIX `[16.0,18.0)` → `[16.0,19.0)` per CON-B-01 audit-then-widen precedent.
 3. **Overlay-debug investigation (folded in)** — User flagged that the imgui in-game overlay has never displayed in Utinni-injected sessions. Per [[feedback-d3d9-hook-diagnosis]], pattern-scan check first. Investigation lives in its own plan (06-01) and gates the imgui-docking branch switch in 06-02. Exit criterion: `ImGui::ShowDemoWindow` renders visibly over a live SWG client, exercising menus + sliders + buttons + tabs + plots + popups + drag-and-drop (full Demo). This is the highest bar of the four exit-criterion options because it proves render + input + state-mgmt end-to-end.
 4. **STAB-03 cleanups** — ~30 enumerated cleanups from `docs/ai/assessment.md §Easy cleanups`. Full-repo `.clang-format` run as a single commit + `.git-blame-ignore-revs` entry. `TJT.ico` ejected from `UtinniCoreDotNet` to UtinniPlugins/TheJawaToolbox in paired commits (per [[feedback-utinniplugins-authority]]). Polish bundle: Windows SDK target unification (CON-B-02), `Prefer32Bit` removal, `ExampleEditorPlugin.csproj` Release output path fix, `.gitignore` Std/StdEdited convention doc, empty `namespace Std {}` deletion, `Native.SendMessage int → IntPtr`, licenses.txt additions (DetourXS + nvapi + mojibake `João`), typo fixes (`detatch → detach`, `redose → redoes`, stray semicolons). **Explicit exclusion:** `swg/ui/` commented-detour cleanups (cui_chat_window.cpp:166, cui_io.cpp:96, cui_hud.cpp:164,168, appearance.cpp:102-103) are SKIPPED entirely in Phase 6 because they sit adjacent to imgui_impl.cpp; per [[feedback-keep-scaffolding-wip]] we don't delete WIP-adjacent scaffolding before the overlay works.
 5. **STAB-04 preservation audit + TEST-04 Tier-4 doc + 1.0 packaging + v1.0.0-rc.1 tag** — Audit each of the 24 CON-N-01..09 / CON-M-01..09 / CON-T-01..05 foundations via doc walk + automated grep checks (e.g., CON-N-01 detour-table pattern: grep for `pX x = (pX)0x` in `swg/*.cpp`; CON-T-02 triple-config: assert all `.vcxproj` have Debug+Release+RelWithDbgInfo). Tier-4 boundary doc lands at `.planning/codebase/TESTING.md` as a full residual enumeration (each scenario: procedure, success criterion, last-verified SHA). WiX MSI installer ships v1.0.0-rc.1 bundled with TJT (UtinniPlugins/TheJawaToolbox) per DEC-C4 "pair distribution"; installer offers an optional default-off SWG-client-path detection + utinni.cfg seed checkbox (preserves CON-D-01 "ships blank" via opt-in). Phase 6 ends with v1.0.0-rc.1 GitHub Pre-release; bake period + promotion to v1.0.0 happens post-phase as a follow-up.
@@ -59,7 +59,7 @@ Also folded into scope: two GSD CI-stability todos (`loader-lock-harness-flake-f
 
 - **D-08:** **ImGuizmo bumped to latest stable.** Independent of imgui-bump risk (ImGuizmo is a small library; surface area in UtinniCore is the existing gizmo code in `swg/scene/`-adjacent files). Planner picks the target commit/tag during research.
 
-- **D-09:** **PlatformToolset v142 → v144 (VS 2026 / Dev18).** Matches [[project-vs2026-toolchain]] memory (local default is VS 2026; VS 2022 fallback on disk). All `.vcxproj` files updated; CI's MSBuild step pins to v144 too. Contributors on VS 2022 need v144 build tools installed (Build Tools 2022 supports v144 via the C++ workload).
+- **D-09:** **PlatformToolset v142 → v145 (VS 2026 / Dev18).** Matches [[project-vs2026-toolchain]] memory (local default is VS 2026; VS 2022 fallback on disk). All `.vcxproj` files updated; CI's MSBuild step pins to v145 too. Contributors on VS 2022 need v145 build tools installed (Build Tools 2022 supports v145 via the C++ workload).
 
 - **D-10:** **VSIX manifest range widens to `[16.0,19.0)` per CON-B-01 audit-then-widen precedent (Phase 2 C-12 disposition).** Keeps VS 2019 + VS 2022 + VS 2026 contributor support; matches CON-B-01's "VS 2019+VS 2022 required" + adds VS 2026.
 
@@ -106,7 +106,7 @@ Also folded into scope: two GSD CI-stability todos (`loader-lock-harness-flake-f
 The 24 D-* decisions above shape a **6-plan structure** (planner finalises ordering + atomicity):
 
 - **06-01: Overlay-debug investigation.** Gate: `ImGui::ShowDemoWindow` visible over live SWG. Tier-4 manual UAT row.
-- **06-02: Dep-bumps + toolchain.** vcpkg manifest + 7 deps migrated; imgui docking-branch (gated on 06-01); spdlog 1.14 + OutputSink regression test; ImGuizmo bump; PlatformToolset v144; VSIX widen `[16.0,19.0)`.
+- **06-02: Dep-bumps + toolchain.** vcpkg manifest + 7 deps migrated; imgui docking-branch (gated on 06-01); spdlog 1.14 + OutputSink regression test; ImGuizmo bump; PlatformToolset v145; VSIX widen `[16.0,19.0)`.
 - **06-03: STAB-05 open questions.** CON-O-08 DXSDK removal (depth_texture.cpp + .vcxproj sweep + closes CON-B-03); CON-O-06 LeksysINI replacement (custom parser inside UtINI/utini.cpp Impl + Catch2 tests); update assessment.md §"Open questions" final disposition.
 - **06-04: CI flake fixes.** Loader-lock-harness 50ms threshold + GameCallbacks GC AV. Atomic per-fix + regression tests. Gates the 1.0-rc.1 tag.
 - **06-05: STAB-03 cleanups + STAB-04 audit.** Full-repo clang-format single commit + `.git-blame-ignore-revs`; TJT.ico ejection in paired commits to UtinniPlugins; polish bundle (Windows SDK target unification + Prefer32Bit + ExampleEditorPlugin path + .gitignore Std/StdEdited + namespace Std + Native.SendMessage IntPtr + licenses.txt + typos); STAB-04 audit `06-AUDIT.md` + automated grep tests in `Utinni.PreservationAudit.Tests` or `UtinniCoreDotNet.Tests/PreservationAudit/`.
@@ -162,7 +162,7 @@ CI-gated plan boundaries (Phase 3/4/5 precedent). Each plan green on `master` be
 ### Codebase intel (read-only reference)
 - `.planning/codebase/TESTING.md` — Phase 6 D-19 extends this doc with the full Tier-4 residual enumeration; reference from CONVENTIONS.md per REQUIREMENTS.md §TEST-04.
 - `.planning/codebase/STRUCTURE.md` — directory tree; locate `UtINI/`, `UtinniCore/swg/ui/`, `UtinniCore/swg/graphics/depth_texture.cpp`, `external/leksysini/`, `external/catch2/`, `external/imgui/`, `external/spdlog/`, `external/ImGuizmo/`.
-- `.planning/codebase/STACK.md` — toolchain (MSBuild, vcxproj triple-config, net472/x86); Phase 6 D-09 bumps PlatformToolset v142 → v144.
+- `.planning/codebase/STACK.md` — toolchain (MSBuild, vcxproj triple-config, net472/x86); Phase 6 D-09 bumps PlatformToolset v142 → v145.
 - `.planning/codebase/CONVENTIONS.md` — Allman braces + 4-space indent + MIT header; Phase 6 D-12 `.clang-format` codifies these; D-19 references for TEST-04 visibility.
 - `.planning/codebase/CONCERNS.md` — Phase 6 closes the ~30 cleanup items (`TD-25` empty stubs, `TD-26` disabled hooks, `TD-27` hardcoded font path, `TD-28` `TJT.ico` framework default leak) per STAB-03.
 - `.planning/codebase/INTEGRATIONS.md` — `Native Process Integration` section informs the MSI installer's no-injection-at-install posture.
@@ -183,7 +183,7 @@ CI-gated plan boundaries (Phase 3/4/5 precedent). Each plan green on `master` be
 - `.github/workflows/release.yml` (D-20; triggered on `v1.0*` tag).
 
 **Existing files modified (high-impact subset):**
-- Every `*.vcxproj` (PlatformToolset v144 per D-09; remove DXSDK paths per D-01; Windows SDK target unify per D-16).
+- Every `*.vcxproj` (PlatformToolset v145 per D-09; remove DXSDK paths per D-01; Windows SDK target unify per D-16).
 - `UtinniCore/swg/graphics/depth_texture.cpp` (D-01; remove `d3dx9.h` + replace `D3DXVECTOR3`).
 - `UtINI/utini.cpp` (D-02; replace LeksysINI with custom parser inside Impl).
 - `UtinniCore/swg/ui/imgui_impl.cpp` (D-11; overlay-debug investigation focus).
