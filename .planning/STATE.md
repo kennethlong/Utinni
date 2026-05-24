@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 6 context gathered
-last_updated: "2026-05-23T22:57:01.247Z"
-last_activity: 2026-05-23 -- Phase 6 execution started
+status: paused
+stopped_at: Phase 6 Wave 2 paused — CppSharp blocks v145 toolset bump
+last_updated: "2026-05-24T00:00:00.000Z"
+last_activity: 2026-05-24 -- Phase 6 Wave 2 paused; CppSharp / MSVC 14.5x incompatibility
 progress:
   total_phases: 12
   completed_phases: 6
@@ -25,13 +25,33 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 
 ## Current Position
 
-Phase: 6 (cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 6
-Last activity: 2026-05-23 -- Phase 6 execution started
-Next action: `/gsd:discuss-phase 02.1` or `/gsd:plan-phase 02.1`
+Phase: 6 (cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut) — PAUSED at Wave 2
+Plan: 1 of 6 complete (06-01); Wave 2 (06-02) parked behind CppSharp blocker
+Status: Paused — resume after CppSharp/MSVC 14.5x incompatibility resolved
+Last activity: 2026-05-24 -- v145 fixup committed on worktree; Phase 6 paused
+Next action: Resolve `cppsharp-msvc-14.5-incompatibility` TODO (configure parser includes / upgrade CppSharp / defer D-09), then resume via `/gsd-execute-phase 6 --wave 2`
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 17% (1/6 plans in Phase 6 complete)
+
+## Active Pause
+
+**Wave 1 (06-01) shipped:** Overlay-debug investigation — ImGui Demo screen rendered end-to-end over live SWG; Tier-4 sign-off in `06-01-VERIFICATION.md`; diag tripwires rolled back to dormant (`g_showDemoWindowProbe = false`, debug-level logs). HUD-style overlay directive captured for Wave-1 plugin styling. Master at `5f63b36` pushed.
+
+**Wave 2 (06-02) parked:** 4 commits + 1 fixup on `worktree-agent-a4d0744552aa5c200` (locked, NOT merged):
+- `0ab49ae` — build(06-02): vcpkg manifest + per-dep port research + CI integration
+- `7fa5e48` — test(06-02): OutputSinkRoundTripTests CON-N-09 regression fence
+- `6cefd49` — build(06-02): PlatformToolset v142 → v144 sweep + VSIX widen [16.0,19.0) **(v144 = wrong)**
+- `5120ac0` — docs(06-02): plan summary
+- `83a8056` — fix(06-02): correct PlatformToolset v144 → v145 (VS 2026 actual toolset)
+
+**Blocker:** v145 builds C++ cleanly but CppSharp's clang 11 parser cannot read MSVC 14.5x's STL. The `UtinniCoreDotNetGen.exe` PostBuildEvent that runs CppSharp codegen fails with 16+ parse errors in `<vector>`, `<tuple>`, `<string>`, etc. Three resolution paths documented in `.planning/todos/pending/cppsharp-msvc-14.5-incompatibility.md`:
+1. Configure CppSharp.Parser.Options.IncludeDirs to use VS 2022 14.44 STL while main build uses v145
+2. Upgrade vendored CppSharp to clang 17+
+3. Defer D-09 entirely; revert toolset sweep on worktree, merge the rest
+
+**Deferred from Wave 2 (also tracked in `06-02-SUMMARY.md` Architectural Escalations §1):** the per-dep vcpkg migration commits (delete `external/{catch2,spdlog,imgui,imguizmo}` + rewire .vcxproj include/lib paths). The vcpkg manifest is currently aspirational — `external/` trees still in place, the build still uses vendored copies. A follow-on plan (working name `06-02b`) consumes the foundation.
+
+See: `[[project-vs2026-cppsharp-block]]` auto-memory.
 
 ## Performance Metrics
 
