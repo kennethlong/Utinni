@@ -137,7 +137,7 @@ Plans:
 **Plans**: 6 plans
 **Plans**:
 - [x] 06-01-PLAN.md — Overlay-debug investigation (d3d9 pattern-scan disposition + ImGui::ShowDemoWindow over live SWG; Tier-4 row; gates 06-02 imgui-docking switch per D-11)
-- [ ] 06-02-PLAN.md — Dep-bumps + toolchain (vcpkg manifest + 7 deps; spdlog 1.14 + OutputSink fence; ImGuizmo bump; imgui per 06-01 disposition; PlatformToolset v145; VSIX [16.0,19.0))
+- [x] 06-02-PLAN.md — Dep-bumps + toolchain (vcpkg manifest + 7 deps; spdlog 1.14 + OutputSink fence; ImGuizmo bump; imgui per 06-01 disposition; PlatformToolset v145; VSIX [16.0,19.0))
 - [ ] 06-03-PLAN.md — STAB-05 open questions (CON-O-08 DXSDK removal; CON-O-06 LeksysINI replacement inside UtINI::Impl; 12+ Catch2 INI fence cases)
 - [ ] 06-04-PLAN.md — CI flake fixes (loader-lock-harness 50ms contention + GameCallbacks ForceGCCollect AV; per-flake atomic fix + regression assertion)
 - [ ] 06-05-PLAN.md — STAB-03 cleanups + STAB-04 audit (full-repo clang-format + .git-blame-ignore-revs; TJT.ico cross-repo ejection; D-16 polish bundle a-h with Native.SendMessage IntPtr + int shim; dead-code purge excluding swg/ui/; 24-item preservation audit + xUnit grep tests)
@@ -271,7 +271,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 3. Strategic reworks (R-A..R-H) | 0/TBD | Not started | - |
 | 4. Tier 2 CLI shim + golden fixtures | 0/TBD | Not started | - |
 | 5. Tier 1 C++ unit tests | 0/TBD | Not started | - |
-| 6. Cleanups, dep bumps, open questions, Tier 4 doc, 1.0 cut | 1/6 | In Progress|  |
+| 6. Cleanups, dep bumps, open questions, Tier 4 doc, 1.0 cut | 3/6 | In Progress|  |
 | 7. Wave-1 plugin — TRE Browser | 0/TBD | Not started | - |
 | 8. Wave-1 plugin — IFF Editor | 0/TBD | Not started | - |
 | 9. Wave-1 plugin — Datatable Editor | 0/TBD | Not started | - |

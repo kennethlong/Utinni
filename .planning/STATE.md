@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: paused
-stopped_at: Phase 6 Wave 2 paused — CppSharp blocks v145 toolset bump
-last_updated: "2026-05-24T00:00:00.000Z"
-last_activity: 2026-05-24 -- Phase 6 Wave 2 paused; CppSharp / MSVC 14.5x incompatibility
+status: executing
+stopped_at: Phase 6 Wave 2 complete (Path 1); ready for Wave 3
+last_updated: "2026-05-24T13:00:00.000Z"
+last_activity: 2026-05-24 -- Wave 2 Path 1 merged after CODEX+cursor pre-merge review
 progress:
   total_phases: 12
   completed_phases: 6
@@ -25,33 +25,27 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 
 ## Current Position
 
-Phase: 6 (cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut) — PAUSED at Wave 2
-Plan: 1 of 6 complete (06-01); Wave 2 (06-02) parked behind CppSharp blocker
-Status: Paused — resume after CppSharp/MSVC 14.5x incompatibility resolved
-Last activity: 2026-05-24 -- v145 fixup committed on worktree; Phase 6 paused
-Next action: Resolve `cppsharp-msvc-14.5-incompatibility` TODO (configure parser includes / upgrade CppSharp / defer D-09), then resume via `/gsd-execute-phase 6 --wave 2`
+Phase: 6 (cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut) — EXECUTING; Wave 2 just landed
+Plan: 2 of 6 complete (06-01, 06-02); Wave 3 (06-03) ready
+Status: Executing Phase 6
+Last activity: 2026-05-24 -- Wave 2 Path 1 merged; v145 toolset live with parser STL pin
+Next action: `/gsd-execute-phase 6 --wave 3` to start STAB-05 open questions (DXSDK removal + LeksysINI replacement)
 
-Progress: [█░░░░░░░░░] 17% (1/6 plans in Phase 6 complete)
+Progress: [███░░░░░░░] 33% (2/6 plans in Phase 6 complete)
 
-## Active Pause
+## Wave 2 Summary
 
-**Wave 1 (06-01) shipped:** Overlay-debug investigation — ImGui Demo screen rendered end-to-end over live SWG; Tier-4 sign-off in `06-01-VERIFICATION.md`; diag tripwires rolled back to dormant (`g_showDemoWindowProbe = false`, debug-level logs). HUD-style overlay directive captured for Wave-1 plugin styling. Master at `5f63b36` pushed.
+**Wave 1 (06-01) shipped earlier:** Overlay-debug investigation; ImGui Demo screen Tier-4 sign-off; HUD-style overlay directive captured.
 
-**Wave 2 (06-02) parked:** 4 commits + 1 fixup on `worktree-agent-a4d0744552aa5c200` (locked, NOT merged):
-- `0ab49ae` — build(06-02): vcpkg manifest + per-dep port research + CI integration
-- `7fa5e48` — test(06-02): OutputSinkRoundTripTests CON-N-09 regression fence
-- `6cefd49` — build(06-02): PlatformToolset v142 → v144 sweep + VSIX widen [16.0,19.0) **(v144 = wrong)**
-- `5120ac0` — docs(06-02): plan summary
-- `83a8056` — fix(06-02): correct PlatformToolset v144 → v145 (VS 2026 actual toolset)
+**Wave 2 (06-02) merged 2026-05-24 (commit `2f57dfa`):** vcpkg manifest mode + OutputSink CON-N-09 fence + PlatformToolset v142 → v145 sweep + VSIX widen `[16.0,19.0)` + CppSharp parser pinned to VS 2019 14.29 STL (Path 1). Two independent pre-merge reviews:
+- **CODEX**: accept + 4 pre-merge cleanups (fail-hard builtins, numeric Version ordering, BOM strip, untracked-file confirmation) → applied as `adc72f8`
+- **cursor**: accept + per-type block hash certification (119/119 partial-class blocks byte-identical; only inter-type reordering; no `[ModuleInitializer]`/`[ComImport]`/explicit-`cctor` concerns); preferred follow-up = commit Path 1-regen baseline → applied as `d69988d`
 
-**Blocker:** v145 builds C++ cleanly but CppSharp's clang 11 parser cannot read MSVC 14.5x's STL. The `UtinniCoreDotNetGen.exe` PostBuildEvent that runs CppSharp codegen fails with 16+ parse errors in `<vector>`, `<tuple>`, `<string>`, etc. Three resolution paths documented in `.planning/todos/pending/cppsharp-msvc-14.5-incompatibility.md`:
-1. Configure CppSharp.Parser.Options.IncludeDirs to use VS 2022 14.44 STL while main build uses v145
-2. Upgrade vendored CppSharp to clang 17+
-3. Defer D-09 entirely; revert toolset sweep on worktree, merge the rest
+CppSharp blocker resolved by Path 1 (parser-include redirect to VS 2019 14.29 STL while build uses v145). The vendored CppSharp 0.10.5's clang 11 parser now reads its original-pairing STL; the v145-built `UtinniCore.dll` is unaffected.
 
-**Deferred from Wave 2 (also tracked in `06-02-SUMMARY.md` Architectural Escalations §1):** the per-dep vcpkg migration commits (delete `external/{catch2,spdlog,imgui,imguizmo}` + rewire .vcxproj include/lib paths). The vcpkg manifest is currently aspirational — `external/` trees still in place, the build still uses vendored copies. A follow-on plan (working name `06-02b`) consumes the foundation.
+**Deferred to follow-on plan 06-02b (post-V1):** the per-dep vcpkg migration commits (delete `external/{catch2,spdlog,imgui,imguizmo}` + rewire .vcxproj include/lib paths). The vcpkg manifest currently declares the deps but the build still resolves them via the vendored `external/` trees. Not blocking v1.0-rc.1.
 
-See: `[[project-vs2026-cppsharp-block]]` auto-memory.
+See: `[[project-vs2026-cppsharp-block]]` auto-memory; `06-02-PATH1-SUMMARY.md`; `.planning/research/cppsharp-msvc-14.5-upgrade.md`.
 
 ## Performance Metrics
 
