@@ -120,6 +120,8 @@
     <!-- Header-only inline helpers; string_utility.cpp NOT included to avoid UTINNI_API/EXPORT_UTINNI link conflict (see 05-REVIEWS.md item U1). -->
     <ClCompile Include="main_smoke.cpp" />
     <ClCompile Include="StringUtilityTests.cpp" />
+    <!-- Phase 6 D-07 / 06-02 Task 2: CON-N-09 regression fence for OutputSink. -->
+    <ClCompile Include="Log\OutputSinkRoundTripTests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\external\catch2\catch_amalgamated.hpp" />
