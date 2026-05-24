@@ -126,9 +126,11 @@ bool rendering;
 // behind this flag so it can be flipped off without recompiling. Lives at
 // file scope inside namespace imgui_impl so future Wave-1 work can grep
 // `g_showDemoWindowProbe` deterministically and re-enable as needed.
-// Maintainer flips this to false at Task 3 sign-off once the Demo screen
-// has been exercised end-to-end over live SWG.
-static bool g_showDemoWindowProbe = true;
+// Task 3 sign-off (2026-05-23) flipped this to false after the maintainer
+// verified the Demo screen rendered end-to-end (menus + sliders + buttons +
+// tabs + plots + popups + drag-and-drop) over live SWG. Call site retained
+// so a one-line edit re-enables for future Wave-1 plugin styling work.
+static bool g_showDemoWindowProbe = false;
 
 void enableInternalUi(bool enable)
 {
@@ -339,11 +341,14 @@ bool isSetup = false;
 	  // Per 06-01-DEMO-PROBE-NOTES.md: the d3d9 pattern-scan suspicion is
 	  // resolved (Phase 02.1 commit 2c57d38 replaced it with the dummy-device
 	  // approach), so this probe is the next link in the chain.
+	  // Task 3 sign-off (2026-05-23): demoted from info -> debug; kept behind
+	  // the one-shot guard so the diag stays dormant in normal runs but
+	  // surfaces in debug logs if the regression returns.
 	  static bool sLoggedOnce = false;
 	  if (!sLoggedOnce)
 	  {
 		   sLoggedOnce = true;
-		   utinni::log::info("imgui_impl::setup complete, isSetup=true");
+		   utinni::log::debug("imgui_impl::setup complete, isSetup=true");
 	  }
  }
 
