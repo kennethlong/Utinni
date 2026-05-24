@@ -140,6 +140,69 @@ jobs:
             Write-Host "v145 build tools already present on runner."
           }
 
+      # Phase 6 D-09 (Path 1): the CppSharp PostBuildEvent on UtinniCore runs UtinniCoreDotNetGen.exe,
+      # which uses vendored CppSharp 0.10.5 (clang 11). On a v145 toolset build the v145 STL fails to
+      # parse under clang 11 (header-resident clang-version gate in yvals_core.h). UtinniCoreDotNetGen's
+      # Program.cs::ConfigureCppSharpParserStl() pins the parser to the VS 2019 14.29 STL via vswhere /
+      # default-path probe / UTINNI_VS2019_ROOT env var. That requires the v142 toolset (MSVC 14.29) to
+      # actually be installed on the runner. Probe-first: only install if absent. See
+      # .planning/research/cppsharp-msvc-14.5-upgrade.md.
+      - name: Ensure VS 2019 BuildTools (for CppSharp parser STL pin)
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $hasV142 = $false
+          if (Test-Path $vswhere) {
+            $v142Dirs = & $vswhere -version "[16.0,17.0)" -products * -requires Microsoft.VisualStudio.Component.VC.v142 -property installationPath 2>$null
+            if ($v142Dirs) {
+              foreach ($p in $v142Dirs) {
+                $p = $p.Trim()
+                if ($p -and (Test-Path (Join-Path $p "VC\Tools\MSVC"))) {
+                  $msvc = Get-ChildItem (Join-Path $p "VC\Tools\MSVC") -Directory -Filter "14.29.*" -ErrorAction SilentlyContinue
+                  if ($msvc) { $hasV142 = $true; break }
+                }
+              }
+            }
+          }
+          if (-not $hasV142) {
+            # Fall back to direct path probe (covers Build Tools-only installs vswhere can miss
+            # when the v142 component metadata is partial).
+            $candidates = @(
+              "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC",
+              "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC",
+              "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Professional\VC\Tools\MSVC",
+              "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Enterprise\VC\Tools\MSVC"
+            )
+            foreach ($base in $candidates) {
+              if (Test-Path $base) {
+                $msvc = Get-ChildItem $base -Directory -Filter "14.29.*" -ErrorAction SilentlyContinue
+                if ($msvc) { $hasV142 = $true; break }
+              }
+            }
+          }
+          if (-not $hasV142) {
+            Write-Host "VS 2019 BuildTools (MSVC v142 / 14.29) missing on runner; installing for CppSharp parser STL pin."
+            $bootstrapper = Join-Path $env:RUNNER_TEMP "vs2019_BuildTools.exe"
+            Invoke-WebRequest -Uri "https://aka.ms/vs/16/release/vs_buildtools.exe" -OutFile $bootstrapper -UseBasicParsing
+            Start-Process -FilePath $bootstrapper -ArgumentList @(
+              "--quiet", "--wait", "--norestart", "--nocache",
+              "--add", "Microsoft.VisualStudio.Workload.VCTools",
+              "--add", "Microsoft.VisualStudio.Component.VC.v142",
+              "--add", "Microsoft.VisualStudio.Component.Windows10SDK.19041"
+            ) -Wait -NoNewWindow
+            # Re-probe; fail explicitly if installer did not produce v142 + 14.29 (clearer than a downstream codegen error).
+            $reprobe = $false
+            $base = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC"
+            if (Test-Path $base) {
+              $msvc = Get-ChildItem $base -Directory -Filter "14.29.*" -ErrorAction SilentlyContinue
+              if ($msvc) { $reprobe = $true }
+            }
+            if (-not $reprobe) { throw "VS 2019 BuildTools installer ran but MSVC 14.29 still not found." }
+            Write-Host "VS 2019 BuildTools + MSVC v142 installed successfully."
+          } else {
+            Write-Host "VS 2019 BuildTools / MSVC v142 (14.29) already present on runner."
+          }
+
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
         # Post-Phase 6 D-09 sweep, PlatformToolset=v145 is declared in every .vcxproj so MSBuild auto-selects
