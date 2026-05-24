@@ -93,14 +93,16 @@ By the time 06-01 picked up the investigation, no separate fix was needed. The 3
 
 ### Future Design Note (Out of Scope for 06-01)
 
-The Demo window currently uses Utinni's hard-coded ImGui style at `UtinniCore/swg/ui/imgui_impl.cpp:305-329` with `ImGuiCol_WindowBg = ImVec4(0.13, 0.13, 0.13, 1.00f)` — fully opaque. For Wave-1 TJT subpanels (Phases 7-11), the aesthetic question of transparency / chromeless HUD-style overlays surfaces here. Options worth weighing during Wave-1 plugin styling work:
+**Maintainer directive (2026-05-23):** Wave-1 TJT subpanels target a **HUD-style overlay**, NOT floating windows-on-game-view. The Demo screen exercise visually confirmed render works but also confirmed the aesthetic problem: an opaque framed window sitting atop the SWG view is not the intended UX. Wave-1 plugin styling work starts from this constraint.
 
-- **Per-window alpha** — `ImGui::SetNextWindowBgAlpha(0.65f)` immediately before `ImGui::Begin(...)` for the panels that should appear translucent. Lowest-cost option; granular control.
-- **Global style tweaks** — drop the alpha of `ImGuiCol_WindowBg` / `ChildBg` / `PopupBg` in the style block at lines 296-298. Affects every imgui window uniformly.
-- **HUD-style chromeless windows** — `ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration` per-window. Removes the title bar and frame for true overlay HUDs.
-- **Frosted-glass via D3D9 backbuffer-copy + blur shader** — more involved (requires capturing the backbuffer behind the window, blurring, blending). Defer unless aesthetic demand is high.
+The Demo window currently uses Utinni's hard-coded ImGui style at `UtinniCore/swg/ui/imgui_impl.cpp:305-329` with `ImGuiCol_WindowBg = ImVec4(0.13, 0.13, 0.13, 1.00f)` — fully opaque. Implementation options ranked by directive fit:
 
-Capture as a deferred design item for Wave-1 plugin styling work. NOT a 06-01 deliverable.
+- **(Primary) HUD-style chromeless windows** — `ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize` per-panel. Removes the title bar and frame for true overlay HUDs. Pair with fixed anchored positions (corners / edges) and a configurable visibility toggle. **This is the direction Wave-1 plans should default to.**
+- **(Secondary) Per-window alpha** — `ImGui::SetNextWindowBgAlpha(0.0f)` (fully transparent) or `0.35f` (subtly tinted) before `ImGui::Begin(...)`. Useful for panels that need slight backdrop contrast against busy game-view areas without a hard frame.
+- **(Style-block override) Global alpha** — drop the alpha of `ImGuiCol_WindowBg` / `ChildBg` / `PopupBg` in the style block to a default-translucent value (e.g., `0.0f` for chromeless or `0.35f` for tinted). Apply once at imgui setup; individual panels can still override via `SetNextWindowBgAlpha`.
+- **(Deferred) Frosted-glass via D3D9 backbuffer-copy + blur shader** — frosted-glass aesthetic needs a backbuffer-copy + blur shader before the imgui draw. Stretches into D3D9-pipeline work; defer unless TJT specifically wants the effect for V2 polish.
+
+Capture as a Wave-1 plugin design constraint (TJT subpanels default to HUD-style chromeless overlays). NOT a 06-01 deliverable, but the directive is recorded here so Phase 7+ planning inherits it.
 
 ## Task 3 Sign-Off Actions
 
