@@ -323,6 +323,20 @@ bool isSetup = false;
 	  style.GrabMinSize = 5.f;
 
 	  isSetup = true;
+
+	  // DIAG 2026-05-23 Plan 06-01 Task 1: one-shot probe that fires the first
+	  // time isSetup flips true. Pair with the render() probe below to confirm
+	  // both the imgui setup path AND the per-frame render-gate are reached in
+	  // a live SWG-injected session. Static-bool guarded — fires exactly once.
+	  // Per 06-01-DEMO-PROBE-NOTES.md: the d3d9 pattern-scan suspicion is
+	  // resolved (Phase 02.1 commit 2c57d38 replaced it with the dummy-device
+	  // approach), so this probe is the next link in the chain.
+	  static bool sLoggedOnce = false;
+	  if (!sLoggedOnce)
+	  {
+		   sLoggedOnce = true;
+		   utinni::log::info("imgui_impl::setup complete, isSetup=true");
+	  }
  }
 
 
@@ -393,6 +407,19 @@ bool isSetup = false;
  {
 	  if (isSetup)
 	  {
+			// DIAG 2026-05-23 Plan 06-01 Task 1: one-shot probe that fires the
+			// first time render() actually crosses the isSetup gate. Static-
+			// bool guarded; debug-level so it never floods utinni.log. Pair
+			// with the setup-complete probe above to confirm the per-frame
+			// render path is alive in live SWG sessions. See
+			// 06-01-DEMO-PROBE-NOTES.md for the d3d9 pattern-scan disposition.
+			static bool sLoggedOnceRender = false;
+			if (!sLoggedOnceRender)
+			{
+				 sLoggedOnceRender = true;
+				 utinni::log::debug("imgui_impl::render entered isSetup branch");
+			}
+
 			rendering = true;
 			ImGui_ImplDX9_NewFrame();
 			ImGui_ImplWin32_NewFrame();
