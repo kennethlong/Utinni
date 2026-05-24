@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "utinni",
+  "version-string": "1.0.0-rc.1",
+  "description": "Utinni — a one-stop modding tool for SWG. Phase 6 D-05 vcpkg manifest covering the four upstream-vcpkg-available C++ dependencies.",
+  "homepage": "https://github.com/kennethlong/Utinni",
+  "license": "MIT",
+  "supports": "windows & x86",
+  "dependencies": [
+    {
+      "name": "catch2",
+      "version>=": "3.15.0"
+    },
+    {
+      "name": "spdlog",
+      "version>=": "1.14.0"
+    },
+    {
+      "name": "imgui",
+      "features": [
+        "docking-experimental",
+        "dx9-binding",
+        "win32-binding"
+      ],
+      "version>=": "1.92.0"
+    },
+    {
+      "name": "imguizmo",
+      "version>=": "1.10"
+    }
+  ]
+}

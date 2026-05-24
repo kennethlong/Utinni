@@ -38,3 +38,8 @@ ipch/
 # Per-machine snapshot of SWGEmu.exe RVA state; not a build-output but
 # still local-machine state. Tool is checked in; its CSV output is not.
 scripts/rva-audit.csv
+
+# Phase 6 D-05 / 06-02 Task 1: vcpkg manifest-mode install target.
+# Populated by `vcpkg install --triplet x86-windows` against vcpkg.json at the
+# repo root; cached by CI keyed on hashFiles('vcpkg.json'). Never committed.
+/vcpkg_installed/
