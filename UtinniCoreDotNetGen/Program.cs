@@ -23,7 +23,9 @@
 **/
 
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using CppSharp;
 using CppSharp.AST;
 using CppSharp.Generators;
@@ -58,6 +60,18 @@ namespace UtinniCoreDotNetGen
                 driver.ParserOptions.EnableRTTI = true;
                 driver.ParserOptions.AddDefines("SPDLOG_NO_EXCEPTIONS");
                 driver.ParserOptions.AddDefines("FMT_EXCEPTIONS=0");
+
+                // Phase 6 D-09 (Path 1): Pin CppSharp's clang 11 parser to the VS 2019 14.29
+                // MSVC STL -- the original supported pairing for clang 11 -- so that the
+                // codegen-time STL parse is decoupled from the v145 (MSVC 14.5x) toolset
+                // the main UtinniCore C++ build now uses. The MSVC STL has a header-resident
+                // clang-version gate in yvals_core.h: VS 2026 14.5x requires clang 20+;
+                // VS 2019 14.29 explicitly accepts clang 11. The vendored CppSharp 0.10.5
+                // ships clang 11.0.0; the API surface used below (NoStandardIncludes,
+                // AddSystemIncludeDirs, AddDefines, BuiltinsDir) is verified to exist via
+                // reflection on external/CppSharp/lib/CppSharp.Parser.dll. See
+                // .planning/research/cppsharp-msvc-14.5-upgrade.md for the full analysis.
+                ConfigureCppSharpParserStl(driver);
 
                 var options = driver.Options;
                 options.GeneratorKind = GeneratorKind.CSharp;
@@ -145,6 +159,201 @@ namespace UtinniCoreDotNetGen
 
             public void Postprocess(Driver driver, ASTContext ctx)
             {
+            }
+
+            // Phase 6 D-09 (Path 1): redirect the parser's #include search to the
+            // VS 2019 14.29 MSVC STL + Windows SDK 10.0.19041 (the original supported
+            // pairing for clang 11). This decouples codegen-time STL parsing from
+            // build-time (v145) STL compilation. See research note above.
+            private static void ConfigureCppSharpParserStl(Driver driver)
+            {
+                string vs2019Root = ResolveVs2019Root();
+                string msvc1429 = ResolveLatest1429Msvc(vs2019Root);
+                string sdkInclude = ResolveLatestWindowsSdkInclude();
+
+                // Suppress LLVM 11's auto-detect of the newest VS install (which would
+                // pick up MSVC 14.5x STL and reproduce the clang-version-gate failure
+                // we are mitigating here).
+                driver.ParserOptions.NoStandardIncludes = true;
+
+                // MSVC 14.29 STL (clang-11 paired headers; yvals_core.h `#if __clang_major__ < 11`).
+                driver.ParserOptions.AddSystemIncludeDirs(Path.Combine(msvc1429, "include"));
+                string atlmfcInclude = Path.Combine(msvc1429, "atlmfc", "include");
+                if (Directory.Exists(atlmfcInclude))
+                {
+                    driver.ParserOptions.AddSystemIncludeDirs(atlmfcInclude);
+                }
+
+                // Windows SDK (UCRT + shared + um + winrt). The vendored TargetTriple is
+                // i686-pc-win32-msvc, so winrt is technically unused, but it costs nothing
+                // and matches the canonical clang MSVC toolchain include order.
+                driver.ParserOptions.AddSystemIncludeDirs(Path.Combine(sdkInclude, "ucrt"));
+                driver.ParserOptions.AddSystemIncludeDirs(Path.Combine(sdkInclude, "shared"));
+                driver.ParserOptions.AddSystemIncludeDirs(Path.Combine(sdkInclude, "um"));
+                string winrt = Path.Combine(sdkInclude, "winrt");
+                if (Directory.Exists(winrt))
+                {
+                    driver.ParserOptions.AddSystemIncludeDirs(winrt);
+                }
+
+                // Belt-and-suspenders: silence the STL's _EMIT_STL_ERROR clang-version
+                // gate even if some include chain bottoms out in a newer header. The
+                // upstream CppSharp main branch sets this unconditionally in SetupMSVC().
+                driver.ParserOptions.AddDefines("_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH");
+
+                // Re-attach clang's builtins dir after NoStandardIncludes wiped it out.
+                // The vendored CppSharp ships clang 11 builtins at
+                // external/CppSharp/lib/lib/clang/11.0.0/include/ which CppSharp's
+                // driver populates into ParserOptions.BuiltinsDir during Driver.Setup().
+                string builtinsDir = driver.ParserOptions.BuiltinsDir;
+                if (!string.IsNullOrEmpty(builtinsDir) && Directory.Exists(builtinsDir))
+                {
+                    driver.ParserOptions.AddSystemIncludeDirs(builtinsDir);
+                }
+
+                // Diagnostic logging so future regressions are self-diagnosing in the
+                // MSBuild PostBuildEvent log.
+                Console.WriteLine("CppSharp parser STL pinned to MSVC 14.29 at " + msvc1429);
+                Console.WriteLine("CppSharp parser Windows SDK pinned to " + sdkInclude);
+                if (!string.IsNullOrEmpty(builtinsDir))
+                {
+                    Console.WriteLine("CppSharp parser clang builtins re-attached at " + builtinsDir);
+                }
+            }
+
+            private static string ResolveVs2019Root()
+            {
+                // 1) Explicit env override (for non-default installs / CI hosts).
+                string env = Environment.GetEnvironmentVariable("UTINNI_VS2019_ROOT");
+                if (!string.IsNullOrEmpty(env) && Directory.Exists(env))
+                {
+                    return env;
+                }
+
+                // 2) vswhere discovery (canonical Microsoft mechanism).
+                string vswhere = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                    @"Microsoft Visual Studio\Installer\vswhere.exe");
+                if (File.Exists(vswhere))
+                {
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = vswhere,
+                        Arguments = "-version \"[16.0,17.0)\" -products * -requires Microsoft.VisualStudio.Component.VC.v142 -property installationPath",
+                        RedirectStandardOutput = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+                    try
+                    {
+                        using (var p = Process.Start(psi))
+                        {
+                            string output = p.StandardOutput.ReadToEnd();
+                            p.WaitForExit(10000);
+                            // vswhere may print multiple matching installs (one per line); take the first.
+                            string path = output
+                                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                                .Select(s => s.Trim())
+                                .FirstOrDefault(s => Directory.Exists(s));
+                            if (!string.IsNullOrEmpty(path))
+                            {
+                                return path;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Fall through to the default-path probe.
+                    }
+                }
+
+                // 3) Default install path fallback.
+                string[] defaultPaths =
+                {
+                    @"C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools",
+                    @"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community",
+                    @"C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional",
+                    @"C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise"
+                };
+                foreach (string p in defaultPaths)
+                {
+                    if (Directory.Exists(p)) return p;
+                }
+
+                throw new InvalidOperationException(
+                    "VS 2019 BuildTools (or VS 2019 Community/Professional/Enterprise) not found. " +
+                    "Path 1 (Phase 6 D-09) requires VS 2019 14.29 MSVC STL to keep CppSharp's " +
+                    "vendored clang 11 parser working on a v145 toolset build. " +
+                    "Install via: choco install visualstudio2019buildtools " +
+                    "--package-parameters=\"--add Microsoft.VisualStudio.Workload.VCTools " +
+                    "--add Microsoft.VisualStudio.Component.VC.v142\" " +
+                    "or set the UTINNI_VS2019_ROOT environment variable to your install path.");
+            }
+
+            private static string ResolveLatest1429Msvc(string vs2019Root)
+            {
+                // Glob for the highest 14.29.* directory so a future point release of
+                // 14.29 still works without code change.
+                string msvcRoot = Path.Combine(vs2019Root, "VC", "Tools", "MSVC");
+                if (!Directory.Exists(msvcRoot))
+                {
+                    throw new InvalidOperationException(
+                        "VS 2019 install at '" + vs2019Root +
+                        "' does not contain VC\\Tools\\MSVC -- the MSVC v142 workload is missing. " +
+                        "Re-run the VS Installer and add 'MSVC v142 - VS 2019 C++ x64/x86 build tools'.");
+                }
+                string match = Directory.EnumerateDirectories(msvcRoot, "14.29.*")
+                    .Where(d => Directory.Exists(Path.Combine(d, "include")))
+                    .OrderByDescending(d => d, StringComparer.OrdinalIgnoreCase)
+                    .FirstOrDefault();
+                if (string.IsNullOrEmpty(match))
+                {
+                    throw new InvalidOperationException(
+                        "VS 2019 install at '" + vs2019Root + "' has no MSVC 14.29.* under " +
+                        "VC\\Tools\\MSVC. Install component 'Microsoft.VisualStudio.Component.VC.v142'.");
+                }
+                return match;
+            }
+
+            private static string ResolveLatestWindowsSdkInclude()
+            {
+                string sdkBase = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                    @"Windows Kits\10\Include");
+                if (!Directory.Exists(sdkBase))
+                {
+                    throw new InvalidOperationException(
+                        "Windows 10 SDK include root '" + sdkBase + "' not found. " +
+                        "Install via VS Installer component 'Microsoft.VisualStudio.Component.Windows10SDK.19041'.");
+                }
+
+                // Filter to versions with the four canonical sub-include dirs CppSharp
+                // needs (ucrt + shared + um; winrt is optional). Prefer 10.0.19041.* per
+                // the research note (the SDK that 14.29 was originally validated against),
+                // otherwise fall back to the highest installed.
+                var candidates = Directory.EnumerateDirectories(sdkBase, "10.0.*")
+                    .Where(d => Directory.Exists(Path.Combine(d, "ucrt"))
+                             && Directory.Exists(Path.Combine(d, "shared"))
+                             && Directory.Exists(Path.Combine(d, "um")))
+                    .ToList();
+                if (candidates.Count == 0)
+                {
+                    throw new InvalidOperationException(
+                        "No usable Windows 10 SDK Include directory found under '" + sdkBase +
+                        "' (must contain ucrt + shared + um subdirs). Install via VS Installer " +
+                        "component 'Microsoft.VisualStudio.Component.Windows10SDK.19041'.");
+                }
+                string preferred = candidates
+                    .Where(d => Path.GetFileName(d).StartsWith("10.0.19041", StringComparison.OrdinalIgnoreCase))
+                    .OrderByDescending(d => d, StringComparer.OrdinalIgnoreCase)
+                    .FirstOrDefault();
+                if (!string.IsNullOrEmpty(preferred))
+                {
+                    return preferred;
+                }
+                return candidates
+                    .OrderByDescending(d => d, StringComparer.OrdinalIgnoreCase)
+                    .First();
             }
         }
 
