@@ -22,7 +22,7 @@
         "dx9-binding",
         "win32-binding"
       ],
-      "version>=": "1.92.0"
+      "version>=": "1.92.6"
     },
     {
       "name": "imguizmo",
