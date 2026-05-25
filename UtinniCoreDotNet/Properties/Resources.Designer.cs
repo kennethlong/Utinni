@@ -133,20 +133,10 @@ namespace UtinniCoreDotNet.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
         /// </summary>
-        internal static System.Drawing.Icon TJT {
+        internal static System.Drawing.Icon Utinni {
             get {
-                object obj = ResourceManager.GetObject("TJT", resourceCulture);
+                object obj = ResourceManager.GetObject("Utinni", resourceCulture);
                 return ((System.Drawing.Icon)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap TJT1 {
-            get {
-                object obj = ResourceManager.GetObject("TJT1", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
             }
         }
         

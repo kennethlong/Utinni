@@ -229,10 +229,7 @@
     <None Include="Resources\redo.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\TJT.ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\TJT.png" />
+    <None Include="Resources\utinni.ico" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\undo.png" />

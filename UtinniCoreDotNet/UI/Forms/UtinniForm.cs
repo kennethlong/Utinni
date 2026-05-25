@@ -81,7 +81,7 @@ namespace UtinniCoreDotNet.UI.Forms
 
             Padding = new Padding(0, titleBarHeight, 0, 0);
             FormBorderStyle = FormBorderStyle.None;
-            this.Icon = Resources.TJT;
+            this.Icon = Resources.Utinni;
 
             UtinniTitlebarButton closeButton = new UtinniTitlebarButton(new Bitmap(Resources.close), Color.Red);
             closeButton.Click += CloseButton_Click;
@@ -216,7 +216,7 @@ namespace UtinniCoreDotNet.UI.Forms
                 if (WindowState != FormWindowState.Maximized && e.Y <= titleBarHeight)
                 {
                     Native.ReleaseCapture();
-                    Native.SendMessage(this.Handle, Native.WM_SYSCOMMAND, Native.SC_DRAGMOVE, 0);
+                    Native.SendMessage(this.Handle, Native.WM_SYSCOMMAND, new IntPtr(Native.SC_DRAGMOVE), IntPtr.Zero);
                 }
             }
 
