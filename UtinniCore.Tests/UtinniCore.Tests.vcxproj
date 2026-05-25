@@ -130,6 +130,8 @@
     <ClCompile Include="StringUtilityTests.cpp" />
     <!-- Phase 6 D-07 / 06-02 Task 2: CON-N-09 regression fence for OutputSink. -->
     <ClCompile Include="Log\OutputSinkRoundTripTests.cpp" />
+    <!-- Phase 6 06-03 Task 3: CON-O-06 / D-03 max-harness fence for the custom INI parser. -->
+    <ClCompile Include="UtINI\IniParserTests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\UtinniCore\UtinniCore.vcxproj">
