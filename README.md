@@ -44,7 +44,6 @@ Please see licenses.txt for license information on libraries used.
 * DetourXS
 * [dearImgui](https://github.com/ocornut/imgui)
 * [ImGuizmo](https://github.com/CedricGuillemet/ImGuizmo)
-* [LeksysINI](https://github.com/Lek-sys/LeksysINI) -- Temporary, will most likely be replaced soon.
 * [spdlog](https://github.com/gabime/spdlog)
 
 **Credits**

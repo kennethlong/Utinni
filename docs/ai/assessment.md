@@ -487,6 +487,16 @@ These need someone-who-was-there to answer:
    block-comment in `UtinniCoreDotNetGen/Program.cs`.
 6. **LeksysINI** — README says "temporary, will most likely be replaced"
    — what was the plan?
+
+   **CON-O-06 — RESOLVED Phase 6 (Plan 06-03 Task 2):** LeksysINI replaced
+   with a hand-rolled INI parser living inside `UtINI::Impl` (a raw-line model:
+   `std::vector<Line>` + a section→key index). The public ABI in `utini.h` is
+   unchanged, so all 15+ callsites across Launcher/UtinniCore/UtinniCoreDotNet
+   keep working without recompilation. `external/LeksysINI/` was deleted and the
+   README's "temporary, will most likely be replaced" line removed. Unlike the
+   old library, the new parser round-trip-preserves line order, comments, blanks,
+   and malformed lines; type coercion deliberately mirrors the legacy
+   AsBool/AsInt/AsDouble semantics. Fenced by 12+ Catch2 cases (Plan 06-03 Task 3).
 7. **Sytner's plugin** — code elsewhere that was never merged, or always
    aspirational?
 
@@ -640,6 +650,7 @@ doc in sync so future sessions (human or AI) can see what's done.
 | R-G   | Directory.Build.props idempotent                  | done       | Phase 3 Plan 03-03 Task 3 (e8fe682 -- Props.CreateDotNetDirectoryProps rewritten as idempotent XmlReader+XDocument-based merger; preserves user-authored PropertyGroups + non-PropertyGroup siblings (Import/ItemGroup/Target); explicit DtdProcessing=Prohibit + XmlResolver=null for T-03-03-01 XXE safety; CON-T-04 invariant preserved (single method in Props.cs; private UpsertPropertyGroup helper); DirectoryBuildPropsTests 6 Facts) |
 | R-H   | SynchronizedCollection snapshot iteration         | done       | Phase 3 Plan 03-01 Tasks 2-3 (2e1b61d managed snapshot dispatch via Dictionary.Values.ToArray() under lock; 5e81410 + e4b2b59 native snapshot via std::vector copy per registry; CallbacksSnapshotIterationTests + NativeCallbacksHandleTests cover Subscribe-during-dispatch + Unsubscribe-during-dispatch invariants) |
 | CON-O-08 | DXSDK June 2010 removal                        | done       | Phase 6 Plan 06-03 Task 1 — depth_texture.cpp `D3DXVECTOR3` → local `Vec3`; DXSDK include/lib paths stripped from UtinniCore.vcxproj (all 3 configs) + CI Verify-DirectX-SDK step removed; structurally closes CON-B-03 |
+| CON-O-06 | LeksysINI replacement                          | done       | Phase 6 Plan 06-03 Task 2 — custom INI parser inside UtINI::Impl (raw-line model, round-trip preserving); public ABI preserved byte-for-byte; external/LeksysINI/ deleted; fenced by IniParserTests.cpp (Task 3) |
 
 When updating: set status to `in progress` while working, `done` when
 merged, and add a one-line note (PR link, commit SHA, or "deferred — see
