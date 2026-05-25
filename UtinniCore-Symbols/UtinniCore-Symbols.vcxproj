@@ -22,7 +22,6 @@
     <ProjectGuid>{10EA6136-AAA0-4F1D-8117-07081C785E5B}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>UtinniCoreSymbols</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>UtinniCore-Symbols</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

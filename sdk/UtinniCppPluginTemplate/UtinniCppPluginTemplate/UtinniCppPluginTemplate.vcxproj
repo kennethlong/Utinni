@@ -4,7 +4,6 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{e194459c-666a-45dd-8104-ff698fb086ea}</ProjectGuid>
     <RootNamespace>UtinniCppPluginTemplate</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
     <ProjectName>UtinniCppPluginTemplate</ProjectName>
   </PropertyGroup>
   <Import Project="$(SolutionDir)\UtinniCppPlugin.props" />

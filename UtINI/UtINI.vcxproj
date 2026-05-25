@@ -19,7 +19,6 @@
     <ProjectGuid>{5F903813-E62A-49F6-8B3E-0443DECADB5D}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>UtINI</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>UtINI</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

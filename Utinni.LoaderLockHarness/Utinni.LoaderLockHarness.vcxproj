@@ -14,7 +14,6 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{6A57E74E-0D39-430B-AD0D-6E56AA99B54A}</ProjectGuid>
     <RootNamespace>Utinni.LoaderLockHarness</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

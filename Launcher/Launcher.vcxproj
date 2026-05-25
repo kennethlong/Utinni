@@ -18,7 +18,6 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{E1923E12-B8CB-4C7E-8A12-68877DC01E5C}</ProjectGuid>
     <RootNamespace>Launcher</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

@@ -14,7 +14,6 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{6767F360-3D54-4EE2-BD93-04DCBD9F0B02}</ProjectGuid>
     <RootNamespace>Utinni.CrtMatchPlugin</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

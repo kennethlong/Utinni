@@ -14,7 +14,6 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{3B8736D5-6E4A-472A-99D1-16FB49E26595}</ProjectGuid>
     <RootNamespace>Utinni.LegacyPlugin</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

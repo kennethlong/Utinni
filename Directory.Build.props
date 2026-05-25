@@ -1,0 +1,12 @@
+<Project>
+  <!-- Phase 6 (Plan 06-05 / D-16(a), CON-B-02): unify the Windows SDK target version
+       across every .vcxproj from one place instead of repeating it per project, where it
+       had drifted three ways (10.0, 10.0.19041.0, 10.0.16299.0). "10.0" resolves to the
+       latest 10.x SDK installed on the machine / CI runner. MSBuild auto-imports this file
+       for every project under the repo root before the project's own PropertyGroups, so the
+       per-vcxproj <WindowsTargetPlatformVersion> elements have been removed (a project-local
+       value would otherwise win). Scoped to C++ projects; C# (net472) ignores the property. -->
+  <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.vcxproj'">
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+</Project>
