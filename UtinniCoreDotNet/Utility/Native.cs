@@ -91,8 +91,18 @@ namespace UtinniCoreDotNet.Utility
         [DllImport("user32.dll", EntryPoint = "ReleaseCapture")]
         public static extern void ReleaseCapture();
 
+        // Phase 6 06-05 D-16(f): IntPtr wParam/lParam is the x64-safe primary signature.
+        // Native.SendMessage is `public`, so per [[feedback-caller-attrs-binary-compat]] the
+        // original int-int overload is retained below as a delegating binary-compat shim --
+        // pre-built plugin DLLs that bound to the int signature still resolve at MEF compose.
         [DllImport("user32.dll", EntryPoint = "SendMessage")]
-        public static extern void SendMessage(System.IntPtr hWnd, int wMsg, int wParam, int lParam);
+        public static extern void SendMessage(System.IntPtr hWnd, int wMsg, System.IntPtr wParam, System.IntPtr lParam);
+
+        // Binary-compat shim: original int-int signature, delegates to the IntPtr primary.
+        public static void SendMessage(System.IntPtr hWnd, int wMsg, int wParam, int lParam)
+        {
+            SendMessage(hWnd, wMsg, new System.IntPtr(wParam), new System.IntPtr(lParam));
+        }
 
         [DllImport("User32.dll")]
         public static extern short GetAsyncKeyState(System.Windows.Forms.Keys vKey);
