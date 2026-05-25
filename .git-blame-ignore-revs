@@ -1,0 +1,9 @@
+# .git-blame-ignore-revs
+# Revisions to skip when running:
+#   git blame --ignore-revs-file .git-blame-ignore-revs
+# Enable repo-wide once with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# GitHub's blame UI honors this file automatically (git 2.23+).
+#
+# Phase 6 (Plan 06-05 / D-12): full-repo clang-format bulk reformat (cosmetic only).
+47b1f1defd42a3c9df718c43ec98b0a7f368cdaf
