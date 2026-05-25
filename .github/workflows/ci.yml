@@ -23,6 +23,13 @@ jobs:
     runs-on: [self-hosted, windows, x64, utinni-v145]   # this machine: VS 2026 (v145) + VS 2019 (v142/14.29) + DXSDK June 2010 already installed
     timeout-minutes: 40            # generous — self-hosted cold runs still do NuGet restore + vcpkg + CppSharp post-build
 
+    # This self-hosted runner has Windows PowerShell 5.1 only (no pwsh / PowerShell 7, which
+    # GitHub-hosted images pre-install). Default every `run:` step to powershell so the
+    # no-shell msbuild/dotnet steps below are covered too. Scripts here use only 5.1-safe syntax.
+    defaults:
+      run:
+        shell: powershell
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,7 +50,7 @@ jobs:
       # toolchain from CI — the old hosted-runner step uninstalled VC++ 2010 SP1 runtimes
       # as an S1023 workaround, which must never run on a real dev machine.
       - name: Verify DirectX SDK (June 2010)
-        shell: pwsh
+        shell: powershell
         run: |
           $dx = "C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include\d3dx9.h"
           if (-not (Test-Path $dx)) {
@@ -65,7 +72,7 @@ jobs:
             vcpkg-${{ runner.os }}-
 
       - name: Bootstrap vcpkg
-        shell: pwsh
+        shell: powershell
         run: |
           # Use the microsoft/setup-vcpkg-style bootstrap: clone, run bootstrap-vcpkg.bat, expose VCPKG_ROOT.
           # The repo's vcpkg-configuration.json default-registry.baseline pins the registry commit, so checkout
@@ -80,7 +87,7 @@ jobs:
           "$vcpkgDir" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Install vcpkg dependencies (manifest mode, x86-windows)
-        shell: pwsh
+        shell: powershell
         run: |
           # T-06-02-04 mitigation: actions/cache@v4 above keyed on vcpkg.json hash makes warm-cache runs fast.
           # T-06-02-01 mitigation: vcpkg-configuration.json default-registry.baseline pin produces reproducible installs.
@@ -93,7 +100,7 @@ jobs:
       # channel, so on-the-fly install on a hosted runner is not viable — that's exactly why
       # CI runs here.)
       - name: Verify v145 build tools
-        shell: pwsh
+        shell: powershell
         run: |
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
           $hasV145 = $false
@@ -118,7 +125,7 @@ jobs:
       # VERIFY-ONLY. ConfigureCppSharpParserStl() resolves it via vswhere / default-path /
       # UTINNI_VS2019_ROOT.
       - name: Verify VS 2019 BuildTools (MSVC 14.29) for CppSharp parser STL pin
-        shell: pwsh
+        shell: powershell
         run: |
           $has1429 = $false
           $candidates = @(
@@ -177,25 +184,25 @@ jobs:
           if-no-files-found: warn
 
       - name: Build native tests (Debug|x86) — triple-config verification per 05-REVIEWS.md item C3
-        shell: pwsh
+        shell: powershell
         run: msbuild Utinni.sln /m /p:Configuration=Debug /p:Platform=x86 /t:UtinniCore_Tests
         # Targeted build (only the test exe project), not full solution rebuild.
         # Satisfies ROADMAP Phase 5 success criterion #1 literal reading: "builds in CI under all three native configs."
 
       - name: Build native tests (RelWithDbgInfo|x86) — triple-config verification per 05-REVIEWS.md item C3
-        shell: pwsh
+        shell: powershell
         run: msbuild Utinni.sln /m /p:Configuration=RelWithDbgInfo /p:Platform=x86 /t:UtinniCore_Tests
         # Targeted build (only the test exe project). RelWithDbgInfo is the CON-T-02 / D-07 config most prone to
         # silent collapse-to-Release at the sln-mapping layer; building it in CI catches regressions early.
 
       - name: Create native test results directory (per 05-REVIEWS.md item U4)
         working-directory: ${{ github.workspace }}
-        shell: pwsh
+        shell: powershell
         run: New-Item -ItemType Directory -Force -Path UtinniCore.Tests\TestResults | Out-Null
         # Catch2's std::ofstream-based junit reporter does NOT create parent dirs. Codex review (HIGH) caught this.
 
       - name: Run native unit tests (UtinniCore.Tests.exe, Release|x86)
-        shell: pwsh
+        shell: powershell
         run: |
           # Phase 5 D-04: third CI lane gates `master` on the native test suite.
           # Direct exe invocation (not `dotnet test`) because the runner is Catch2 self-runner.
