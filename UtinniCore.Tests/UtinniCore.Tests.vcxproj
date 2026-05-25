@@ -77,6 +77,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)vcpkg_installed\x86-windows\debug\lib;$(SolutionDir)vcpkg_installed\x86-windows\debug\lib\manual-link;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Catch2d.lib;Catch2Maind.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -94,6 +96,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)vcpkg_installed\x86-windows\lib;$(SolutionDir)vcpkg_installed\x86-windows\lib\manual-link;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Catch2.lib;Catch2Main.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDbgInfo|Win32'">
@@ -113,18 +117,19 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)vcpkg_installed\x86-windows\lib;$(SolutionDir)vcpkg_installed\x86-windows\lib\manual-link;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Catch2.lib;Catch2Main.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\external\catch2\catch_amalgamated.cpp" />
+    <!-- Phase 6 06-03: Catch2 now consumed from vcpkg (Catch2 + Catch2Main libs); the
+         vendored catch_amalgamated.cpp/.hpp under external/catch2 was removed. Catch2Main
+         supplies the test runner's main(), so no main() is defined in this project. -->
     <!-- Header-only inline helpers; string_utility.cpp NOT included to avoid UTINNI_API/EXPORT_UTINNI link conflict (see 05-REVIEWS.md item U1). -->
     <ClCompile Include="main_smoke.cpp" />
     <ClCompile Include="StringUtilityTests.cpp" />
     <!-- Phase 6 D-07 / 06-02 Task 2: CON-N-09 regression fence for OutputSink. -->
     <ClCompile Include="Log\OutputSinkRoundTripTests.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\external\catch2\catch_amalgamated.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\UtinniCore\UtinniCore.vcxproj">

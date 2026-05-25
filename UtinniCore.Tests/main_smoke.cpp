@@ -22,7 +22,7 @@
  * SOFTWARE.
 **/
 
-#include <catch2/catch_amalgamated.hpp>
+#include <catch2/catch_all.hpp>
 #include "utility/string_utility.h"
 
 #include <stdexcept>

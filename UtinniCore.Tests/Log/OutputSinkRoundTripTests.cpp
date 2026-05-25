@@ -53,7 +53,7 @@
 // 3. Lifecycle layer: unsubscribe returns true for a valid handle and the
 //    callback stops firing after removal.
 
-#include <catch2/catch_amalgamated.hpp>
+#include <catch2/catch_all.hpp>
 
 #include <spdlog/logger.h>          // std::make_shared<spdlog::logger> below; vendored spdlog 1.6.0's base_sink.h does NOT pull this in transitively
 #include <spdlog/sinks/base_sink.h>

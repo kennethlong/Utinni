@@ -42,7 +42,7 @@
 // Source: 05-RESEARCH.md §"Code Examples > Failure modes each test catches" (lines 425-432).
 // Consumer (PluginManager::loadPlugins): UtinniCore/plugin_framework/plugin_manager.cpp:121-138.
 
-#include <catch2/catch_amalgamated.hpp>
+#include <catch2/catch_all.hpp>
 #include "utility/string_utility.h"
 
 TEST_CASE("stringUtility::toBool round-trip via boolalpha", "[utility][string]")
