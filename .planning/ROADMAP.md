@@ -138,7 +138,7 @@ Plans:
 **Plans**:
 - [x] 06-01-PLAN.md — Overlay-debug investigation (d3d9 pattern-scan disposition + ImGui::ShowDemoWindow over live SWG; Tier-4 row; gates 06-02 imgui-docking switch per D-11)
 - [x] 06-02-PLAN.md — Dep-bumps + toolchain (vcpkg manifest + 7 deps; spdlog 1.14 + OutputSink fence; ImGuizmo bump; imgui per 06-01 disposition; PlatformToolset v145; VSIX [16.0,19.0))
-- [ ] 06-03-PLAN.md — STAB-05 open questions (CON-O-08 DXSDK removal; CON-O-06 LeksysINI replacement inside UtINI::Impl; 12+ Catch2 INI fence cases)
+- [x] 06-03-PLAN.md — STAB-05 open questions (CON-O-08 DXSDK removal; CON-O-06 LeksysINI replacement inside UtINI::Impl; 12+ Catch2 INI fence cases)
 - [ ] 06-04-PLAN.md — CI flake fixes (loader-lock-harness 50ms contention + GameCallbacks ForceGCCollect AV; per-flake atomic fix + regression assertion)
 - [ ] 06-05-PLAN.md — STAB-03 cleanups + STAB-04 audit (full-repo clang-format + .git-blame-ignore-revs; TJT.ico cross-repo ejection; D-16 polish bundle a-h with Native.SendMessage IntPtr + int shim; dead-code purge excluding swg/ui/; 24-item preservation audit + xUnit grep tests)
 - [ ] 06-06-PLAN.md — TEST-04 Tier-4 doc + 1.0 packaging + tag (TESTING.md Tier-4 enumeration + CONVENTIONS.md cross-ref; WiX 5 MSI in installer/; release.yml on v1.0* tag; cross-repo TJT pinning; maintainer-signed 06-VERIFICATION.md; v1.0.0-rc.1 tag + GitHub Pre-release)

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 6 Wave 2 complete (Path 1); ready for Wave 3
-last_updated: "2026-05-24T13:00:00.000Z"
-last_activity: 2026-05-24 -- Wave 2 Path 1 merged after CODEX+cursor pre-merge review
+stopped_at: Phase 6 Wave 3 (06-03) complete
+last_updated: "2026-05-25T16:05:00.000Z"
+last_activity: 2026-05-25 -- Phase 06 Wave 3 (06-03) complete: DXSDK removed + LeksysINI replaced
 progress:
   total_phases: 12
   completed_phases: 6
   total_plans: 24
-  completed_plans: 18
-  percent: 75
+  completed_plans: 22
+  percent: 92
 ---
 
 # Project State
@@ -21,23 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 6 — cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut
+**Current focus:** Phase 06 — cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut
 
 ## Current Position
 
-Phase: 6 (cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut) — EXECUTING; Wave 2 just landed
-Plan: 2 of 6 complete (06-01, 06-02); Wave 3 (06-03) ready
-Status: Executing Phase 6
-Last activity: 2026-05-24 -- Wave 2 Path 1 merged; v145 toolset live with parser STL pin
-Next action: `/gsd-execute-phase 6 --wave 3` to start STAB-05 open questions (DXSDK removal + LeksysINI replacement)
+Phase: 06 (cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut) — EXECUTING
+Plan: 3 of 6 complete
+Status: Executing Phase 06
+Last activity: 2026-05-25 -- Phase 06 Wave 3 (06-03) complete
+Next action: `/gsd-execute-phase 6 --wave 4` (06-04 — CI-flake fixes: loader-lock 50ms threshold + GameCallbacks force-GC AV)
 
-Progress: [███░░░░░░░] 33% (2/6 plans in Phase 6 complete)
+Progress: [█████░░░░░] 50% (3/6 plans in Phase 6 complete)
 
 ## Wave 2 Summary
 
 **Wave 1 (06-01) shipped earlier:** Overlay-debug investigation; ImGui Demo screen Tier-4 sign-off; HUD-style overlay directive captured.
 
 **Wave 2 (06-02) merged 2026-05-24 (commit `2f57dfa`):** vcpkg manifest mode + OutputSink CON-N-09 fence + PlatformToolset v142 → v145 sweep + VSIX widen `[16.0,19.0)` + CppSharp parser pinned to VS 2019 14.29 STL (Path 1). Two independent pre-merge reviews:
+
 - **CODEX**: accept + 4 pre-merge cleanups (fail-hard builtins, numeric Version ordering, BOM strip, untracked-file confirmation) → applied as `adc72f8`
 - **cursor**: accept + per-type block hash certification (119/119 partial-class blocks byte-identical; only inter-type reordering; no `[ModuleInitializer]`/`[ComImport]`/explicit-`cctor` concerns); preferred follow-up = commit Path 1-regen baseline → applied as `d69988d`
 
@@ -46,6 +47,16 @@ CppSharp blocker resolved by Path 1 (parser-include redirect to VS 2019 14.29 ST
 **Deferred to follow-on plan 06-02b (post-V1):** the per-dep vcpkg migration commits (delete `external/{catch2,spdlog,imgui,imguizmo}` + rewire .vcxproj include/lib paths). The vcpkg manifest currently declares the deps but the build still resolves them via the vendored `external/` trees. Not blocking v1.0-rc.1.
 
 See: `[[project-vs2026-cppsharp-block]]` auto-memory; `06-02-PATH1-SUMMARY.md`; `.planning/research/cppsharp-msvc-14.5-upgrade.md`.
+
+## Wave 3 Summary
+
+**Wave 3 (06-03) complete 2026-05-25** — closed the last two STAB-05 open questions:
+
+- **CON-O-08 + CON-B-03 (commit `4f5b5b6`, CI-green):** DXSDK June 2010 retired. The sole `D3DXVECTOR3` (the RESZ depth-resolve dummy vertex in `depth_texture.cpp`) is now a local 3-float `Vec3`; passed by address to `DrawPrimitiveUP`. DXSDK include/lib paths stripped from `UtinniCore.vcxproj` (3 configs) + CI Verify step removed. DirectXMath is the documented forward path (`CONVENTIONS.md`).
+- **CON-O-06 (commit `164ca59`):** LeksysINI deleted; replaced by a hand-rolled, round-trip-preserving INI parser inside the PIMPL `UtINI::Impl`. `utini.h` byte-for-byte unchanged → all 15+ callsites untouched. Raw-line model preserves order/comments/blanks/malformed lines; coercion mirrors legacy AsBool/AsInt/AsDouble.
+- **Fence (commit `a18f503`):** 12 Catch2 cases in `UtinniCore.Tests/UtINI/IniParserTests.cpp`; full native suite 76 assertions / 26 cases green.
+
+All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Executed inline (worktrees disabled this session) per the Windows/vcpkg build-recipe rationale. See `06-03-SUMMARY.md`.
 
 ## Performance Metrics
 
