@@ -367,6 +367,7 @@ bool isSetup = false;
 			ImGui::SetWindowSize(size2);
 			ImGui::PopStyleVar();
 	  }
+	  ImGui::End(); // Begin() must always be paired with End(), even when Begin() returns false
  }
 
  void DrawColorWindow()
@@ -391,6 +392,7 @@ bool isSetup = false;
 			ImGui::SetWindowSize(size2);
 			ImGui::PopStyleVar();
 	  }
+	  ImGui::End(); // Begin() must always be paired with End(), even when Begin() returns false
  }
 
 
@@ -416,6 +418,51 @@ bool isSetup = false;
 			rendering = true;
 			ImGui_ImplDX9_NewFrame();
 			ImGui_ImplWin32_NewFrame();
+
+			// Issue #10 reparent/stretch fix: the embedded SWG window is resized to fit
+			// the editor panel, but SWG's D3D9 backbuffer keeps its created size (we do
+			// NOT Reset a third-party device -- see feedback-d3d9-reset-third-party), so
+			// windowed Present UNIFORMLY stretches the backbuffer up to the client
+			// (scale = client / renderTarget). imgui can only draw into that backbuffer,
+			// so we make imgui operate ENTIRELY in render-target space -- both the layout
+			// (DisplaySize) and the mouse -- and let the present-stretch map the whole UI
+			// to the client uniformly. This keeps hit-testing, mouse-anchored UI (popups),
+			// ImGuizmo (already RT-space via SetRect), and the reachable extent all in one
+			// consistent space. Two halves, both required:
+			//   1. DisplaySize = render target: lay out in backbuffer space so the entire
+			//      UI is visible (not clipped past the backbuffer width) AND reachable
+			//      (the cursor below also maxes at the render-target width).
+			//   2. Mouse = cursor scaled into render-target space: cancels the present-
+			//      stretch so the cursor lands under what the user sees.
+			// No-op when client == render target (standalone, non-embedded window).
+			//
+			// imgui 1.87+ is event-queue based: ImGui_ImplWin32_NewFrame() only QUEUES the
+			// raw mouse-pos event; io.MousePos isn't written until ImGui::NewFrame() drains
+			// the queue. So poking io.MousePos here would be clobbered. Instead we queue a
+			// corrected event AFTER the backend's (last-event-wins), built from the raw
+			// cursor scaled into RT space. Only override while the cursor is inside the
+			// client, so the backend's WM_MOUSELEAVE handling still works at the edges.
+			// (DisplaySize, by contrast, is set directly by the backend, so overriding it
+			// here sticks.)
+			{
+				ImGuiIO& io = ImGui::GetIO();
+				HWND hwnd = utinni::Client::getSwgHwnd();
+				const float rtw = (float)Graphics::getCurrentRenderTargetWidth();
+				const float rth = (float)Graphics::getCurrentRenderTargetHeight();
+				const float clientW = io.DisplaySize.x; // client px, set directly by ImGui_ImplWin32_NewFrame
+				const float clientH = io.DisplaySize.y;
+				if (rtw > 0.0f && rth > 0.0f && clientW > 0.0f && clientH > 0.0f)
+				{
+					POINT p;
+					if (hwnd != nullptr && GetCursorPos(&p) && ScreenToClient(hwnd, &p)
+						&& p.x >= 0 && p.y >= 0 && (float)p.x <= clientW && (float)p.y <= clientH)
+					{
+						io.AddMousePosEvent((float)p.x * rtw / clientW, (float)p.y * rth / clientH);
+					}
+					io.DisplaySize = ImVec2(rtw, rth); // lay out in render-target space (see above)
+				}
+			}
+
 			ImGui::NewFrame();
 
 			// DIAG 2026-05-23 Plan 06-01 Task 2: additive ShowDemoWindow probe
@@ -489,7 +536,13 @@ bool isSetup = false;
 			}
 
 
-			ImGui::End();
+			// The "Tests" window's Begin() above is gated on !enableUi, so its End()
+			// must be gated identically. With enableInternalUi=true (e.g. Release
+			// ut.ini) Begin() is skipped, so an unconditional End() here pops the
+			// window stack too far -> imgui 1.92 error recovery reports "Calling End()
+			// too many times!" against the implicit Debug##Default window.
+			if (!enableUi)
+				ImGui::End();
 
 			ImGui::EndFrame();
 			ImGui::Render();
