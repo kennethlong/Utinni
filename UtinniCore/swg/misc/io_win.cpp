@@ -51,13 +51,8 @@ pAppendMessageData appendMessageData = (pAppendMessageData)0x00AA6480;
 namespace utinni
 {
 
-void __fastcall hkDraw(IoWin* pThis, swgptr EDX)
-{
-    swg::ioWin::draw(pThis);
-}
 void IoWin::detour()
 {
-    // swg::ioWin::draw = (swg::ioWin::pDraw)Detour::Create(swg::ioWin::draw, hkDraw, DETOUR_TYPE_PUSH_RET);
 }
 
 // DIAG 2026-05-20 Issue #11 Phase G (per CODEX consult): instrument
