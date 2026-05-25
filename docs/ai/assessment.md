@@ -294,6 +294,13 @@ iterating, then iterate the snapshot. Same pattern for the native
 
 ## 🟢 Easy cleanups (quick wins)
 
+> **Status (Phase 6, v1.0-rc.1):** the STAB-03 cleanup sweep closed these. DXSDK removal
+> and the `utinni.cpp` commented detours landed in 06-03; the full-repo `.clang-format`,
+> the dead-code purge, the typo fixes, and the build/config polish below all landed in
+> 06-05. The only carve-out is the `swg/ui/` commented detours, **deferred pending
+> post-overlay-fix audit** (see the Dead-code list). Per-item dispositions are in the
+> Status-tracking table at the bottom of this document.
+
 ### Dead code to delete (~250 lines)
 
 - `Launcher/main.cpp:33-172` — the entire `attachToVisualStudio` block with
@@ -308,8 +315,12 @@ iterating, then iterate the snapshot. Same pattern for the native
   isn't hooked.
 - `swg/misc/io_win.cpp:50-57` — `IoWin::hkDraw` is hooked nowhere.
 - `swg/ui/cui_chat_window.cpp:166`, `cui_io.cpp:96`, `cui_hud.cpp:164,168`,
-  `appearance.cpp:102-103` — commented-out detours.
-- `swg/appearance/particle.cpp`, `swg/scene/scene.cpp` — empty `.cpp` files.
+  `appearance.cpp:102-103` — commented-out detours. **Deferred pending
+  post-overlay-fix audit** (Phase 6 D-14): these sit adjacent to the imgui
+  overlay/input pipeline and may be useful breadcrumbs for that work, so per
+  the keep-WIP-scaffolding rule they are NOT removed in Phase 6 — unlike every
+  other dead-code item here, which 06-05 deleted.
+- `swg/appearance/particle.cpp`, `swg/scene/scene.cpp` — empty `.cpp` files. *(Deleted in 06-05; ClCompile entries removed.)*
 
 ### Typos / consistency
 
@@ -319,7 +330,8 @@ iterating, then iterate the snapshot. Same pattern for the native
 - `// Executes/redose` → `redoes` in `IUndoCommand.cs:31`.
 - `licenses.txt` has `Jo�o Matos` (mojibake — should be `João`) and is
   missing **DetourXS** and **nvapi** entries.
-- Stray semicolons after `#include "utinni.h";` and similar.
+- Stray trailing semicolons after `#include` directives (e.g. the one on the
+  `utinni.h` include in `game.cpp`). *(Removed in 06-05.)*
 - 3-space / 4-space / tab-mixed indentation across the C++ tree. Adopt a
   `.clang-format` and run once.
 
@@ -651,6 +663,11 @@ doc in sync so future sessions (human or AI) can see what's done.
 | R-H   | SynchronizedCollection snapshot iteration         | done       | Phase 3 Plan 03-01 Tasks 2-3 (2e1b61d managed snapshot dispatch via Dictionary.Values.ToArray() under lock; 5e81410 + e4b2b59 native snapshot via std::vector copy per registry; CallbacksSnapshotIterationTests + NativeCallbacksHandleTests cover Subscribe-during-dispatch + Unsubscribe-during-dispatch invariants) |
 | CON-O-08 | DXSDK June 2010 removal                        | done       | Phase 6 Plan 06-03 Task 1 — depth_texture.cpp `D3DXVECTOR3` → local `Vec3`; DXSDK include/lib paths stripped from UtinniCore.vcxproj (all 3 configs) + CI Verify-DirectX-SDK step removed; structurally closes CON-B-03 |
 | CON-O-06 | LeksysINI replacement                          | done       | Phase 6 Plan 06-03 Task 2 — custom INI parser inside UtINI::Impl (raw-line model, round-trip preserving); public ABI preserved byte-for-byte; external/LeksysINI/ deleted; fenced by IniParserTests.cpp (Task 3) |
+| STAB-03-fmt | Full-repo `.clang-format` + blame-ignore + CI gate | done    | Phase 6 Plan 06-05 Task 1 — 47b1f1d (169-file reformat, Allman/4-space), .git-blame-ignore-revs, ci.yml clang-format-check step |
+| STAB-03-dead | Dead-code purge                               | done       | Phase 6 Plan 06-05 Task 3 — Launcher attachToVisualStudio/getParentPID/findVisualStudioProcess; render_world hkRender/hkClearVisibleCells; client_world hkInternalCollide; io_win hkDraw; particle.cpp + scene.cpp stubs |
+| STAB-03-ui | swg/ui commented detours                        | excluded   | Phase 6 D-14 — deferred pending post-overlay-fix audit (keep-WIP-scaffolding; adjacent to imgui overlay) |
+| STAB-03-typo | Typos (detatch→detach, redose→redoes, stray semicolons, licenses João/DetourXS/nvapi) | done | Phase 6 Plan 06-05 Task 2 |
+| STAB-03-polish | Build/config polish + TJT.ico + SendMessage IntPtr + namespace Std + .gitignore doc | done | Phase 6 Plan 06-05 Task 2 — Directory.Build.props SDK unify, Prefer32Bit drop, ExampleEditorPlugin Release path, TJT.ico cross-repo eject (UtinniPlugins@c9cfa9d), Native.SendMessage IntPtr+shim |
 
 When updating: set status to `in progress` while working, `done` when
 merged, and add a one-line note (PR link, commit SHA, or "deferred — see

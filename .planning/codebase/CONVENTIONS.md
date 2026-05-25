@@ -101,13 +101,13 @@ Utinni is a two-language project: native **C++17** (`UtinniCore`, `UtINI`, `Laun
 Example from `UtinniCore/swg/game/game.cpp:25-34`:
 ```cpp
 #include "game.h"
-#include "utinni.h";       // <- stray trailing semicolon, present in source
+#include "utinni.h"
 #include <imgui/imgui_user.h>
 #include "swg/client/client.h"
 #include "swg/misc/config.h"
 ...
 ```
-Note the stray `;` after `#include "utinni.h"` on line 26 — preserved as-is. Several files have similar minor inconsistencies that no formatter has cleaned up.
+The stray `;` that used to trail the `utinni.h` include in `game.cpp` was removed in Phase 6 (06-05), and the full-repo `.clang-format` adopted in 06-05 now normalises C++ formatting (Allman braces, 4-space indent), so the historical 3-space / 4-space / tab-mixed inconsistencies are gone.
 
 **C# using Order:**
 1. `System.*` first
