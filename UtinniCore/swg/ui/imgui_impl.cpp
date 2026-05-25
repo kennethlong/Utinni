@@ -23,10 +23,10 @@
 **/
 
 #include "imgui_impl.h"
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_win32.h"
-#include "imgui/imgui_impl_dx9.h"
-#include "ImGuizmo/ImGuizmo.h"
+#include <imgui.h>
+#include <imgui_impl_win32.h>
+#include <imgui_impl_dx9.h>
+#include <ImGuizmo.h>
 
 #include <cstdio>
 #include <mutex>
@@ -49,7 +49,10 @@
 #include "swg/game/game.h"
 #include "swg/scene/render_world.h"
 
-#pragma comment(lib, "imgui/lib/imgui.lib")
+// imgui 1.92 deliberately wraps this declaration in a `#if 0` block inside
+// imgui_impl_win32.h (so the helper header doesn't drag in <windows.h>); per its
+// own instructions, forward-declare it here to call it from our wndproc subclass.
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 using namespace utinni;
 using namespace swg::math;
@@ -141,33 +144,19 @@ WNDPROC originalWndProcHandler = nullptr;
 IMGUI_API LRESULT hkWndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	 ImGuiIO& io = ImGui::GetIO();
+
+	 // imgui 1.92: route every Win32 message through the Win32 backend, which
+	 // translates them into the new io.Add*Event() queue (mouse buttons/move/wheel,
+	 // keyboard, characters). Replaces the pre-1.87 manual io.MouseDown[]/io.KeysDown[]
+	 // poking -- io.KeysDown[] was removed in 1.87. We deliberately do NOT early-return
+	 // on the handler result: this is an injected overlay that shares input with SWG, so
+	 // every message still falls through to SWG's original wndproc below. Capture
+	 // arbitration (suspending game input while hovering imgui) lives in render() via
+	 // DirectInput::suspend, not here.
+	 ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam);
+
 	 switch (msg)
 	 {
-	 case WM_LBUTTONDOWN:
-		  io.MouseDown[0] = true;
-		  break;
-	 case WM_LBUTTONUP:
-		  io.MouseDown[0] = false;
-		  break;
-	 case WM_RBUTTONDOWN:
-		  io.MouseDown[1] = true;
-		  break;
-	 case WM_RBUTTONUP:
-		  io.MouseDown[1] = false;
-		  break;
-	 case WM_MBUTTONDOWN:
-		  io.MouseDown[2] = true;
-		  break;
-	 case WM_MBUTTONUP:
-		  io.MouseDown[2] = false;
-		  break;
-	 case WM_MOUSEWHEEL:
-		  io.MouseWheel += GET_WHEEL_DELTA_WPARAM(wParam) > 0 ? +1.0f : -1.0f;
-		  break;
-	 case WM_MOUSEMOVE:
-		  io.MousePos.x = (signed short)(lParam);
-		  io.MousePos.y = (signed short)(lParam >> 16);
-		  break;
 	 case WM_KEYDOWN:
 		  // DIAG 2026-05-20 Issue #11: in-game Return + Esc dead while WASD
 		  // works. WASD comes from SWG's DirectInput keyboard polling; Return
@@ -215,12 +204,6 @@ IMGUI_API LRESULT hkWndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 		  // mode behavior to open chat instead of attempting a no-op
 		  // submit+close. That's the right semantic level -- we replace
 		  // SWG's broken context-routing behavior at the handler.
-		  if (wParam < 256)
-				io.KeysDown[wParam] = 1;
-		  break;
-	 case WM_KEYUP:
-		  if (wParam < 256)
-				io.KeysDown[wParam] = 0;
 		  break;
 	 case WM_CHAR:
 		  // DIAG 2026-05-20 Issue #11: log WM_CHAR for printable ASCII so we
@@ -233,9 +216,6 @@ IMGUI_API LRESULT hkWndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 					(int)wParam, (unsigned)wParam);
 				utinni::log::info(m);
 		  }
-		  // You can also use ToAscii()+GetKeyboardState() to retrieve characters.
-		  if (wParam > 0 && wParam < 0x10000)
-				io.AddInputCharacter((unsigned short)wParam);
 		  break;
 	 case WM_ACTIVATE:
 	 {
@@ -371,7 +351,7 @@ bool isSetup = false;
 
 	  ImVec2 size2(GetWidth() + 5, GetHeight() + 31);
 	  ImGui::SetNextWindowSize(size2);
-	  if (ImGui::Begin("Depth", 0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysUseWindowPadding | ImGuiWindowFlags_NoCollapse))
+	  if (ImGui::Begin("Depth", 0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse))
 	  {
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 			const ImVec2 pos = ImGui::GetCursorScreenPos();
@@ -397,7 +377,7 @@ bool isSetup = false;
 
 	  ImVec2 size2(GetWidth() + 5, GetHeight() + 31);
 	  ImGui::SetNextWindowSize(size2);
-	  if (ImGui::Begin("Color", 0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysUseWindowPadding | ImGuiWindowFlags_NoCollapse))
+	  if (ImGui::Begin("Color", 0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse))
 	  {
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 			const ImVec2 pos = ImGui::GetCursorScreenPos();
@@ -492,7 +472,7 @@ bool isSetup = false;
 
 			imgui_gizmo::draw();
 
-			imguiHasHover = ImGui::IsAnyWindowHovered();
+			imguiHasHover = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow);
 			if (imguiHasHover && !gameInputSuspended)
 			{
 				 gameInputSuspended = true;
@@ -894,7 +874,7 @@ void draw()
 				originalTransform = Transform(*object->getTransform_o2w());
 		  }
 
-		  if (ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_Escape)))
+		  if (ImGui::IsKeyDown(ImGuiKey_Escape))
 		  {
 				object->setTransform_o2w(originalTransform);
 				Vector originalPos = originalTransform.getPosition();

@@ -25,7 +25,7 @@
 #include "directx9.h"
 #include <d3d9.h>
 #include <d3d9types.h>
-#include <imgui/imgui_impl_dx9.h>
+#include <imgui_impl_dx9.h>
 #include "utinni.h"
 #include "swg/ui/imgui_impl.h"
 #include "swg/ui/cui_manager.h"
