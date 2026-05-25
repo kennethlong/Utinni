@@ -258,10 +258,6 @@ namespace Std
 
 namespace Std
 {
-}
-
-namespace Std
-{
     namespace CompressedPair
     {
         [StructLayout(LayoutKind.Explicit, Size = 24)]
@@ -413,10 +409,6 @@ namespace Std
 
 namespace Std
 {
-}
-
-namespace Std
-{
     namespace Map
     {
         [StructLayout(LayoutKind.Explicit, Size = 8)]
@@ -463,10 +455,6 @@ namespace Std
             internal uint _Mysize;
         }
     }
-}
-
-namespace Std
-{
 }
 
 namespace Std
