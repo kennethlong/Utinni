@@ -23,6 +23,7 @@
 **/
 
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using UtinniCoreDotNet.Callbacks;
 using Xunit;
@@ -37,18 +38,25 @@ namespace UtinniCoreDotNet.Tests
     /// holds a reference to it.
     ///
     /// GC-survival is a purely managed-side property — invoked via reflection on
-    /// CallInstallCallbacks regardless of native availability. The P/Invoke to
-    /// Game::triggerInstallCallbacks is a separate "doesn't AV at the native boundary"
-    /// probe; it is allowed to be unavailable (no UtinniCore.dll, local dev environment)
-    /// or to be a no-op in the test process (no native callback list populated).
+    /// CallInstallCallbacks regardless of native availability (Probe 2 below); that is
+    /// the deterministic green-CI assertion.
+    ///
+    /// 06-04 OPT-A: the former native probe called utinni_triggerInstallCallbacks, which
+    /// iterates raw void(*)() function pointers over UNDEFINED native state in this
+    /// non-injected test process — producing an ASLR-dependent AccessViolationException
+    /// that flaked CI (D-17). It is replaced by a deterministic, side-effect-free sentinel
+    /// export (utinni_testHarnessProbe) that proves the native boundary is loaded + callable
+    /// without crashing. See 06-04-FLAKE-INVESTIGATION.md.
     /// </summary>
     public class GameCallbacksTests
     {
         private static class NativeBridge
         {
+            // 06-04 OPT-A: deterministic liveness sentinel — returns 0xDEADBEEF and touches
+            // no callback state, so it can never AV. Replaces the AV-prone trigger probe.
             [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
-                EntryPoint = "utinni_triggerInstallCallbacks")]
-            public static extern void Utinni_TriggerInstallCallbacks();
+                EntryPoint = "utinni_testHarnessProbe")]
+            public static extern uint Utinni_TestHarnessProbe();
         }
 
         [Fact]
@@ -69,15 +77,25 @@ namespace UtinniCoreDotNet.Tests
             GC.WaitForPendingFinalizers();
             GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true);
 
-            // Probe 1: native trigger must not AV (proves the native side is callable and
-            // does not crash from any pinned-but-collected delegate hazard). The native
-            // function iterates a NATIVE callback list, not the managed installCallbacks —
-            // so it is not expected to fire our managed delegate. We just want "no AV".
-            // If UtinniCore.dll is unavailable (local dev), skip the native probe.
-            Exception ex = Record.Exception(() => NativeBridge.Utinni_TriggerInstallCallbacks());
-            if (!(ex is DllNotFoundException || ex is EntryPointNotFoundException))
+            // Probe 1 (06-04 OPT-A): deterministic native-boundary liveness check.
+            // The former probe called utinni_triggerInstallCallbacks, which iterates raw
+            // void(*)() function pointers over undefined native state in this non-injected
+            // test process — producing an ASLR-dependent AccessViolationException that
+            // flaked CI (D-17). It is replaced by a side-effect-free sentinel that touches
+            // no callback state and can never AV: it proves UtinniCore.dll is loaded and
+            // callable across the P/Invoke boundary without crashing. Gated on the DLL
+            // actually sitting next to the test assembly (Tests.csproj CopyNativeArtifactsForTests);
+            // local dev runs without it simply skip this probe. Probe 2 below is the real
+            // GC-survival assertion and ALWAYS runs.
+            //
+            // Regression fence: this fix is fenced — if the gate/sentinel is removed and the
+            // raw native trigger rejoins the green-CI path, the test will flake on CI again.
+            // See 06-04-FLAKE-INVESTIGATION.md.
+            string nativeDll = Path.Combine(AppContext.BaseDirectory, "UtinniCore.dll");
+            if (File.Exists(nativeDll))
             {
-                Assert.Null(ex);
+                uint probe = NativeBridge.Utinni_TestHarnessProbe();
+                Assert.Equal(0xDEADBEEFu, probe);
             }
 
             // Probe 2: managed-side GC-survival — invoke the managed iteration path

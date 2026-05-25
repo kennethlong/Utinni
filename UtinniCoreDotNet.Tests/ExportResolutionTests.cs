@@ -70,9 +70,11 @@ namespace UtinniCoreDotNet.Tests
         ///   utinni_test_addInstall (added 2026-05-21 Phase 3 R-A native bridge),
         ///   utinni_test_pluginManagerLoadFromDir, utinni_test_pluginManagerLoadedCount,
         ///   utinni_test_pluginManagerDispose, utinni_test_lastLoadLibraryError
-        ///       (added 2026-05-21 Phase 3 R-B native bridge)
+        ///       (added 2026-05-21 Phase 3 R-B native bridge),
+        ///   utinni_testHarnessProbe (added 2026-05-25 for 06-04 OPT-A — the deterministic
+        ///       GameCallbacks liveness sentinel that replaces the AV-prone native trigger probe)
         /// </summary>
-        private const int ExpectedExportCount = 22;
+        private const int ExpectedExportCount = 23;
 
         [Fact]
         public void ResolveExports_AllDocumentedCLinkageExports_ResolveByUndecoratedName()

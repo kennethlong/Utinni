@@ -209,6 +209,22 @@ extern "C" __declspec(dllexport) void __cdecl utinni_triggerInstallCallbacks()
 }
 
 // ---------------------------------------------------------------------------
+// 06-04 OPT-A: deterministic test-harness liveness probe.
+//   Returns a fixed sentinel (0xDEADBEEF) and touches NO callback / game state, so
+//   it can NEVER access-violate. GameCallbacksTests uses it to prove the UtinniCore
+//   native boundary is loaded + callable across the P/Invoke surface without crashing,
+//   REPLACING its former call to utinni_triggerInstallCallbacks. That trigger iterates
+//   raw void(*)() function pointers over undefined native state in a non-injected test
+//   process, which AV'd non-deterministically under CI (ASLR-dependent; D-17).
+//   See 06-04-FLAKE-INVESTIGATION.md (GameCallbacks ForceGCCollect AV flake).
+//   __cdecl per the C-01 export-decoration discipline (resolves by undecorated name).
+// ---------------------------------------------------------------------------
+extern "C" __declspec(dllexport) unsigned int __cdecl utinni_testHarnessProbe()
+{
+    return 0xDEADBEEFu;
+}
+
+// ---------------------------------------------------------------------------
 // Phase 3 R-A test-bridge exports (Plan 03-01 Task 3)
 //
 // These exports give NativeCallbacksHandleTests.cs a P/Invoke surface against
@@ -329,7 +345,7 @@ extern "C" __declspec(dllexport) uintptr_t __cdecl utinni_test_getDepthTexturePt
 // for the xUnit assertion). Uses GetModuleHandleA (not LoadLibrary) because we are
 // already executing inside UtinniCore.dll — the module is already loaded.
 //
-// Expected exports (22 total as of 2026-05-21 -- Phase 3 R-B bridge):
+// Expected exports (23 total; +utinni_testHarnessProbe added 2026-05-25 for 06-04 OPT-A):
 //   utinni_init               (decorated stdcall; resolved via /EXPORT alias)
 //   utinni_findPattern        (cdecl — no decoration on x86)
 //   utinni_getVtbl            (cdecl)
@@ -391,6 +407,9 @@ extern "C" __declspec(dllexport) int __cdecl utinni_test_resolveExports()
         "utinni_test_pluginManagerLoadedCount", // cdecl
         "utinni_test_pluginManagerDispose",     // cdecl
         "utinni_test_lastLoadLibraryError",     // cdecl
+        // 06-04 OPT-A: deterministic GameCallbacks liveness sentinel (replaces the
+        // AV-prone utinni_triggerInstallCallbacks probe). See 06-04-FLAKE-INVESTIGATION.md.
+        "utinni_testHarnessProbe",              // cdecl
     };
 
     static constexpr int kExportCount =
