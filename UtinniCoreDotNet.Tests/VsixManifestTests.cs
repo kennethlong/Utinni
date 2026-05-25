@@ -32,9 +32,10 @@ namespace UtinniCoreDotNet.Tests
 {
     // C-12 regression: the VSIX manifest previously pinned to [16.0,17.0) — VS 2019
     // only. CON-O-04 (VS 2019 pin rationale) defaulted to "widen if VS 2022 build is
-    // clean"; the audit confirmed clean. These tests assert the four Version range
-    // strings (3 InstallationTarget elements + 1 Prerequisite) all carry the widened
-    // [16.0,18.0) range so a future edit cannot silently re-pin VS 2019.
+    // clean"; the audit confirmed clean. Phase 6 06-02 widened the upper bound again to
+    // 19.0 (exclusive) so the template installs on VS 2026 (v18.x) as well as VS 2019/2022.
+    // These tests assert the four Version range strings (3 InstallationTarget elements + 1
+    // Prerequisite) all carry the [16.0,19.0) range so a future edit cannot silently re-pin.
     //
     // Path resolution: tests run from <repo>/UtinniCoreDotNet.Tests/bin/Release/net472/.
     // The manifest is at <repo>/sdk/UtinniPluginTemplates/Vsix/source.extension.vsixmanifest.
@@ -74,7 +75,7 @@ namespace UtinniCoreDotNet.Tests
         }
 
         [Fact]
-        public void InstallationTargets_AllUseVersionRange_16To18Exclusive()
+        public void InstallationTargets_AllUseVersionRange_16To19Exclusive()
         {
             var doc = XDocument.Load(FindManifest());
             XNamespace ns = Vsx2011;
@@ -83,12 +84,12 @@ namespace UtinniCoreDotNet.Tests
             foreach (var t in targets)
             {
                 var version = t.Attribute("Version")?.Value;
-                Assert.Equal("[16.0,18.0)", version);
+                Assert.Equal("[16.0,19.0)", version);
             }
         }
 
         [Fact]
-        public void Prerequisite_CoreEditor_UsesVersionRange_16To18Exclusive()
+        public void Prerequisite_CoreEditor_UsesVersionRange_16To19Exclusive()
         {
             var doc = XDocument.Load(FindManifest());
             XNamespace ns = Vsx2011;
@@ -96,7 +97,7 @@ namespace UtinniCoreDotNet.Tests
                 .Where(p => (string)p.Attribute("Id") == "Microsoft.VisualStudio.Component.CoreEditor")
                 .ToList();
             Assert.Single(prereqs);
-            Assert.Equal("[16.0,18.0)", prereqs[0].Attribute("Version")?.Value);
+            Assert.Equal("[16.0,19.0)", prereqs[0].Attribute("Version")?.Value);
         }
     }
 }
