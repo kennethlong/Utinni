@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 6 Wave 3 (06-03) complete
-last_updated: "2026-05-25T16:05:00.000Z"
-last_activity: 2026-05-25 -- Phase 06 Wave 3 (06-03) complete: DXSDK removed + LeksysINI replaced
+stopped_at: Phase 6 Wave 4 (06-04) complete
+last_updated: "2026-05-25T18:15:00.000Z"
+last_activity: 2026-05-25 -- Phase 06 Wave 4 (06-04) complete: both CI flakes fixed (D-17 closed); 3 consecutive green CI per fix
 progress:
   total_phases: 12
   completed_phases: 6
   total_plans: 24
-  completed_plans: 22
-  percent: 92
+  completed_plans: 23
+  percent: 96
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 06 (cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut) — EXECUTING
-Plan: 3 of 6 complete
+Plan: 4 of 6 complete
 Status: Executing Phase 06
-Last activity: 2026-05-25 -- Phase 06 Wave 3 (06-03) complete
-Next action: `/gsd-execute-phase 6 --wave 4` (06-04 — CI-flake fixes: loader-lock 50ms threshold + GameCallbacks force-GC AV)
+Last activity: 2026-05-25 -- Phase 06 Wave 4 (06-04) complete: both CI flakes fixed, D-17 closed
+Next action: `/gsd-execute-phase 6 --wave 5` (06-05 — STAB-03 cleanups + STAB-04 audit: clang-format sweep, dead-code purge, 24-item preservation audit)
 
-Progress: [█████░░░░░] 50% (3/6 plans in Phase 6 complete)
+Progress: [███████░░░] 67% (4/6 plans in Phase 6 complete)
 
 ## Wave 2 Summary
 
