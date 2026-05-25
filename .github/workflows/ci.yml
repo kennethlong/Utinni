@@ -20,7 +20,7 @@ permissions:
 jobs:
   build-and-test:
     name: Build (Release|x86) + Test (net472)
-    runs-on: [self-hosted, windows, x64, utinni-v145]   # this machine: VS 2026 (v145) + VS 2019 (v142/14.29) + DXSDK June 2010 already installed
+    runs-on: [self-hosted, windows, x64, utinni-v145]   # this machine: VS 2026 (v145) + VS 2019 (v142/14.29)
     timeout-minutes: 40            # generous — self-hosted cold runs still do NuGet restore + vcpkg + CppSharp post-build
 
     # This self-hosted runner has Windows PowerShell 5.1 only (no pwsh / PowerShell 7, which
@@ -43,20 +43,6 @@ jobs:
           key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json', '**/*.csproj') }}
           restore-keys: |
             nuget-${{ runner.os }}-
-
-      # UtinniCore.vcxproj hard-codes the default DXSDK (June 2010) include/lib paths.
-      # SELF-HOSTED: this runner has the DXSDK permanently installed (DXSDK_DIR set,
-      # d3dx9.h present), so this is VERIFY-ONLY. We never install/modify the host
-      # toolchain from CI — the old hosted-runner step uninstalled VC++ 2010 SP1 runtimes
-      # as an S1023 workaround, which must never run on a real dev machine.
-      - name: Verify DirectX SDK (June 2010)
-        shell: powershell
-        run: |
-          $dx = "C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include\d3dx9.h"
-          if (-not (Test-Path $dx)) {
-            throw "DXSDK June 2010 not found at $dx (DXSDK_DIR=$env:DXSDK_DIR). This self-hosted runner must have it installed."
-          }
-          Write-Host "DXSDK June 2010 present: $dx"
 
       # Phase 6 D-05 + 06-02 Task 1: vcpkg manifest mode is the source of truth
       # for catch2 + spdlog + imgui[docking-experimental,dx9-binding,win32-binding] + imguizmo.

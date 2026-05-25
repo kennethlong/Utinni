@@ -25,7 +25,6 @@
 #include "utinni.h"
 #include "depth_texture.h"
 
-#include <d3dx9.h>
 #include <d3d9types.h>
 #include <mutex>
 #include <vector>
@@ -50,6 +49,17 @@
 // snapshot in dispatch sites. See [[project-rh-snapshot-no-heap-alloc]] memory.
 namespace
 {
+// Local 3-float vertex struct replacing the legacy DXSDK vector type (DXSDK
+// June 2010 retired in Phase 6, CON-O-08). Layout matches the old type
+// byte-for-byte (three floats, no padding) so the DrawPrimitiveUP stride math
+// is unchanged.
+struct Vec3
+{
+    float x;
+    float y;
+    float z;
+};
+
 template <typename Fn>
 struct CallbackEntry
 {
@@ -224,11 +234,11 @@ void resolveDepthWithResz(const LPDIRECT3DDEVICE9 pDevice, LPDIRECT3DTEXTURE9 pT
 	 // Perform a dummy draw call to ensure texture sampler 0 is set before the // resolve is triggered
 	 // Vertex declaration and shaders may need to be adjusted to ensure no debug
 	 // error message is produced
-	 D3DXVECTOR3 vDummyPoint(0.0f, 0.0f, 0.0f);
+	 Vec3 vDummyPoint{ 0.0f, 0.0f, 0.0f };
 	 pDevice->SetRenderState(D3DRS_ZENABLE, FALSE);
 	 pDevice->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
 	 pDevice->SetRenderState(D3DRS_COLORWRITEENABLE, 0);
-	 pDevice->DrawPrimitiveUP(D3DPT_POINTLIST, 1, vDummyPoint, sizeof(D3DXVECTOR3));
+	 pDevice->DrawPrimitiveUP(D3DPT_POINTLIST, 1, &vDummyPoint, sizeof(Vec3));
 	 pDevice->SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
 	 pDevice->SetRenderState(D3DRS_ZENABLE, TRUE);
 	 pDevice->SetRenderState(D3DRS_COLORWRITEENABLE, 0x0F);

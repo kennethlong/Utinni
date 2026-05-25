@@ -218,6 +218,10 @@ Aliases (`using X = Y;`) go at the end of the using block.
 - C# delegate types passed to C++ MUST be stored as a field (not a local) to survive the GC. The canonical pattern with the canonical explanatory comment lives at `UtinniCoreDotNet/Callbacks/GameCallbacks.cs:39-58` — preserve and replicate it for any new callback channel
 - All cross-boundary types use C-compatible primitives: `const char*` (becomes `string` in C#), `swgptr` (becomes `uint`), function pointers (become `UtinniCore.Delegates.Action_*`)
 
+## Graphics & Native Dependencies
+
+- **No DXSDK June 2010.** The legacy DirectX SDK (June 2010) was retired in Phase 6 (Plan 06-03 Task 1, CON-O-08). It is no longer an include/lib path in any `.vcxproj`, and CI no longer verifies it. New code that needs GPU-side vector/matrix math must use **DirectXMath** (`<DirectXMath.h>`, shipped in the Windows SDK) rather than reintroducing the legacy `d3dx9.h` / `D3DXVECTOR*` / `D3DXMATRIX*` helpers. The sole prior `D3DXVECTOR3` use — a dummy vertex for the RESZ depth-resolve draw in `UtinniCore/swg/graphics/depth_texture.cpp` — is now a local 3-float `Vec3` struct (identical byte layout, so `DrawPrimitiveUP` stride math is unchanged).
+
 ---
 
 *Convention analysis: 2026-05-16*
