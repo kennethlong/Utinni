@@ -29,6 +29,11 @@ ipch/
 *.pdb
 *.obj
 *.lastbuildstate
+# Phase 6 (06-05 / D-16(d), CON-O-05): the CppSharp post-build step on UtinniCore.vcxproj
+# regenerates these on every build. Std.cs + UtinniCore.cs are CppSharp-generated output, so
+# they are gitignored. StdEdited.cs is the hand-curated companion and IS committed (it holds
+# manual edits CppSharp must not overwrite -- do not add it here).
+# (UtinniCore.cs is also force-added as a checked-in baseline despite this ignore line.)
 /UtinniCoreDotNet/Generated/Std-symbols.cpp
 /UtinniCoreDotNet/Generated/UtinniCore-symbols.cpp
 /UtinniCoreDotNet/Generated/Std.cs
