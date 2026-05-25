@@ -6,8 +6,13 @@ name: CI
 on:
   push:
     branches: [master]
-  pull_request:
-    branches: [master]
+  workflow_dispatch:    # allow manual runs (useful while bringing the self-hosted runner online)
+  # No pull_request trigger by design. CI runs on a SELF-HOSTED runner because this repo's
+  # required toolset (v145 / VS 2026) is not on any GitHub-hosted image. Running untrusted PR
+  # code from forks of a PUBLIC repo on a self-hosted runner is a remote-code-execution risk
+  # (see GitHub's self-hosted-runner hardening guidance). `master` is only pushed by the
+  # maintainer, so only trusted code reaches the runner. If external-contributor PR CI is
+  # wanted later, add a SEPARATE hosted lane (windows-2022, /p:PlatformToolset=v143).
 
 permissions:
   contents: read
@@ -15,8 +20,8 @@ permissions:
 jobs:
   build-and-test:
     name: Build (Release|x86) + Test (net472)
-    runs-on: windows-2022          # deterministic pin; windows-latest now points at windows-2025 (migrated 2025-09-02); revisit in Phase 6
-    timeout-minutes: 25            # generous — first cold-cache runs include NuGet restore + CppSharp post-build
+    runs-on: [self-hosted, windows, x64, utinni-v145]   # this machine: VS 2026 (v145) + VS 2019 (v142/14.29) + DXSDK June 2010 already installed
+    timeout-minutes: 40            # generous — self-hosted cold runs still do NuGet restore + vcpkg + CppSharp post-build
 
     steps:
       - name: Checkout
@@ -33,40 +38,18 @@ jobs:
             nuget-${{ runner.os }}-
 
       # UtinniCore.vcxproj hard-codes the default DXSDK (June 2010) include/lib paths.
-      # windows-2022 runners don't ship d3dx9.h (removed from Win10 SDK), so install the
-      # legacy SDK once and cache the install directory to keep cold-cache CI tolerable.
-      - name: Cache DirectX SDK (June 2010)
-        id: cache-dxsdk
-        uses: actions/cache@v4
-        with:
-          path: C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)
-          key: dxsdk-jun2010-v1
-
-      - name: Install DirectX SDK (June 2010)
-        if: steps.cache-dxsdk.outputs.cache-hit != 'true'
+      # SELF-HOSTED: this runner has the DXSDK permanently installed (DXSDK_DIR set,
+      # d3dx9.h present), so this is VERIFY-ONLY. We never install/modify the host
+      # toolchain from CI — the old hosted-runner step uninstalled VC++ 2010 SP1 runtimes
+      # as an S1023 workaround, which must never run on a real dev machine.
+      - name: Verify DirectX SDK (June 2010)
         shell: pwsh
         run: |
-          # S1023 workaround: the June 2010 installer fails when a newer VC++ 2010 SP1
-          # runtime (x86 or x64) is already installed. windows-2022 ships both; uninstall
-          # them before invoking DXSETUP. See https://support.microsoft.com/help/2728613.
-          $vc2010 = @(
-            '{1F1C2DFC-2D24-3E06-BCB8-725134ADF989}',  # x86 SP1
-            '{1D8E6291-B0D5-35EC-8441-6616F567A0F7}'   # x64 SP1
-          )
-          foreach ($code in $vc2010) {
-            Start-Process msiexec.exe -ArgumentList '/x', $code, '/quiet', '/norestart' -Wait -NoNewWindow
+          $dx = "C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include\d3dx9.h"
+          if (-not (Test-Path $dx)) {
+            throw "DXSDK June 2010 not found at $dx (DXSDK_DIR=$env:DXSDK_DIR). This self-hosted runner must have it installed."
           }
-          # Official direct download from Microsoft, ~600 MB.
-          $url = 'https://download.microsoft.com/download/a/e/7/ae743f1f-632b-4809-87a9-aa1bb3458e31/DXSDK_Jun10.exe'
-          $exe = Join-Path $env:RUNNER_TEMP 'DXSDK_Jun10.exe'
-          Invoke-WebRequest -Uri $url -OutFile $exe -UseBasicParsing
-          # /U triggers the InstallShield unattended path; default install location is
-          # C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\ which matches
-          # the absolute paths UtinniCore.vcxproj already references.
-          Start-Process $exe -ArgumentList '/U' -Wait -NoNewWindow
-          if (-not (Test-Path 'C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include\d3dx9.h')) {
-            throw 'DXSDK install completed but d3dx9.h was not found at the expected default path.'
-          }
+          Write-Host "DXSDK June 2010 present: $dx"
 
       # Phase 6 D-05 + 06-02 Task 1: vcpkg manifest mode is the source of truth
       # for catch2 + spdlog + imgui[docking-experimental,dx9-binding,win32-binding] + imguizmo.
@@ -105,103 +88,55 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "vcpkg install failed (exit $LASTEXITCODE)" }
 
       # Phase 6 D-09 + 06-02 Task 3: PlatformToolset is v145 (VS 2026 / Dev18) across every .vcxproj.
-      # windows-2022 ships VS 2022 Build Tools (v142/v143) by default; v145 is the VS 2026 era toolset
-      # that must be installed via the Build Tools installer if absent.
+      # SELF-HOSTED: this runner has VS 2026 (MSVC 14.51 + 14.52) installed, so this is
+      # VERIFY-ONLY. (v145 is currently an Insiders/preview product with no GA bootstrapper
+      # channel, so on-the-fly install on a hosted runner is not viable — that's exactly why
+      # CI runs here.)
       - name: Verify v145 build tools
         shell: pwsh
         run: |
-          # Probe-first per 06-02-VCPKG-RESEARCH.md "Toolchain v145 availability for CI" §.
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
           $hasV145 = $false
           if (Test-Path $vswhere) {
-            # v145 PlatformToolset corresponds to MSVC 14.5x (confirmed on VS 2026 Dev18: 14.51 + 14.52 installed).
+            # v145 PlatformToolset corresponds to MSVC 14.5x (this machine: 14.51 + 14.52).
             $msvcDirs = & $vswhere -products * -find "VC\Tools\MSVC\14.5*\bin" 2>$null
             if ($msvcDirs) { $hasV145 = $true }
           }
           if (-not $hasV145) {
-            # Also check fallback default install path (covers Build Tools-only installs vswhere can miss).
-            if (Test-Path "${env:ProgramFiles}\Microsoft Visual Studio\2022\*\VC\Tools\MSVC\14.5*") { $hasV145 = $true }
-            if (Test-Path "${env:ProgramFiles}\Microsoft Visual Studio\18\*\VC\Tools\MSVC\14.5*") { $hasV145 = $true }
+            throw "v145 (MSVC 14.5x / VS 2026) toolset not found on this self-hosted runner. It is required to build; install VS 2026 with the VC.145 workload."
           }
-          if (-not $hasV145) {
-            Write-Host "v145 build tools missing on runner; installing VS 2026 Build Tools workload Microsoft.VisualStudio.Component.VC.145.x86.x64"
-            $bootstrapper = Join-Path $env:RUNNER_TEMP "vs_BuildTools.exe"
-            Invoke-WebRequest -Uri "https://aka.ms/vs/18/release/vs_buildtools.exe" -OutFile $bootstrapper -UseBasicParsing
-            Start-Process -FilePath $bootstrapper -ArgumentList @(
-              "--quiet", "--wait", "--norestart", "--nocache",
-              "--add", "Microsoft.VisualStudio.Component.VC.145.x86.x64",
-              "--add", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
-            ) -Wait -NoNewWindow
-            # Re-probe; fail explicitly if installer did not produce v145 tools (clearer than a downstream MSBuild error).
-            $msvcDirs = & $vswhere -products * -find "VC\Tools\MSVC\14.5*\bin" 2>$null
-            if (-not $msvcDirs) { throw "VS Build Tools installer ran but v145 toolset still not found." }
-            Write-Host "v145 build tools installed successfully."
-          } else {
-            Write-Host "v145 build tools already present on runner."
-          }
+          Write-Host "v145 build tools present."
 
       # Phase 6 D-09 (Path 1): the CppSharp PostBuildEvent on UtinniCore runs UtinniCoreDotNetGen.exe,
       # which uses vendored CppSharp 0.10.5 (clang 11). On a v145 toolset build the v145 STL fails to
       # parse under clang 11 (header-resident clang-version gate in yvals_core.h). UtinniCoreDotNetGen's
       # Program.cs::ConfigureCppSharpParserStl() pins the parser to the VS 2019 14.29 STL via vswhere /
       # default-path probe / UTINNI_VS2019_ROOT env var. That requires the v142 toolset (MSVC 14.29) to
-      # actually be installed on the runner. Probe-first: only install if absent. See
+      # actually be installed on the runner. See
       # .planning/research/cppsharp-msvc-14.5-upgrade.md.
-      - name: Ensure VS 2019 BuildTools (for CppSharp parser STL pin)
+      # SELF-HOSTED: VS 2019 BuildTools (MSVC 14.29.30133) is installed on this machine, so
+      # VERIFY-ONLY. ConfigureCppSharpParserStl() resolves it via vswhere / default-path /
+      # UTINNI_VS2019_ROOT.
+      - name: Verify VS 2019 BuildTools (MSVC 14.29) for CppSharp parser STL pin
         shell: pwsh
         run: |
-          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          $hasV142 = $false
-          if (Test-Path $vswhere) {
-            $v142Dirs = & $vswhere -version "[16.0,17.0)" -products * -requires Microsoft.VisualStudio.Component.VC.v142 -property installationPath 2>$null
-            if ($v142Dirs) {
-              foreach ($p in $v142Dirs) {
-                $p = $p.Trim()
-                if ($p -and (Test-Path (Join-Path $p "VC\Tools\MSVC"))) {
-                  $msvc = Get-ChildItem (Join-Path $p "VC\Tools\MSVC") -Directory -Filter "14.29.*" -ErrorAction SilentlyContinue
-                  if ($msvc) { $hasV142 = $true; break }
-                }
-              }
-            }
-          }
-          if (-not $hasV142) {
-            # Fall back to direct path probe (covers Build Tools-only installs vswhere can miss
-            # when the v142 component metadata is partial).
-            $candidates = @(
-              "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC",
-              "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC",
-              "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Professional\VC\Tools\MSVC",
-              "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Enterprise\VC\Tools\MSVC"
-            )
-            foreach ($base in $candidates) {
-              if (Test-Path $base) {
-                $msvc = Get-ChildItem $base -Directory -Filter "14.29.*" -ErrorAction SilentlyContinue
-                if ($msvc) { $hasV142 = $true; break }
-              }
-            }
-          }
-          if (-not $hasV142) {
-            Write-Host "VS 2019 BuildTools (MSVC v142 / 14.29) missing on runner; installing for CppSharp parser STL pin."
-            $bootstrapper = Join-Path $env:RUNNER_TEMP "vs2019_BuildTools.exe"
-            Invoke-WebRequest -Uri "https://aka.ms/vs/16/release/vs_buildtools.exe" -OutFile $bootstrapper -UseBasicParsing
-            Start-Process -FilePath $bootstrapper -ArgumentList @(
-              "--quiet", "--wait", "--norestart", "--nocache",
-              "--add", "Microsoft.VisualStudio.Workload.VCTools",
-              "--add", "Microsoft.VisualStudio.Component.VC.v142",
-              "--add", "Microsoft.VisualStudio.Component.Windows10SDK.19041"
-            ) -Wait -NoNewWindow
-            # Re-probe; fail explicitly if installer did not produce v142 + 14.29 (clearer than a downstream codegen error).
-            $reprobe = $false
-            $base = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC"
+          $has1429 = $false
+          $candidates = @(
+            "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC",
+            "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC",
+            "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Professional\VC\Tools\MSVC",
+            "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Enterprise\VC\Tools\MSVC"
+          )
+          foreach ($base in $candidates) {
             if (Test-Path $base) {
               $msvc = Get-ChildItem $base -Directory -Filter "14.29.*" -ErrorAction SilentlyContinue
-              if ($msvc) { $reprobe = $true }
+              if ($msvc) { $has1429 = $true; break }
             }
-            if (-not $reprobe) { throw "VS 2019 BuildTools installer ran but MSVC 14.29 still not found." }
-            Write-Host "VS 2019 BuildTools + MSVC v142 installed successfully."
-          } else {
-            Write-Host "VS 2019 BuildTools / MSVC v142 (14.29) already present on runner."
           }
+          if (-not $has1429) {
+            throw "MSVC 14.29 (VS 2019 v142) not found. Required for the CppSharp parser STL pin (Program.cs::ConfigureCppSharpParserStl)."
+          }
+          Write-Host "MSVC 14.29 (VS 2019 v142) present for CppSharp parser pin."
 
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
