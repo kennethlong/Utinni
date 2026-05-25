@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -34,11 +34,10 @@ namespace utinni
 class UTINNI_API CommandParser // Size 0x3C / 60?
 {
 public:
-
     struct UTINNI_API CommandData
     {
         const char* command;
-        size_t       argCount;
+        size_t argCount;
         const char* args;
         const char* helpInfo;
     };
@@ -57,7 +56,10 @@ public:
 
     // Dummy virtual functions for the vtable that's to be overwritten by SWG's ctor
     virtual ~CommandParser() {}
-    virtual bool performParsing(const int64_t& userId, const std::vector<swg::WString>& args, const wchar_t* originalCommand, const wchar_t* result, const CommandParser* node) { return false; }
+    virtual bool performParsing(const int64_t& userId, const std::vector<swg::WString>& args, const wchar_t* originalCommand, const wchar_t* result, const CommandParser* node)
+    {
+        return false;
+    }
     virtual void unk_161E72C() {}
 
     CommandParser(const char* command, size_t argCount, const char* args, const char* helpInfo, utinni::CommandParser* delegate);
@@ -67,9 +69,6 @@ public:
 
     void createDelegateCommands(const CommandData commands[]);
     CommandParser* addSubCommand(CommandParser* subCommand);
-
 };
 
-}
-
-
+} // namespace utinni

@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "utinni.h"
 #include "clr.h"
@@ -85,11 +85,11 @@ void createDetours()
     utinni::CuiManager::detour();
     utinni::cuiHud::detour();
     utinni::cuiIo::detour();
-    //utinni::cuiIntro::detour();
+    // utinni::cuiIntro::detour();
     utinni::cuiMenu::detour();
     utinni::cuiRadialMenuManager::detour();
     utinni::cuiLoginScreen::detour();
-    //utinni::cuiMediatorFactorySetup::detour();
+    // utinni::cuiMediatorFactorySetup::detour();
     utinni::debugCamera::detour();
     utinni::Game::detour();
     utinni::GroundScene::detour();
@@ -207,8 +207,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI utinni_init(LPVOID lpThreadParam)
     // These calls are BEFORE createDetours() so hkPresent cannot fire before they complete.
     // CON-H-01: running in utinni_init (launcher remote thread), NOT DllMain.
     // CON-N-01: these are NOT Detour::Create calls.
-    directX::initPresentBlockedEvent();  // CR-04: hPresentBlockedEvent eager init
-    directX::initDepthTexture();         // WR-03: depthTexture eager init
+    directX::initPresentBlockedEvent(); // CR-04: hPresentBlockedEvent eager init
+    directX::initDepthTexture();        // WR-03: depthTexture eager init
 
     // Adds hooks to functions inside the game
     createDetours();
@@ -346,4 +346,4 @@ PluginManager& getPluginManager()
 {
     return pluginManager;
 }
-}
+} // namespace utinni

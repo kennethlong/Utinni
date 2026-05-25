@@ -20,21 +20,21 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "ui_widget.h"
 
 namespace swg::uiWidget
 {
-using pCtor = utinni::UIBaseObject* (__thiscall*)(utinni::UIBaseObject* pThis);
+using pCtor = utinni::UIBaseObject*(__thiscall*)(utinni::UIBaseObject * pThis);
 
 pCtor ctor = (pCtor)0x01105910;
-}
+} // namespace swg::uiWidget
 
 namespace utinni
 {
-    UIWidget::UIWidget()
-    {
-        swg::uiWidget::ctor(this);
-    }
+UIWidget::UIWidget()
+{
+    swg::uiWidget::ctor(this);
 }
+} // namespace utinni

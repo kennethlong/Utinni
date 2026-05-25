@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -39,13 +39,13 @@ extern void setup(IDirect3DDevice9* pDevice);
 extern void render();
 extern bool isRendering();
 // Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09).
-UTINNI_API extern int subscribeRenderCallback(void(*func)());
+UTINNI_API extern int subscribeRenderCallback(void (*func)());
 UTINNI_API extern bool unsubscribeRenderCallback(int handle);
 // Legacy add* API (D-10): thin wrapper.
-UTINNI_API extern void addRenderCallback(void(*func)());
+UTINNI_API extern void addRenderCallback(void (*func)());
 UTINNI_API extern bool isInternalUiHovered();
 
-}
+} // namespace imgui_impl
 
 namespace imgui_gizmo
 {
@@ -54,19 +54,19 @@ UTINNI_API extern void disable();
 UTINNI_API extern bool isEnabled();
 UTINNI_API extern bool hasMouseHover();
 // Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09).
-UTINNI_API extern int subscribeOnEnabledCallback(void(*func)());
+UTINNI_API extern int subscribeOnEnabledCallback(void (*func)());
 UTINNI_API extern bool unsubscribeOnEnabledCallback(int handle);
-UTINNI_API extern int subscribeOnDisabledCallback(void(*func)());
+UTINNI_API extern int subscribeOnDisabledCallback(void (*func)());
 UTINNI_API extern bool unsubscribeOnDisabledCallback(int handle);
-UTINNI_API extern int subscribeOnPositionChangedCallback(void(*func)());
+UTINNI_API extern int subscribeOnPositionChangedCallback(void (*func)());
 UTINNI_API extern bool unsubscribeOnPositionChangedCallback(int handle);
-UTINNI_API extern int subscribeOnRotationChangedCallback(void(*func)());
+UTINNI_API extern int subscribeOnRotationChangedCallback(void (*func)());
 UTINNI_API extern bool unsubscribeOnRotationChangedCallback(int handle);
 // Legacy add* API (D-10): thin wrappers.
-UTINNI_API extern void addOnEnabledCallback(void(*func)());
-UTINNI_API extern void addOnDisabledCallback(void(*func)());
-UTINNI_API extern void addOnPositionChangedCallback(void(*func)());
-UTINNI_API extern void addOnRotationChangedCallback(void(*func)());
+UTINNI_API extern void addOnEnabledCallback(void (*func)());
+UTINNI_API extern void addOnDisabledCallback(void (*func)());
+UTINNI_API extern void addOnPositionChangedCallback(void (*func)());
+UTINNI_API extern void addOnRotationChangedCallback(void (*func)());
 UTINNI_API extern void toggleGizmoMode();
 UTINNI_API extern void toggleOperationMode();
 UTINNI_API extern void setGizmoModeToWorld();
@@ -83,4 +83,4 @@ UTINNI_API extern bool isSnapOn();
 UTINNI_API extern void setSnapSize(float value);
 
 void draw();
-}
+} // namespace imgui_gizmo

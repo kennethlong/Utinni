@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -29,32 +29,37 @@
 
 namespace utinni
 {
-struct NewPlaceholder {};
+struct NewPlaceholder
+{
+};
 
 UTINNI_API extern void* allocate(size_t size);
 UTINNI_API extern void* allocateString(size_t size);
 
 UTINNI_API extern void deallocate(void* address, size_t size);
 UTINNI_API extern void deallocateString(void* address, size_t size);
- 
+
+} // namespace utinni
+
+inline void* operator new(size_t, utinni::NewPlaceholder, void* where)
+{
+    return where;
 }
 
-inline void* operator new(size_t, utinni::NewPlaceholder, void* where) { return where; }
-
-inline void operator delete(void*, utinni::NewPlaceholder, void*) { }
+inline void operator delete(void*, utinni::NewPlaceholder, void*) {}
 
 namespace utinni
 {
-template<class Type, class... Args>
-Type* swg_new(Args&&...args)
+template <class Type, class... Args>
+Type* swg_new(Args&&... args)
 {
     return new (NewPlaceholder(), allocate(sizeof(Type))) Type(std::forward<Args>(args)...);
 }
 
-//template<class Type, class... Args>
-//inline Type* swg_new(Args&&...args)
+// template<class Type, class... Args>
+// inline Type* swg_new(Args&&...args)
 //{
-//    Type* result = (Type*)allocateMemory(sizeof(Type));
-//    return Type::get_ctor()(result, std::forward<Args>(args)...);
-//}
-}
+//     Type* result = (Type*)allocateMemory(sizeof(Type));
+//     return Type::get_ctor()(result, std::forward<Args>(args)...);
+// }
+} // namespace utinni

@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 #include "utinni.h"
@@ -32,10 +32,10 @@ extern bool loadConfigFile(const char* fileName);
 UTINNI_API void enableModalChat(bool value);
 
 extern void detour();
-}
+} // namespace swg::config
 
 namespace swg::config::clientGame
 {
 UTINNI_API extern const char* getSceneAvatarFilename();
 UTINNI_API extern const char* getSceneTerrainFilename();
-}
+} // namespace swg::config::clientGame

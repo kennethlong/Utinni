@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -45,21 +45,19 @@ class UTINNI_API UiManager
 public:
     static UiManager* get();
     void drawCursor(bool value);
-
 };
 
 class UTINNI_API SystemMessageManager
 {
 public:
     // Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09).
-    static int subscribeReceiveMessageCallback(void(*func)(const char* msg));
+    static int subscribeReceiveMessageCallback(void (*func)(const char* msg));
     static bool unsubscribeReceiveMessageCallback(int handle);
     // Legacy add* API (D-10): thin wrapper.
-    static void addReceiveMessageCallback(void(*func)(const char* msg));
+    static void addReceiveMessageCallback(void (*func)(const char* msg));
     static void sendMessage(const char* message, bool chatOnly);
 
     static void detour();
 };
 
-}
-
+} // namespace utinni

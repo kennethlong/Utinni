@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "clr.h"
 #include <mscoree.h>
@@ -95,9 +95,21 @@ void stop()
     // C-10: Idempotent shutdown. start() may have failed before allocating each pointer;
     // detatch() (DLL_PROCESS_DETACH) calls stop() unconditionally so the body must handle
     // null and survive multiple calls without AV.
-    if (pClrRuntimeHost) { pClrRuntimeHost->Release(); pClrRuntimeHost = nullptr; }
-    if (pClrRuntimeInfo) { pClrRuntimeInfo->Release(); pClrRuntimeInfo = nullptr; }
-    if (pClrMetaHost) { pClrMetaHost->Release(); pClrMetaHost = nullptr; }
+    if (pClrRuntimeHost)
+    {
+        pClrRuntimeHost->Release();
+        pClrRuntimeHost = nullptr;
+    }
+    if (pClrRuntimeInfo)
+    {
+        pClrRuntimeInfo->Release();
+        pClrRuntimeInfo = nullptr;
+    }
+    if (pClrMetaHost)
+    {
+        pClrMetaHost->Release();
+        pClrMetaHost = nullptr;
+    }
 }
 
 void load()
@@ -124,4 +136,4 @@ void load()
         stop();
     }
 }
-}
+} // namespace clr

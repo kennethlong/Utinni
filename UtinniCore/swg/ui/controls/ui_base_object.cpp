@@ -20,21 +20,21 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "ui_base_object.h"
 
 namespace swg::uiBaseObject
 {
-using pCtor = utinni::UIBaseObject* (__thiscall*)(utinni::UIBaseObject* pThis);
+using pCtor = utinni::UIBaseObject*(__thiscall*)(utinni::UIBaseObject * pThis);
 
 pCtor ctor = (pCtor)0x010F2A00;
-}
+} // namespace swg::uiBaseObject
 
 namespace utinni
 {
-    UIBaseObject::UIBaseObject()
-    {
-        swg::uiBaseObject::ctor(this);
-    }
+UIBaseObject::UIBaseObject()
+{
+    swg::uiBaseObject::ctor(this);
 }
+} // namespace utinni

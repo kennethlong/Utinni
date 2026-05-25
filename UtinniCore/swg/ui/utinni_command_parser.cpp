@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "utinni_command_parser.h"
 
@@ -28,10 +28,9 @@ namespace utinni
 {
 
 static const CommandParser::CommandData commands[] =
-{
-    {"test1", 0, "", "Test Command 1"},
-    {"test2", 0, "", "Test Command 2"}
-};
+    {
+        {"test1", 0, "", "Test Command 1"},
+        {"test2", 0, "", "Test Command 2"}};
 
 UtinniCommandParser::UtinniCommandParser() : CommandParser("utinni", 0, "...", "Utinni related commands.", nullptr)
 {
@@ -61,5 +60,4 @@ bool UtinniCommandParser::performParsing(const int64_t& userId, const std::vecto
 
     return false;
 }
-}
-
+} // namespace utinni

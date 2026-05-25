@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 #include "utinni.h"
@@ -29,8 +29,8 @@
 
 namespace directX
 {
-void initPresentBlockedEvent();  // CR-04: call from utinni_init before createDetours()
-void initDepthTexture();         // WR-03: call from utinni_init before createDetours()
+void initPresentBlockedEvent(); // CR-04: call from utinni_init before createDetours()
+void initDepthTexture();        // WR-03: call from utinni_init before createDetours()
 void detour();
 void cleanup();
 DepthTexture* getDepthTexture();
@@ -39,4 +39,4 @@ UTINNI_API extern void toggleWireframe();
 UTINNI_API extern void blockPresent(bool value);
 UTINNI_API extern bool isPresentBlocked();
 UTINNI_API extern IDirect3DDevice9* getDevice();
-}
+} // namespace directX

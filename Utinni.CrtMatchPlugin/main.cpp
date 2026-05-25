@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 // Phase 3 R-B fixture: CrtMatchPlugin exercises the symmetric createPlugin/
 // destroyPlugin ABI path (D-13). Built with /MD to match UtinniCore.dll's CRT.
@@ -38,39 +38,39 @@
 
 namespace
 {
-    // Test-observable counters (read via the diagnostic exports below). They
-    // are file-scope to keep the fixture self-contained -- no UtinniCore log
-    // dependency, no managed-side wiring. Each is independent so the test
-    // can assert two-phase ordering: at the between-passes observation
-    // point createCount must be > 0 while initCount must still be 0.
-    int s_createCount = 0;
-    int s_initCount = 0;
-    int s_destroyCount = 0;
+// Test-observable counters (read via the diagnostic exports below). They
+// are file-scope to keep the fixture self-contained -- no UtinniCore log
+// dependency, no managed-side wiring. Each is independent so the test
+// can assert two-phase ordering: at the between-passes observation
+// point createCount must be > 0 while initCount must still be 0.
+int s_createCount = 0;
+int s_initCount = 0;
+int s_destroyCount = 0;
 
-    // Optional throw-on-init switch for the Plugin-init-throws regression
-    // test (Task 2 Test 3). Defaults to false; the test toggles it via
-    // crtmatch_setInitShouldThrow before triggering the load.
-    bool s_initShouldThrow = false;
+// Optional throw-on-init switch for the Plugin-init-throws regression
+// test (Task 2 Test 3). Defaults to false; the test toggles it via
+// crtmatch_setInitShouldThrow before triggering the load.
+bool s_initShouldThrow = false;
 
-    class CrtMatchPlugin : public utinni::UtinniPlugin
+class CrtMatchPlugin : public utinni::UtinniPlugin
+{
+public:
+    void init() override
     {
-    public:
-        void init() override
+        ++s_initCount;
+        if (s_initShouldThrow)
         {
-            ++s_initCount;
-            if (s_initShouldThrow)
-            {
-                throw std::runtime_error("CrtMatchPlugin::init deliberately threw");
-            }
+            throw std::runtime_error("CrtMatchPlugin::init deliberately threw");
         }
+    }
 
-        const Information& getInformation() const override
-        {
-            static Information info = { "CrtMatchPlugin", "R-B fixture (CRT match)", "Phase 3" };
-            return info;
-        }
-    };
-}
+    const Information& getInformation() const override
+    {
+        static Information info = {"CrtMatchPlugin", "R-B fixture (CRT match)", "Phase 3"};
+        return info;
+    }
+};
+} // namespace
 
 extern "C" __declspec(dllexport) utinni::UtinniPlugin* createPlugin()
 {

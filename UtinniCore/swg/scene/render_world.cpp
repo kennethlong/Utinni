@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "render_world.h"
 #include "swg/graphics/directx9.h"
@@ -34,7 +34,7 @@ using pRender = void(__cdecl*)(swgptr pCamera);
 pClearVisibleCells clearVisibleCells = (pClearVisibleCells)0x765C20;
 pAddObjectNotifications addObjectNotifications = (pAddObjectNotifications)0x007664F0;
 pRender render = (pRender)0x00766DE0;
-}
+} // namespace swg::renderWorld
 
 namespace utinni::renderWorld
 {
@@ -47,27 +47,27 @@ void __cdecl hkRender(swgptr pCamera)
 {
     swg::renderWorld::render(pCamera);
 
-    //depthTexture = directX::getDepthTexture();
-    //if (depthTexture != nullptr && depthTexture->isSupported() && depthTexture->getTexture() != nullptr)
+    // depthTexture = directX::getDepthTexture();
+    // if (depthTexture != nullptr && depthTexture->isSupported() && depthTexture->getTexture() != nullptr)
     //{
-    //    depthTexture->resolveDepth();
-    //}
+    //     depthTexture->resolveDepth();
+    // }
 }
 
 void __cdecl hkClearVisibleCells()
 {
     swg::renderWorld::clearVisibleCells();
 
-   /* depthTexture = directX::getDepthTexture();
-    if (depthTexture != nullptr && depthTexture->isSupported() && depthTexture->getTextureDepth() != nullptr)
-    {
-        depthTexture->resolveDepth();
-    }*/
+    /* depthTexture = directX::getDepthTexture();
+     if (depthTexture != nullptr && depthTexture->isSupported() && depthTexture->getTextureDepth() != nullptr)
+     {
+         depthTexture->resolveDepth();
+     }*/
 }
 
 void detour()
 {
-    //swg::renderWorld::render = (swg::renderWorld::pRender)Detour::Create(swg::renderWorld::render, hkRender, DETOUR_TYPE_PUSH_RET);
-    //swg::renderWorld::clearVisibleCells = (swg::renderWorld::pClearVisibleCells)Detour::Create(swg::renderWorld::clearVisibleCells, hkClearVisibleCells, DETOUR_TYPE_PUSH_RET);
+    // swg::renderWorld::render = (swg::renderWorld::pRender)Detour::Create(swg::renderWorld::render, hkRender, DETOUR_TYPE_PUSH_RET);
+    // swg::renderWorld::clearVisibleCells = (swg::renderWorld::pClearVisibleCells)Detour::Create(swg::renderWorld::clearVisibleCells, hkClearVisibleCells, DETOUR_TYPE_PUSH_RET);
 }
-}
+} // namespace utinni::renderWorld

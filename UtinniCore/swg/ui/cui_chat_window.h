@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -34,10 +34,10 @@ class UTINNI_API CuiChatWindow // ToDo change to non static with getChatWindow f
 {
 public:
     // Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09).
-    static int subscribeCreateCommandParserCallback(void(*func)(CommandParser* commandParser));
+    static int subscribeCreateCommandParserCallback(void (*func)(CommandParser* commandParser));
     static bool unsubscribeCreateCommandParserCallback(int handle);
     // Legacy add* API (D-10): thin wrapper.
-    static void addCreateCommandParserCallback(void(*func)(CommandParser* commandParser));
+    static void addCreateCommandParserCallback(void (*func)(CommandParser* commandParser));
 
     static void enableTextInput(bool value);
     static void writeToAllTabs(const char* str);
@@ -76,4 +76,4 @@ public:
     static void detour();
 };
 
-}
+} // namespace utinni

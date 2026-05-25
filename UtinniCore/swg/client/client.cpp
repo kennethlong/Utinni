@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "client.h"
 #include "swg/graphics/graphics.h"
@@ -44,7 +44,7 @@ pWndProc wndProc = (pWndProc)0x00AA0970; // SWG's WndProc
 
 pWriteCrashLog writeCrashLog = (pWriteCrashLog)0x00A9F640;
 pWriteMiniDump writeMiniDump = (pWriteMiniDump)0x00A8A170;
-}
+} // namespace swg::client
 
 bool enableEditorMode = false;
 HWND hwnd = nullptr;
@@ -112,8 +112,8 @@ void Client::setSwgHwnd(void* newHwnd)
         s_firstCapture = false;
         char msg[96];
         snprintf(msg, sizeof(msg),
-            "Client::setSwgHwnd: first capture 0x%p (Issue #10 Phase A)",
-            newHwnd);
+                 "Client::setSwgHwnd: first capture 0x%p (Issue #10 Phase A)",
+                 newHwnd);
         utinni::log::info(msg);
     }
     swgHwnd = (HWND)newHwnd;
@@ -224,7 +224,7 @@ int __cdecl hkMainLoop(HINSTANCE hInstance, int unk1, int unk2)
         while (Client::getHInstance() == nullptr)
         {
             Sleep(1); // Wait until the Editor has set the HWND and HInstance the game should use
-             // ToDo add a timeout
+                      // ToDo add a timeout
         }
         return swg::client::clientMain(GetModuleHandle(nullptr), unk1, unk2);
     }
@@ -233,7 +233,6 @@ int __cdecl hkMainLoop(HINSTANCE hInstance, int unk1, int unk2)
         return swg::client::clientMain(hInstance, unk1, unk2);
     }
 }
-
 
 long __stdcall hWriteCrashLog(swgptr unk)
 {
@@ -255,11 +254,11 @@ static constexpr swgptr return_MidCrashLogWrite = 0x00A9F76B;
 __declspec(naked) void midCrashLogWrite()
 {
     __asm
-    {
+        {
         mov fnInput_MidCrashLogWrite, 0x0193C268
         pushad
         pushfd
-    }
+        }
 
     fn_MidCrashLogWrite = logDir;
     fn_MidCrashLogWrite += (const char*)fnInput_MidCrashLogWrite;
@@ -278,7 +277,7 @@ void Client::detour()
 {
     swg::client::setupStartDataInstall = (swg::client::pSetupInstall)Detour::Create((LPVOID)swg::client::setupStartDataInstall, hkSetupStartInstall, DETOUR_TYPE_PUSH_RET);
     swg::client::clientMain = (swg::client::pMainLoop)Detour::Create((LPVOID)swg::client::clientMain, hkMainLoop, DETOUR_TYPE_PUSH_RET);
-    //swg::client::wndProc = (swg::client::pWndProc)Detour::Create((LPVOID)swg::client::wndProc, hkWndProc, DETOUR_TYPE_PUSH_RET);
+    // swg::client::wndProc = (swg::client::pWndProc)Detour::Create((LPVOID)swg::client::wndProc, hkWndProc, DETOUR_TYPE_PUSH_RET);
 
     DirectInput::detour();
 
@@ -288,7 +287,7 @@ void Client::detour()
     memory::createJMP(start_MidCrashLogWrite, (swgptr)midCrashLogWrite, 5);
 }
 
-}
+} // namespace utinni
 
 // 2026-05-20 Issue #10 Phase B: C-linkage export so PanelGame.cs can read
 // SWG's top-level HWND without going through the auto-generated CppSharp

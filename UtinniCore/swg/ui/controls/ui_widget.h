@@ -20,14 +20,14 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 #include "utinni.h"
 #include "ui_base_object.h"
 
 namespace utinni
-{ 
+{
 class UTINNI_API UIWidget : public UIBaseObject // Size (Excluding base class): 260 (0x110)
 {
 public:
@@ -107,8 +107,6 @@ public:
     swgptr UIWidget_unkv68;
 
     UIWidget();
-
-
 };
 
-}
+} // namespace utinni

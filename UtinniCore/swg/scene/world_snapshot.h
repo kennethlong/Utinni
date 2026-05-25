@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -92,7 +92,7 @@ public:
     Node* addNode(int nodeId, int parentNodeId, const char* objectFilename, int cellId, const swg::math::Transform& transform, float radius, unsigned int pobCrc);
 };
 
-}
+} // namespace utinni
 
 namespace utinni
 {
@@ -117,4 +117,4 @@ public:
     static Object* addNode(WorldSnapshotReaderWriter::Node* node);
     static void removeNode(WorldSnapshotReaderWriter::Node* node);
 };
-}
+} // namespace utinni

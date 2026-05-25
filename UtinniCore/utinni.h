@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -40,9 +40,9 @@ using swgptr = uint32_t;
 #include "utility/utility.h"
 
 #ifdef EXPORT_UTINNI
-    #define UTINNI_API __declspec(dllexport)
+#define UTINNI_API __declspec(dllexport)
 #else
-    #define UTINNI_API __declspec(dllimport)
+#define UTINNI_API __declspec(dllimport)
 #endif
 
 namespace utinni
@@ -56,5 +56,4 @@ UTINNI_API extern const std::string& getPath();
 UTINNI_API extern const std::string& getSwgCfgFilename();
 UTINNI_API extern UtINI& getConfig();
 UTINNI_API extern PluginManager& getPluginManager();
-};
-
+}; // namespace utinni

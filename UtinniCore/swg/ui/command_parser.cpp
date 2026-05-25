@@ -20,24 +20,24 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "command_parser.h"
 
 namespace swg::commandParser
 {
-using pCtor1 = utinni::CommandParser*(__thiscall*)(utinni::CommandParser* pThis, const char* command, size_t argCount, const char* args, const char* helpInfo, utinni::CommandParser* delegate);
-using pCtor2 = utinni::CommandParser*(__thiscall*)(utinni::CommandParser* pThis, const utinni::CommandParser::CommandData& commandData, utinni::CommandParser* delegate);
+using pCtor1 = utinni::CommandParser*(__thiscall*)(utinni::CommandParser * pThis, const char* command, size_t argCount, const char* args, const char* helpInfo, utinni::CommandParser* delegate);
+using pCtor2 = utinni::CommandParser*(__thiscall*)(utinni::CommandParser * pThis, const utinni::CommandParser::CommandData& commandData, utinni::CommandParser* delegate);
 
 using pCreateDelegateCommands = void(__thiscall*)(utinni::CommandParser* pThis, const utinni::CommandParser::CommandData commands[]);
-using pAddSubCommand = utinni::CommandParser* (__thiscall*)(utinni::CommandParser* pThis, utinni::CommandParser* subCommand);
+using pAddSubCommand = utinni::CommandParser*(__thiscall*)(utinni::CommandParser * pThis, utinni::CommandParser* subCommand);
 
 pCtor1 ctor1 = (pCtor1)0x00A83EF0;
 pCtor2 ctor2 = (pCtor2)0x00A84130;
 
 pCreateDelegateCommands createDelegateCommands = (pCreateDelegateCommands)0x00A862F0;
 pAddSubCommand addSubCommand = (pAddSubCommand)0x00A85CD0;
-}
+} // namespace swg::commandParser
 
 namespace utinni
 {
@@ -66,5 +66,4 @@ CommandParser* CommandParser::addSubCommand(CommandParser* subCommand)
     return swg::commandParser::addSubCommand(this, subCommand);
 }
 
-
-}
+} // namespace utinni

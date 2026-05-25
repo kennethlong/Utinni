@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "swg_utility.h"
 
@@ -32,7 +32,7 @@ using pTreeFileOpen = swgptr(__cdecl*)(const char* filename, int priorityType, b
 pCalculateCrc calculateCrc = (pCalculateCrc)0x00AA4790;
 pTreeFileOpen treeFileOpen = (pTreeFileOpen)0x00A931E0;
 
-}
+} // namespace swg::utility
 
 namespace utinni
 {
@@ -46,4 +46,4 @@ swgptr treeFileOpen(const char* filename, int priorityType, bool allowFail)
     return swg::utility::treeFileOpen(filename, priorityType, allowFail);
 }
 
-}
+} // namespace utinni

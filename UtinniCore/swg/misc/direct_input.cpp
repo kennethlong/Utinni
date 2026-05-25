@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "direct_input.h"
 #include "swg/client/client.h"
@@ -44,7 +44,7 @@ pSuspend suspend = (pSuspend)0x00420880;
 pSuspend resume = (pSuspend)0x00420890;
 
 pSetupInstall setupInstall = (pSetupInstall)0x00421490;
-}
+} // namespace swg::directInput
 
 // 2026-05-20 Issue #10 Phase B prereq (per CODEX consult #3):
 // COM-vtable shim around IDirectInputDevice8::SetCooperativeLevel. We need
@@ -70,9 +70,9 @@ pSetupInstall setupInstall = (pSetupInstall)0x00421490;
 // imported by SWGEmu.exe so GetModuleHandle succeeds.
 namespace
 {
-using pDirectInput8Create = HRESULT (WINAPI*)(HINSTANCE, DWORD, REFIID, LPVOID*, LPUNKNOWN);
-using pDIO_CreateDevice = HRESULT (__stdcall*)(IDirectInput8A*, REFGUID, IDirectInputDevice8A**, LPUNKNOWN);
-using pDID_SetCooperativeLevel = HRESULT (__stdcall*)(IDirectInputDevice8A*, HWND, DWORD);
+using pDirectInput8Create = HRESULT(WINAPI*)(HINSTANCE, DWORD, REFIID, LPVOID*, LPUNKNOWN);
+using pDIO_CreateDevice = HRESULT(__stdcall*)(IDirectInput8A*, REFGUID, IDirectInputDevice8A**, LPUNKNOWN);
+using pDID_SetCooperativeLevel = HRESULT(__stdcall*)(IDirectInputDevice8A*, HWND, DWORD);
 
 pDirectInput8Create origDirectInput8Create = nullptr;
 pDIO_CreateDevice origCreateDevice = nullptr;
@@ -81,12 +81,12 @@ pDID_SetCooperativeLevel origSetCooperativeLevel = nullptr;
 void decodeCoopFlags(DWORD f, char* out, size_t sz)
 {
     snprintf(out, sz, "%s%s%s%s%s(0x%lX)",
-        (f & DISCL_EXCLUSIVE)    ? "EXCLUSIVE "    : "",
-        (f & DISCL_NONEXCLUSIVE) ? "NONEXCLUSIVE " : "",
-        (f & DISCL_FOREGROUND)   ? "FOREGROUND "   : "",
-        (f & DISCL_BACKGROUND)   ? "BACKGROUND "   : "",
-        (f & DISCL_NOWINKEY)     ? "NOWINKEY "     : "",
-        (unsigned long)f);
+             (f & DISCL_EXCLUSIVE) ? "EXCLUSIVE " : "",
+             (f & DISCL_NONEXCLUSIVE) ? "NONEXCLUSIVE " : "",
+             (f & DISCL_FOREGROUND) ? "FOREGROUND " : "",
+             (f & DISCL_BACKGROUND) ? "BACKGROUND " : "",
+             (f & DISCL_NOWINKEY) ? "NOWINKEY " : "",
+             (unsigned long)f);
 }
 
 HRESULT __stdcall hkSetCooperativeLevel(IDirectInputDevice8A* pThis, HWND hwnd, DWORD dwFlags)
@@ -99,16 +99,18 @@ HRESULT __stdcall hkSetCooperativeLevel(IDirectInputDevice8A* pThis, HWND hwnd, 
     decodeCoopFlags(dwFlags, flagstr, sizeof(flagstr));
     char msg[240];
     snprintf(msg, sizeof(msg),
-        "DI::SetCooperativeLevel: device=0x%p hwnd=0x%p flags=%s caller=0x%p",
-        (void*)pThis, (void*)hwnd, flagstr, ret);
+             "DI::SetCooperativeLevel: device=0x%p hwnd=0x%p flags=%s caller=0x%p",
+             (void*)pThis, (void*)hwnd, flagstr, ret);
     utinni::log::info(msg);
     return origSetCooperativeLevel(pThis, hwnd, dwFlags);
 }
 
 void patchDeviceVtableOnce(IDirectInputDevice8A* device)
 {
-    if (device == nullptr) return;
-    if (origSetCooperativeLevel != nullptr) return; // already patched
+    if (device == nullptr)
+        return;
+    if (origSetCooperativeLevel != nullptr)
+        return; // already patched
 
     void** vtbl = *(void***)device;
     origSetCooperativeLevel = (pDID_SetCooperativeLevel)vtbl[13];
@@ -127,19 +129,21 @@ void patchDeviceVtableOnce(IDirectInputDevice8A* device)
 }
 
 HRESULT __stdcall hkCreateDevice(IDirectInput8A* pThis, REFGUID rguid,
-    IDirectInputDevice8A** lplpDevice, LPUNKNOWN pUnkOuter)
+                                 IDirectInputDevice8A** lplpDevice, LPUNKNOWN pUnkOuter)
 {
     HRESULT hr = origCreateDevice(pThis, rguid, lplpDevice, pUnkOuter);
     if (SUCCEEDED(hr) && lplpDevice != nullptr && *lplpDevice != nullptr)
     {
         const char* devType = "?";
-        if (IsEqualGUID(rguid, GUID_SysKeyboard)) devType = "keyboard";
-        else if (IsEqualGUID(rguid, GUID_SysMouse)) devType = "mouse";
+        if (IsEqualGUID(rguid, GUID_SysKeyboard))
+            devType = "keyboard";
+        else if (IsEqualGUID(rguid, GUID_SysMouse))
+            devType = "mouse";
 
         char msg[160];
         snprintf(msg, sizeof(msg),
-            "DI::CreateDevice -> %s device=0x%p (hr=0x%lX)",
-            devType, (void*)*lplpDevice, (unsigned long)hr);
+                 "DI::CreateDevice -> %s device=0x%p (hr=0x%lX)",
+                 devType, (void*)*lplpDevice, (unsigned long)hr);
         utinni::log::info(msg);
 
         patchDeviceVtableOnce(*lplpDevice);
@@ -148,15 +152,15 @@ HRESULT __stdcall hkCreateDevice(IDirectInput8A* pThis, REFGUID rguid,
 }
 
 HRESULT WINAPI hkDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf,
-    LPVOID* ppvOut, LPUNKNOWN punkOuter)
+                                    LPVOID* ppvOut, LPUNKNOWN punkOuter)
 {
     HRESULT hr = origDirectInput8Create(hinst, dwVersion, riidltf, ppvOut, punkOuter);
     if (SUCCEEDED(hr) && ppvOut != nullptr && *ppvOut != nullptr && origCreateDevice == nullptr)
     {
         char msg[160];
         snprintf(msg, sizeof(msg),
-            "DI::DirectInput8Create -> 0x%p (ver=0x%lX hr=0x%lX)",
-            *ppvOut, (unsigned long)dwVersion, (unsigned long)hr);
+                 "DI::DirectInput8Create -> 0x%p (ver=0x%lX hr=0x%lX)",
+                 *ppvOut, (unsigned long)dwVersion, (unsigned long)hr);
         utinni::log::info(msg);
 
         void** vtbl = *(void***)(*ppvOut);
@@ -232,7 +236,7 @@ void DirectInput::detour()
     // SWG's setupInstall (which is upstream of this detour). See the
     // anonymous namespace above for the full hook chain.
     LPVOID orig = Detour::Create("dinput8.dll", "DirectInput8Create",
-        (LPVOID)hkDirectInput8Create, DETOUR_TYPE_PUSH_RET);
+                                 (LPVOID)hkDirectInput8Create, DETOUR_TYPE_PUSH_RET);
     if (orig != nullptr)
     {
         origDirectInput8Create = (pDirectInput8Create)orig;
@@ -243,4 +247,4 @@ void DirectInput::detour()
         utinni::log::critical("DI: Detour::Create(dinput8.dll, DirectInput8Create) FAILED -- shim DISABLED");
     }
 }
-}
+} // namespace utinni

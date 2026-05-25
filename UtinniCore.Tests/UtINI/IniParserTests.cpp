@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 // CON-O-06 / D-03 max-harness fence (Phase 6 Plan 06-03 Task 3): regression suite for
 // the hand-rolled INI parser inside UtINI::Impl that replaced LeksysINI. Each TEST_CASE
@@ -55,7 +55,7 @@ struct TempIni
 
     explicit TempIni(const std::string& content)
     {
-        static std::atomic<int> counter{ 0 };
+        static std::atomic<int> counter{0};
         path = std::filesystem::temp_directory_path() /
                ("utinni_ini_test_" + std::to_string(++counter) + ".ini");
         std::ofstream f(path, std::ios::binary | std::ios::trunc);
@@ -68,7 +68,10 @@ struct TempIni
         std::filesystem::remove(path, ec);
     }
 
-    std::string str() const { return path.string(); }
+    std::string str() const
+    {
+        return path.string();
+    }
 };
 
 std::string readAll(const std::string& p)
@@ -269,7 +272,7 @@ TEST_CASE("INI parser: malformed section header is preserved opaquely (no crash)
 
         TempIni tmp(original);
         utinni::UtINI ini(tmp.str());
-        ini.load();   // must not crash
+        ini.load(); // must not crash
         ini.save();
         const std::string saved = readAll(tmp.str());
         REQUIRE(saved.find("[NotClosed") != std::string::npos); // preserved opaquely
@@ -287,7 +290,7 @@ TEST_CASE("INI parser: line missing '=' is preserved opaquely (no crash)", "[uti
 
         TempIni tmp(original);
         utinni::UtINI ini(tmp.str());
-        ini.load();   // must not crash
+        ini.load(); // must not crash
         REQUIRE(ini.getString("S", "real") == "1");
         ini.save();
         REQUIRE(readAll(tmp.str()).find("keywithoutequals") != std::string::npos);
@@ -306,7 +309,7 @@ TEST_CASE("INI parser: runaway quote does not crash and round-trips", "[utini][i
 
         TempIni tmp(original);
         utinni::UtINI ini(tmp.str());
-        ini.load();   // must not crash
+        ini.load(); // must not crash
         REQUIRE(ini.getString("S", "key") == "\"unterminated");
         ini.save();
         REQUIRE(readAll(tmp.str()).find("key = \"unterminated") != std::string::npos);
@@ -341,8 +344,8 @@ TEST_CASE("INI parser: type coercion matches the legacy AsBool/AsInt/AsDouble se
         REQUIRE(ini.getBool("T", "b_empty") == false);
 
         REQUIRE(ini.getInt("T", "n") == 42);
-        REQUIRE(ini.getInt("T", "trunc") == 3);        // stringstream int extraction stops at '.'
-        REQUIRE(ini.getInt("T", "missing") == 0);      // missing key coerces to 0
+        REQUIRE(ini.getInt("T", "trunc") == 3);   // stringstream int extraction stops at '.'
+        REQUIRE(ini.getInt("T", "missing") == 0); // missing key coerces to 0
         REQUIRE(ini.getFloat("T", "f") == Catch::Approx(3.14f));
     }
 }

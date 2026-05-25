@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 // Phase 3 R-B fixture: LegacyPlugin DELIBERATELY OMITS the destroyPlugin
 // export. CR-02 (03-REVIEW) disposition: PluginManager now REJECTS plugins
@@ -54,60 +54,63 @@
 
 namespace utinni_legacy
 {
-    // Mirror the layout of utinni::UtinniPlugin from
-    // UtinniCore/plugin_framework/utinni_plugin.h. The host calls these via
-    // the vtable, so layout must match exactly. The macros __declspec(dllimport)
-    // / dllexport on the host side don't change the vtable shape.
-    struct UtinniPlugin
+// Mirror the layout of utinni::UtinniPlugin from
+// UtinniCore/plugin_framework/utinni_plugin.h. The host calls these via
+// the vtable, so layout must match exactly. The macros __declspec(dllimport)
+// / dllexport on the host side don't change the vtable shape.
+struct UtinniPlugin
+{
+    struct Information
     {
-        struct Information
-        {
-            const char* name;
-            const char* description;
-            const char* author;
-        };
-
-        UtinniPlugin() {}
-        virtual ~UtinniPlugin() {}
-
-        virtual void init() {}
-        virtual const Information& getInformation() const = 0;
+        const char* name;
+        const char* description;
+        const char* author;
     };
 
-    // CR-02 (03-REVIEW) ABI sanity assert. The host's utinni::UtinniPlugin
-    // contains exactly one logical member: the vtable pointer (on x86, sizeof
-    // == 4). Any new data member added to either side (here OR in the host)
-    // would push this size past 4 and the static_assert fires. This is a
-    // weak check (it does not validate the vtable order, only the size),
-    // but it's the strongest thing we can do without including the host
-    // header (which would trip the UTINNI_PLUGIN macro requirement). The
-    // load-time rejection in PluginManager makes vtable-layout drift moot
-    // for this specific fixture (it never reaches a dispatch site), but
-    // the assert documents the contract.
-    static_assert(sizeof(UtinniPlugin) == sizeof(void*),
-                  "utinni_legacy::UtinniPlugin must be vtable-pointer-only "
-                  "(matches host utinni::UtinniPlugin layout on x86).");
-    static_assert(sizeof(UtinniPlugin::Information) == 3 * sizeof(void*),
-                  "utinni_legacy::UtinniPlugin::Information must be three "
-                  "const char* fields (matches host layout).");
-}
+    UtinniPlugin() {}
+    virtual ~UtinniPlugin() {}
+
+    virtual void init() {}
+    virtual const Information& getInformation() const = 0;
+};
+
+// CR-02 (03-REVIEW) ABI sanity assert. The host's utinni::UtinniPlugin
+// contains exactly one logical member: the vtable pointer (on x86, sizeof
+// == 4). Any new data member added to either side (here OR in the host)
+// would push this size past 4 and the static_assert fires. This is a
+// weak check (it does not validate the vtable order, only the size),
+// but it's the strongest thing we can do without including the host
+// header (which would trip the UTINNI_PLUGIN macro requirement). The
+// load-time rejection in PluginManager makes vtable-layout drift moot
+// for this specific fixture (it never reaches a dispatch site), but
+// the assert documents the contract.
+static_assert(sizeof(UtinniPlugin) == sizeof(void*),
+              "utinni_legacy::UtinniPlugin must be vtable-pointer-only "
+              "(matches host utinni::UtinniPlugin layout on x86).");
+static_assert(sizeof(UtinniPlugin::Information) == 3 * sizeof(void*),
+              "utinni_legacy::UtinniPlugin::Information must be three "
+              "const char* fields (matches host layout).");
+} // namespace utinni_legacy
 
 namespace
 {
-    int s_initCount = 0;
+int s_initCount = 0;
 
-    class LegacyPlugin : public utinni_legacy::UtinniPlugin
+class LegacyPlugin : public utinni_legacy::UtinniPlugin
+{
+public:
+    void init() override
     {
-    public:
-        void init() override { ++s_initCount; }
+        ++s_initCount;
+    }
 
-        const Information& getInformation() const override
-        {
-            static Information info = { "LegacyPlugin", "R-B fixture (legacy / no destroyPlugin)", "Phase 3" };
-            return info;
-        }
-    };
-}
+    const Information& getInformation() const override
+    {
+        static Information info = {"LegacyPlugin", "R-B fixture (legacy / no destroyPlugin)", "Phase 3"};
+        return info;
+    }
+};
+} // namespace
 
 // Only createPlugin is exported. destroyPlugin is DELIBERATELY OMITTED so
 // PluginManager's GetProcAddress(hDll, "destroyPlugin") returns null and

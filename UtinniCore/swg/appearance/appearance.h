@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -77,8 +77,8 @@ class UTINNI_API ParticleEffectAppearance : public Appearance
 {
 public:
     bool collide(swg::math::Vector* worldStart, swg::math::Vector* worldEnd, swgptr unk, utinni::CollisionInfo& collisionResults);
-    static void detour();;
+    static void detour();
+    ;
 };
 
-
-}
+} // namespace utinni

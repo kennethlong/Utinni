@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -32,7 +32,7 @@
 
 namespace swg
 {
-template<typename TChar>
+template <typename TChar>
 class StringAllocator
 {
 public:
@@ -79,7 +79,7 @@ private:
     char16_t* allocEnd{};
 
 private:
-    template<typename TChar>
+    template <typename TChar>
     void create(const TChar* value)
     {
         const size_t size = constCharUtility::length(value);
@@ -96,8 +96,8 @@ private:
         memory::write<char16_t>((swgptr)end, 0); // Ensure the end is zero'd
     }
 
-    template<typename TCharRhs>
-    bool compare(const TCharRhs* rhs) const 
+    template <typename TCharRhs>
+    bool compare(const TCharRhs* rhs) const
     {
         const char16_t* iterLhs = begin;
         const TCharRhs* iterRhs = rhs;
@@ -139,8 +139,5 @@ public:
     std::string toString() const;
 
 private:
-
-
 };
-}
-
+} // namespace swg

@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include <mscoree.h>
 
@@ -33,12 +33,11 @@
 class ExampleCppPlugin : public utinni::UtinniPlugin
 {
 private:
-     Information information =
-    {
-        "Example Cpp Plugin",
-        "This is a Cpp Example Plugin",
-        "Example Author"
-    };
+    Information information =
+        {
+            "Example Cpp Plugin",
+            "This is a Cpp Example Plugin",
+            "Example Author"};
 
 public:
     ExampleCppPlugin()
@@ -50,7 +49,6 @@ public:
 
     ~ExampleCppPlugin()
     {
-        
     }
 
     virtual void init() override
@@ -61,7 +59,6 @@ public:
     {
         return information;
     }
-
 };
 
 extern "C"

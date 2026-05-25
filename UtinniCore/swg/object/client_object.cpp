@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "client_object.h"
 #include "swg/misc/swg_utility.h"
@@ -33,8 +33,8 @@ using pBeginBaselines = void(__thiscall*)(utinni::ClientObject* pThis);
 using pEndBaselines = void(__thiscall*)(utinni::ClientObject* pThis);
 
 using pGetGameObjectType = int(__thiscall*)(utinni::ClientObject* pThis);
-using pGetGameObjectTypeStringIdKey = const char** (__thiscall*)(utinni::ClientObject* pThis);
-using pGetGameObjectTypeName = const wchar_t** (__thiscall*)(utinni::ClientObject* pThis);
+using pGetGameObjectTypeStringIdKey = const char**(__thiscall*)(utinni::ClientObject * pThis);
+using pGetGameObjectTypeName = const wchar_t**(__thiscall*)(utinni::ClientObject * pThis);
 
 using pGetStaticObject = swgptr(__thiscall*)(swgptr pThis);
 using pGetTangibleObject = swgptr(__thiscall*)(swgptr pThis);
@@ -49,11 +49,11 @@ pGetGameObjectTypeName getGameObjectTypeName = (pGetGameObjectTypeName)0x0055739
 
 pGetStaticObject getStaticObject = (pGetStaticObject)0x00554BF0;
 pGetTangibleObject getTangibleObject = (pGetTangibleObject)0x00554C00;
-}
+} // namespace swg::clientObject
 
 namespace swg::buildingObject
 {
-using pCtor = utinni::Object * (__thiscall*)(DWORD pThis, DWORD sharedTemplate);
+using pCtor = utinni::Object*(__thiscall*)(DWORD pThis, DWORD sharedTemplate);
 using pAddToWorld = void(__thiscall*)(utinni::Object* pThis);
 using pRemoveFromWorld = void(__thiscall*)(utinni::Object* pThis);
 
@@ -61,7 +61,7 @@ pCtor ctor = (pCtor)0x0070DBB0;
 
 pAddToWorld addToWorld = (pAddToWorld)0x0070DD00;
 pRemoveFromWorld removeFromWorld = (pRemoveFromWorld)0x0070DD20;
-}
+} // namespace swg::buildingObject
 
 namespace utinni
 {
@@ -114,5 +114,4 @@ swgptr ClientObject::getTangibleObject()
 {
     return (*(int(__thiscall**)(ClientObject*))(*(swgptr*)this + 108))(this); // ToDo do this proper via variable
 }
-}
-
+} // namespace utinni

@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include <Windows.h>
 #include <cstdio>
@@ -56,40 +56,40 @@
 
 namespace
 {
-    constexpr double kThresholdMs = 50.0;
-    constexpr int    kCycles      = 3;   // OPT-A: best-of-3
+constexpr double kThresholdMs = 50.0;
+constexpr int kCycles = 3; // OPT-A: best-of-3
 
-    // One LoadLibraryA + FreeLibrary cycle. Returns the measured load time in ms, or
-    // a negative value if LoadLibraryA failed (caller maps that to exit code 2).
-    double measureLoadCycle()
-    {
-        LARGE_INTEGER freq, start, end;
-        QueryPerformanceFrequency(&freq);
-        QueryPerformanceCounter(&start);
+// One LoadLibraryA + FreeLibrary cycle. Returns the measured load time in ms, or
+// a negative value if LoadLibraryA failed (caller maps that to exit code 2).
+double measureLoadCycle()
+{
+    LARGE_INTEGER freq, start, end;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&start);
 
-        HMODULE hDll = LoadLibraryA("UtinniCore.dll");
+    HMODULE hDll = LoadLibraryA("UtinniCore.dll");
 
 #ifdef LOADER_LOCK_HARNESS_REGRESSION_PROBE
-        // T-06-04-01 regression probe (NOT compiled by default). Define this macro to
-        // simulate a DllMain that got heavy: an artificial in-window delay inflates EVERY
-        // cycle, so the min-of-3 must cross the 50 ms threshold and the harness must exit 1.
-        // This proves OPT-A's best-of-3 minimum did not blunt the regression guard.
-        // See 06-04-FLAKE-INVESTIGATION.md (Loader-Lock-Harness > Regression probe).
-        Sleep(75);
+    // T-06-04-01 regression probe (NOT compiled by default). Define this macro to
+    // simulate a DllMain that got heavy: an artificial in-window delay inflates EVERY
+    // cycle, so the min-of-3 must cross the 50 ms threshold and the harness must exit 1.
+    // This proves OPT-A's best-of-3 minimum did not blunt the regression guard.
+    // See 06-04-FLAKE-INVESTIGATION.md (Loader-Lock-Harness > Regression probe).
+    Sleep(75);
 #endif
 
-        QueryPerformanceCounter(&end);
+    QueryPerformanceCounter(&end);
 
-        if (hDll == nullptr)
-        {
-            return -1.0;
-        }
-
-        const double elapsedMs = (double)(end.QuadPart - start.QuadPart) * 1000.0 / (double)freq.QuadPart;
-        FreeLibrary(hDll);
-        return elapsedMs;
+    if (hDll == nullptr)
+    {
+        return -1.0;
     }
+
+    const double elapsedMs = (double)(end.QuadPart - start.QuadPart) * 1000.0 / (double)freq.QuadPart;
+    FreeLibrary(hDll);
+    return elapsedMs;
 }
+} // namespace
 
 int main(int /*argc*/, char* /*argv*/[])
 {

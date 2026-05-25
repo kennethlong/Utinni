@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "io_win.h"
 #include "utility/log.h"
@@ -33,7 +33,7 @@ namespace swg::ioWin
 using pDraw = void(__thiscall*)(utinni::IoWin* pThis);
 
 pDraw draw = (pDraw)0x00AB58E0;
-}
+} // namespace swg::ioWin
 
 namespace swg::messageQueue
 {
@@ -46,7 +46,7 @@ pGetCount getCount = (pGetCount)0x00AA6660;
 pGetMessage getMessage = (pGetMessage)0x00AA63B0;
 pAppendMessage appendMessage = (pAppendMessage)0x00AA6640;
 pAppendMessageData appendMessageData = (pAppendMessageData)0x00AA6480;
-}
+} // namespace swg::messageQueue
 
 namespace utinni
 {
@@ -57,7 +57,7 @@ void __fastcall hkDraw(IoWin* pThis, swgptr EDX)
 }
 void IoWin::detour()
 {
-    //swg::ioWin::draw = (swg::ioWin::pDraw)Detour::Create(swg::ioWin::draw, hkDraw, DETOUR_TYPE_PUSH_RET);
+    // swg::ioWin::draw = (swg::ioWin::pDraw)Detour::Create(swg::ioWin::draw, hkDraw, DETOUR_TYPE_PUSH_RET);
 }
 
 // DIAG 2026-05-20 Issue #11 Phase G (per CODEX consult): instrument
@@ -76,8 +76,8 @@ void __fastcall hkAppendMessage(MessageQueue* pThis, DWORD EDX, int msg, float v
         const void* callerPC = _ReturnAddress();
         char m[200];
         snprintf(m, sizeof(m),
-            "hkAppendMessage[%d]: queue=0x%p msg=0x%X value=%.3f flags=0x%p caller=0x%p",
-            s_appendMsgLogCount, (void*)pThis, (unsigned)msg, value, (void*)flags, callerPC);
+                 "hkAppendMessage[%d]: queue=0x%p msg=0x%X value=%.3f flags=0x%p caller=0x%p",
+                 s_appendMsgLogCount, (void*)pThis, (unsigned)msg, value, (void*)flags, callerPC);
         utinni::log::info(m);
     }
     swg::messageQueue::appendMessage(pThis, msg, value, flags);
@@ -92,8 +92,8 @@ void __fastcall hkAppendMessageData(MessageQueue* pThis, DWORD EDX, int msg, flo
         const void* callerPC = _ReturnAddress();
         char m[224];
         snprintf(m, sizeof(m),
-            "hkAppendMessageData[%d]: queue=0x%p msg=0x%X value=%.3f data=0x%p flags=0x%p caller=0x%p",
-            s_appendDataLogCount, (void*)pThis, (unsigned)msg, value, (void*)data, (void*)flags, callerPC);
+                 "hkAppendMessageData[%d]: queue=0x%p msg=0x%X value=%.3f data=0x%p flags=0x%p caller=0x%p",
+                 s_appendDataLogCount, (void*)pThis, (unsigned)msg, value, (void*)data, (void*)flags, callerPC);
         utinni::log::info(m);
     }
     swg::messageQueue::appendMessageData(pThis, msg, value, data, flags);
@@ -124,4 +124,4 @@ void MessageQueue::appendMessage(int msg, float value, swgptr data)
 {
     swg::messageQueue::appendMessageData(this, msg, value, data, nullptr);
 }
-}
+} // namespace utinni

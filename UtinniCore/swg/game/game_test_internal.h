@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -44,14 +44,14 @@ namespace utinni
 {
 namespace test_internal
 {
-    // Fires every registered installCallback via the R-H snapshot
-    // dispatch path. Wraps the implementation in game.cpp; the registry
-    // itself remains file-scope static so the symbol does not leak.
-    void triggerInstallCallbacks();
+// Fires every registered installCallback via the R-H snapshot
+// dispatch path. Wraps the implementation in game.cpp; the registry
+// itself remains file-scope static so the symbol does not leak.
+void triggerInstallCallbacks();
 
-    // Returns the current size of the installCallbacks registry. Used
-    // by utinni_test_installSubscriberCount to assert handle counts in
-    // NativeCallbacksHandleTests.
-    int getInstallSubscriberCount();
-}
-}
+// Returns the current size of the installCallbacks registry. Used
+// by utinni_test_installSubscriberCount to assert handle counts in
+// NativeCallbacksHandleTests.
+int getInstallSubscriberCount();
+} // namespace test_internal
+} // namespace utinni

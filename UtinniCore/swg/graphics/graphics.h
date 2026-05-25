@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -30,7 +30,7 @@
 
 namespace utinni
 {
-    class UTINNI_API Graphics
+class UTINNI_API Graphics
 {
 public:
     // Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09): Subscribe returns an
@@ -84,7 +84,5 @@ public:
     static void drawExtent(Extent* extent, swgptr vecArgbColor);
 
     static void detour();
-
 };
-};
-
+}; // namespace utinni

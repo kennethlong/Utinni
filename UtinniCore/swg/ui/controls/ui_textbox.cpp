@@ -20,18 +20,18 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "ui_textbox.h"
 
 namespace swg::uiTextbox
 {
-using pCtor = utinni::UITextbox* (__thiscall*)(utinni::UITextbox* pThis);
+using pCtor = utinni::UITextbox*(__thiscall*)(utinni::UITextbox * pThis);
 using pSetLocalText = void(__thiscall*)(utinni::UITextbox* pThis, const swg::WString& text);
 
 pCtor ctor = (pCtor)0x0112CFC0;
 pSetLocalText setLocalText = (pSetLocalText)0x01120250;
-}
+} // namespace swg::uiTextbox
 
 namespace utinni
 {
@@ -45,4 +45,4 @@ void UITextbox::setLocalText(const swg::WString& text)
     swg::uiTextbox::setLocalText(this, text);
 }
 
-}
+} // namespace utinni

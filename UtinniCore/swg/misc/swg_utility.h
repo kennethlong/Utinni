@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -33,4 +33,4 @@ UTINNI_API extern unsigned int calculateCrc(const char* string);
 
 UTINNI_API extern swgptr treeFileOpen(const char* filename, int priorityType, bool allowFail);
 
-}
+} // namespace utinni

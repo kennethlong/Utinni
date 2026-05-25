@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -39,9 +39,13 @@ template <class T1, class T2>
 extern T1 union_cast(T2 v)
 {
     static_assert(sizeof(T1) >= sizeof(T2), "Bad union_cast -- Size T1 is larger than T2");
-    union UT { T1 t1; T2 t2; } u{};
+    union UT
+    {
+        T1 t1;
+        T2 t2;
+    } u{};
     u.t2 = v;
     return u.t1;
 }
 
-}
+} // namespace utility

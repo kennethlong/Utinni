@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "debug_camera.h"
 #include "camera.h"
@@ -33,7 +33,7 @@ namespace swg::debugCamera
 using pAlter = float(__thiscall*)(utinni::GameCamera* pThis, float time);
 
 pAlter alter = (pAlter)0x006DA1B0;
-}
+} // namespace swg::debugCamera
 
 static const swg::math::Vector dirX(1, 0, 0);
 static const swg::math::Vector dirY(0, 1, 0);
@@ -90,11 +90,11 @@ void processIoEvent(IoEvent* ioEvent)
 
     switch (ioEvent->type)
     {
-    case IoEvent::Type::t_Character: 
+    case IoEvent::Type::t_Character:
         break;
 
     case IoEvent::Type::t_KeyDown:
-        switch(ioEvent->arg2)
+        switch (ioEvent->arg2)
         {
         case IoEvent::Keys::kc_W:
             messageQueue->appendMessage(cmd_forward, 1);
@@ -156,11 +156,10 @@ void processIoEvent(IoEvent* ioEvent)
         case IoEvent::Keys::kc_LShift:
             messageQueue->appendMessage(cmd_speedBoost, 0);
             break;
-
         }
         break;
 
-    case IoEvent::Type::t_MouseButtonDown: 
+    case IoEvent::Type::t_MouseButtonDown:
         break;
 
     case IoEvent::Type::t_MouseButtonUp:
@@ -253,7 +252,6 @@ float __fastcall hkAlter(GameCamera* pThis, swgptr EDX, float time)
         case cmd_speedBoost:
             speedBoost = value == 1;
             break;
-
         }
     }
 
@@ -308,4 +306,4 @@ void patch()
     // Enable mouse wheel to be sent to debugCamera::alter
     memory::nopAddress(0x0051AA8D, 2);
 }
-};
+}; // namespace utinni::debugCamera

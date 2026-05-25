@@ -1,13 +1,11 @@
 #include "example_command_parser.h"
 
-
 namespace example
 {
 static const utinni::CommandParser::CommandData commands[] =
-{
-    {"test1", 0, "", "Example Test Command 1"},
-    {"test2", 0, "", "Example Test Command 2"}
-};
+    {
+        {"test1", 0, "", "Example Test Command 1"},
+        {"test2", 0, "", "Example Test Command 2"}};
 
 ExampleCommandParser::ExampleCommandParser() : utinni::CommandParser("example", 0, "...", "Example related commands.", nullptr)
 {
@@ -42,4 +40,4 @@ void ExampleCommandParser::create(CommandParser* mainCommandParser)
 {
     mainCommandParser->addSubCommand(utinni::swg_new<ExampleCommandParser>());
 }
-}
+} // namespace example

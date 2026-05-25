@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "utility.h"
 
@@ -47,7 +47,7 @@ void showLastErrorMessageBox()
 
     LPSTR messageBuffer = nullptr;
     size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-        nullptr, errorMessageId, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
+                                 nullptr, errorMessageId, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
 
     std::string message(messageBuffer, size);
 
@@ -64,7 +64,7 @@ std::string getWorkingDirectory()
 
 std::string wstring_to_string(const std::wstring& wstr)
 {
-    if (wstr.empty()) 
+    if (wstr.empty())
         return std::string();
 
     int strSize = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), nullptr, 0, nullptr, nullptr);
@@ -73,5 +73,4 @@ std::string wstring_to_string(const std::wstring& wstr)
     return str;
 }
 
-
-}
+} // namespace utility

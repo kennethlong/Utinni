@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -39,24 +39,24 @@ public:
     // Subscribe returns an opaque int (handle 0 reserved as invalid sentinel);
     // pair with Unsubscribe(handle). Add* retained per D-10 as thin wrappers
     // for source-compat with existing UtinniPlugins (TJT, Sytner).
-    static int subscribeInstallCallback(void(*func)());
+    static int subscribeInstallCallback(void (*func)());
     static bool unsubscribeInstallCallback(int handle);
-    static int subscribePreMainLoopCallback(void(*func)());
+    static int subscribePreMainLoopCallback(void (*func)());
     static bool unsubscribePreMainLoopCallback(int handle);
-    static int subscribeMainLoopCallback(void(*func)());
+    static int subscribeMainLoopCallback(void (*func)());
     static bool unsubscribeMainLoopCallback(int handle);
-    static int subscribeSetSceneCallback(void(*func)());
+    static int subscribeSetSceneCallback(void (*func)());
     static bool unsubscribeSetSceneCallback(int handle);
-    static int subscribeCleanupSceneCallback(void(*func)());
+    static int subscribeCleanupSceneCallback(void (*func)());
     static bool unsubscribeCleanupSceneCallback(int handle);
 
     // Legacy add* API (D-10): thin wrappers around subscribe*. Return value
     // discarded — existing UtinniPlugins keep working without recompile.
-    static void addInstallCallback(void(*func)());
-    static void addPreMainLoopCallback(void(*func)());
-    static void addMainLoopCallback(void(*func)());
-    static void addSetSceneCallback(void(*func)());
-    static void addCleanupSceneCallback(void(*func)());
+    static void addInstallCallback(void (*func)());
+    static void addPreMainLoopCallback(void (*func)());
+    static void addMainLoopCallback(void (*func)());
+    static void addSetSceneCallback(void (*func)());
+    static void addCleanupSceneCallback(void (*func)());
 
     static void detour();
     static void quit();
@@ -86,4 +86,4 @@ public:
     // the `test_internal::TestImpl` discipline used by plugin_manager.cpp
     // (R-B) to keep test seams out of UTINNI_API headers.
 };
-}
+} // namespace utinni

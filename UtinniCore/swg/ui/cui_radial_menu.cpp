@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "cui_radial_menu.h"
 #include "swg/ui/imgui_impl.h"
@@ -33,7 +33,7 @@ using pClear = void(__cdecl*)();
 pUpdate update = (pUpdate)0x009698C0;
 pClear clear = (pClear)0x0096C550;
 
-}
+} // namespace swg::cuiRadialMenuManager
 
 namespace utinni
 {
@@ -52,4 +52,4 @@ void cuiRadialMenuManager::detour()
     swg::cuiRadialMenuManager::update = (swg::cuiRadialMenuManager::pUpdate)Detour::Create((LPVOID)swg::cuiRadialMenuManager::update, hkUpdate, DETOUR_TYPE_PUSH_RET);
 }
 
-}
+} // namespace utinni

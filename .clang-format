@@ -1,0 +1,32 @@
+# Phase 6 (Plan 06-05 / D-12): codifies the de-facto C++ style documented in
+# .planning/codebase/CONVENTIONS.md -- Allman braces, 4-space indent, never tabs.
+# Applied repo-wide in a single bulk commit; that commit's SHA is recorded in
+# .git-blame-ignore-revs so `git blame --ignore-revs-file` skips the reformat.
+#
+# LineEnding is intentionally NOT pinned: clang-format's default (DeriveLF)
+# preserves each file's existing EOL, which keeps the CI `--dry-run --Werror`
+# check EOL-agnostic across the local working tree (CRLF, autocrlf=true) and a
+# CI checkout (may be LF). Pinning CRLF/LF would make the dry-run rewrite every
+# line in the other environment and fail spuriously.
+#
+# SortIncludes is OFF on purpose: existing #include ordering is load-bearing in
+# several files (pair-header-first, then build-order-dependent locals).
+Language: Cpp
+BasedOnStyle: LLVM
+BreakBeforeBraces: Allman
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 0
+NamespaceIndentation: None
+AccessModifierOffset: -4
+AlignAfterOpenBracket: Align
+AllowShortFunctionsOnASingleLine: Empty
+KeepEmptyLinesAtTheStartOfBlocks: false
+SortIncludes: false
+# Preserve the codebase's left-aligned pointer/reference style (`const char* x`,
+# `const std::string&`) per CONVENTIONS.md. LLVM's default (Right) would flip
+# every declaration to `const char *x` -- a convention violation, not cosmetics.
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Left

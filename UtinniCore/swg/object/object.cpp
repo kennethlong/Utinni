@@ -20,8 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
-
+ **/
 
 #include "object.h"
 #include "swg/appearance/appearance.h"
@@ -32,9 +31,9 @@
 
 namespace swg::objectTemplateList
 {
-using pGetObjectTemplateByFilename = utinni::SharedObjectTemplate* (__cdecl*)(const char* filename);
-using pGetObjectTemplateByIff = utinni::SharedObjectTemplate* (__cdecl*)(swgptr iff);
-using pGetObjectTemplateByCrc = utinni::SharedObjectTemplate* (__cdecl*)(unsigned int crc);
+using pGetObjectTemplateByFilename = utinni::SharedObjectTemplate*(__cdecl*)(const char* filename);
+using pGetObjectTemplateByIff = utinni::SharedObjectTemplate*(__cdecl*)(swgptr iff);
+using pGetObjectTemplateByCrc = utinni::SharedObjectTemplate*(__cdecl*)(unsigned int crc);
 
 using pReloadObject = swgptr(__cdecl*)(swgptr iff);
 
@@ -49,20 +48,20 @@ pReloadObject reloadObject = (pReloadObject)0x00B289B0;
 
 pGetCrcStringByName getCrcStringByName = (pGetCrcStringByName)0x00B28A10;
 pGetCrcStringByCrc getCrcStringByCrc = (pGetCrcStringByCrc)0x00B28AA0;
-}
+} // namespace swg::objectTemplateList
 
 namespace swg::objectTemplate
 {
-using pCreateObject = utinni::Object* (__cdecl*)(const char* filename);
+using pCreateObject = utinni::Object*(__cdecl*)(const char* filename);
 
 pCreateObject createObject = (pCreateObject)0x00B2E760;
-}
+} // namespace swg::objectTemplate
 
 namespace swg::sharedObjectTemplate
 {
-using pGetAppearancetFilename = const char** (__thiscall*)(utinni::SharedObjectTemplate* pThis, bool unk);
-using pGetPortalLayoutFilename = const char** (__thiscall*)(utinni::SharedObjectTemplate* pThis, bool unk);
-using pGetClientDataFilename = const char** (__thiscall*)(utinni::SharedObjectTemplate* pThis, bool unk);
+using pGetAppearancetFilename = const char**(__thiscall*)(utinni::SharedObjectTemplate * pThis, bool unk);
+using pGetPortalLayoutFilename = const char**(__thiscall*)(utinni::SharedObjectTemplate * pThis, bool unk);
+using pGetClientDataFilename = const char**(__thiscall*)(utinni::SharedObjectTemplate * pThis, bool unk);
 
 using pGetGameObjectType = int(__thiscall*)(utinni::SharedObjectTemplate* pThis, bool unk);
 
@@ -71,22 +70,22 @@ pGetPortalLayoutFilename getPortalLayoutFilename = (pGetPortalLayoutFilename)0x0
 pGetClientDataFilename getClientDataFilename = (pGetClientDataFilename)0x011A6E50;
 
 pGetGameObjectType getGameObjectType = (pGetGameObjectType)0x011A8B60;
-}
+} // namespace swg::sharedObjectTemplate
 
 namespace swg::sharedBuildingObjectTemplate
 {
-using pGetTerrainLayerFilename = const char* (__thiscall*)(utinni::SharedBuildingObjectTemplate* pThis, bool unk);
-using pGetInteriorLayoutFilename = const char* (__thiscall*)(utinni::SharedBuildingObjectTemplate* pThis, bool unk);
+using pGetTerrainLayerFilename = const char*(__thiscall*)(utinni::SharedBuildingObjectTemplate * pThis, bool unk);
+using pGetInteriorLayoutFilename = const char*(__thiscall*)(utinni::SharedBuildingObjectTemplate * pThis, bool unk);
 
 pGetTerrainLayerFilename getTerrainLayerFilename = (pGetTerrainLayerFilename)0x01231910;
 pGetInteriorLayoutFilename getInteriorLayoutFilename = (pGetInteriorLayoutFilename)0x01231A30;
-}
+} // namespace swg::sharedBuildingObjectTemplate
 
 namespace swg::object
 {
-using pCtor = utinni::Object* (__thiscall*)(utinni::Object* pThis);
+using pCtor = utinni::Object*(__thiscall*)(utinni::Object * pThis);
 
-using pIsActive = bool (__thiscall*)(utinni::Object* pThis);
+using pIsActive = bool(__thiscall*)(utinni::Object* pThis);
 
 using pDisallowDelete = void(__cdecl*)(bool disallowDelete);
 
@@ -99,35 +98,35 @@ using pRemoveFromWorld = void(__thiscall*)(utinni::Object* pThis);
 
 using pMove = void(__thiscall*)(utinni::Object* pThis, const swg::math::Vector& vector);
 
-using pGetTransform_o2w = swg::math::Transform* (__thiscall*)(utinni::Object* pThis);
+using pGetTransform_o2w = swg::math::Transform*(__thiscall*)(utinni::Object * pThis);
 using pSetTransform_o2w = void(__thiscall*)(utinni::Object* pThis, swg::math::Transform& objectToWorld);
-using pGetTransform_a2w = swg::math::Transform* (__thiscall*)(utinni::Object* pThis);
+using pGetTransform_a2w = swg::math::Transform*(__thiscall*)(utinni::Object * pThis);
 using pSetTransform_a2w = void(__thiscall*)(utinni::Object* pThis, swg::math::Transform& appearanceToWorld);
 
-using pGetPosition = swg::math::Vector* (__thiscall*)(utinni::Object* pThis);
+using pGetPosition = swg::math::Vector*(__thiscall*)(utinni::Object * pThis);
 using pSetPosition = void(__thiscall*)(utinni::Object* pThis, swg::math::Vector& position);
 
 using pSetScale = void(__thiscall*)(utinni::Object* pThis, swg::math::Vector& scale);
 
 using pRotate_o2w = const swg::math::Vector(__thiscall*)(utinni::Object* pThis, DWORD unk, const swg::math::Vector* o2w, const swg::math::Vector* pointInSpace); // ??
 
-using pGetAppearance = utinni::Appearance* (__thiscall*)(utinni::Object* pThis);
+using pGetAppearance = utinni::Appearance*(__thiscall*)(utinni::Object * pThis);
 using pSetAppearance = void(__thiscall*)(utinni::Object* pThis, utinni::Appearance* appearance);
-using pGetAppearanceFilename = const char* (__thiscall*)(utinni::Object* pThis);
+using pGetAppearanceFilename = const char*(__thiscall*)(utinni::Object * pThis);
 using pSetAppearanceByFilename = void(__thiscall*)(utinni::Object* pThis, const char* filename);
 
 using pAddNotification = void(__thiscall*)(utinni::Object* pThis, swgptr notification, bool allowInWorld);
 using pRemoveNotification = void(__thiscall*)(utinni::Object* pThis, swgptr notification, bool allowInWorld);
 
-using pGetParentCell = utinni::CellProperty* (__thiscall*)(utinni::Object* pThis);
+using pGetParentCell = utinni::CellProperty*(__thiscall*)(utinni::Object * pThis);
 
 using pSetObjectToWorldDirty = void(__thiscall*)(utinni::Object* pThis, bool isDirty);
 
 using pPositionAndRotationChanged = void(__thiscall*)(utinni::Object* pThis, bool dueToParentChange, swg::math::Vector& oldPosition);
 
-using pGetClientObject = utinni::ClientObject*(__thiscall*)(utinni::Object* pThis);
+using pGetClientObject = utinni::ClientObject*(__thiscall*)(utinni::Object * pThis);
 
-using pGetTemplateFilename = const char* (__thiscall*)(utinni::Object* pThis);
+using pGetTemplateFilename = const char*(__thiscall*)(utinni::Object * pThis);
 
 pCtor ctor = (pCtor)0x00B21B80;
 
@@ -173,7 +172,7 @@ pPositionAndRotationChanged positionAndRotationChanged = (pPositionAndRotationCh
 pGetClientObject getClientObject = (pGetClientObject)0x00554BC0;
 
 pGetTemplateFilename getTemplateFilename = (pGetTemplateFilename)0x00B23C40;
-}
+} // namespace swg::object
 
 namespace utinni
 {
@@ -348,4 +347,4 @@ const char* Object::getAppearanceFilename()
 {
     return swg::object::getAppearanceFilename(this);
 }
-}
+} // namespace utinni

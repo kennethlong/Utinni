@@ -20,17 +20,16 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "skeleton.h"
-
 
 namespace swg::skeleton
 {
 using pAddShaderPrimitives = void(__thiscall*)(swgptr pThis, swgptr pSkeletalAppearance);
 
 pAddShaderPrimitives addShaderPrimitives = (pAddShaderPrimitives)0x007E6C50;
-}
+} // namespace swg::skeleton
 
 namespace swg::skeletalAppearance
 {
@@ -39,7 +38,7 @@ using pGetDisplayLodSkeleton = swgptr(__thiscall*)(swgptr pThis);
 
 pRender render = (pRender)0x007C8B60;
 pGetDisplayLodSkeleton getDisplayLodSkeleton = (pGetDisplayLodSkeleton)0x007CA130;
-}
+} // namespace swg::skeletalAppearance
 
 namespace utinni
 {
@@ -71,6 +70,6 @@ void detour()
     swg::skeletalAppearance::render = (swg::skeletalAppearance::pRender)Detour::Create(swg::skeletalAppearance::render, hkRender, DETOUR_TYPE_PUSH_RET);
 }
 
-}
+} // namespace skeletalAppearance
 
-}
+} // namespace utinni

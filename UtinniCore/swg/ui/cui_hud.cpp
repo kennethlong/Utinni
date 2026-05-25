@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "cui_hud.h"
 #include "swg/ui/imgui_impl.h"
@@ -37,13 +37,13 @@ namespace swg::cuiHud
 {
 using pUpdate = void(__thiscall*)(swgptr pThis, float time);
 using pActionPerformAction = bool(__thiscall*)(swgptr pThis, DWORD val1, DWORD val2);
-using pGetTarget = utinni::Object* (__cdecl*)(utinni::Camera* pCamera, math::Vector* worldStart, math::Vector* worldEnd, utinni::Object* obj);
+using pGetTarget = utinni::Object*(__cdecl*)(utinni::Camera * pCamera, math::Vector* worldStart, math::Vector* worldEnd, utinni::Object* obj);
 
 pUpdate update = (pUpdate)0x00BD56F0;
 pActionPerformAction actionPerformAction = (pActionPerformAction)0x00EDBAA0;
 pGetTarget getTarget = (pGetTarget)0x00BD3E20;
 
-}
+} // namespace swg::cuiHud
 
 // DIAG 2026-05-20 Issue #12 Phase A: SwgCuiGameMenu is the SWG system-menu
 // mediator class (resolved by hunting for the class-name string
@@ -62,7 +62,7 @@ namespace swg::cuiGameMenu
 {
 using pSwgCuiGameMenuCtor = swgptr(__thiscall*)(swgptr pThis, swgptr pPage);
 pSwgCuiGameMenuCtor swgCuiGameMenuCtor = (pSwgCuiGameMenuCtor)0x00C7D360;
-}
+} // namespace swg::cuiGameMenu
 
 namespace utinni::cuiHud
 {
@@ -88,16 +88,18 @@ bool __fastcall hkActionPerformAction(swgptr pThis, DWORD EDX, DWORD val1, DWORD
     const void* callerPC = _ReturnAddress();
 
     // Pre-call snapshot: vtable + struct contents
-    DWORD vtbl  = (pThis != 0) ? memory::read<DWORD>(pThis) : 0;
+    DWORD vtbl = (pThis != 0) ? memory::read<DWORD>(pThis) : 0;
     DWORD v1[8] = {0};
     DWORD v2[8] = {0};
     if (val1 != 0)
     {
-        for (int i = 0; i < 8; ++i) v1[i] = memory::read<DWORD>(val1 + (DWORD)(i * 4));
+        for (int i = 0; i < 8; ++i)
+            v1[i] = memory::read<DWORD>(val1 + (DWORD)(i * 4));
     }
     if (val2 != 0)
     {
-        for (int i = 0; i < 8; ++i) v2[i] = memory::read<DWORD>(val2 + (DWORD)(i * 4));
+        for (int i = 0; i < 8; ++i)
+            v2[i] = memory::read<DWORD>(val2 + (DWORD)(i * 4));
     }
 
     // Hover-skip path: log + return false without calling trampoline.
@@ -109,12 +111,12 @@ bool __fastcall hkActionPerformAction(swgptr pThis, DWORD EDX, DWORD val1, DWORD
             ++s_logCount;
             char m[512];
             snprintf(m, sizeof(m),
-                "hkActionPerformAction[%d]: SKIPPED (gizmoHover=1) pThis=0x%p vtbl=0x%08X caller=0x%p\n"
-                "  val1=0x%08X [%08X %08X %08X %08X %08X %08X %08X %08X]\n"
-                "  val2=0x%08X [%08X %08X %08X %08X %08X %08X %08X %08X]",
-                s_logCount, (void*)pThis, vtbl, callerPC,
-                (unsigned)val1, v1[0], v1[1], v1[2], v1[3], v1[4], v1[5], v1[6], v1[7],
-                (unsigned)val2, v2[0], v2[1], v2[2], v2[3], v2[4], v2[5], v2[6], v2[7]);
+                     "hkActionPerformAction[%d]: SKIPPED (gizmoHover=1) pThis=0x%p vtbl=0x%08X caller=0x%p\n"
+                     "  val1=0x%08X [%08X %08X %08X %08X %08X %08X %08X %08X]\n"
+                     "  val2=0x%08X [%08X %08X %08X %08X %08X %08X %08X %08X]",
+                     s_logCount, (void*)pThis, vtbl, callerPC,
+                     (unsigned)val1, v1[0], v1[1], v1[2], v1[3], v1[4], v1[5], v1[6], v1[7],
+                     (unsigned)val2, v2[0], v2[1], v2[2], v2[3], v2[4], v2[5], v2[6], v2[7]);
             utinni::log::info(m);
         }
         return false;
@@ -127,12 +129,12 @@ bool __fastcall hkActionPerformAction(swgptr pThis, DWORD EDX, DWORD val1, DWORD
         ++s_logCount;
         char m[512];
         snprintf(m, sizeof(m),
-            "hkActionPerformAction[%d]: PASS pThis=0x%p vtbl=0x%08X ret=%d caller=0x%p\n"
-            "  val1=0x%08X [%08X %08X %08X %08X %08X %08X %08X %08X]\n"
-            "  val2=0x%08X [%08X %08X %08X %08X %08X %08X %08X %08X]",
-            s_logCount, (void*)pThis, vtbl, ret ? 1 : 0, callerPC,
-            (unsigned)val1, v1[0], v1[1], v1[2], v1[3], v1[4], v1[5], v1[6], v1[7],
-            (unsigned)val2, v2[0], v2[1], v2[2], v2[3], v2[4], v2[5], v2[6], v2[7]);
+                 "hkActionPerformAction[%d]: PASS pThis=0x%p vtbl=0x%08X ret=%d caller=0x%p\n"
+                 "  val1=0x%08X [%08X %08X %08X %08X %08X %08X %08X %08X]\n"
+                 "  val2=0x%08X [%08X %08X %08X %08X %08X %08X %08X %08X]",
+                 s_logCount, (void*)pThis, vtbl, ret ? 1 : 0, callerPC,
+                 (unsigned)val1, v1[0], v1[1], v1[2], v1[3], v1[4], v1[5], v1[6], v1[7],
+                 (unsigned)val2, v2[0], v2[1], v2[2], v2[3], v2[4], v2[5], v2[6], v2[7]);
         utinni::log::info(m);
 
         // DIAG 2026-05-20 Issue #12 Phase B: dump the strings pointed to by
@@ -147,35 +149,57 @@ bool __fastcall hkActionPerformAction(swgptr pThis, DWORD EDX, DWORD val1, DWORD
         if (v1[0] != 0)
         {
             int len = (int)(v1[1] - v1[0]);
-            if (len < 1) len = 1;
-            if (len > 32) len = 32;
+            if (len < 1)
+                len = 1;
+            if (len > 32)
+                len = 32;
             for (int j = 0; j < len; ++j)
             {
-                __try { str_a[j] = (char)memory::read<byte>((swgptr)(v1[0] + (DWORD)j)); }
-                __except(EXCEPTION_EXECUTE_HANDLER) { str_a[j] = '?'; break; }
-                if (str_a[j] == 0) break;
-                if (str_a[j] < 0x20 || str_a[j] >= 0x7F) str_a[j] = '.';
+                __try
+                {
+                    str_a[j] = (char)memory::read<byte>((swgptr)(v1[0] + (DWORD)j));
+                }
+                __except (EXCEPTION_EXECUTE_HANDLER)
+                {
+                    str_a[j] = '?';
+                    break;
+                }
+                if (str_a[j] == 0)
+                    break;
+                if (str_a[j] < 0x20 || str_a[j] >= 0x7F)
+                    str_a[j] = '.';
             }
             str_a[len] = 0;
         }
         if (v1[3] != 0)
         {
             int len = (int)(v1[4] - v1[3]);
-            if (len < 1) len = 1;
-            if (len > 32) len = 32;
+            if (len < 1)
+                len = 1;
+            if (len > 32)
+                len = 32;
             for (int j = 0; j < len; ++j)
             {
-                __try { str_b[j] = (char)memory::read<byte>((swgptr)(v1[3] + (DWORD)j)); }
-                __except(EXCEPTION_EXECUTE_HANDLER) { str_b[j] = '?'; break; }
-                if (str_b[j] == 0) break;
-                if (str_b[j] < 0x20 || str_b[j] >= 0x7F) str_b[j] = '.';
+                __try
+                {
+                    str_b[j] = (char)memory::read<byte>((swgptr)(v1[3] + (DWORD)j));
+                }
+                __except (EXCEPTION_EXECUTE_HANDLER)
+                {
+                    str_b[j] = '?';
+                    break;
+                }
+                if (str_b[j] == 0)
+                    break;
+                if (str_b[j] < 0x20 || str_b[j] >= 0x7F)
+                    str_b[j] = '.';
             }
             str_b[len] = 0;
         }
         char m2[256];
         snprintf(m2, sizeof(m2),
-            "  ^ str_a (val1[0..1]) = '%s'   str_b (val1[3..4]) = '%s'",
-            str_a, str_b);
+                 "  ^ str_a (val1[0..1]) = '%s'   str_b (val1[3..4]) = '%s'",
+                 str_a, str_b);
         utinni::log::info(m2);
     }
     return ret;
@@ -216,7 +240,7 @@ Object* __cdecl hkGetTarget(Camera* pCamera, swg::math::Vector* worldStart, swg:
     {
         cursorWorldPos = swg::math::Vector(collisionResults.point);
 
-        //log::info(collisionResults.object->getAppearanceFilename());
+        // log::info(collisionResults.object->getAppearanceFilename());
     }
 
     return swg::cuiHud::getTarget(pCamera, worldStart, worldEnd, obj);
@@ -228,14 +252,14 @@ __declspec(naked) void midUpdate()
 {
     swgptr pTargetUnderCursor;
     __asm
-    {
+        {
         mov pTargetUnderCursor, ecx
         pushad
         pushfd
-    }
+        }
 
     targetUnderCursor = (Object*)pTargetUnderCursor;
-    
+
     __asm
     {
         popfd
@@ -265,7 +289,7 @@ void patchAllowTargetEverything(bool value)
     }
     else
     {
-        static constexpr byte originalBytes[] = { 0x8B, 0xCE, 0xE8, 0x76, 0xF9 }; // call client.9C18A0
+        static constexpr byte originalBytes[] = {0x8B, 0xCE, 0xE8, 0x76, 0xF9}; // call client.9C18A0
         memory::copy(0x00BD3FA3, originalBytes);
     }
 }
@@ -292,8 +316,8 @@ swgptr __fastcall hkSwgCuiGameMenuCtor(swgptr pThis, swgptr EDX, swgptr pPage)
         const void* callerPC = _ReturnAddress();
         char m[200];
         snprintf(m, sizeof(m),
-            "hkSwgCuiGameMenuCtor[%d]: SwgCuiGameMenu CONSTRUCTED pThis=0x%p pPage=0x%p caller=0x%p",
-            s_count, (void*)pThis, (void*)pPage, callerPC);
+                 "hkSwgCuiGameMenuCtor[%d]: SwgCuiGameMenu CONSTRUCTED pThis=0x%p pPage=0x%p caller=0x%p",
+                 s_count, (void*)pThis, (void*)pPage, callerPC);
         utinni::log::info(m);
     }
     return swg::cuiGameMenu::swgCuiGameMenuCtor(pThis, pPage);
@@ -301,14 +325,14 @@ swgptr __fastcall hkSwgCuiGameMenuCtor(swgptr pThis, swgptr EDX, swgptr pPage)
 
 void detour()
 {
-    //swg::cuiHud::update = (swg::cuiHud::pUpdate)Detour::Create((LPVOID)swg::cuiHud::update, hkUpdate, DETOUR_TYPE_PUSH_RET);
+    // swg::cuiHud::update = (swg::cuiHud::pUpdate)Detour::Create((LPVOID)swg::cuiHud::update, hkUpdate, DETOUR_TYPE_PUSH_RET);
     swg::cuiHud::actionPerformAction = (swg::cuiHud::pActionPerformAction)Detour::Create((LPVOID)swg::cuiHud::actionPerformAction, hkActionPerformAction, DETOUR_TYPE_PUSH_RET);
     swg::cuiHud::getTarget = (swg::cuiHud::pGetTarget)Detour::Create((LPVOID)swg::cuiHud::getTarget, hkGetTarget, DETOUR_TYPE_PUSH_RET);
 
     // DIAG Issue #12 Phase A: SwgCuiGameMenu ctor detour
     swg::cuiGameMenu::swgCuiGameMenuCtor = (swg::cuiGameMenu::pSwgCuiGameMenuCtor)Detour::Create((LPVOID)swg::cuiGameMenu::swgCuiGameMenuCtor, hkSwgCuiGameMenuCtor, DETOUR_TYPE_PUSH_RET);
 
-    //memory::createJMP(0x00BD5951, (swgptr)midUpdate, 6); // Mid CuiHud::update detour
+    // memory::createJMP(0x00BD5951, (swgptr)midUpdate, 6); // Mid CuiHud::update detour
 }
 
-}
+} // namespace utinni::cuiHud

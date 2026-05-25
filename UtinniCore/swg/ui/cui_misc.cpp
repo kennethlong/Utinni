@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "cui_misc.h"
 #include "controls/ui_textbox.h"
@@ -31,7 +31,7 @@ namespace swg::cuiMisc
 using pSwgCuiHudFactoryReloadUi = void(__cdecl*)();
 
 pSwgCuiHudFactoryReloadUi swgCuiHudFactoryReloadUi = (pSwgCuiHudFactoryReloadUi)0x00BAA7E0;
-}
+} // namespace swg::cuiMisc
 
 namespace swg::cuiLoginScreen
 {
@@ -43,8 +43,7 @@ pCtor ctor = (pCtor)0x00C8CE00;
 pActivate activate = (pActivate)0x00C8D190;
 pLogin login = (pLogin)0x00C8D5D0;
 
-}
-
+} // namespace swg::cuiLoginScreen
 
 namespace utinni::cuiMisc
 {
@@ -62,12 +61,11 @@ void patch()
         memory::nopAddress(0x00C8D250, 15);
 
         // Enable the Location button inside the ESC menu inside a scene
-        static constexpr byte locationBtnPatchBuffer[] = { 0x6A, 0x01, // push 1
-                                          0x51, // push ecx
-                                          0x8B, 0xCE, // mov ecx, esi
-                                          0xE8, 0x17, 0x43, 0xD4, 0xFF }; // call client.9C18A0
+        static constexpr byte locationBtnPatchBuffer[] = {0x6A, 0x01,                    // push 1
+                                                          0x51,                          // push ecx
+                                                          0x8B, 0xCE,                    // mov ecx, esi
+                                                          0xE8, 0x17, 0x43, 0xD4, 0xFF}; // call client.9C18A0
         memory::copy(0x00C7D57F, locationBtnPatchBuffer);
-
 
         // Disable the CUI resize based on RESO chunk in settings
         memory::nopAddress(0x009CC385, 6); // Removes RESO.Y changing CUI.X
@@ -75,7 +73,7 @@ void patch()
         memory::nopAddress(0x009CC3BD, 3); // Removes isOk bool being set to false
     }
 }
-}
+} // namespace utinni::cuiMisc
 
 namespace utinni::cuiLoginScreen
 {
@@ -119,8 +117,8 @@ void __fastcall hkActivate(swgptr pThis)
 
 void detour()
 {
-   swg::cuiLoginScreen::ctor = (swg::cuiLoginScreen::pCtor)Detour::Create(swg::cuiLoginScreen::ctor, hkCtor, DETOUR_TYPE_PUSH_RET);
-   swg::cuiLoginScreen::activate = (swg::cuiLoginScreen::pActivate)Detour::Create(swg::cuiLoginScreen::activate, hkActivate, DETOUR_TYPE_PUSH_RET);
+    swg::cuiLoginScreen::ctor = (swg::cuiLoginScreen::pCtor)Detour::Create(swg::cuiLoginScreen::ctor, hkCtor, DETOUR_TYPE_PUSH_RET);
+    swg::cuiLoginScreen::activate = (swg::cuiLoginScreen::pActivate)Detour::Create(swg::cuiLoginScreen::activate, hkActivate, DETOUR_TYPE_PUSH_RET);
 }
 
-}
+} // namespace utinni::cuiLoginScreen

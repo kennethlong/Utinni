@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "creature_object.h"
 #include "swg/object/object.h"
@@ -34,7 +34,7 @@ namespace swg::creatureObject
 using pSetTarget = void(__thiscall*)(swgptr pThis, const int64_t& id);
 
 pSetTarget setTarget = (pSetTarget)0x00434AB0;
-}
+} // namespace swg::creatureObject
 
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry
 // backed by insertion-order std::vector<{handle, fn_ptr}>. Handle 0 reserved
@@ -93,18 +93,21 @@ void dispatchSnapshot(
 }
 } // namespace
 
-static std::vector<CallbackEntry<void(*)(utinni::Object* target)>> onTargetCallbacks;
+static std::vector<CallbackEntry<void (*)(utinni::Object* target)>> onTargetCallbacks;
 static std::mutex onTargetCallbacksMutex;
 static int s_nextOnTargetId = 1;
 
 namespace utinni::creatureObject
 {
 
-int subscribeOnTargetCallback(void(*func)(Object* target))
+int subscribeOnTargetCallback(void (*func)(Object* target))
 {
     std::lock_guard<std::mutex> guard(onTargetCallbacksMutex);
     int id = s_nextOnTargetId++;
-    if (id == 0) { id = s_nextOnTargetId++; } // WR-04 skip-zero
+    if (id == 0)
+    {
+        id = s_nextOnTargetId++;
+    } // WR-04 skip-zero
     onTargetCallbacks.push_back({id, func});
     return id;
 }
@@ -127,7 +130,7 @@ bool unsubscribeOnTargetCallback(int handle)
     return false;
 }
 
-void addOnTargetCallback(void(*func)(Object* target))
+void addOnTargetCallback(void (*func)(Object* target))
 {
     subscribeOnTargetCallback(func);
 }
@@ -141,12 +144,12 @@ void __fastcall hkSetTarget(swgptr pThis, DWORD EDX, const int64_t& id)
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
     // via dispatchSnapshot keeps the path heap-free.
     dispatchSnapshot(onTargetCallbacks, onTargetCallbacksMutex,
-        [obj](void(*func)(Object*)) { func(obj); });
+                     [obj](void (*func)(Object*))
+                     { func(obj); });
 }
 
 void detour()
 {
     swg::creatureObject::setTarget = (swg::creatureObject::pSetTarget)Detour::Create(swg::creatureObject::setTarget, hkSetTarget, DETOUR_TYPE_PUSH_RET);
-}
-;
-}
+};
+} // namespace utinni::creatureObject

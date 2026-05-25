@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 // NOTE: Test-only exports for UtinniCoreDotNet.Tests P/Invoke harnesses (Phase 2).
 // Do not consume from production code; CppSharp generation skips this file because
@@ -39,10 +39,10 @@
 
 namespace directX
 {
-    // Forward declaration — getVtbl is defined in swg/graphics/directx9.cpp but not
-    // in directx9.h (it is an internal function not exported via UTINNI_API).
-    swgptr* getVtbl();
-}
+// Forward declaration — getVtbl is defined in swg/graphics/directx9.cpp but not
+// in directx9.h (it is an internal function not exported via UTINNI_API).
+swgptr* getVtbl();
+} // namespace directX
 
 // getPresentBlockedEvent is a C-linkage file-scope export in directx9.cpp.
 // Declared here for same-TU use — no dllimport needed (same DLL).
@@ -130,13 +130,13 @@ extern "C" __declspec(naked) int64_t __cdecl testCastDoubleNaked()
         push ebp
         mov  ebp, esp
 
-        // __thiscall convention: ECX = first hidden arg = int64_t* networkId (OUT param).
-        // Write the 64-bit sentinel 0xDEADBEEFCAFEBABE through the 8-byte slot.
-        //   Lower 32 bits at [ecx]   = 0xCAFEBABE
-        //   Upper 32 bits at [ecx+4] = 0xDEADBEEF
-        // (little-endian layout: low word first)
-        // C-style 0x hex prefix WITHOUT the MASM trailing 'h' — mixing them is a
-        // C2400 syntax error. MSVC inline asm accepts either form, not both.
+            // __thiscall convention: ECX = first hidden arg = int64_t* networkId (OUT param).
+            // Write the 64-bit sentinel 0xDEADBEEFCAFEBABE through the 8-byte slot.
+            //   Lower 32 bits at [ecx]   = 0xCAFEBABE
+            //   Upper 32 bits at [ecx+4] = 0xDEADBEEF
+            // (little-endian layout: low word first)
+            // C-style 0x hex prefix WITHOUT the MASM trailing 'h' — mixing them is a
+            // C2400 syntax error. MSVC inline asm accepts either form, not both.
         mov  dword ptr [ecx],   0xCAFEBABE
         mov  dword ptr [ecx+4], 0xDEADBEEF
 
@@ -150,8 +150,8 @@ extern "C" __declspec(naked) int64_t __cdecl testCastDoubleNaked()
         mov  esp, ebp
         pop  ebp
 
-        // __thiscall callee-cleans: 2 explicit args * 4 bytes = 8 bytes.
-        // ECX (the hidden THIS param) is NOT counted in the callee-clean count.
+                // __thiscall callee-cleans: 2 explicit args * 4 bytes = 8 bytes.
+                // ECX (the hidden THIS param) is NOT counted in the callee-clean count.
         ret  8
     }
 }
@@ -251,7 +251,7 @@ extern "C" __declspec(dllexport) unsigned int __cdecl utinni_testHarnessProbe()
 // __cdecl per the C-01 export-decoration discipline (avoids stdcall name
 // mangling on x86).
 // ---------------------------------------------------------------------------
-extern "C" __declspec(dllexport) int __cdecl utinni_test_subscribeInstall(void(*fn)())
+extern "C" __declspec(dllexport) int __cdecl utinni_test_subscribeInstall(void (*fn)())
 {
     return utinni::Game::subscribeInstallCallback(fn);
 }
@@ -271,7 +271,7 @@ extern "C" __declspec(dllexport) int __cdecl utinni_test_installSubscriberCount(
     return utinni::test_internal::getInstallSubscriberCount();
 }
 
-extern "C" __declspec(dllexport) void __cdecl utinni_test_addInstall(void(*fn)())
+extern "C" __declspec(dllexport) void __cdecl utinni_test_addInstall(void (*fn)())
 {
     utinni::Game::addInstallCallback(fn);
 }
@@ -379,19 +379,19 @@ extern "C" __declspec(dllexport) int __cdecl utinni_test_resolveExports()
 
     // All expected undecorated export names (C-linkage, cdecl or /EXPORT alias).
     static const char* const kExpectedExports[] = {
-        "utinni_init",                        // stdcall decorated → /EXPORT alias
-        "utinni_findPattern",                 // cdecl
-        "utinni_getVtbl",                     // cdecl
-        "utinni_test_freeConfigBuffer",       // cdecl
-        "utinni_test_networkCast",            // cdecl
-        "utinni_clr_stop",                    // cdecl
-        "utinni_triggerInstallCallbacks",     // cdecl
-        "utinni_test_initPresentBlockedEvent",// cdecl
-        "utinni_test_getPresentBlockedEvent", // cdecl
-        "utinni_test_initDepthTexture",       // cdecl
-        "utinni_test_getDepthTexturePtr",     // cdecl
-        "getPresentBlockedEvent",             // file-scope C-linkage in directx9.cpp
-        "utinni_signal_launcher_ready",       // cdecl, 2026-05-19 signal-event sync
+        "utinni_init",                         // stdcall decorated → /EXPORT alias
+        "utinni_findPattern",                  // cdecl
+        "utinni_getVtbl",                      // cdecl
+        "utinni_test_freeConfigBuffer",        // cdecl
+        "utinni_test_networkCast",             // cdecl
+        "utinni_clr_stop",                     // cdecl
+        "utinni_triggerInstallCallbacks",      // cdecl
+        "utinni_test_initPresentBlockedEvent", // cdecl
+        "utinni_test_getPresentBlockedEvent",  // cdecl
+        "utinni_test_initDepthTexture",        // cdecl
+        "utinni_test_getDepthTexturePtr",      // cdecl
+        "getPresentBlockedEvent",              // file-scope C-linkage in directx9.cpp
+        "utinni_signal_launcher_ready",        // cdecl, 2026-05-19 signal-event sync
         // Phase 3 R-A native bridge (Plan 03-01 Task 3) — exposes
         // Game::installCallbacks subscribe/unsubscribe/dispatch/count + the
         // legacy addInstallCallback to NativeCallbacksHandleTests via P/Invoke.
@@ -409,7 +409,7 @@ extern "C" __declspec(dllexport) int __cdecl utinni_test_resolveExports()
         "utinni_test_lastLoadLibraryError",     // cdecl
         // 06-04 OPT-A: deterministic GameCallbacks liveness sentinel (replaces the
         // AV-prone utinni_triggerInstallCallbacks probe). See 06-04-FLAKE-INVESTIGATION.md.
-        "utinni_testHarnessProbe",              // cdecl
+        "utinni_testHarnessProbe", // cdecl
     };
 
     static constexpr int kExportCount =

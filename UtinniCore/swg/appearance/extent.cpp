@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "extent.h"
 
@@ -31,11 +31,11 @@ using pIntersect3 = int(__thiscall*)(utinni::ExtentBase* pThis, swg::math::Vecto
 
 pIntersect intersect = (pIntersect)0x0126AF70;
 pIntersect3 intersect3 = (pIntersect3)0x0126AFB0;
-}
+} // namespace swg::baseExtent
 
 namespace swg::extent
 {
-    
+
 }
 
 namespace swg::boxExtent
@@ -43,7 +43,7 @@ namespace swg::boxExtent
 using pIntersect = bool(__thiscall*)(utinni::BoxExtent* pThis, swg::math::Vector* worldStart, swg::math::Vector* worldEnd, swg::math::Vector* surfaceNormal, float* time);
 
 pIntersect intersect = (pIntersect)0x0125FA10;
-}
+} // namespace swg::boxExtent
 
 namespace utinni
 {
@@ -57,4 +57,4 @@ bool BoxExtent::realIntersect(swg::math::Vector* worldStart, swg::math::Vector* 
 {
     return swg::boxExtent::intersect(this, worldStart, worldEnd, surfaceNormal, time);
 }
-}
+} // namespace utinni

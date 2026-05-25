@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "tree_file.h"
 #include <set>
@@ -30,7 +30,7 @@ namespace swg::treefile
 using pSearchTree = swgptr(__thiscall*)(swgptr pThis, int priority, const char* treeFilename);
 
 pSearchTree searchTree = (pSearchTree)0xA992E0;
-}
+} // namespace swg::treefile
 
 namespace utinni::treefile
 {
@@ -39,7 +39,7 @@ std::vector<std::string> getAllFilenames()
 {
     std::vector<std::string> result;
     result.reserve(filenames.size());
-    for (auto it = filenames.begin(); it != filenames.end(); ) 
+    for (auto it = filenames.begin(); it != filenames.end();)
     {
         result.push_back(std::move(filenames.extract(it++).value()));
     }
@@ -62,7 +62,7 @@ swgptr __fastcall hkSearchTree(swgptr pThis, DWORD EDX, int priority, const char
 
         filenames.emplace(filename);
     }
-    
+
     return pThis;
 }
 
@@ -70,4 +70,4 @@ void detour()
 {
     swg::treefile::searchTree = (swg::treefile::pSearchTree)Detour::Create(swg::treefile::searchTree, hkSearchTree, DETOUR_TYPE_PUSH_RET);
 }
-}
+} // namespace utinni::treefile

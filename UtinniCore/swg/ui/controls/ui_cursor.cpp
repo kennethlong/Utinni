@@ -20,16 +20,16 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "ui_cursor.h"
 
 namespace swg::uiCursor
 {
-using pCtor = utinni::UICursor* (__thiscall*)(utinni::UICursor* pThis);
+using pCtor = utinni::UICursor*(__thiscall*)(utinni::UICursor * pThis);
 
 pCtor ctor = (pCtor)0x0112C630;
-}
+} // namespace swg::uiCursor
 
 namespace utinni
 {
@@ -37,4 +37,4 @@ UICursor::UICursor()
 {
     swg::uiCursor::ctor(this);
 }
-}
+} // namespace utinni

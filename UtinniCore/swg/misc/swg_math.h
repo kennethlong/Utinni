@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -36,12 +36,12 @@ struct UTINNI_API Vector2d
     Vector2d();
     Vector2d(float x, float y);
 
-    Vector2d operator +(const Vector2d& vector) const;
-    Vector2d operator -(const Vector2d& vector) const;
-    Vector2d operator *(float scalar) const;
-    Vector2d operator /(float scalar) const;
+    Vector2d operator+(const Vector2d& vector) const;
+    Vector2d operator-(const Vector2d& vector) const;
+    Vector2d operator*(float scalar) const;
+    Vector2d operator/(float scalar) const;
 
-    //bool normalize();
+    // bool normalize();
 };
 
 struct UTINNI_API Vector
@@ -53,13 +53,13 @@ struct UTINNI_API Vector
     Vector();
     Vector(float x, float y, float z);
 
-    Vector operator +(const Vector& vector) const;
-    Vector operator -(const Vector& vector) const;
-    Vector operator *(float scalar) const;
-    Vector operator /(float scalar) const;
+    Vector operator+(const Vector& vector) const;
+    Vector operator-(const Vector& vector) const;
+    Vector operator*(float scalar) const;
+    Vector operator/(float scalar) const;
 
-    bool operator ==(const Vector& vector) const;
-    bool operator !=(const Vector& vector) const;
+    bool operator==(const Vector& vector) const;
+    bool operator!=(const Vector& vector) const;
 
     bool normalize();
 };
@@ -119,8 +119,8 @@ struct UTINNI_API Matrix4x4
     Matrix4x4 subtractPosition(const Matrix4x4& matrix4x4);
 
     static void transpose(const float* source, float* destination);
-    Matrix4x4 operator +(const Matrix4x4& matrix) const;
-    Matrix4x4 operator -(const Matrix4x4& matrix) const;
+    Matrix4x4 operator+(const Matrix4x4& matrix) const;
+    Matrix4x4 operator-(const Matrix4x4& matrix) const;
 };
 
 struct UTINNI_API Plane
@@ -139,7 +139,7 @@ struct UTINNI_API Quaternion
 {
     Quaternion();
     Quaternion(const Transform& Transform);
-    //Quaternion(float angle, const Vector& vector);
+    // Quaternion(float angle, const Vector& vector);
 
     float W;
     float X;
@@ -176,8 +176,14 @@ struct UTINNI_API Rect2d
     Rect2d();
     Rect2d(float x0, float y0, float x1, float y1);
 
-    float getWidth() const { return abs(X1 - X0); }
-    float getHeight() const { return abs(Y1 - Y0); }
+    float getWidth() const
+    {
+        return abs(X1 - X0);
+    }
+    float getHeight() const
+    {
+        return abs(Y1 - Y0);
+    }
 };
 
 struct UTINNI_API UiRect
@@ -191,7 +197,13 @@ struct UTINNI_API UiRect
     UiRect();
     UiRect(int left, int top, int right, int bottom);
 
-    int getWidth() const { return Right - Left; }
-    int getHeight() const { return Bottom - Top; }
+    int getWidth() const
+    {
+        return Right - Left;
+    }
+    int getHeight() const
+    {
+        return Bottom - Top;
+    }
 };
-}
+} // namespace swg::math

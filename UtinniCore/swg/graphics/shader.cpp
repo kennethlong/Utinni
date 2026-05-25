@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "shader.h"
 #include "swg/graphics/directx9.h"
@@ -90,7 +90,7 @@ void dispatchSnapshot(
 }
 } // namespace
 
-static std::vector<CallbackEntry<void(*)(int currentPhase)>> drawPhaseCallbacks;
+static std::vector<CallbackEntry<void (*)(int currentPhase)>> drawPhaseCallbacks;
 static std::mutex drawPhaseCallbacksMutex;
 static int s_nextDrawPhaseId = 1;
 
@@ -101,7 +101,8 @@ static int s_nextDrawPhaseId = 1;
 static void dispatchDrawPhaseCallbacks(int phase)
 {
     dispatchSnapshot(drawPhaseCallbacks, drawPhaseCallbacksMutex,
-        [phase](void(*func)(int)) { func(phase); });
+                     [phase](void (*func)(int))
+                     { func(phase); });
 }
 
 namespace utinni::shaderPrimitiveSorter
@@ -117,12 +118,12 @@ constexpr swgptr return_midPopCell = 0x00773E41;
 __declspec(naked) void midPopCell()
 {
     __asm
-    {
+        {
         mov vecOffset, esi
         pushad
         pushfd
         call midPopCell_Call
-    }
+        }
 
     depthTexture = directX::getDepthTexture();
     phase = vecOffset / phaseStructSize;
@@ -149,13 +150,15 @@ __declspec(naked) void midPopCell()
     }
 }
 
-
 // Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
-int subscribeDrawPhaseCallback(void(*func)(int currentPhase))
+int subscribeDrawPhaseCallback(void (*func)(int currentPhase))
 {
     std::lock_guard<std::mutex> guard(drawPhaseCallbacksMutex);
     int id = s_nextDrawPhaseId++;
-    if (id == 0) { id = s_nextDrawPhaseId++; } // WR-04 skip-zero
+    if (id == 0)
+    {
+        id = s_nextDrawPhaseId++;
+    } // WR-04 skip-zero
     drawPhaseCallbacks.push_back({id, func});
     return id;
 }
@@ -178,7 +181,7 @@ bool unsubscribeDrawPhaseCallback(int handle)
     return false;
 }
 
-void drawPhaseCallback(void(* func)(int currentPhase))
+void drawPhaseCallback(void (*func)(int currentPhase))
 {
     subscribeDrawPhaseCallback(func);
 }
@@ -187,4 +190,4 @@ void detour()
 {
     memory::createJMP(start_midPopCell, (swgptr)midPopCell, 6);
 }
-}
+} // namespace utinni::shaderPrimitiveSorter

@@ -20,20 +20,20 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "crc_string.h"
 #include "swg_memory.h"
 
 namespace swg::crcString
 {
-using pConstCharCrcString_ctor = utinni::ConstCharCrcString * (__thiscall*)(void* pThis, const char* value);
-using pPersistentCrcString_ctor = utinni::PersistentCrcString * (__thiscall*)(void* pThis, const char* value, bool unk);
+using pConstCharCrcString_ctor = utinni::ConstCharCrcString*(__thiscall*)(void* pThis, const char* value);
+using pPersistentCrcString_ctor = utinni::PersistentCrcString*(__thiscall*)(void* pThis, const char* value, bool unk);
 
 pConstCharCrcString_ctor constCharCrcString_ctor = (pConstCharCrcString_ctor)0x00AA55B0;
 pPersistentCrcString_ctor persistentCrcString_ctor = (pPersistentCrcString_ctor)0x00AA4050;
 
-}
+} // namespace swg::crcString
 
 namespace utinni
 {
@@ -47,4 +47,4 @@ ConstCharCrcString* ConstCharCrcString::ctor(const char* str)
     return swg::crcString::constCharCrcString_ctor(allocate(sizeof(ConstCharCrcString)), str);
 }
 
-}
+} // namespace utinni

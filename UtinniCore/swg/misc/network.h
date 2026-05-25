@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -32,11 +32,11 @@
 // from test_exports.cpp. Production code does not call these.
 namespace swg::network
 {
-    // CR-02: OUT param widened to int64_t* (D-06 option c hybrid).
-    using pCast = int64_t(__thiscall*)(int64_t*, int, int);
-    void setCastForTest(pCast fn);  // test-only seam; do not call from production
-    void resetCast();               // restores realCast pointer
-}
+// CR-02: OUT param widened to int64_t* (D-06 option c hybrid).
+using pCast = int64_t(__thiscall*)(int64_t*, int, int);
+void setCastForTest(pCast fn); // test-only seam; do not call from production
+void resetCast();              // restores realCast pointer
+} // namespace swg::network
 
 namespace utinni
 {
@@ -60,4 +60,4 @@ public:
         return false;
     }
 };
-}
+} // namespace utinni

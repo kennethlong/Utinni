@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "cui_chat_window.h"
 #include "command_parser.h"
@@ -56,14 +56,14 @@ pCtor ctor = (pCtor)0x00F364B0;
 pEnableTextInput enableTextInput = (pEnableTextInput)0x00F38500;
 pWriteToTab writeToAllTabs = (pWriteToTab)0x00F3BFD0;
 pWriteToTab writeToCurrentTab = (pWriteToTab)0x00F3C1F0;
-}
+} // namespace swg::cuiChatWindow
 
 namespace swg::cuiConsoleHelper
 {
 using pSendInput = bool(__thiscall*)(swgptr pThis, const swg::WString& str, swgptr unk, bool addToChatHistory);
 pSendInput sendInput = (pSendInput)0x009141D0;
 
-}
+} // namespace swg::cuiConsoleHelper
 
 // WR-06 (03-REVIEW): pCuiChatWindow + pCuiConsoleHelper are written from
 // hkCtor on whatever thread SWG constructs the chat window on (typically the
@@ -132,7 +132,7 @@ void dispatchSnapshot(
 }
 } // namespace
 
-static std::vector<CallbackEntry<void(*)(utinni::CommandParser* mainCommandParser)>> addCommandParserCallback;
+static std::vector<CallbackEntry<void (*)(utinni::CommandParser* mainCommandParser)>> addCommandParserCallback;
 static std::mutex addCommandParserCallbackMutex;
 static int s_nextCommandParserId = 1;
 
@@ -154,11 +154,14 @@ namespace utinni
 bool enableInput;
 
 // Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
-int CuiChatWindow::subscribeCreateCommandParserCallback(void(*func)(CommandParser* commandParser))
+int CuiChatWindow::subscribeCreateCommandParserCallback(void (*func)(CommandParser* commandParser))
 {
     std::lock_guard<std::mutex> guard(addCommandParserCallbackMutex);
     int id = s_nextCommandParserId++;
-    if (id == 0) { id = s_nextCommandParserId++; } // WR-04 skip-zero
+    if (id == 0)
+    {
+        id = s_nextCommandParserId++;
+    } // WR-04 skip-zero
     addCommandParserCallback.push_back({id, func});
     return id;
 }
@@ -181,7 +184,7 @@ bool CuiChatWindow::unsubscribeCreateCommandParserCallback(int handle)
     return false;
 }
 
-void CuiChatWindow::addCreateCommandParserCallback(void(*func)(CommandParser* commandParser))
+void CuiChatWindow::addCreateCommandParserCallback(void (*func)(CommandParser* commandParser))
 {
     subscribeCreateCommandParserCallback(func);
 }
@@ -226,30 +229,34 @@ void CuiChatWindow::writeToCurrentTab(const char* str) // Accepts color codes by
 // action triggers the 0x00F3E440 OPEN call we expect on in-game Enter.
 struct DispatchSlot
 {
-    DWORD startPtrAddr;  // VA of .bss slot holding (char*)action_start
-    DWORD endPtrAddr;    // VA of .bss slot holding (char*)action_end
-    DWORD handlerVA;     // target of the dispatched CALL
+    DWORD startPtrAddr; // VA of .bss slot holding (char*)action_start
+    DWORD endPtrAddr;   // VA of .bss slot holding (char*)action_end
+    DWORD handlerVA;    // target of the dispatched CALL
     const char* role;
 };
 static const DispatchSlot kDispatchSlots[] = {
-    { 0x0197BAAC, 0x0197BAB0, 0x00F3E3A0, "OPEN 1arg-v1 (case 0 @F37CB4)" },
-    { 0x0197BAA0, 0x0197BAA4, 0x00F3E3A0, "OPEN 1arg-v1 (case 1 @F37CF2)" },
-    { 0x0197E310, 0x0197E314, 0x00F3E370, "OPEN 2arg   (case 2 @F37D31)" },
-    { 0x0197E304, 0x0197E308, 0x00F3E370, "OPEN 2arg   (case 3 @F37D70)" },
-    { 0x0197E328, 0x0197E32C, 0x00F3E370, "OPEN 2arg   (case 4 @F37DB0)" },
-    { 0x0197E31C, 0x0197E320, 0x00F3E370, "OPEN 2arg   (case 5 @F37DF0)" },
-    { 0x0197E340, 0x0197E344, 0x00F3E3D0, "OPEN 1arg-v2(case 6 @F37E2E)" },
-    { 0x0197E334, 0x0197E338, 0x00F3E3D0, "OPEN 1arg-v2(case 7 @F37E6C)" },
-    { 0x0197E2F8, 0x0197E2FC, 0x00F3E400, "OPEN 0arg   (case 8 @F37EA8)" },
-    { 0x0197E2EC, 0x0197E2F0, 0x00F3E460, "CLOSE 0arg  (case 9 @F37EE4)" },
+    {0x0197BAAC, 0x0197BAB0, 0x00F3E3A0, "OPEN 1arg-v1 (case 0 @F37CB4)"},
+    {0x0197BAA0, 0x0197BAA4, 0x00F3E3A0, "OPEN 1arg-v1 (case 1 @F37CF2)"},
+    {0x0197E310, 0x0197E314, 0x00F3E370, "OPEN 2arg   (case 2 @F37D31)"},
+    {0x0197E304, 0x0197E308, 0x00F3E370, "OPEN 2arg   (case 3 @F37D70)"},
+    {0x0197E328, 0x0197E32C, 0x00F3E370, "OPEN 2arg   (case 4 @F37DB0)"},
+    {0x0197E31C, 0x0197E320, 0x00F3E370, "OPEN 2arg   (case 5 @F37DF0)"},
+    {0x0197E340, 0x0197E344, 0x00F3E3D0, "OPEN 1arg-v2(case 6 @F37E2E)"},
+    {0x0197E334, 0x0197E338, 0x00F3E3D0, "OPEN 1arg-v2(case 7 @F37E6C)"},
+    {0x0197E2F8, 0x0197E2FC, 0x00F3E400, "OPEN 0arg   (case 8 @F37EA8)"},
+    {0x0197E2EC, 0x0197E2F0, 0x00F3E460, "CLOSE 0arg  (case 9 @F37EE4)"},
     // Cases 10/11 use a different style: the imm32 IS the .bss slot
-    { 0x0197E2A4, 0x0197E2A4, 0x00F3E440, "OPEN 0arg   (case 10 @F37F19 -- direct push imm)" },
-    { 0x0197E28C, 0x0197E28C, 0x00F3E420, "CLOSE pushArg1 (case 11 @F37F4B -- direct push imm <-- IN-GAME ENTER FIRES THIS)" },
+    {0x0197E2A4, 0x0197E2A4, 0x00F3E440, "OPEN 0arg   (case 10 @F37F19 -- direct push imm)"},
+    {0x0197E28C, 0x0197E28C, 0x00F3E420, "CLOSE pushArg1 (case 11 @F37F4B -- direct push imm <-- IN-GAME ENTER FIRES THIS)"},
 };
 
 static void dumpStringAt(swgptr addr, char* buf, size_t buflen, size_t max = 48)
 {
-    if (addr == 0) { snprintf(buf, buflen, "<null>"); return; }
+    if (addr == 0)
+    {
+        snprintf(buf, buflen, "<null>");
+        return;
+    }
     size_t pos = 0;
     buf[0] = '\'';
     pos = 1;
@@ -261,14 +268,21 @@ static void dumpStringAt(swgptr addr, char* buf, size_t buflen, size_t max = 48)
         {
             b = memory::read<byte>(addr + (DWORD)i);
         }
-        __except(EXCEPTION_EXECUTE_HANDLER)
+        __except (EXCEPTION_EXECUTE_HANDLER)
         {
             snprintf(buf + pos, buflen - pos, "...<AV>");
             return;
         }
-        if (b == 0) break;
-        if (b >= 0x20 && b < 0x7F) { buf[pos++] = (char)b; }
-        else { buf[pos++] = '.'; }
+        if (b == 0)
+            break;
+        if (b >= 0x20 && b < 0x7F)
+        {
+            buf[pos++] = (char)b;
+        }
+        else
+        {
+            buf[pos++] = '.';
+        }
     }
     buf[pos++] = '\'';
     buf[pos] = 0;
@@ -285,28 +299,40 @@ void CuiChatWindow::dumpActionStringSlotsFromCpp()
 
         // Read the slot as if it holds a pointer (interpretation 1: *(char**)slot is a string ptr)
         DWORD ptrVal = 0;
-        __try { ptrVal = memory::read<DWORD>(slot.startPtrAddr); }
-        __except(EXCEPTION_EXECUTE_HANDLER) { ptrVal = 0; }
+        __try
+        {
+            ptrVal = memory::read<DWORD>(slot.startPtrAddr);
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+            ptrVal = 0;
+        }
 
         // Treat ptrVal as a char* and read string from there
         dumpStringAt((swgptr)ptrVal, s, sizeof(s));
 
         snprintf(m, sizeof(m),
-            "  slot[%2d] %s\n"
-            "    startAddr=0x%08X *startAddr=0x%08X str=%s",
-            (int)i, slot.role, slot.startPtrAddr, ptrVal, s);
+                 "  slot[%2d] %s\n"
+                 "    startAddr=0x%08X *startAddr=0x%08X str=%s",
+                 (int)i, slot.role, slot.startPtrAddr, ptrVal, s);
         utinni::log::info(m);
 
         // For paired slots, also dump end pointer
         if (slot.endPtrAddr != slot.startPtrAddr)
         {
             DWORD endVal = 0;
-            __try { endVal = memory::read<DWORD>(slot.endPtrAddr); }
-            __except(EXCEPTION_EXECUTE_HANDLER) { endVal = 0; }
+            __try
+            {
+                endVal = memory::read<DWORD>(slot.endPtrAddr);
+            }
+            __except (EXCEPTION_EXECUTE_HANDLER)
+            {
+                endVal = 0;
+            }
             DWORD len = (endVal >= ptrVal && endVal - ptrVal < 64) ? endVal - ptrVal : 0;
             snprintf(m, sizeof(m),
-                "    endAddr=0x%08X *endAddr=0x%08X (computed len = %u)",
-                slot.endPtrAddr, endVal, len);
+                     "    endAddr=0x%08X *endAddr=0x%08X (computed len = %u)",
+                     slot.endPtrAddr, endVal, len);
             utinni::log::info(m);
         }
 
@@ -316,7 +342,7 @@ void CuiChatWindow::dumpActionStringSlotsFromCpp()
             char s2[80];
             dumpStringAt((swgptr)slot.startPtrAddr, s2, sizeof(s2));
             snprintf(m, sizeof(m), "    alt: string starting AT addr 0x%08X = %s",
-                slot.startPtrAddr, s2);
+                     slot.startPtrAddr, s2);
             utinni::log::info(m);
         }
     }
@@ -404,10 +430,10 @@ void __fastcall hkEnableTextInput(swgptr pThis, swgptr EDX, bool value, bool set
             const void* callerPC = _ReturnAddress();
             char m[224];
             snprintf(m, sizeof(m),
-                "hkEnableTextInput[%d]: pThis=0x%p value=%d setKbdInput=%d unfocus=%d caller=0x%p captured_pCuiChatWindow=0x%p",
-                slot + 1, (void*)pThis, value ? 1 : 0, setKeyboardInput ? 1 : 0,
-                unfocus ? 1 : 0, callerPC,
-                (void*)pCuiChatWindow.load(std::memory_order_relaxed));
+                     "hkEnableTextInput[%d]: pThis=0x%p value=%d setKbdInput=%d unfocus=%d caller=0x%p captured_pCuiChatWindow=0x%p",
+                     slot + 1, (void*)pThis, value ? 1 : 0, setKeyboardInput ? 1 : 0,
+                     unfocus ? 1 : 0, callerPC,
+                     (void*)pCuiChatWindow.load(std::memory_order_relaxed));
             utinni::log::info(m);
         }
     }
@@ -443,7 +469,8 @@ swgptr __fastcall hkCtor(swgptr pThis, swgptr EDX, swgptr uiPage, DWORD unk1, DW
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
     // via dispatchSnapshot keeps the path heap-free.
     dispatchSnapshot(addCommandParserCallback, addCommandParserCallbackMutex,
-        [](void(*func)(CommandParser*)) { func(mainCommandParser); });
+                     [](void (*func)(CommandParser*))
+                     { func(mainCommandParser); });
 
     return result;
 }
@@ -453,11 +480,11 @@ __declspec(naked) void midCtor()
 {
     swgptr pMainCommandParser;
     __asm
-    {
+        {
         mov pMainCommandParser, edx
         pushad
         pushfd
-    }
+        }
 
     mainCommandParser = (CommandParser*)pMainCommandParser;
 
@@ -510,4 +537,4 @@ void CuiChatWindow::detour()
     memory::createJMP(0x00F36797, (swgptr)midCtor, 6); // Mid CuiChatWindow::ctor detour
 }
 
-}
+} // namespace utinni

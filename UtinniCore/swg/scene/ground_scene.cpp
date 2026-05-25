@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "ground_scene.h"
 #include "terrain.h"
@@ -41,13 +41,12 @@
 #include <mutex>
 #include <vector>
 
-
 namespace swg::groundScene
 {
-using pCtor = utinni::GroundScene* (__thiscall*)(void* pThis, const char* terrainFilename, const char* avatarObjectFilename, swgptr customPlayer); // Offline scene ctor
+using pCtor = utinni::GroundScene*(__thiscall*)(void* pThis, const char* terrainFilename, const char* avatarObjectFilename, swgptr customPlayer); // Offline scene ctor
 using pReloadTerrain = void(__thiscall*)(utinni::GroundScene* pThis);
 using pChangeCamera = int(__thiscall*)(utinni::GroundScene* pThis, utinni::Camera::Modes cameraMode, float);
-using pGetCurrentCamera = utinni::Camera* (__thiscall*)(utinni::GroundScene* pThis);
+using pGetCurrentCamera = utinni::Camera*(__thiscall*)(utinni::GroundScene * pThis);
 
 using pDraw = void(__thiscall*)(utinni::GroundScene* pThis);
 using pUpdate = void(__thiscall*)(utinni::GroundScene* pThis, float time);
@@ -67,7 +66,7 @@ pHandleInputMapUpdate handleInputMapUpdate = (pHandleInputMapUpdate)0x0051AB20;
 pHandleInputMapEvent handleInputMapEvent = (pHandleInputMapEvent)0x0051AA40;
 
 pInit init = (pInit)0x00518EB0;
-}
+} // namespace swg::groundScene
 
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries
 // backed by insertion-order std::vector<{handle, fn_ptr}>. Handle 0 reserved as
@@ -142,10 +141,10 @@ void dispatchSnapshot(
 }
 } // namespace
 
-static std::vector<CallbackEntry<void(*)(utinni::GroundScene* pThis)>> preDrawLoopCallbacks;
-static std::vector<CallbackEntry<void(*)(utinni::GroundScene* pThis)>> postDrawLoopCallbacks;
-static std::vector<CallbackEntry<void(*)(utinni::GroundScene* pThis, float time)>> updateLoopCallbacks;
-static std::vector<CallbackEntry<void(*)()>> cameraChangeCallbacks;
+static std::vector<CallbackEntry<void (*)(utinni::GroundScene* pThis)>> preDrawLoopCallbacks;
+static std::vector<CallbackEntry<void (*)(utinni::GroundScene* pThis)>> postDrawLoopCallbacks;
+static std::vector<CallbackEntry<void (*)(utinni::GroundScene* pThis, float time)>> updateLoopCallbacks;
+static std::vector<CallbackEntry<void (*)()>> cameraChangeCallbacks;
 static std::mutex preDrawLoopCallbacksMutex;
 static std::mutex postDrawLoopCallbacksMutex;
 static std::mutex updateLoopCallbacksMutex;
@@ -189,11 +188,14 @@ std::string GroundScene::getName()
 
 // Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09. Add* retained
 // per D-10 as wrappers (return value discarded).
-int GroundScene::subscribePreDrawLoopCallback(void(*func)(GroundScene* pThis))
+int GroundScene::subscribePreDrawLoopCallback(void (*func)(GroundScene* pThis))
 {
     std::lock_guard<std::mutex> guard(preDrawLoopCallbacksMutex);
     int id = s_nextPreDrawId++;
-    if (id == 0) { id = s_nextPreDrawId++; } // WR-04 skip-zero
+    if (id == 0)
+    {
+        id = s_nextPreDrawId++;
+    } // WR-04 skip-zero
     preDrawLoopCallbacks.push_back({id, func});
     return id;
 }
@@ -216,11 +218,14 @@ bool GroundScene::unsubscribePreDrawLoopCallback(int handle)
     return false;
 }
 
-int GroundScene::subscribePostDrawLoopCallback(void(*func)(GroundScene* pThis))
+int GroundScene::subscribePostDrawLoopCallback(void (*func)(GroundScene* pThis))
 {
     std::lock_guard<std::mutex> guard(postDrawLoopCallbacksMutex);
     int id = s_nextPostDrawId++;
-    if (id == 0) { id = s_nextPostDrawId++; } // WR-04 skip-zero
+    if (id == 0)
+    {
+        id = s_nextPostDrawId++;
+    } // WR-04 skip-zero
     postDrawLoopCallbacks.push_back({id, func});
     return id;
 }
@@ -243,11 +248,14 @@ bool GroundScene::unsubscribePostDrawLoopCallback(int handle)
     return false;
 }
 
-int GroundScene::subscribeUpdateLoopCallback(void(*func)(GroundScene* pThis, float elapsedTime))
+int GroundScene::subscribeUpdateLoopCallback(void (*func)(GroundScene* pThis, float elapsedTime))
 {
     std::lock_guard<std::mutex> guard(updateLoopCallbacksMutex);
     int id = s_nextUpdateId++;
-    if (id == 0) { id = s_nextUpdateId++; } // WR-04 skip-zero
+    if (id == 0)
+    {
+        id = s_nextUpdateId++;
+    } // WR-04 skip-zero
     updateLoopCallbacks.push_back({id, func});
     return id;
 }
@@ -270,11 +278,14 @@ bool GroundScene::unsubscribeUpdateLoopCallback(int handle)
     return false;
 }
 
-int GroundScene::subscribeCameraChangeCallback(void(*func)())
+int GroundScene::subscribeCameraChangeCallback(void (*func)())
 {
     std::lock_guard<std::mutex> guard(cameraChangeCallbacksMutex);
     int id = s_nextCameraChangeId++;
-    if (id == 0) { id = s_nextCameraChangeId++; } // WR-04 skip-zero
+    if (id == 0)
+    {
+        id = s_nextCameraChangeId++;
+    } // WR-04 skip-zero
     cameraChangeCallbacks.push_back({id, func});
     return id;
 }
@@ -297,12 +308,12 @@ bool GroundScene::unsubscribeCameraChangeCallback(int handle)
     return false;
 }
 
-void GroundScene::addPreDrawLoopCallback(void(*func)(GroundScene* pThis))
+void GroundScene::addPreDrawLoopCallback(void (*func)(GroundScene* pThis))
 {
     subscribePreDrawLoopCallback(func);
 }
 
-void GroundScene::addPostDrawLoopCallback(void(*func)(GroundScene* pThis))
+void GroundScene::addPostDrawLoopCallback(void (*func)(GroundScene* pThis))
 {
     subscribePostDrawLoopCallback(func);
 }
@@ -313,20 +324,22 @@ void __fastcall hkDrawLoop(GroundScene* pThis, DWORD EDX)
     // via dispatchSnapshot keeps the per-frame path heap-free (see file header
     // comment for 2026-05-22 fix rationale).
     dispatchSnapshot(preDrawLoopCallbacks, preDrawLoopCallbacksMutex,
-        [pThis](void(*func)(GroundScene*)) { func(pThis); });
+                     [pThis](void (*func)(GroundScene*))
+                     { func(pThis); });
 
     swg::groundScene::draw(pThis);
 
     dispatchSnapshot(postDrawLoopCallbacks, postDrawLoopCallbacksMutex,
-        [pThis](void(*func)(GroundScene*)) { func(pThis); });
+                     [pThis](void (*func)(GroundScene*))
+                     { func(pThis); });
 }
 
-void GroundScene::addUpdateLoopCallback(void(*func)(GroundScene* pThis, float elapsedTime))
+void GroundScene::addUpdateLoopCallback(void (*func)(GroundScene* pThis, float elapsedTime))
 {
     subscribeUpdateLoopCallback(func);
 }
 
-void GroundScene::addCameraChangeCallback(void(*func)())
+void GroundScene::addCameraChangeCallback(void (*func)())
 {
     subscribeCameraChangeCallback(func);
 }
@@ -336,7 +349,8 @@ void __fastcall hkUpdateLoop(GroundScene* pThis, DWORD EDX, float time)
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
     // via dispatchSnapshot keeps the per-frame path heap-free.
     dispatchSnapshot(updateLoopCallbacks, updateLoopCallbacksMutex,
-        [pThis, time](void(*func)(GroundScene*, float)) { func(pThis, time); });
+                     [pThis, time](void (*func)(GroundScene*, float))
+                     { func(pThis, time); });
 
     swg::groundScene::update(pThis, time);
 }
@@ -376,10 +390,10 @@ void __fastcall hkHandleInputEvent(GroundScene* pThis, DWORD EDX, IoEvent* ioEve
                 const void* callerPC = _ReturnAddress();
                 char m[200];
                 snprintf(m, sizeof(m),
-                    "hkHandleInputEvent[%d]: type=%d arg1=%d arg2=%d arg3=%.3f pThis=0x%p freeCam=%d caller=0x%p",
-                    slot + 1, ioEvent->type, ioEvent->arg1, ioEvent->arg2,
-                    ioEvent->arg3, (void*)pThis, pThis->isFreeCameraActive() ? 1 : 0,
-                    callerPC);
+                         "hkHandleInputEvent[%d]: type=%d arg1=%d arg2=%d arg3=%.3f pThis=0x%p freeCam=%d caller=0x%p",
+                         slot + 1, ioEvent->type, ioEvent->arg1, ioEvent->arg2,
+                         ioEvent->arg3, (void*)pThis, pThis->isFreeCameraActive() ? 1 : 0,
+                         callerPC);
                 utinni::log::info(m);
             }
         }
@@ -397,14 +411,14 @@ void GroundScene::detour()
 {
     swg::groundScene::draw = (swg::groundScene::pDraw)Detour::Create(swg::groundScene::draw, hkDrawLoop, DETOUR_TYPE_PUSH_RET);
     swg::groundScene::update = (swg::groundScene::pUpdate)Detour::Create(swg::groundScene::update, hkUpdateLoop, DETOUR_TYPE_PUSH_RET);
-    swg::groundScene::handleInputMapEvent = (swg::groundScene::pHandleInputMapEvent )Detour::Create(swg::groundScene::handleInputMapEvent, hkHandleInputEvent, DETOUR_TYPE_PUSH_RET);
+    swg::groundScene::handleInputMapEvent = (swg::groundScene::pHandleInputMapEvent)Detour::Create(swg::groundScene::handleInputMapEvent, hkHandleInputEvent, DETOUR_TYPE_PUSH_RET);
 
     WorldSnapshot::setPreloadSnapshot(false);
 }
 
 void GroundScene::removeDetour()
 {
-    //Detour::Remove((LPVOID)swg::groundScene::handleInputMapUpdate);
+    // Detour::Remove((LPVOID)swg::groundScene::handleInputMapUpdate);
 }
 
 Camera* GroundScene::getCurrentCamera()
@@ -427,12 +441,13 @@ void GroundScene::toggleFreeCamera()
     // via dispatchSnapshot keeps the path heap-free (toggleFreeCamera is not
     // per-frame, but uses the same pattern for consistency).
     dispatchSnapshot(cameraChangeCallbacks, cameraChangeCallbacksMutex,
-        [](void(*func)()) { func(); });
+                     [](void (*func)())
+                     { func(); });
 }
 
 void GroundScene::changeCameraMode(int cameraMode)
 {
-    swg::groundScene::changeCamera(this, (Camera::Modes) cameraMode, 0);
+    swg::groundScene::changeCamera(this, (Camera::Modes)cameraMode, 0);
 }
 
 bool GroundScene::isFreeCameraActive() const
@@ -479,7 +494,7 @@ void GroundScene::createObjectAtPlayer(const char* filename)
     clientObj->setParentCell(player->getParentCell());
 
     CellProperty::setPortalTransitions(false);
-    { // ToDO see if this can be removed
+    {                                                                             // ToDO see if this can be removed
         memcpy((void*)(((int)obj) + 0x50), (void*)(((int)player) + 0x50), 0x30u); // Todo see if it can be replaced
     }
     CellProperty::setPortalTransitions(true);
@@ -520,12 +535,10 @@ void GroundScene::createAppearanceAtPlayer(const char* filename)
     obj->addNotification(0x019136E4, false);
     obj->setAppearance(appearance);
 
-    memcpy((void*)(((int)obj) + 0x50), (void*)(((int)player) + 0x50), 0x30u);  // Todo see if it can be replaced
+    memcpy((void*)(((int)obj) + 0x50), (void*)(((int)player) + 0x50), 0x30u); // Todo see if it can be replaced
 
     renderWorld::addObjectNotifications(obj);
 
     obj->addToWorld();
 }
-}
-
-
+} // namespace utinni

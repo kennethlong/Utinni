@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -101,11 +101,11 @@ inline std::string trimEnd_copy(std::string input, const char* trimChars = trima
     return trim(input, trimChars);
 }
 
-}
+} // namespace stringUtility
 
 namespace constCharUtility
 {
-template<typename TChar>
+template <typename TChar>
 extern size_t length(TChar* value)
 {
     size_t i = 0;
@@ -122,4 +122,4 @@ inline bool isEmpty(const char* input)
     return input != nullptr && !input[0];
 }
 
-}
+} // namespace constCharUtility

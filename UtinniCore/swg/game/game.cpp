@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "game.h"
 #include "game_test_internal.h"
@@ -44,11 +44,11 @@ using pMainLoop = void(__cdecl*)(bool presentToWindow, HWND hwnd, int width, int
 using pSetupScene = void(__cdecl*)(utinni::GroundScene* newScene);
 using pCleanupScene = void(__cdecl*)();
 
-using pGetPlayer = utinni::Object* (__cdecl*)();
-using pGetPlayerCreatureObject = utinni::Object* (__cdecl*)();
+using pGetPlayer = utinni::Object*(__cdecl*)();
+using pGetPlayerCreatureObject = utinni::Object*(__cdecl*)();
 
-using pGetCamera = utinni::Camera* (__cdecl*)();
-using pGetConstCamera = const utinni::Camera* (__cdecl*)();
+using pGetCamera = utinni::Camera*(__cdecl*)();
+using pGetConstCamera = const utinni::Camera*(__cdecl*)();
 
 using pIsViewFirstPerson = bool(__cdecl*)();
 using pIsHudSceneTypeSpace = bool(__cdecl*)();
@@ -68,7 +68,7 @@ pGetConstCamera getConstCamera = (pGetConstCamera)0x00425BE0;
 
 pIsViewFirstPerson isViewFirstPerson = (pIsViewFirstPerson)0x00425C10;
 pIsHudSceneTypeSpace isHudSceneTypeSpace = (pIsHudSceneTypeSpace)0x00426170;
-}
+} // namespace swg::game
 
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries
 // backed by insertion-order std::vector<{handle, fn_ptr}> + monotonic next-id.
@@ -132,11 +132,11 @@ void dispatchSnapshot(
 }
 } // namespace
 
-static std::vector<CallbackEntry<void(*)()>> installCallbacks;
-static std::vector<CallbackEntry<void(*)()>> preMainLoopCallbacks;
-static std::vector<CallbackEntry<void(*)()>> mainLoopCallbacks;
-static std::vector<CallbackEntry<void(*)()>> setSceneCallbacks;
-static std::vector<CallbackEntry<void(*)()>> cleanUpSceneCallbacks;
+static std::vector<CallbackEntry<void (*)()>> installCallbacks;
+static std::vector<CallbackEntry<void (*)()>> preMainLoopCallbacks;
+static std::vector<CallbackEntry<void (*)()>> mainLoopCallbacks;
+static std::vector<CallbackEntry<void (*)()>> setSceneCallbacks;
+static std::vector<CallbackEntry<void (*)()>> cleanUpSceneCallbacks;
 static std::mutex installCallbacksMutex;
 static std::mutex preMainLoopCallbacksMutex;
 static std::mutex mainLoopCallbacksMutex;
@@ -156,7 +156,7 @@ namespace utinni
 // D-10: legacy add* retained as wrappers (return value discarded) — existing
 // UtinniPlugins (TJT, Sytner) keep working without recompile.
 
-int Game::subscribeInstallCallback(void(*func)())
+int Game::subscribeInstallCallback(void (*func)())
 {
     std::lock_guard<std::mutex> guard(installCallbacksMutex);
     int id = s_nextInstallId++;
@@ -189,11 +189,14 @@ bool Game::unsubscribeInstallCallback(int handle)
     return false;
 }
 
-int Game::subscribePreMainLoopCallback(void(*func)())
+int Game::subscribePreMainLoopCallback(void (*func)())
 {
     std::lock_guard<std::mutex> guard(preMainLoopCallbacksMutex);
     int id = s_nextPreMainLoopId++;
-    if (id == 0) { id = s_nextPreMainLoopId++; } // WR-04 skip-zero
+    if (id == 0)
+    {
+        id = s_nextPreMainLoopId++;
+    } // WR-04 skip-zero
     preMainLoopCallbacks.push_back({id, func});
     return id;
 }
@@ -216,11 +219,14 @@ bool Game::unsubscribePreMainLoopCallback(int handle)
     return false;
 }
 
-int Game::subscribeMainLoopCallback(void(*func)())
+int Game::subscribeMainLoopCallback(void (*func)())
 {
     std::lock_guard<std::mutex> guard(mainLoopCallbacksMutex);
     int id = s_nextMainLoopId++;
-    if (id == 0) { id = s_nextMainLoopId++; } // WR-04 skip-zero
+    if (id == 0)
+    {
+        id = s_nextMainLoopId++;
+    } // WR-04 skip-zero
     mainLoopCallbacks.push_back({id, func});
     return id;
 }
@@ -243,11 +249,14 @@ bool Game::unsubscribeMainLoopCallback(int handle)
     return false;
 }
 
-int Game::subscribeSetSceneCallback(void(*func)())
+int Game::subscribeSetSceneCallback(void (*func)())
 {
     std::lock_guard<std::mutex> guard(setSceneCallbacksMutex);
     int id = s_nextSetSceneId++;
-    if (id == 0) { id = s_nextSetSceneId++; } // WR-04 skip-zero
+    if (id == 0)
+    {
+        id = s_nextSetSceneId++;
+    } // WR-04 skip-zero
     setSceneCallbacks.push_back({id, func});
     return id;
 }
@@ -270,11 +279,14 @@ bool Game::unsubscribeSetSceneCallback(int handle)
     return false;
 }
 
-int Game::subscribeCleanupSceneCallback(void(*func)())
+int Game::subscribeCleanupSceneCallback(void (*func)())
 {
     std::lock_guard<std::mutex> guard(cleanUpSceneCallbacksMutex);
     int id = s_nextCleanUpSceneId++;
-    if (id == 0) { id = s_nextCleanUpSceneId++; } // WR-04 skip-zero
+    if (id == 0)
+    {
+        id = s_nextCleanUpSceneId++;
+    } // WR-04 skip-zero
     cleanUpSceneCallbacks.push_back({id, func});
     return id;
 }
@@ -297,27 +309,27 @@ bool Game::unsubscribeCleanupSceneCallback(int handle)
     return false;
 }
 
-void Game::addInstallCallback(void(*func)())
+void Game::addInstallCallback(void (*func)())
 {
     subscribeInstallCallback(func);
 }
 
-void Game::addPreMainLoopCallback(void(*func)())
+void Game::addPreMainLoopCallback(void (*func)())
 {
     subscribePreMainLoopCallback(func);
 }
 
-void Game::addMainLoopCallback(void(*func)())
+void Game::addMainLoopCallback(void (*func)())
 {
     subscribeMainLoopCallback(func);
 }
 
-void Game::addSetSceneCallback(void(*func)())
+void Game::addSetSceneCallback(void (*func)())
 {
     subscribeSetSceneCallback(func);
 }
 
-void Game::addCleanupSceneCallback(void(*func)())
+void Game::addCleanupSceneCallback(void (*func)())
 {
     subscribeCleanupSceneCallback(func);
 }
@@ -338,7 +350,8 @@ void __cdecl hkMainLoop(bool presentToWindow, HWND hwnd, int width, int height)
     // heap-free. Subscribers added mid-iteration land in the registry but fire
     // on the NEXT dispatch.
     dispatchSnapshot(preMainLoopCallbacks, preMainLoopCallbacksMutex,
-        [](void(*func)()) { func(); });
+                     [](void (*func)())
+                     { func(); });
 
     RECT rect;
     if (Client::getEditorMode() && GetWindowRect(Client::getHwnd(), &rect))
@@ -356,7 +369,8 @@ void __cdecl hkMainLoop(bool presentToWindow, HWND hwnd, int width, int height)
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
     // via dispatchSnapshot keeps the per-frame path heap-free.
     dispatchSnapshot(mainLoopCallbacks, mainLoopCallbacksMutex,
-        [](void(*func)()) { func(); });
+                     [](void (*func)())
+                     { func(); });
 
     // DIAG 2026-05-19: log the scene-load state machine transitions. Conditional
     // so we don't spam the log every frame; only fires when loadNewScene flag is set.
@@ -399,7 +413,8 @@ void __cdecl hkInstall(int application)
     }
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
     dispatchSnapshot(installCallbacks, installCallbacksMutex,
-        [](void(*func)()) { func(); });
+                     [](void (*func)())
+                     { func(); });
     utinni::log::info("hkInstall: installCallbacks complete");
 
     if (getConfig().getBool("UtinniCore", "autoLoadScene"))
@@ -436,7 +451,8 @@ void __cdecl hkSetScene(GroundScene* scene)
         }
         // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
         dispatchSnapshot(setSceneCallbacks, setSceneCallbacksMutex,
-            [](void(*func)()) { func(); });
+                         [](void (*func)())
+                         { func(); });
         utinni::log::info("hkSetScene: setSceneCallbacks complete; EXIT");
     }
     else
@@ -462,7 +478,8 @@ void __cdecl hkCleanupScene()
     }
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
     dispatchSnapshot(cleanUpSceneCallbacks, cleanUpSceneCallbacksMutex,
-        [](void(*func)()) { func(); });
+                     [](void (*func)())
+                     { func(); });
     utinni::log::info("hkCleanupScene: cleanUpSceneCallbacks complete; EXIT");
 }
 
@@ -470,7 +487,7 @@ void Game::detour()
 {
     if (getMainLoopCount() == 0) // Checks the Games main loop count, if 0, we're in the 'suspended' startup entry point loop
     {
-        //utility::showMessageBox("");
+        // utility::showMessageBox("");
         swg::game::mainLoop = (swg::game::pMainLoop)Detour::Create(swg::game::mainLoop, hkMainLoop, DETOUR_TYPE_PUSH_RET);
         swg::game::install = (swg::game::pInstall)Detour::Create(swg::game::install, hkInstall, DETOUR_TYPE_PUSH_RET);
         swg::game::setupScene = (swg::game::pSetupScene)Detour::Create(swg::game::setupScene, hkSetScene, DETOUR_TYPE_PUSH_RET);
@@ -573,7 +590,6 @@ const Camera* Game::getConstCamera()
     return swg::game::getConstCamera();
 }
 
-
 bool Game::isSafeToUse()
 {
     // Returns true only when both SWG-internal safety flags are set. Per docs/ai/internals.md:218-231,
@@ -594,7 +610,8 @@ void triggerInstallCallbacks()
 {
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot.
     dispatchSnapshot(installCallbacks, installCallbacksMutex,
-        [](void(*func)()) { func(); });
+                     [](void (*func)())
+                     { func(); });
 }
 
 int getInstallSubscriberCount()
@@ -602,6 +619,6 @@ int getInstallSubscriberCount()
     std::lock_guard<std::mutex> guard(installCallbacksMutex);
     return static_cast<int>(installCallbacks.size());
 }
-}
+} // namespace test_internal
 
-}
+} // namespace utinni

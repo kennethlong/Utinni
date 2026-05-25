@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "utini.h"
 
@@ -49,27 +49,27 @@ namespace utinni
 const static UtINI::Value utinniSettings[] = {
 
     // Launcher settings
-    { "Launcher", "swgClientName", "", UtINI::Value::vt_string },
-    { "Launcher", "swgClientPath", "", UtINI::Value::vt_string },
+    {"Launcher", "swgClientName", "", UtINI::Value::vt_string},
+    {"Launcher", "swgClientPath", "", UtINI::Value::vt_string},
 
     // UtinniCore settings
-    { "UtinniCore", "enableInternalUi", "false", UtINI::Value::vt_bool },
-    { "UtinniCore", "enableOfflineScenes", "false", UtINI::Value::vt_bool },
-    { "UtinniCore", "useSwgOverrideCfg", "false", UtINI::Value::vt_bool },
-    { "UtinniCore", "autoLoadScene", "false", UtINI::Value::vt_bool },
-    { "UtinniCore", "autoLogin", "false", UtINI::Value::vt_bool },
-    { "UtinniCore", "autoLoginUsername", "Local", UtINI::Value::vt_string },
+    {"UtinniCore", "enableInternalUi", "false", UtINI::Value::vt_bool},
+    {"UtinniCore", "enableOfflineScenes", "false", UtINI::Value::vt_bool},
+    {"UtinniCore", "useSwgOverrideCfg", "false", UtINI::Value::vt_bool},
+    {"UtinniCore", "autoLoadScene", "false", UtINI::Value::vt_bool},
+    {"UtinniCore", "autoLogin", "false", UtINI::Value::vt_bool},
+    {"UtinniCore", "autoLoginUsername", "Local", UtINI::Value::vt_string},
 
     // Log settings
-    { "Log", "writeClassName", "false", UtINI::Value::vt_bool },
-    { "Log", "writeFunctionName", "false", UtINI::Value::vt_bool },
+    {"Log", "writeClassName", "false", UtINI::Value::vt_bool},
+    {"Log", "writeFunctionName", "false", UtINI::Value::vt_bool},
 
     // Editor settings
-    { "Editor", "enableEditorMode", "true", UtINI::Value::vt_bool },
-    { "Editor", "defaultPluginPanel", "Main Controls", UtINI::Value::vt_string },
-    { "Editor", "autoOpenLogWindow", "false", UtINI::Value::vt_bool },
-    { "Editor", "width", "1200", UtINI::Value::vt_int },
-    { "Editor", "height", "500", UtINI::Value::vt_int },
+    {"Editor", "enableEditorMode", "true", UtINI::Value::vt_bool},
+    {"Editor", "defaultPluginPanel", "Main Controls", UtINI::Value::vt_string},
+    {"Editor", "autoOpenLogWindow", "false", UtINI::Value::vt_bool},
+    {"Editor", "width", "1200", UtINI::Value::vt_int},
+    {"Editor", "height", "500", UtINI::Value::vt_int},
 
 };
 
@@ -77,29 +77,53 @@ namespace
 {
 // Whitespace-safe predicate; cast to unsigned char avoids the MSVC debug assert when
 // std::isspace is handed a negative signed char (same hack the legacy INI library documented).
-bool isWs(char c) { return std::isspace(static_cast<unsigned char>(c)) != 0; }
+bool isWs(char c)
+{
+    return std::isspace(static_cast<unsigned char>(c)) != 0;
+}
 
 std::string trimCopy(const std::string& s)
 {
     size_t b = 0;
     size_t e = s.size();
-    while (b < e && isWs(s[b])) { ++b; }
-    while (e > b && isWs(s[e - 1])) { --e; }
+    while (b < e && isWs(s[b]))
+    {
+        ++b;
+    }
+    while (e > b && isWs(s[e - 1]))
+    {
+        --e;
+    }
     return s.substr(b, e - b);
 }
 
-bool isCommentChar(char c) { return c == ';' || c == '#'; }
+bool isCommentChar(char c)
+{
+    return c == ';' || c == '#';
+}
 
 // A bare value needs quoting on canonical re-emit if it would not parse back to itself:
 // leading/trailing whitespace, an embedded comment char, or a leading quote.
 bool needsQuoting(const std::string& v)
 {
-    if (v.empty()) { return false; }
-    if (isWs(v.front()) || isWs(v.back())) { return true; }
-    if (v.front() == '"' || v.front() == '\'') { return true; }
+    if (v.empty())
+    {
+        return false;
+    }
+    if (isWs(v.front()) || isWs(v.back()))
+    {
+        return true;
+    }
+    if (v.front() == '"' || v.front() == '\'')
+    {
+        return true;
+    }
     for (char c : v)
     {
-        if (isCommentChar(c)) { return true; }
+        if (isCommentChar(c))
+        {
+            return true;
+        }
     }
     return false;
 }
@@ -108,7 +132,14 @@ bool needsQuoting(const std::string& v)
 // PIMPL body: the raw-line INI store + the hand-rolled parser, all private to this TU.
 struct UtINI::Impl
 {
-    enum class LineKind { Blank, Comment, Section, Entry, Opaque };
+    enum class LineKind
+    {
+        Blank,
+        Comment,
+        Section,
+        Entry,
+        Opaque
+    };
 
     struct Line
     {
@@ -154,7 +185,10 @@ private:
 // the legacy INI library's string_to_t<bool>: empty -> false; first char in {1,t,T,Y,y} -> true.
 bool UtINI::Impl::toBool(const std::string& v)
 {
-    if (v.empty()) { return false; }
+    if (v.empty())
+    {
+        return false;
+    }
     const char c = v[0];
     return c == '1' || c == 't' || c == 'T' || c == 'Y' || c == 'y';
 }
@@ -276,7 +310,10 @@ bool UtINI::Impl::load(const std::string& filename)
                 std::string vr = t.substr(eq + 1);
                 // skip leading whitespace before inspecting for a quote
                 size_t vs = 0;
-                while (vs < vr.size() && isWs(vr[vs])) { ++vs; }
+                while (vs < vr.size() && isWs(vr[vs]))
+                {
+                    ++vs;
+                }
 
                 if (vs < vr.size() && (vr[vs] == '"' || vr[vs] == '\''))
                 {
@@ -305,7 +342,11 @@ bool UtINI::Impl::load(const std::string& filename)
                     size_t cpos = std::string::npos;
                     for (size_t i = 0; i < vr.size(); ++i)
                     {
-                        if (isCommentChar(vr[i])) { cpos = i; break; }
+                        if (isCommentChar(vr[i]))
+                        {
+                            cpos = i;
+                            break;
+                        }
                     }
                     if (cpos == std::string::npos)
                     {
@@ -323,7 +364,10 @@ bool UtINI::Impl::load(const std::string& filename)
 
         lines.push_back(ln);
 
-        if (lastSegment) { break; }
+        if (lastSegment)
+        {
+            break;
+        }
         pos = nl + 1;
     }
 
@@ -343,7 +387,10 @@ void UtINI::Impl::save(const std::string& filename) const
     out.reserve(lines.size());
     for (const Line& ln : lines)
     {
-        if (ln.superseded) { continue; }
+        if (ln.superseded)
+        {
+            continue;
+        }
         if (ln.kind == LineKind::Entry && ln.dirty)
         {
             out.push_back(canonicalEntry(ln));
@@ -368,16 +415,25 @@ void UtINI::Impl::save(const std::string& filename) const
 bool UtINI::Impl::hasValue(const std::string& section, const std::string& key) const
 {
     auto sit = index.find(section);
-    if (sit == index.end()) { return false; }
+    if (sit == index.end())
+    {
+        return false;
+    }
     return sit->second.find(key) != sit->second.end();
 }
 
 std::string UtINI::Impl::getValue(const std::string& section, const std::string& key) const
 {
     auto sit = index.find(section);
-    if (sit == index.end()) { return std::string(); }
+    if (sit == index.end())
+    {
+        return std::string();
+    }
     auto kit = sit->second.find(key);
-    if (kit == sit->second.end()) { return std::string(); }
+    if (kit == sit->second.end())
+    {
+        return std::string();
+    }
     return lines[kit->second].value;
 }
 
@@ -439,12 +495,18 @@ void UtINI::Impl::deleteSection(const std::string& section)
 {
     lines.erase(
         std::remove_if(lines.begin(), lines.end(),
-            [&](const Line& ln)
-            {
-                if (ln.kind == LineKind::Section) { return ln.section == section; }
-                if (ln.kind == LineKind::Entry) { return ln.section == section; }
-                return false;
-            }),
+                       [&](const Line& ln)
+                       {
+                           if (ln.kind == LineKind::Section)
+                           {
+                               return ln.section == section;
+                           }
+                           if (ln.kind == LineKind::Entry)
+                           {
+                               return ln.section == section;
+                           }
+                           return false;
+                       }),
         lines.end());
     rebuildIndex();
 }
@@ -454,11 +516,17 @@ void UtINI::Impl::rebuildIndex()
     index.clear();
     for (Line& ln : lines)
     {
-        if (ln.kind == LineKind::Entry) { ln.superseded = false; }
+        if (ln.kind == LineKind::Entry)
+        {
+            ln.superseded = false;
+        }
     }
     for (size_t i = 0; i < lines.size(); ++i)
     {
-        if (lines[i].kind != LineKind::Entry) { continue; }
+        if (lines[i].kind != LineKind::Entry)
+        {
+            continue;
+        }
         auto& keyMap = index[lines[i].section];
         auto it = keyMap.find(lines[i].key);
         if (it != keyMap.end())
@@ -473,8 +541,14 @@ bool UtINI::Impl::sectionExists(const std::string& section) const
 {
     for (const Line& ln : lines)
     {
-        if (ln.kind == LineKind::Section && ln.section == section) { return true; }
-        if (ln.kind == LineKind::Entry && ln.section == section) { return true; }
+        if (ln.kind == LineKind::Section && ln.section == section)
+        {
+            return true;
+        }
+        if (ln.kind == LineKind::Entry && ln.section == section)
+        {
+            return true;
+        }
     }
     return false;
 }
@@ -498,12 +572,15 @@ size_t UtINI::Impl::firstSectionHeaderIndex() const
 {
     for (size_t i = 0; i < lines.size(); ++i)
     {
-        if (lines[i].kind == LineKind::Section) { return i; }
+        if (lines[i].kind == LineKind::Section)
+        {
+            return i;
+        }
     }
     return lines.size();
 }
 
-UtINI::UtINI() : pImpl(new Impl) { }
+UtINI::UtINI() : pImpl(new Impl) {}
 
 UtINI::UtINI(const std::string& filename) : pImpl(new Impl)
 {
@@ -573,7 +650,7 @@ void UtINI::addSetting(const Value& value) const
 
 void UtINI::addSetting(const char* sectionName, const char* valueName, const char* value, Value::Types type) const
 {
-    Value val = { sectionName, valueName, value, type };
+    Value val = {sectionName, valueName, value, type};
     pImpl->settings.emplace_back(val);
 }
 
@@ -622,4 +699,4 @@ void UtINI::setFloat(const char* sectionName, const char* valueName, float value
     pImpl->setValue(sectionName, valueName, std::to_string(value));
 }
 
-}
+} // namespace utinni

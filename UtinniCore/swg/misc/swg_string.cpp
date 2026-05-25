@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "swg_string.h"
 
@@ -132,4 +132,4 @@ std::string WString::toString() const
     WideCharToMultiByte(CP_UTF8, 0, (LPCWCH)begin, (int)size(), &result[0], strSize, nullptr, nullptr);
     return result;
 }
-}
+} // namespace swg

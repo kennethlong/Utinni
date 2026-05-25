@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "cui_menu.h"
 #include "swg/ui/imgui_impl.h"
@@ -32,7 +32,7 @@ using pInfoTypesFindDefaultCursor = swgptr(__cdecl*)(utinni::ClientObject* obj);
 
 pInfoTypesFindDefaultCursor infoTypesFindDefaultCursor = (pInfoTypesFindDefaultCursor)0x00A08EE0;
 
-}
+} // namespace swg::cuiMenu
 
 namespace utinni
 {
@@ -51,4 +51,4 @@ void cuiMenu::detour()
     swg::cuiMenu::infoTypesFindDefaultCursor = (swg::cuiMenu::pInfoTypesFindDefaultCursor)Detour::Create((LPVOID)swg::cuiMenu::infoTypesFindDefaultCursor, hkInfoTypesFindDefaultCursor, DETOUR_TYPE_PUSH_RET);
 }
 
-}
+} // namespace utinni

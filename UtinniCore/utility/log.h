@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -37,11 +37,11 @@ UTINNI_API extern void info(const char* text);
 UTINNI_API extern void warning(const char* text);
 
 // Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09).
-UTINNI_API extern int subscribeOutputSinkCallback(void(*func)(const char* msg));
+UTINNI_API extern int subscribeOutputSinkCallback(void (*func)(const char* msg));
 UTINNI_API extern bool unsubscribeOutputSinkCallback(int handle);
 // Legacy add* API (D-10): thin wrapper.
-UTINNI_API extern void addOutputSinkCallback(void(*func)(const char* msg));
+UTINNI_API extern void addOutputSinkCallback(void (*func)(const char* msg));
 
 UTINNI_API extern int getMessageBufferCount();
 UTINNI_API extern const char* getMessageAt(int i);
-}
+} // namespace utinni::log

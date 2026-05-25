@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "config.h"
 #include "swg_utility.h"
@@ -81,7 +81,7 @@ void detour()
     loadOverrideConfig = (pLoadOverrideConfig)Detour::Create(loadOverrideConfig, hkLoadOverrideConfig, DETOUR_TYPE_PUSH_RET);
 }
 
-}
+} // namespace swg::config
 
 namespace swg::config::clientGame
 {
@@ -94,4 +94,4 @@ const char* getSceneTerrainFilename()
 {
     return memory::read<const char*>(0x1911240); // static address for "groundScene" in [ClientGame]
 }
-}
+} // namespace swg::config::clientGame

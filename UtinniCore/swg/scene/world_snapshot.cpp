@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "world_snapshot.h"
 #include <filesystem>
@@ -39,13 +39,13 @@ using pOpenFile = bool(__thiscall*)(utinni::WorldSnapshotReaderWriter* pThis, co
 using pSaveFile = bool(__thiscall*)(utinni::WorldSnapshotReaderWriter* pThis, const char* filename);
 using pClear = void(__thiscall*)(utinni::WorldSnapshotReaderWriter* pThis);
 
-using pGetObjectTemplateName = const char* (__thiscall*)(utinni::WorldSnapshotReaderWriter* pThis, int objectTemplateNameIndex);
+using pGetObjectTemplateName = const char*(__thiscall*)(utinni::WorldSnapshotReaderWriter * pThis, int objectTemplateNameIndex);
 
 using pNodeCount = int(__thiscall*)(utinni::WorldSnapshotReaderWriter* pThis);
 using pNodeCountTotal = int(__thiscall*)(utinni::WorldSnapshotReaderWriter* pThis);
 
-using pGetNodeByNetworkId = utinni::WorldSnapshotReaderWriter::Node* (__thiscall*)(utinni::WorldSnapshotReaderWriter* pThis, swgptr networkId);
-using pGetNodeByIndex = utinni::WorldSnapshotReaderWriter::Node* (__thiscall*)(utinni::WorldSnapshotReaderWriter* pThis, int nodeId);
+using pGetNodeByNetworkId = utinni::WorldSnapshotReaderWriter::Node*(__thiscall*)(utinni::WorldSnapshotReaderWriter * pThis, swgptr networkId);
+using pGetNodeByIndex = utinni::WorldSnapshotReaderWriter::Node*(__thiscall*)(utinni::WorldSnapshotReaderWriter * pThis, int nodeId);
 using pAddNode = swgptr(__thiscall*)(utinni::WorldSnapshotReaderWriter* pThis, int nodeId, int parentNodeId, const utinni::CrcString& objectFilenameCrcString, int cellId, const swg::math::Transform& transform, float radius, unsigned int pobCrc);
 using pRemoveNode = void(__thiscall*)(utinni::WorldSnapshotReaderWriter* pThis, int nodeId);
 
@@ -77,8 +77,8 @@ pSetNodeSpatialSubdivisionHandle setNodeSpatialSubdivisionHandle = (pSetNodeSpat
 
 pRemoveFromWorld removeFromWorld = (pRemoveFromWorld)0x00B97440;
 
-}
-}
+} // namespace node
+} // namespace swg::worldSnapshotReaderWriter
 
 namespace swg::worldsnapshot
 {
@@ -101,11 +101,14 @@ pCreateObject createObject = (pCreateObject)0x0059BBA0;
 pAddObject addObject = (pAddObject)0x0059BF20;
 
 pDetailLevelChanged detailLevelChanged = (pDetailLevelChanged)0x0059DC30;
-}
+} // namespace swg::worldsnapshot
 
 namespace utinni
 {
-WorldSnapshotReaderWriter* WorldSnapshotReaderWriter::get() { return (WorldSnapshotReaderWriter*) 0x1913E94; } // Static WorldSnapshotReaderWriter ptr
+WorldSnapshotReaderWriter* WorldSnapshotReaderWriter::get()
+{
+    return (WorldSnapshotReaderWriter*)0x1913E94;
+} // Static WorldSnapshotReaderWriter ptr
 
 void WorldSnapshotReaderWriter::clear()
 {
@@ -235,7 +238,7 @@ WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::addNode(int nodeId, 
     swgptr node;
     if (parentNodeId == 0)
     {
-        node = swg::worldSnapshotReaderWriter::addNode(this, nodeId, parentNodeId, *ConstCharCrcString::ctor(objectFilename), cellId, transform, radius, pobCrc) - 4;  // That's why we subtract 4 here
+        node = swg::worldSnapshotReaderWriter::addNode(this, nodeId, parentNodeId, *ConstCharCrcString::ctor(objectFilename), cellId, transform, radius, pobCrc) - 4; // That's why we subtract 4 here
     }
     else
     {
@@ -268,7 +271,7 @@ void WorldSnapshotReaderWriter::Node::removeNode()
             }
         }
     }
-    else 
+    else
     {
         // ToDo check if removeNodeFull can replace the below remove obj
 
@@ -334,7 +337,6 @@ void WorldSnapshotReaderWriter::Node::removeNodeFull() // WIP - Messy IDA pseudo
             }
         }
         setNodeSpatialSubdivisionHandle(0);
-
     }
 
     Object* nodeObject = Network::getObjectById(id);
@@ -412,7 +414,7 @@ void WorldSnapshot::load(const std::string& name)
     swg::worldsnapshot::load(name.c_str());
 }
 
-void WorldSnapshot::unload() 
+void WorldSnapshot::unload()
 {
     if (!Game::isSafeToUse())
     {
@@ -450,7 +452,6 @@ void WorldSnapshotReaderWriter::saveFile(const char* snapshotName)
     }
     else
     {
-
         swg::worldSnapshotReaderWriter::saveFile(this, ("snapshot/" + std::string(snapshotName) + ".ws").c_str());
     }
 }
@@ -689,4 +690,4 @@ void WorldSnapshot::removeNode(WorldSnapshotReaderWriter::Node* node)
 
     detailLevelChanged(); // Hack to update the .WS
 }
-}
+} // namespace utinni

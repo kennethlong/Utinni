@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "swg_misc.h"
 
@@ -29,7 +29,7 @@ namespace swg::report
 using pPrint = void(__cdecl*)(const char* msg);
 
 pPrint print = (pPrint)0x00A88F90;
-}
+} // namespace swg::report
 
 namespace utinni::report
 {
@@ -51,5 +51,4 @@ void detour()
 {
     swg::report::print = (swg::report::pPrint)Detour::Create(swg::report::print, hkPrint, DETOUR_TYPE_PUSH_RET);
 }
-}
-
+} // namespace utinni::report

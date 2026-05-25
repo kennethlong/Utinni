@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "camera.h"
 #include "swg/game/game.h"
@@ -37,8 +37,8 @@ using pSetFarPlane = void(__thiscall*)(utinni::Camera* pThis, float farPlane);
 
 using pSetHorizontalFieldOfView = void(__thiscall*)(utinni::Camera* pThis, float fieldOfView);
 
-using pReverseProjectInViewportSpaceInt = swg::math::Vector*(__thiscall*)(utinni::Camera* pThis, math::Vector& result, int x, int y);
-using pReverseProjectInViewportSpaceFloat = swg::math::Vector*(__thiscall*)(utinni::Camera* pThis, math::Vector& result, float viewPortX, float viewPortY, float cameraZ);
+using pReverseProjectInViewportSpaceInt = swg::math::Vector*(__thiscall*)(utinni::Camera * pThis, math::Vector& result, int x, int y);
+using pReverseProjectInViewportSpaceFloat = swg::math::Vector*(__thiscall*)(utinni::Camera * pThis, math::Vector& result, float viewPortX, float viewPortY, float cameraZ);
 
 pGetViewportInt getViewportInt = (pGetViewportInt)0x00767DF0;
 pGetViewportFloat getViewportFloat = (pGetViewportFloat)0x00767E40;
@@ -52,7 +52,7 @@ pSetHorizontalFieldOfView setHorizontalFieldOfView = (pSetHorizontalFieldOfView)
 
 pReverseProjectInViewportSpaceInt reverseProjectInViewportSpaceInt = (pReverseProjectInViewportSpaceInt)0x007682B0;
 pReverseProjectInViewportSpaceFloat reverseProjectInViewportSpaceFloat = (pReverseProjectInViewportSpaceFloat)0x00768390;
-}
+} // namespace swg::camera
 
 namespace swg::renderWorldCamera
 {
@@ -61,14 +61,14 @@ using pClearExcludedObjects = int(__thiscall*)(const utinni::Camera* pThis);
 
 pAddExcludedObject addExcludedObject = (pAddExcludedObject)0x00778FE0;
 pClearExcludedObjects clearExcludedObjects = (pClearExcludedObjects)0x00779130;
-}
+} // namespace swg::renderWorldCamera
 
 namespace swg::gameCamera
 {
 using pAlter = float(__thiscall*)(utinni::GameCamera* pThis, float time);
 
 pAlter alter = (pAlter)0x00788740;
-}
+} // namespace swg::gameCamera
 
 namespace utinni
 {
@@ -111,7 +111,8 @@ swg::math::Vector Camera::reverseProjectInViewportSpace(int x, int y)
 swg::math::Vector Camera::reverseProjectInViewportSpace(float viewPortX, float viewPortY, float cameraZ)
 {
     swg::math::Vector tmp;
-    return *swg::camera::reverseProjectInViewportSpaceFloat(this, tmp, viewPortX, viewPortY, cameraZ);;
+    return *swg::camera::reverseProjectInViewportSpaceFloat(this, tmp, viewPortX, viewPortY, cameraZ);
+    ;
 }
 
 void RenderWorldCamera::addExcludedObject(Object* obj)
@@ -140,4 +141,4 @@ float GameCamera::alter(float time)
 {
     return swg::gameCamera::alter(this, time);
 }
-}
+} // namespace utinni

@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 // Phase 6 D-07 / 06-02 Task 2: CON-N-09 regression fence for the spdlog OutputSink.
 //
@@ -55,7 +55,7 @@
 
 #include <catch2/catch_all.hpp>
 
-#include <spdlog/logger.h>          // std::make_shared<spdlog::logger> below; vendored spdlog 1.6.0's base_sink.h does NOT pull this in transitively
+#include <spdlog/logger.h> // std::make_shared<spdlog::logger> below; vendored spdlog 1.6.0's base_sink.h does NOT pull this in transitively
 #include <spdlog/sinks/base_sink.h>
 #include <spdlog/details/null_mutex.h>
 
@@ -82,7 +82,7 @@ class RecordingSinkMutex : public spdlog::sinks::base_sink<std::mutex>
 {
 public:
     std::vector<std::string> captured;
-    std::mutex                capturedMutex;
+    std::mutex capturedMutex;
 
 protected:
     void sink_it_(const spdlog::details::log_msg& msg) override
@@ -92,7 +92,7 @@ protected:
         std::lock_guard<std::mutex> guard(capturedMutex);
         captured.emplace_back(fmt::to_string(formatted));
     }
-    void flush_() override { }
+    void flush_() override {}
 };
 
 // The negative analog: a sink built on base_sink<details::null_mutex>. The
@@ -104,8 +104,8 @@ protected:
 class RecordingSinkNullMutex : public spdlog::sinks::base_sink<spdlog::details::null_mutex>
 {
 protected:
-    void sink_it_(const spdlog::details::log_msg&) override { }
-    void flush_() override { }
+    void sink_it_(const spdlog::details::log_msg&) override {}
+    void flush_() override {}
 };
 
 static_assert(
@@ -127,13 +127,16 @@ static_assert(
 // dispatches via a C-style function pointer (Phase 3 R-A handle-based registry),
 // so we cannot capture-by-lambda; the callback is a plain function that writes
 // into this file-scope buffer guarded by an atomic + mutex pair.
-std::mutex                g_capturedMutex;
-std::vector<std::string>  g_capturedMessages;
-std::atomic<int>          g_capturedCount{0};
+std::mutex g_capturedMutex;
+std::vector<std::string> g_capturedMessages;
+std::atomic<int> g_capturedCount{0};
 
 void recordingCallback(const char* msg)
 {
-    if (!msg) { return; }
+    if (!msg)
+    {
+        return;
+    }
     std::lock_guard<std::mutex> guard(g_capturedMutex);
     g_capturedMessages.emplace_back(msg);
     g_capturedCount.fetch_add(1, std::memory_order_relaxed);
@@ -311,10 +314,22 @@ TEST_CASE("OutputSink_message_format_includes_level_and_payload", "[log][output-
     bool foundPayload = false;
     for (const auto& formatted : sink->captured)
     {
-        if (formatted.find("[info]")    != std::string::npos) { foundInfo = true; }
-        if (formatted.find("[warning]") != std::string::npos) { foundWarn = true; }
-        if (formatted.find("[error]")   != std::string::npos) { foundError = true; }
-        if (formatted.find("payload-token-marker") != std::string::npos) { foundPayload = true; }
+        if (formatted.find("[info]") != std::string::npos)
+        {
+            foundInfo = true;
+        }
+        if (formatted.find("[warning]") != std::string::npos)
+        {
+            foundWarn = true;
+        }
+        if (formatted.find("[error]") != std::string::npos)
+        {
+            foundError = true;
+        }
+        if (formatted.find("payload-token-marker") != std::string::npos)
+        {
+            foundPayload = true;
+        }
     }
     REQUIRE(foundInfo);
     REQUIRE(foundWarn);

@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -80,20 +80,20 @@ public:
 
     // Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09): Subscribe returns an
     // opaque int (handle 0 reserved as invalid sentinel); pair with Unsubscribe.
-    static int subscribePreDrawLoopCallback(void(*func)(GroundScene* pThis));
+    static int subscribePreDrawLoopCallback(void (*func)(GroundScene* pThis));
     static bool unsubscribePreDrawLoopCallback(int handle);
-    static int subscribePostDrawLoopCallback(void(*func)(GroundScene* pThis));
+    static int subscribePostDrawLoopCallback(void (*func)(GroundScene* pThis));
     static bool unsubscribePostDrawLoopCallback(int handle);
-    static int subscribeUpdateLoopCallback(void(*func)(GroundScene* pThis, float elapsedTime));
+    static int subscribeUpdateLoopCallback(void (*func)(GroundScene* pThis, float elapsedTime));
     static bool unsubscribeUpdateLoopCallback(int handle);
-    static int subscribeCameraChangeCallback(void(*func)());
+    static int subscribeCameraChangeCallback(void (*func)());
     static bool unsubscribeCameraChangeCallback(int handle);
 
     // Legacy add* API (D-10): thin wrappers around subscribe*.
-    static void addPreDrawLoopCallback(void(*func)(GroundScene* pThis));
-    static void addPostDrawLoopCallback(void(*func)(GroundScene* pThis));
-    static void addUpdateLoopCallback(void(*func)(GroundScene* pThis, float elapsedTime));
-    static void addCameraChangeCallback(void(*func)());
+    static void addPreDrawLoopCallback(void (*func)(GroundScene* pThis));
+    static void addPostDrawLoopCallback(void (*func)(GroundScene* pThis));
+    static void addUpdateLoopCallback(void (*func)(GroundScene* pThis, float elapsedTime));
+    static void addCameraChangeCallback(void (*func)());
 
     static void detour();
     static void removeDetour();
@@ -107,8 +107,6 @@ public:
 
     void createObjectAtPlayer(const char* filename);
     void createAppearanceAtPlayer(const char* filename);
-
-
 };
 
-}
+} // namespace utinni

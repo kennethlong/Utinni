@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "audio.h"
 
@@ -31,7 +31,7 @@ pSetMasterVolume setMasterVolume = (pSetMasterVolume)0x00412C20;
 
 using pGetMasterVolume = float(__cdecl*)();
 pGetMasterVolume getMasterVolume = (pGetMasterVolume)0x00412C70;
-}
+} // namespace swg::audio
 
 namespace utinni::audio
 {
@@ -45,4 +45,4 @@ float getMasterVolume()
     return swg::audio::getMasterVolume();
 }
 
-}
+} // namespace utinni::audio

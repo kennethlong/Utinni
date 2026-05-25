@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "portal.h"
 
@@ -28,18 +28,18 @@ namespace swg::portalPropertyTemplate
 {
 using pGetCrc = int(__thiscall*)(utinni::PortalPropertyTemplate* pThis);
 using pGetCellCount = int(__thiscall*)(utinni::PortalPropertyTemplate* pThis);
-using pGetExteriorAppearanceName = const char* (__thiscall*)(utinni::PortalPropertyTemplate* pThis);
+using pGetExteriorAppearanceName = const char*(__thiscall*)(utinni::PortalPropertyTemplate * pThis);
 
 pGetCrc getCrc = (pGetCrc)0x00B47BD0;
 pGetCellCount getCellCount = (pGetCellCount)0x00B47BE0;
 pGetExteriorAppearanceName getExteriorAppearanceName = (pGetExteriorAppearanceName)0x00B47C90;
-}
+} // namespace swg::portalPropertyTemplate
 
 namespace swg::portalPropertyTemplateList
 {
-using pGetPobByCrcString = utinni::PortalPropertyTemplate* (__cdecl*)(utinni::PersistentCrcString* pobCrcString);
+using pGetPobByCrcString = utinni::PortalPropertyTemplate*(__cdecl*)(utinni::PersistentCrcString * pobCrcString);
 pGetPobByCrcString getPobByCrcString = (pGetPobByCrcString)0x00B497E0;
-}
+} // namespace swg::portalPropertyTemplateList
 
 namespace swg::cellProperty
 {
@@ -48,7 +48,7 @@ using pSetPortalTransitions = void(__cdecl*)(bool enabled);
 
 pGetParentCell getParentCell = (pGetParentCell)0x00B22C00;
 pSetPortalTransitions setPortalTransitions = (pSetPortalTransitions)0x00B2A990;
-}
+} // namespace swg::cellProperty
 
 namespace utinni
 {
@@ -72,7 +72,6 @@ PortalPropertyTemplate* PortalPropertyTemplateList::getPobByCrcString(Persistent
 {
     return swg::portalPropertyTemplateList::getPobByCrcString(pobCrcString);
 }
-
 
 ClientObject* CellProperty::getParentObject() const
 {
@@ -104,4 +103,4 @@ void CellProperty::setPortalTransitions(bool enabled)
     swg::cellProperty::setPortalTransitions(enabled);
 }
 
-}
+} // namespace utinni

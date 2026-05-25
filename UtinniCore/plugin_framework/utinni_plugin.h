@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -28,24 +28,23 @@
 
 namespace utinni
 {
-    struct UTINNI_API UtinniPlugin
+struct UTINNI_API UtinniPlugin
+{
+    struct UTINNI_API Information
     {
-        struct UTINNI_API Information
-        {
-            const char* name;
-            const char* description;
-            const char* author;
-        };
-
-        UtinniPlugin() {};
-        virtual ~UtinniPlugin() {}
-
-        virtual void init() {}
-
-        virtual const Information& getInformation() const = 0;
+        const char* name;
+        const char* description;
+        const char* author;
     };
-}
 
+    UtinniPlugin() {};
+    virtual ~UtinniPlugin() {}
+
+    virtual void init() {}
+
+    virtual const Information& getInformation() const = 0;
+};
+} // namespace utinni
 
 // Phase 3 R-B (per 03-CONTEXT D-13): the UTINNI_PLUGIN macro declares BOTH
 // createPlugin() AND destroyPlugin(UtinniPlugin*) so plugins own both their
@@ -98,8 +97,8 @@ namespace utinni
 //
 // These constraints are theoretical for the current set of plugins (TJT,
 // CrtMatchPlugin) but they're worth pinning down before more plugins ship.
-#define UTINNI_PLUGIN \
+#define UTINNI_PLUGIN                                                      \
     extern "C" __declspec(dllexport) utinni::UtinniPlugin* createPlugin(); \
     extern "C" __declspec(dllexport) void destroyPlugin(utinni::UtinniPlugin* p)
 
-//#define UTINNI_PLUGIN extern "C" UTINNI_API utinni::UtinniPlugin* createPlugin()
+// #define UTINNI_PLUGIN extern "C" UTINNI_API utinni::UtinniPlugin* createPlugin()

@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "post_processing.h"
 
@@ -35,7 +35,7 @@ using pPostSceneRender = void(__cdecl*)();
 pPreSceneRender preSceneRender = (pPreSceneRender)0x0064B500;
 pPostSceneRender postSceneRender = (pPostSceneRender)0x0064B560;
 
-}
+} // namespace swg::bloom
 
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries
 // backed by insertion-order std::vector<{handle, fn_ptr}>.
@@ -93,8 +93,8 @@ void dispatchSnapshot(
 }
 } // namespace
 
-static std::vector<CallbackEntry<void(*)()>> preSceneRenderCallbacks;
-static std::vector<CallbackEntry<void(*)()>> postSceneRenderCallbacks;
+static std::vector<CallbackEntry<void (*)()>> preSceneRenderCallbacks;
+static std::vector<CallbackEntry<void (*)()>> postSceneRenderCallbacks;
 static std::mutex preSceneRenderCallbacksMutex;
 static std::mutex postSceneRenderCallbacksMutex;
 static int s_nextPreSceneRenderId = 1;
@@ -107,7 +107,8 @@ void __cdecl hkPreSceneRender() // Originally a Bloom class function, repurposed
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
     // via dispatchSnapshot keeps the per-frame path heap-free.
     dispatchSnapshot(preSceneRenderCallbacks, preSceneRenderCallbacksMutex,
-        [](void(*func)()) { func(); });
+                     [](void (*func)())
+                     { func(); });
 
     swg::bloom::preSceneRender();
 }
@@ -119,15 +120,19 @@ void __cdecl hkPostSceneRender() // Originally a Bloom class function, repurpose
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
     // via dispatchSnapshot keeps the per-frame path heap-free.
     dispatchSnapshot(postSceneRenderCallbacks, postSceneRenderCallbacksMutex,
-        [](void(*func)()) { func(); });
+                     [](void (*func)())
+                     { func(); });
 }
 
 // Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
-int subscribePreSceneRenderCallback(void(*func)())
+int subscribePreSceneRenderCallback(void (*func)())
 {
     std::lock_guard<std::mutex> guard(preSceneRenderCallbacksMutex);
     int id = s_nextPreSceneRenderId++;
-    if (id == 0) { id = s_nextPreSceneRenderId++; } // WR-04 skip-zero
+    if (id == 0)
+    {
+        id = s_nextPreSceneRenderId++;
+    } // WR-04 skip-zero
     preSceneRenderCallbacks.push_back({id, func});
     return id;
 }
@@ -150,11 +155,14 @@ bool unsubscribePreSceneRenderCallback(int handle)
     return false;
 }
 
-int subscribePostSceneRenderCallback(void(*func)())
+int subscribePostSceneRenderCallback(void (*func)())
 {
     std::lock_guard<std::mutex> guard(postSceneRenderCallbacksMutex);
     int id = s_nextPostSceneRenderId++;
-    if (id == 0) { id = s_nextPostSceneRenderId++; } // WR-04 skip-zero
+    if (id == 0)
+    {
+        id = s_nextPostSceneRenderId++;
+    } // WR-04 skip-zero
     postSceneRenderCallbacks.push_back({id, func});
     return id;
 }
@@ -177,12 +185,12 @@ bool unsubscribePostSceneRenderCallback(int handle)
     return false;
 }
 
-void addPreSceneRenderCallback(void(* func)())
+void addPreSceneRenderCallback(void (*func)())
 {
     subscribePreSceneRenderCallback(func);
 }
 
-void addPostSceneRenderCallback(void(* func)())
+void addPostSceneRenderCallback(void (*func)())
 {
     subscribePostSceneRenderCallback(func);
 }
@@ -191,6 +199,5 @@ void detour()
 {
     swg::bloom::preSceneRender = (swg::bloom::pPreSceneRender)Detour::Create(swg::bloom::preSceneRender, hkPreSceneRender, DETOUR_TYPE_PUSH_RET);
     swg::bloom::postSceneRender = (swg::bloom::pPostSceneRender)Detour::Create(swg::bloom::postSceneRender, hkPostSceneRender, DETOUR_TYPE_PUSH_RET);
-
 }
-}
+} // namespace utinni::postProcessing

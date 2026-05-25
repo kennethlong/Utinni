@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include <Windows.h>
 #include <string>
@@ -30,20 +30,20 @@
 #include <filesystem>
 
 // Import EnvDTE to allow the auto attaching of VisualStudio to the created process
-//#if defined RELDBG  || defined  _DEBUG 
-//#include <atlbase.h>
-//#include <cassert>
-//#pragma warning(disable : 4278)
-//#pragma warning(disable : 4146)
-//#import "libid:80cc9f66-e7d8-4ddd-85b6-d9e6cd0e93e2" version("8.0") lcid("0") raw_interfaces_only named_guids
-//#pragma warning(default : 4146)
-//#pragma warning(default : 4278)
-//#endif
+// #if defined RELDBG  || defined  _DEBUG
+// #include <atlbase.h>
+// #include <cassert>
+// #pragma warning(disable : 4278)
+// #pragma warning(disable : 4146)
+// #import "libid:80cc9f66-e7d8-4ddd-85b6-d9e6cd0e93e2" version("8.0") lcid("0") raw_interfaces_only named_guids
+// #pragma warning(default : 4146)
+// #pragma warning(default : 4278)
+// #endif
 
 #include "UtINI/utini.h"
 
 #pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup") // Disables the popping up of the console
-#pragma comment(lib, "version.lib") // To use GetFileVersionInfo, etc
+#pragma comment(lib, "version.lib")                                 // To use GetFileVersionInfo, etc
 
 void throwError(const std::string& message)
 {
@@ -51,33 +51,33 @@ void throwError(const std::string& message)
     throw std::runtime_error(message);
 }
 
-//DWORD getParentPID()
+// DWORD getParentPID()
 //{
-//    const DWORD PID = GetCurrentProcessId();
-//    DWORD parentPID = 0;
+//     const DWORD PID = GetCurrentProcessId();
+//     DWORD parentPID = 0;
 //
-//    PROCESSENTRY32 pe32;
-//    pe32.dwSize = sizeof(pe32);
+//     PROCESSENTRY32 pe32;
+//     pe32.dwSize = sizeof(pe32);
 //
-//    const HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-//    if (hSnapshot == INVALID_HANDLE_VALUE || !Process32First(hSnapshot, &pe32))
-//        return 0;
+//     const HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+//     if (hSnapshot == INVALID_HANDLE_VALUE || !Process32First(hSnapshot, &pe32))
+//         return 0;
 //
-//    do 
-//    {
-//        if (pe32.th32ProcessID == PID) 
-//        {
-//            parentPID = pe32.th32ParentProcessID;
-//            break;
-//        }
-//    } while (Process32Next(hSnapshot, &pe32));
+//     do
+//     {
+//         if (pe32.th32ProcessID == PID)
+//         {
+//             parentPID = pe32.th32ParentProcessID;
+//             break;
+//         }
+//     } while (Process32Next(hSnapshot, &pe32));
 //
-//    CloseHandle(hSnapshot);
-//    return parentPID;
-//}
+//     CloseHandle(hSnapshot);
+//     return parentPID;
+// }
 
 // ToDo Current issues: It doesn't seem to reliably attach
-//EnvDTE::Process* findVisualStudioProcess(DWORD targetPID)
+// EnvDTE::Process* findVisualStudioProcess(DWORD targetPID)
 //{
 //    CoInitialize(nullptr);
 //
@@ -159,17 +159,17 @@ void throwError(const std::string& message)
 //    return nullptr;
 //}
 
-//void attachToVisualStudio(DWORD targetPID)
+// void attachToVisualStudio(DWORD targetPID)
 //{
-//    EnvDTE::Process* process = findVisualStudioProcess(targetPID);
+//     EnvDTE::Process* process = findVisualStudioProcess(targetPID);
 //
-//    if (process != nullptr)
-//    {
-//        process->Attach();
-//    }
+//     if (process != nullptr)
+//     {
+//         process->Attach();
+//     }
 //
-//    CoUninitialize();
-//}
+//     CoUninitialize();
+// }
 
 void inject(PROCESS_INFORMATION procInfo, LPVOID utinniInitArg)
 {
@@ -235,7 +235,7 @@ void inject(PROCESS_INFORMATION procInfo, LPVOID utinniInitArg)
     // the form closes, which means the OEP-restore at loadDll() lines 382-384
     // never ran. The wait now happens on the named event in loadDll().
     HANDLE hInitThread = CreateRemoteThread(procInfo.hProcess, nullptr, 0,
-                                             (LPTHREAD_START_ROUTINE)remoteInit, utinniInitArg, 0, nullptr);
+                                            (LPTHREAD_START_ROUTINE)remoteInit, utinniInitArg, 0, nullptr);
     if (!hInitThread)
     {
         throwError("[ERROR] Couldn't open utinni_init remote thread.");
@@ -334,7 +334,7 @@ std::string getSwgClientFilename()
 
 void loadDll(const std::string& cmdLine)
 {
-    STARTUPINFOA StartupInfo = { 0 };
+    STARTUPINFOA StartupInfo = {0};
     StartupInfo.cb = sizeof(StartupInfo);
     PROCESS_INFORMATION procInfo;
 
@@ -379,7 +379,7 @@ void loadDll(const std::string& cmdLine)
             WriteProcessMemory(procInfo.hProcess, remoteEventName, readyEventName.c_str(), eventNameLen, nullptr);
 
             // patch original entry point with ian infinite loop
-            unsigned char patchedOep[]{ 0xEB, 0xFE };
+            unsigned char patchedOep[]{0xEB, 0xFE};
             WriteProcessMemory(hProcess, entry, patchedOep, 2, nullptr);
             // CRITICAL: flush instruction cache so the main thread fetches the patched
             // bytes rather than a stale prefetched original. Without this, the CPU's
@@ -394,8 +394,8 @@ void loadDll(const std::string& cmdLine)
                 ReadProcessMemory(hProcess, entry, afterPatch, 2, nullptr);
                 char dbg[128];
                 _snprintf_s(dbg, sizeof(dbg), _TRUNCATE,
-                    "[LAUNCHER] post-patch bytes at 0x%08X: %02X %02X (expected EB FE)\n",
-                    (DWORD)entry, afterPatch[0], afterPatch[1]);
+                            "[LAUNCHER] post-patch bytes at 0x%08X: %02X %02X (expected EB FE)\n",
+                            (DWORD)entry, afterPatch[0], afterPatch[1]);
                 OutputDebugStringA(dbg);
             }
 
@@ -418,11 +418,11 @@ void loadDll(const std::string& cmdLine)
                 throwError("Timed out trying to reach the entry point");
             }
 
-            // Attach the debugger before we inject, only do this in RelWithDbgInfo or Debug configuration
-            #if defined RELDBG  || defined  _DEBUG
-            // ToDo add an .ini setting to enable or disable it, commented out for now until there is a setting
-            //attachToVisualStudio(procInfo.dwProcessId);
-            #endif
+// Attach the debugger before we inject, only do this in RelWithDbgInfo or Debug configuration
+#if defined RELDBG || defined _DEBUG
+// ToDo add an .ini setting to enable or disable it, commented out for now until there is a setting
+// attachToVisualStudio(procInfo.dwProcessId);
+#endif
 
             // inject DLL -- fires LoadLibraryA + utinni_init remote threads. We pass
             // remoteEventName as utinni_init's lpThreadParam so utinni_init can later
@@ -455,8 +455,8 @@ void loadDll(const std::string& cmdLine)
                 ReadProcessMemory(hProcess, entry, afterRestore, 2, nullptr);
                 char dbg[128];
                 _snprintf_s(dbg, sizeof(dbg), _TRUNCATE,
-                    "[LAUNCHER] post-restore bytes at 0x%08X: %02X %02X (expected %02X %02X)\n",
-                    (DWORD)entry, afterRestore[0], afterRestore[1], oep[0], oep[1]);
+                            "[LAUNCHER] post-restore bytes at 0x%08X: %02X %02X (expected %02X %02X)\n",
+                            (DWORD)entry, afterRestore[0], afterRestore[1], oep[0], oep[1]);
                 OutputDebugStringA(dbg);
             }
 
@@ -476,8 +476,6 @@ void loadDll(const std::string& cmdLine)
     {
         throwError("Unable to load the specified executable");
     }
-
-
 }
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -507,5 +505,3 @@ int main(int argc, char* argv[])
     loadDll(argsCombined);
     return 0;
 }
-
-

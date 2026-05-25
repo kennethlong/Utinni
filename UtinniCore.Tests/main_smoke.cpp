@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include <catch2/catch_all.hpp>
 #include "utility/string_utility.h"
@@ -35,7 +35,8 @@ TEST_CASE("Smoke: vendored Catch2 runs", "[smoke]")
 TEST_CASE("Smoke: exception machinery works", "[smoke]")
 {
     REQUIRE_THROWS_AS(
-        []() { throw std::runtime_error("boom"); }(),
+        []()
+        { throw std::runtime_error("boom"); }(),
         std::runtime_error);
 }
 

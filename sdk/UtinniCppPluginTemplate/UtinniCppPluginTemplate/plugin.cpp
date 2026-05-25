@@ -7,21 +7,18 @@ class ExampleUtinniPlugin : public utinni::UtinniPlugin
 {
 private:
     Information information =
-    {
-        "Example Utinni Plugin",
-        "An Example Utinni Plugin",
-        "Example Author"
-    };
+        {
+            "Example Utinni Plugin",
+            "An Example Utinni Plugin",
+            "Example Author"};
 
 public:
     ExampleUtinniPlugin()
     {
-		
     }
 
     ~ExampleUtinniPlugin()
     {
-
     }
 
     virtual void init() override

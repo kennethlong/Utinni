@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -31,9 +31,9 @@ namespace utinni::creatureObject // temporary
 {
 // Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09): handle-based Subscribe;
 // pair with Unsubscribe. addOnTargetCallback retained per D-10 as wrapper.
-UTINNI_API extern int subscribeOnTargetCallback(void(*func)(Object* target));
+UTINNI_API extern int subscribeOnTargetCallback(void (*func)(Object* target));
 UTINNI_API extern bool unsubscribeOnTargetCallback(int handle);
-UTINNI_API extern void addOnTargetCallback(void(*func)(Object* target));
+UTINNI_API extern void addOnTargetCallback(void (*func)(Object* target));
 
 void detour();
-}
+} // namespace utinni::creatureObject

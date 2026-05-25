@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "swg_math.h"
 
@@ -34,14 +34,12 @@ using pVectorNormalize = bool(__thiscall*)(Vector* pThis);
 pVectorNormalize vectorNormalize = (pVectorNormalize)0x00AB5C40;
 
 Vector2d::Vector2d()
-    : X(0)
-    , Y(0)
+    : X(0), Y(0)
 {
 }
 
 Vector2d::Vector2d(float x, float y)
-    : X(x)
-    , Y(y)
+    : X(x), Y(y)
 {
 }
 
@@ -66,22 +64,18 @@ Vector2d Vector2d::operator/(float scalar) const
     return Vector2d(X * multiplier, Y * multiplier);
 }
 
-//bool Vector2d::normalize()
+// bool Vector2d::normalize()
 //{
-//    return vector2Normalize(this);
-//}
+//     return vector2Normalize(this);
+// }
 
 Vector::Vector()
-    : X(0)
-    , Y(0)
-    , Z(0)
+    : X(0), Y(0), Z(0)
 {
 }
 
 Vector::Vector(float x, float y, float z)
-    : X(x)
-    , Y(y)
-    , Z(z)
+    : X(x), Y(y), Z(z)
 {
 }
 
@@ -165,7 +159,7 @@ void Transform::setPosition(const Vector& vector)
 
 Vector Transform::getPosition()
 {
-    return { matrix[0][3], matrix[1][3], matrix[2][3] };
+    return {matrix[0][3], matrix[1][3], matrix[2][3]};
 }
 
 Transform Transform::addPosition(const Transform& transform)
@@ -353,7 +347,7 @@ void Transform::setRotationAxis(float x, float y, float z)
 {
     const float cx = cos(x);
     const float sx = sin(x);
-    
+
     const float cy = cos(y);
     const float sy = sin(y);
 
@@ -393,8 +387,7 @@ Vector Transform::rotate_o2w(const Vector& vector)
     return {
         matrix[0][0] * vector.X + matrix[0][1] * vector.Y + matrix[0][2] * vector.Z,
         matrix[1][0] * vector.X + matrix[1][1] * vector.Y + matrix[1][2] * vector.Z,
-        matrix[2][0] * vector.X + matrix[2][1] * vector.Y + matrix[2][2] * vector.Z };
-
+        matrix[2][0] * vector.X + matrix[2][1] * vector.Y + matrix[2][2] * vector.Z};
 }
 
 Vector Transform::rotate_p2w(const Vector& vector)
@@ -402,7 +395,7 @@ Vector Transform::rotate_p2w(const Vector& vector)
     return {
         matrix[0][0] * vector.X + matrix[1][0] * vector.Y + matrix[2][0] * vector.Z,
         matrix[0][1] * vector.X + matrix[1][1] * vector.Y + matrix[2][1] * vector.Z,
-        matrix[0][2] * vector.X + matrix[1][2] * vector.Y + matrix[2][2] * vector.Z };
+        matrix[0][2] * vector.X + matrix[1][2] * vector.Y + matrix[2][2] * vector.Z};
 }
 
 Vector Transform::rotate_l2p(const Vector& vector)
@@ -411,7 +404,6 @@ Vector Transform::rotate_l2p(const Vector& vector)
         matrix[0][0] * vector.X + matrix[0][1] * vector.Y + matrix[0][2] * vector.Z,
         matrix[1][0] * vector.X + matrix[1][1] * vector.Y + matrix[1][2] * vector.Z,
         matrix[2][0] * vector.X + matrix[2][1] * vector.Y + matrix[2][2] * vector.Z);
-
 }
 
 Vector Transform::rotateTranslate_l2p(const Vector& vector)
@@ -569,18 +561,12 @@ Matrix4x4 Matrix4x4::operator-(const Matrix4x4& matrix4x4) const
 }
 
 Quaternion::Quaternion()
-    : W(1)
-    , X(0)
-    , Y(0)
-    , Z(0)
+    : W(1), X(0), Y(0), Z(0)
 {
 }
 
 Quaternion::Quaternion(const Transform& transform)
-    : W(1)
-    , X(0)
-    , Y(0)
-    , Z(0)
+    : W(1), X(0), Y(0), Z(0)
 {
     const float trace = transform.matrix[0][0] + transform.matrix[1][1] + transform.matrix[2][2] + 1.0f;
     if (trace >= 2.0f)
@@ -623,59 +609,43 @@ Quaternion::Quaternion(const Transform& transform)
 }
 
 Point::Point()
-    : X(0)
-    , Y(0)
+    : X(0), Y(0)
 {
 }
 
 Point::Point(float x, float y)
-    : X(x)
-    , Y(y)
+    : X(x), Y(y)
 {
 }
 
 UiPoint::UiPoint()
-    : X(0)
-    , Y(0)
+    : X(0), Y(0)
 {
 }
 
 UiPoint::UiPoint(int x, int y)
-    : X(0)
-    , Y(0)
+    : X(0), Y(0)
 {
 }
 
 Rect2d::Rect2d()
-    : X0(0)
-    , Y0(0)
-    , X1(0)
-    , Y1(0)
+    : X0(0), Y0(0), X1(0), Y1(0)
 {
 }
 
 Rect2d::Rect2d(float x0, float y0, float x1, float y1)
-    : X0(x0)
-    , Y0(y0)
-    , X1(x1)
-    , Y1(y1)
+    : X0(x0), Y0(y0), X1(x1), Y1(y1)
 {
 }
 
 UiRect::UiRect()
-    : Left(0)
-    , Top(0)
-    , Right(0)
-    , Bottom(0)
+    : Left(0), Top(0), Right(0), Bottom(0)
 {
 }
 
 UiRect::UiRect(int left, int top, int right, int bottom)
-    : Left(left)
-    , Top(top)
-    , Right(right)
-    , Bottom(bottom)
+    : Left(left), Top(top), Right(right), Bottom(bottom)
 {
 }
 
-}
+} // namespace swg::math

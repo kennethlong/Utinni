@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -32,4 +32,4 @@ UTINNI_API extern void togglePlayerAppearance();
 UTINNI_API extern float getSpeed();
 UTINNI_API extern void setSpeed(float value);
 UTINNI_API extern void teleport(float x, float y, float z);
-}
+} // namespace utinni::playerObject

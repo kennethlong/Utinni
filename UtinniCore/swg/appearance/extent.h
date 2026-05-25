@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -33,8 +33,8 @@ class UTINNI_API ExtentBase
 {
 private:
     int type;
-public:
 
+public:
     bool intersect(swg::math::Vector* worldStart, swg::math::Vector* worldEnd, swg::math::Vector* normal, float* time);
 };
 
@@ -43,6 +43,7 @@ class UTINNI_API Extent : public ExtentBase
 private:
     swgptr sphere;
     int refCount;
+
 public:
 };
 
@@ -55,4 +56,4 @@ public:
     swg::math::Vector max;
     bool realIntersect(swg::math::Vector* worldStart, swg::math::Vector* worldEnd, swg::math::Vector* surfaceNormal, float* time);
 };
-}
+} // namespace utinni

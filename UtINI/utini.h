@@ -20,13 +20,13 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
 #include <string>
 
-#define UTINNI_API  __declspec(dllexport)
+#define UTINNI_API __declspec(dllexport)
 
 namespace utinni
 {
@@ -82,6 +82,5 @@ private:
     // Need to use PIMPL to hide the std::vector<Value> settings, as cppSharp doesn't play nice with them
     struct Impl;
     Impl* pImpl{};
-
 };
-}
+} // namespace utinni

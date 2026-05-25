@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "log.h"
 #include "spdlog/spdlog.h"
@@ -97,7 +97,7 @@ void dispatchSnapshot(
 }
 } // namespace
 
-static std::vector<CallbackEntry<void(*)(const char* msg)>> outputSinkCallbacks;
+static std::vector<CallbackEntry<void (*)(const char* msg)>> outputSinkCallbacks;
 static std::mutex outputSinkMutex;
 static int s_nextOutputSinkId = 1;
 
@@ -128,12 +128,13 @@ protected:
         // keeps the per-log path heap-free.
         const char* msgCStr = formattedString.c_str();
         dispatchSnapshot(outputSinkCallbacks, outputSinkMutex,
-            [msgCStr](void(*func)(const char*)) { func(msgCStr); });
+                         [msgCStr](void (*func)(const char*))
+                         { func(msgCStr); });
     }
 
-    void flush_() override { }
+    void flush_() override {}
 };
-    
+
 void create()
 {
     spdlog::set_level(spdlog::level::debug);
@@ -152,7 +153,6 @@ void create()
     auto file_logger = spdlog::basic_logger_mt("UtinniLog", logFilename);
     file_logger->sinks().emplace_back(std::make_shared<OutputSink>());
     spdlog::set_default_logger(file_logger);
-
 }
 
 void critical(const char* text)
@@ -181,11 +181,14 @@ void warning(const char* text)
 }
 
 // Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
-int subscribeOutputSinkCallback(void(*func)(const char* msg))
+int subscribeOutputSinkCallback(void (*func)(const char* msg))
 {
     std::lock_guard<std::mutex> guard(outputSinkMutex);
     int id = s_nextOutputSinkId++;
-    if (id == 0) { id = s_nextOutputSinkId++; } // WR-04 skip-zero
+    if (id == 0)
+    {
+        id = s_nextOutputSinkId++;
+    } // WR-04 skip-zero
     outputSinkCallbacks.push_back({id, func});
     return id;
 }
@@ -208,7 +211,7 @@ bool unsubscribeOutputSinkCallback(int handle)
     return false;
 }
 
-void addOutputSinkCallback(void(*func)(const char* msg))
+void addOutputSinkCallback(void (*func)(const char* msg))
 {
     subscribeOutputSinkCallback(func);
 }
@@ -223,4 +226,4 @@ const char* getMessageAt(int i)
     return logMessageBuffer[i].c_str();
 }
 
-}
+} // namespace utinni::log

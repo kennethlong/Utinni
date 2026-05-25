@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -33,4 +33,4 @@ UTINNI_API extern void enableKeyboard(bool value);
 UTINNI_API extern void restorePreviousEnableKeyboardValue();
 UTINNI_API extern bool isInputBlocked();
 void detour();
-}
+} // namespace utinni::cuiIo

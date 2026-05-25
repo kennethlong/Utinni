@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "network.h"
 #include "swg/object/object.h"
@@ -28,16 +28,15 @@
 namespace swg::network
 {
 // 00B37F30 -- NetworkIdManager & NetworkIdManager::getInstance ()
-using pIdManagerGetObjectById = utinni::Object* (__cdecl*)(const int64_t& id);
+using pIdManagerGetObjectById = utinni::Object*(__cdecl*)(const int64_t& id);
 using pIdManagerGetInstance = swgptr(__cdecl*)();
 
-using pCachedNetworkIdGetObject = utinni::Object* (__thiscall*)(swgptr pThis); // pThis = CachedNetworkId, should be 8 bytes?
+using pCachedNetworkIdGetObject = utinni::Object*(__thiscall*)(swgptr pThis); // pThis = CachedNetworkId, should be 8 bytes?
 
 // Note: pCast is declared in network.h (namespace swg::network) — CR-02: OUT param widened to int64_t*.
 
 pIdManagerGetObjectById idManagerGetObjectById = (pIdManagerGetObjectById)0x00B380E0;
 pIdManagerGetInstance idManagerGetInstance = (pIdManagerGetInstance)0x00B37F30;
-
 
 pCachedNetworkIdGetObject cachedNetworkIdGetObject = (pCachedNetworkIdGetObject)0x00B30160;
 
@@ -48,9 +47,15 @@ pCast cast = realCast;
 // Test-seam: allows test_exports.cpp to temporarily replace the cast pointer.
 // Not guarded by #ifdef UTINNI_TESTS — project convention is unguarded test exports
 // (see test_exports.cpp). Production code never calls setCastForTest.
-void setCastForTest(pCast fn) { cast = fn; }
-void resetCast()              { cast = realCast; }
+void setCastForTest(pCast fn)
+{
+    cast = fn;
 }
+void resetCast()
+{
+    cast = realCast;
+}
+} // namespace swg::network
 
 namespace utinni
 {
@@ -83,6 +88,4 @@ int64_t Network::cast(int64_t id)
     return networkId;
 }
 
-
-}
-
+} // namespace utinni

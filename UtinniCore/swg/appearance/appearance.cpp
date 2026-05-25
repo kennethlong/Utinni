@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "appearance.h"
 #include "swg/graphics/graphics.h"
@@ -28,12 +28,12 @@
 
 namespace swg::appearance
 {
-using pCreateAppearance = utinni::Appearance* (__cdecl*)(const char* filename);
-using pCollide = bool (__stdcall*)(swg::math::Vector* worldStart, swg::math::Vector* worldEnd, swgptr unk, utinni::CollisionInfo& collisionResults);
+using pCreateAppearance = utinni::Appearance*(__cdecl*)(const char* filename);
+using pCollide = bool(__stdcall*)(swg::math::Vector* worldStart, swg::math::Vector* worldEnd, swgptr unk, utinni::CollisionInfo& collisionResults);
 
 pCreateAppearance createAppearance = (pCreateAppearance)0x00B262A0;
 pCollide collide = (pCollide)0x00B2C410;
-}
+} // namespace swg::appearance
 
 namespace swg::particleEffectAppearance
 {
@@ -42,7 +42,7 @@ using pRender = void(__thiscall*)(utinni::ParticleEffectAppearance* pThis);
 
 pCtor ctor = (pCtor)0x007A85A0;
 pRender render = (pRender)0x007A8A50;
-}
+} // namespace swg::particleEffectAppearance
 
 namespace utinni
 {
@@ -88,20 +88,18 @@ swgptr __fastcall hkCtor(ParticleEffectAppearance* pThis, swgptr EDX, swgptr par
     return result;
 }
 
-void  __fastcall hkRender(ParticleEffectAppearance* pThis)
+void __fastcall hkRender(ParticleEffectAppearance* pThis)
 {
-    //swg::particleEffectAppearance::render(pThis);
+    // swg::particleEffectAppearance::render(pThis);
     Graphics::setStaticShader(memory::read<swgptr>(0x1922F8C));
     Graphics::setObjectToWorldTransformAndScale((swg::math::Transform*)0x1945AD4, (swg::math::Vector*)0x194596C);
     Graphics::drawExtent(pThis->getExtent(), 0x1945A0C);
-
 }
 
 void ParticleEffectAppearance::detour()
 {
-    //swg::particleEffectAppearance::ctor = (swg::particleEffectAppearance::pCtor)Detour::Create(swg::particleEffectAppearance::ctor, hkCtor, DETOUR_TYPE_PUSH_RET);
-    //swg::particleEffectAppearance::render = (swg::particleEffectAppearance::pRender)Detour::Create(swg::particleEffectAppearance::render, hkRender, 5);
+    // swg::particleEffectAppearance::ctor = (swg::particleEffectAppearance::pCtor)Detour::Create(swg::particleEffectAppearance::ctor, hkCtor, DETOUR_TYPE_PUSH_RET);
+    // swg::particleEffectAppearance::render = (swg::particleEffectAppearance::pRender)Detour::Create(swg::particleEffectAppearance::render, hkRender, 5);
 }
 
-
-}
+} // namespace utinni

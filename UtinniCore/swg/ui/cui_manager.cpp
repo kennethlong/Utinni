@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "cui_manager.h"
 #include "swg/camera/camera.h"
@@ -32,7 +32,7 @@
 namespace swg::cuiManager
 {
 using pRender = void(__thiscall*)(swgptr pThis);
-using pFindObjectUnderCursor = utinni::Object* (__cdecl*)(utinni::Camera* camera, math::Vector* worldStart, math::Vector* worldEnd, utinni::Object* player);
+using pFindObjectUnderCursor = utinni::Object*(__cdecl*)(utinni::Camera * camera, math::Vector* worldStart, math::Vector* worldEnd, utinni::Object* player);
 
 using pSetSize = void(__cdecl*)(int width, int height);
 using pTogglePointer = void(__cdecl*)(bool isOn);
@@ -46,7 +46,7 @@ pSetSize setSize = (pSetSize)0x00882410;
 pTogglePointer togglePointer = (pTogglePointer)0x00881940;
 
 pRestartMusic restartMusic = (pRestartMusic)0x00881560;
-}
+} // namespace swg::cuiManager
 
 namespace swg::uiManager
 {
@@ -54,7 +54,7 @@ using pDrawCursor = void(__thiscall*)(utinni::UiManager* pThis, bool value);
 
 pDrawCursor drawCursor = (pDrawCursor)0x010E8410;
 
-}
+} // namespace swg::uiManager
 
 namespace swg::systemMessageManager
 {
@@ -64,7 +64,7 @@ using pSendMessage = void(__cdecl*)(const swg::WString& message, bool chatOnly);
 pReceiveMessage receiveMessage = (pReceiveMessage)0x008ABEB0;
 pSendMessage sendMessage = (pSendMessage)0x008AC250;
 
-}
+} // namespace swg::systemMessageManager
 
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry
 // backed by insertion-order std::vector<{handle, fn_ptr}>.
@@ -122,7 +122,7 @@ void dispatchSnapshot(
 }
 } // namespace
 
-static std::vector<CallbackEntry<void(*)(const char* msg)>> receiveSystemMessageCallbacks;
+static std::vector<CallbackEntry<void (*)(const char* msg)>> receiveSystemMessageCallbacks;
 static std::mutex receiveSystemMessageCallbacksMutex;
 static int s_nextReceiveSystemMessageId = 1;
 
@@ -189,11 +189,14 @@ void UiManager::drawCursor(bool value)
 }
 
 // Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.
-int SystemMessageManager::subscribeReceiveMessageCallback(void(*func)(const char* msg))
+int SystemMessageManager::subscribeReceiveMessageCallback(void (*func)(const char* msg))
 {
     std::lock_guard<std::mutex> guard(receiveSystemMessageCallbacksMutex);
     int id = s_nextReceiveSystemMessageId++;
-    if (id == 0) { id = s_nextReceiveSystemMessageId++; } // WR-04 skip-zero
+    if (id == 0)
+    {
+        id = s_nextReceiveSystemMessageId++;
+    } // WR-04 skip-zero
     receiveSystemMessageCallbacks.push_back({id, func});
     return id;
 }
@@ -216,7 +219,7 @@ bool SystemMessageManager::unsubscribeReceiveMessageCallback(int handle)
     return false;
 }
 
-void SystemMessageManager::addReceiveMessageCallback(void(* func)(const char* msg))
+void SystemMessageManager::addReceiveMessageCallback(void (*func)(const char* msg))
 {
     subscribeReceiveMessageCallback(func);
 }
@@ -246,11 +249,12 @@ void __cdecl hkReceiveMessage(swgptr pChatSystemMsg)
     // via dispatchSnapshot keeps the path heap-free.
     const char* msgCStr = msgStr.c_str();
     dispatchSnapshot(receiveSystemMessageCallbacks, receiveSystemMessageCallbacksMutex,
-        [msgCStr](void(*func)(const char*)) { func(msgCStr); });
+                     [msgCStr](void (*func)(const char*))
+                     { func(msgCStr); });
 }
 
 void SystemMessageManager::detour()
 {
     swg::systemMessageManager::receiveMessage = (swg::systemMessageManager::pReceiveMessage)Detour::Create(swg::systemMessageManager::receiveMessage, hkReceiveMessage, DETOUR_TYPE_PUSH_RET);
 }
-}
+} // namespace utinni

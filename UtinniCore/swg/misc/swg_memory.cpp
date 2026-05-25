@@ -20,24 +20,24 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "swg_memory.h"
 
 namespace swg::memory
 {
-using pAllocate = void* (__cdecl*)(size_t size);
-using pAllocateString = void* (__cdecl*)(size_t size);
+using pAllocate = void*(__cdecl*)(size_t size);
+using pAllocateString = void*(__cdecl*)(size_t size);
 
-using pDeallocate = void (__cdecl*)(void* address, size_t size);
-using pDeallocateString = void (__cdecl*)(void* address, size_t size);
+using pDeallocate = void(__cdecl*)(void* address, size_t size);
+using pDeallocateString = void(__cdecl*)(void* address, size_t size);
 
 pAllocate allocate = (pAllocate)0x00AC15C0;
 pAllocateString allocateString = (pAllocateString)0x012EA770;
 
 pDeallocate deallocate = (pDeallocate)0x00AC1640;
 pDeallocateString deallocateString = (pDeallocateString)0x012EA920;
-}
+} // namespace swg::memory
 
 namespace utinni
 {
@@ -60,4 +60,4 @@ void deallocateString(void* address, size_t size)
 {
     swg::memory::deallocateString(address, size);
 }
-}
+} // namespace utinni

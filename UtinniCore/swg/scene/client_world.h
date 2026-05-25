@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #pragma once
 
@@ -29,14 +29,14 @@
 
 namespace utinni
 {
-    class CellProperty;
-    class Object;
-    struct CollisionInfo;
-}
+class CellProperty;
+class Object;
+struct CollisionInfo;
+} // namespace utinni
 
 namespace utinni::clientWorld
 {
 extern bool collide(CellProperty* cell, swg::math::Vector* worldStart, swg::math::Vector* worldEnd, CollisionInfo& collisionResults, uint16_t collisionFlags, Object* excludeObject);
 
 extern void detour();
-}
+} // namespace utinni::clientWorld

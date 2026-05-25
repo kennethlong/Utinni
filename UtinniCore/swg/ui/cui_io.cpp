@@ -20,7 +20,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 #include "cui_io.h"
 #include "swg/ui/imgui_impl.h"
@@ -35,19 +35,18 @@ using pSetKeyboardInputActive = swgptr(__thiscall*)(swgptr pThis, bool value);
 using pRequestKeyboard = swgptr(__thiscall*)(swgptr pThis, bool value);
 using pDraw = void(__thiscall*)(swgptr pThis);
 
-
 pProcessEvent processEvent = (pProcessEvent)0x093BD50;
 pSetKeyboardInputActive setKeyboardInputActive = (pSetKeyboardInputActive)0x0093D490;
 pRequestKeyboard requestKeyboard = (pRequestKeyboard)0x0093D560;
 pDraw draw = (pDraw)0x0093B2B0;
 
-}
+} // namespace swg::cuiIo
 
 namespace utinni
 {
 bool oldIsKeyboardEnabled;
 bool isKeyboardEnabled = true;
- 
+
 enum EventTypes
 {
     KeyCharacter = 6,
@@ -68,8 +67,8 @@ void cuiIo::enableKeyboard(bool value)
     // restorePreviousEnableKeyboardValue admits the toggle gets broken).
     char msg[128];
     snprintf(msg, sizeof(msg),
-        "cuiIo::enableKeyboard: value=%d (was=%d)",
-        value ? 1 : 0, isKeyboardEnabled ? 1 : 0);
+             "cuiIo::enableKeyboard: value=%d (was=%d)",
+             value ? 1 : 0, isKeyboardEnabled ? 1 : 0);
     utinni::log::info(msg);
 
     oldIsKeyboardEnabled = isKeyboardEnabled;
@@ -108,8 +107,8 @@ swgptr __fastcall hkProcessEvent(swgptr pThis, swgptr EDX, swgptr pEvent)
         unsigned w3 = (unsigned)memory::read<int>(pEvent + 12);
         char msg[160];
         snprintf(msg, sizeof(msg),
-            "hkProcessEvent: DROPPING type=%d (isKeyboardEnabled=0) pEvent=0x%p w2=0x%08X w3=0x%08X",
-            eventType, (void*)pEvent, w2, w3);
+                 "hkProcessEvent: DROPPING type=%d (isKeyboardEnabled=0) pEvent=0x%p w2=0x%08X w3=0x%08X",
+                 eventType, (void*)pEvent, w2, w3);
         utinni::log::info(msg);
         return 0;
     }
@@ -131,8 +130,8 @@ swgptr __fastcall hkProcessEvent(swgptr pThis, swgptr EDX, swgptr pEvent)
             unsigned w3 = (unsigned)memory::read<int>(pEvent + 12);
             char msg[160];
             snprintf(msg, sizeof(msg),
-                "hkProcessEvent[%d]: type=%d PASS pEvent=0x%p w2=0x%08X w3=0x%08X",
-                s_eventLogCount, eventType, (void*)pEvent, w2, w3);
+                     "hkProcessEvent[%d]: type=%d PASS pEvent=0x%p w2=0x%08X w3=0x%08X",
+                     s_eventLogCount, eventType, (void*)pEvent, w2, w3);
             utinni::log::info(msg);
         }
         else if (s_eventLogCount == 60)
@@ -152,8 +151,8 @@ void __fastcall hkDraw(swgptr pThis, swgptr EDX)
 
 void cuiIo::detour()
 {
-   swg::cuiIo::processEvent = (swg::cuiIo::pProcessEvent)Detour::Create((LPVOID)swg::cuiIo::processEvent, hkProcessEvent, DETOUR_TYPE_PUSH_RET);
-   //swg::cuiIo::draw = (swg::cuiIo::pDraw)Detour::Create((LPVOID)swg::cuiIo::draw, hkDraw, DETOUR_TYPE_PUSH_RET);
+    swg::cuiIo::processEvent = (swg::cuiIo::pProcessEvent)Detour::Create((LPVOID)swg::cuiIo::processEvent, hkProcessEvent, DETOUR_TYPE_PUSH_RET);
+    // swg::cuiIo::draw = (swg::cuiIo::pDraw)Detour::Create((LPVOID)swg::cuiIo::draw, hkDraw, DETOUR_TYPE_PUSH_RET);
 }
 
-}
+} // namespace utinni
