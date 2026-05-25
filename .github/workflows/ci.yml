@@ -36,6 +36,37 @@ jobs:
         with:
           fetch-depth: 1           # no history needed for build
 
+      # Phase 6 D-12 / 06-05 Task 1: style gate. Runs BEFORE the expensive vcpkg/build
+      # steps so a formatting regression fails fast. clang-format ships with the VS LLVM
+      # component (not on PATH on this self-hosted runner), so resolve it via vswhere like
+      # the v145 / VS2019 verify steps below. EOL-agnostic: .clang-format leaves LineEnding
+      # unpinned (DeriveLF), so this dry-run passes whether checkout produced CRLF or LF.
+      - name: clang-format check (style gate)
+        shell: powershell
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsRoot = & $vswhere -latest -prerelease -products * -property installationPath
+          $clangFormat = Join-Path $vsRoot "VC\Tools\Llvm\bin\clang-format.exe"
+          if (-not (Test-Path $clangFormat)) {
+            throw "clang-format not found at $clangFormat. Install the VS 'C++ Clang tools for Windows' component."
+          }
+          Write-Host "Using $clangFormat"
+          & $clangFormat --version
+          # Same include/exclude set as the local bulk reformat (external/, generated, build output excluded).
+          $includeRoots = @("UtinniCore","UtINI","Launcher","UtinniCore-Symbols","Utinni.LoaderLockHarness","Utinni.CrtMatchPlugin","Utinni.LegacyPlugin","UtinniCore.Tests","sdk")
+          $excludePattern = '\\(external|bin|obj|Release|Debug|RelWithDbgInfo|x86|x64|\.vs|vcpkg_installed|packages|Generated|TestResults)\\'
+          $files = foreach ($r in $includeRoots) {
+            if (Test-Path $r) { Get-ChildItem -Path $r -Recurse -Include *.cpp,*.h -File -ErrorAction SilentlyContinue }
+          }
+          $files = $files | Where-Object { $_.FullName -notmatch $excludePattern } | Sort-Object FullName -Unique
+          Write-Host "Checking $($files.Count) C++ files against .clang-format ..."
+          # --dry-run --Werror exits non-zero if any file is not already formatted.
+          & $clangFormat --style=file --dry-run --Werror -- $files.FullName
+          if ($LASTEXITCODE -ne 0) {
+            throw "clang-format check failed: files above are not formatted per .clang-format. Run clang-format -i locally and recommit."
+          }
+          Write-Host "clang-format check passed ($($files.Count) files conform)."
+
       - name: Cache NuGet packages
         uses: actions/cache@v4
         with:
