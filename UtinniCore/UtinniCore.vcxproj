@@ -180,7 +180,6 @@ $(SolutionDir)UtinniCoreDotNetGen\bin\$(Configuration)\UtinniCoreDotNetGen.exe "
     <ClCompile Include="swg\ui\controls\ui_text.cpp" />
     <ClCompile Include="swg\ui\controls\ui_textbox.cpp" />
     <ClCompile Include="swg\camera\debug_camera.cpp" />
-    <ClCompile Include="swg\appearance\particle.cpp" />
     <ClCompile Include="swg\appearance\portal.cpp" />
     <ClCompile Include="swg\appearance\skeleton.cpp" />
     <ClCompile Include="swg\appearance\extent.cpp" />
@@ -224,7 +223,6 @@ $(SolutionDir)UtinniCoreDotNetGen\bin\$(Configuration)\UtinniCoreDotNetGen.exe "
     <ClCompile Include="swg\misc\crc_string.cpp" />
     <ClCompile Include="swg\misc\network.cpp" />
     <ClCompile Include="swg\misc\io_win.cpp" />
-    <ClCompile Include="swg\scene\scene.cpp" />
     <ClCompile Include="swg\scene\ground_scene.cpp" />
     <ClCompile Include="swg\game\game.cpp" />
     <ClCompile Include="test_exports.cpp" />
