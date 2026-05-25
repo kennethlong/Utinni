@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 6 Wave 4 (06-04) complete
-last_updated: "2026-05-25T18:15:00.000Z"
-last_activity: 2026-05-25 -- Phase 06 Wave 4 (06-04) complete: both CI flakes fixed (D-17 closed); 3 consecutive green CI per fix
+stopped_at: Phase 6 context gathered
+last_updated: "2026-05-25T20:44:27.434Z"
+last_activity: 2026-05-25
 progress:
   total_phases: 12
   completed_phases: 6
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 06 (cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut) — EXECUTING
-Plan: 4 of 6 complete
-Status: Executing Phase 06
-Last activity: 2026-05-25 -- Phase 06 Wave 4 (06-04) complete: both CI flakes fixed, D-17 closed
-Next action: `/gsd-execute-phase 6 --wave 5` (06-05 — STAB-03 cleanups + STAB-04 audit: clang-format sweep, dead-code purge, 24-item preservation audit)
+Plan: 5 of 6 complete
+Status: Wave 5 (06-05) complete + CI-green; 06-06 remains
+Last activity: 2026-05-25
+Next action: `/gsd-execute-phase 6` (runs the last plan, 06-06 — TEST-04 Tier-4 doc + WiX MSI installer + release.yml + v1.0.0-rc.1 tag). Phase-level verification is deferred until 06-06 lands.
 
-Progress: [███████░░░] 67% (4/6 plans in Phase 6 complete)
+Progress: Phase 6 plans [█████████░] 5/6 · milestone phases 6/12
 
 ## Wave 2 Summary
 
@@ -57,6 +57,18 @@ See: `[[project-vs2026-cppsharp-block]]` auto-memory; `06-02-PATH1-SUMMARY.md`; 
 - **Fence (commit `a18f503`):** 12 Catch2 cases in `UtinniCore.Tests/UtINI/IniParserTests.cpp`; full native suite 76 assertions / 26 cases green.
 
 All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Executed inline (worktrees disabled this session) per the Windows/vcpkg build-recipe rationale. See `06-03-SUMMARY.md`.
+
+## Wave 4 + 5 Summary
+
+**Wave 4 (06-04) complete 2026-05-25** — folded CI-stability fixes: loader-lock-harness 50ms contention flake (best-of-3 min) + GameCallbacks ForceGCCollect AV isolation. Per-fix atomic + regression assertion. See `06-04-SUMMARY.md`.
+
+**Wave 5 (06-05) complete 2026-05-25, CI-green** — STAB-03 cleanups + STAB-04 audit, executed inline (20 atomic commits on master + paired UtinniPlugins `c9cfa9d`):
+- Full-repo `.clang-format` (Allman/4-space, left pointers) in one commit + `.git-blame-ignore-revs` + CI `clang-format check` style gate.
+- `TJT.ico`/`TJT.png` ejected to UtinniPlugins/TheJawaToolbox; neutral gear `utinni.ico` is the new UtinniForm default. D-16 polish bundle (Directory.Build.props SDK unify, Prefer32Bit drop, ExampleEditorPlugin path, .gitignore doc, namespace Std, `Native.SendMessage` IntPtr+shim, licenses.txt UTF-8/DetourXS/nvapi, typos).
+- Dead-code purge (Launcher VS-attach machinery, dead render/scene/io hooks, empty stubs) with the `swg/ui/` carve-out preserved.
+- STAB-04: `06-AUDIT.md` (23 foundations PASS) + 23 fail-on-violation xUnit grep Facts in `UtinniCoreDotNet.Tests/PreservationAudit/`; regression probe confirmed fail-on-violation. **STAB-03 + STAB-04 delivered.** See `06-05-SUMMARY.md`.
+
+**Remaining in Phase 6:** 06-06 (TEST-04 Tier-4 residual doc + WiX MSI installer + `release.yml` + `v1.0.0-rc.1` tag). Phase-level verification + completion run after 06-06.
 
 ## Performance Metrics
 

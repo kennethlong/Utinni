@@ -21,13 +21,13 @@ Requirements derived from the 2026-05-16 ingest of `docs/ai/vision.md`, `docs/ai
   - **Acceptance:** All 8 R-X items show `done`; plugin authoring is "genuinely pleasant" per assessment.md; CI catches regressions on every PR.
   - **Milestone:** V1
 
-- [ ] **STAB-03 — Complete ~30 cleanups + dependency bumps**
+- [x] **STAB-03 — Complete ~30 cleanups + dependency bumps**
   - **Source:** assessment.md "Easy cleanups"
   - **Statement:** ~250 lines of dead code deleted; typo fixes (`detatch→detach`, `AddOuputSink→AddOutputSink`, `redose→redoes`, `Jo�o→João`); DetourXS + nvapi added to licenses.txt; `.clang-format` pass; unified Windows SDK target version (CON-B-02); DXSDK include paths fixed for Debug/Release (CON-B-03); `Prefer32Bit` removed; ExampleEditorPlugin Release output path fixed; `.gitignore` Std/StdEdited convention documented; `TJT.ico` removed from framework; `Native.SendMessage` `int→IntPtr`. Dependency bumps: imgui to docking branch, spdlog 1.14, ImGuizmo latest.
   - **Acceptance:** Codebase audit confirms "modern toolchain, no dead code"; all enumerated cleanup items reflected in commits.
   - **Milestone:** V1
 
-- [ ] **STAB-04 — Preserve 24 load-bearing foundations**
+- [x] **STAB-04 — Preserve 24 load-bearing foundations**
   - **Source:** assessment.md "Solid foundations"; `.planning/intel/constraints.md` families CON-N-* / CON-M-* / CON-T-*
   - **Statement:** Negative requirement. The 24 enumerated load-bearing design elements (9 native, 9 managed, 5 process/tooling) must remain intact through V1. Any phase plan touching a preserved item requires explicit justification.
   - **Acceptance:** Post-V1 audit confirms each of CON-N-01..-09, CON-M-01..-09, CON-T-01..-05 is still in place; deviations are documented with phase-plan justification.
@@ -155,10 +155,10 @@ Each V1 requirement maps to exactly one phase. Phase numbers refer to ROADMAP.md
 | STAB-02 (R-A..R-H reworks) | Phase 3 | Pending |
 | TEST-03 (Tier 2 CLI shim) | Phase 4 | Validated 2026-05-23 |
 | TEST-02 (Tier 1 C++ unit tests) | Phase 5 | Pending |
-| STAB-03 (Cleanups + dep bumps) | Phase 6 | Pending |
+| STAB-03 (Cleanups + dep bumps) | Phase 6 | Complete (06-05) 2026-05-25 |
 | TEST-04 (Tier 4 boundary doc) | Phase 6 | Pending |
 | STAB-05 (Open questions CON-O-01..-08) | Phase 6 | Pending |
-| STAB-04 (Preserve 24 foundations) | All phases (cross-cutting) | Pending |
+| STAB-04 (Preserve 24 foundations) | All phases (cross-cutting) | Complete (06-05 audit) 2026-05-25 |
 | PROD-W1-TRE (TRE Browser) | Phase 7 | Pending |
 | PROD-01 (See everything the client loads) | Phase 7 | Pending |
 | PROD-W1-IFF (IFF Editor) | Phase 8 | Pending |
