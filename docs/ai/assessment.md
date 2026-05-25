@@ -366,6 +366,14 @@ iterating, then iterate the snapshot. Same pattern for the native
 
 These are well-designed and load-bearing — leave them alone:
 
+> **STAB-04 audit at v1.0-rc.1:** all 23 enumerated foundations (CON-N-01..09, CON-M-01..09,
+> CON-T-01..05) verified intact — see
+> `.planning/phases/06-cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut/06-AUDIT.md` and the
+> 23 fail-on-violation grep Facts in `UtinniCoreDotNet.Tests/PreservationAudit/` (run by CI on
+> every push). Two notes: CON-M-08 *evolved* (the SetHwnd-on-layout mechanism was superseded by
+> owned-popup reparenting in Issue #9/#10; the foundation persists), and CON-M-09 / CON-T-05 have
+> cross-repo components in `kennethlong/UtinniPlugins`.
+
 ### Native architecture
 
 - The `swg::<subsystem>` namespace **detour-table pattern**
