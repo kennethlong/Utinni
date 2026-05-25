@@ -580,7 +580,7 @@ void cleanup()
     // heap memory. Skipping delete here avoids the cleanup-side UAF at the cost of a
     // bounded "leak" (bounded by process lifetime — not a real leak). This is the correct
     // tradeoff for DLL_PROCESS_DETACH teardown (Raymond Chen / Win32 documentation).
-    // The caller (detatch() in utinni.cpp) must ensure the render thread is quiesced
+    // The caller (detach() in utinni.cpp) must ensure the render thread is quiesced
     // before calling cleanup() if this function is ever invoked outside of process exit.
     //
     // WR-03: delete depthTexture intentionally OMITTED — UAF on exit is worse than leak.

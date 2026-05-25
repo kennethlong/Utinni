@@ -93,7 +93,7 @@ void start()
 void stop()
 {
     // C-10: Idempotent shutdown. start() may have failed before allocating each pointer;
-    // detatch() (DLL_PROCESS_DETACH) calls stop() unconditionally so the body must handle
+    // detach() (DLL_PROCESS_DETACH) calls stop() unconditionally so the body must handle
     // null and survive multiple calls without AV.
     if (pClrRuntimeHost)
     {

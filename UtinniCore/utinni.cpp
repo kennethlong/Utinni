@@ -256,7 +256,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI utinni_init(LPVOID lpThreadParam)
     return 0;
 }
 
-void detatch()
+void detach()
 {
     directX::cleanup();
     clr::stop();
@@ -319,7 +319,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
         return TRUE;
 
     case DLL_PROCESS_DETACH:
-        detatch();
+        detach();
         return TRUE;
     }
     return TRUE;

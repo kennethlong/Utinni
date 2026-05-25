@@ -28,7 +28,7 @@ namespace UtinniCoreDotNet.UndoRedo
     {
         // Gets the text displayed in the Undo/Redo lists
         string GetText();
-        // Executes/redose the command
+        // Executes/redoes the command
         void Execute();
         // Undos the command
         void Undo();

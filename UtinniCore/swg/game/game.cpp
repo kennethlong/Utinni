@@ -24,7 +24,7 @@
 
 #include "game.h"
 #include "game_test_internal.h"
-#include "utinni.h";
+#include "utinni.h"
 #include <mutex>
 #include <vector>
 #include "swg/client/client.h"
