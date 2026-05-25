@@ -129,7 +129,12 @@
   <ItemGroup>
     <ProjectReference Include="..\UtinniCore\UtinniCore.vcxproj">
       <Project>{AEFED7F6-4BA9-44FC-A353-71A463A82FDE}</Project>
-      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+      <!-- Was false (build-order only). The Wave-2 OutputSink fence test calls exported
+           utinni::log::* (subscribe/unsubscribe/info/warning/error) as __declspec(dllimport),
+           so it must link UtinniCore.lib. UtinniCore's DllMain is microsecond-trivial
+           (DisableThreadLibraryCalls + return TRUE; all injection work is in utinni_init),
+           so loading UtinniCore.dll into the test exe at runtime is safe. -->
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
