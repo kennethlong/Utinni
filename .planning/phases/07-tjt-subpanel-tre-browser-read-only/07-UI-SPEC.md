@@ -121,8 +121,9 @@ Top-to-bottom flow inside `Panel1`:
      match on the full virtual path (matches `FormObjectBrowser`'s `Contains` behavior, extended
      to the whole path). Substring is the default; glob is out of scope for V1.
    - Match handling: prune the tree to ancestor chains that contain ≥1 matching leaf; expand
-     those chains; the matched substring is **bolded** in the node label (the only use of the
-     bold weight — see Typography).
+     those chains; each matching node is **bolded** (whole-node `NodeFont`, the only use of the
+     bold weight — see Typography). Standard WinForms `TreeView` cannot bold only the matched
+     substring without owner-draw, which is out of scope for V1.
    - Optional type facet: a single `UtinniComboBox` ("All types ▾") to the right of the search
      box, 120px wide, filtering by asset extension group (datatable / stringtable / template /
      mesh / shader / other). V1-optional; if included, place inline with the search box.
@@ -243,7 +244,7 @@ WinForms point sizes (not web px). Two weights only: Regular and Bold. Bold is r
 | Body / tree nodes / list cells / metadata values | 8.25pt Microsoft Sans Serif | Regular | The framework default; do not override per-control |
 | Label / section headers / metadata keys | 8.25pt Microsoft Sans Serif | Regular | Same size; differentiated by position + accent rule, not by size |
 | Window titlebar name | 12pt Arcon | Regular | `UtinniForm.nameFont` — titlebar only |
-| Search-match highlight + type/version banner emphasis | 8.25pt Microsoft Sans Serif | **Bold** | The ONLY use of Bold: (a) the matched substring inside a filtered tree node, (b) the type+version banner text |
+| Search-match highlight + type/version banner emphasis | 8.25pt Microsoft Sans Serif | **Bold** | The ONLY use of Bold: (a) a whole matching node in the filtered tree (substring-level bold needs owner-draw — out of scope for V1), (b) the type+version banner text |
 | Raw hex peek | 9pt Consolas (monospace) | Regular | Exception: fixed-pitch is required for byte alignment |
 
 Line height: WinForms controls manage their own row metrics; do not set custom line heights.
