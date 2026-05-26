@@ -1,4 +1,4 @@
-﻿# Roadmap: Utinni
+# Roadmap: Utinni
 
 ## Overview
 
@@ -155,13 +155,15 @@ Plans:
   2. User can navigate the full `.tre` mount set, expand subtrees, and view individual file metadata.
   3. The browse surface covers every asset class PROD-01 lists (IFF, datatable, template, UI page, shader, string-table entry).
   4. `utinni-cli parse-tre` / `list-objects` golden tests (from Phase 4) cover the same code paths the subpanel uses for browse.
-**Plans**: 4 plans
+**Plans**: 6 plans (revised from 4 after cross-AI review — added 07-00 Wave-0 fixture gate; split 07-04 into 07-04a/07-04b)
 **UI hint**: yes
 **Plans**:
-- [ ] 07-01-PLAN.md — TRE reader version-dispatch (0004/0005/0006/5000-defensive/6000/COT2000) + zlib framing + lazy TOC-only enumeration + CotMasterIndex; shared parse-tre CLI path + golden tests (Wave 1)
-- [ ] 07-02-PLAN.md — TRE Browser shell: resizable UtinniForm + virtual-path TreeView (lazy expand) + 250ms-debounced filter + Game.Repository loaded/dimmed overlay; GetForms() registration (Wave 2)
-- [ ] 07-03-PLAN.md — Detail pane: metadata header + type/version banner + universal IFF chunk tree + raw hex peek + encrypted/parse-fail states; AfterSelect on-demand payload read (Wave 3)
-- [ ] 07-04-PLAN.md — Per-type decoders (datatable/STF/object-template/mesh-skeleton-anim) + decode-iff CLI verb + golden tests + structured-view ListViews in the detail pane (Wave 4)
+- [ ] 07-00-PLAN.md — Wave-0 fixture gate: deterministic in-repo synthetic TRE/COT2000 fixtures (v6000 zlib crc-first TOC, COT2000 ≥2-tree index, non-6000-layout 5000 header, 0004 header, 4 malformed) via TreFixtureBuilder + FixturePath SWG_SAMPLE_TRE_DIR resolver; gates Wave 1 (Wave 0)
+- [ ] 07-01-PLAN.md — TRE reader version-dispatch (0004/0005/0006/5000-enumerate-only/6000/COT2000) + zlib framing + lazy TOC-only + PayloadReadCount + Open(Stream) contract + named checked arithmetic + CotMasterIndex + shared TreArchiveIndex/TrePayloadResolver facade; parse-tre + list-objects (OBJS byte-scan retired) golden tests (Wave 1)
+- [ ] 07-02-PLAN.md — TRE Browser shell: resizable UtinniForm + virtual-path TreeView (lazy expand) + 250ms-debounced filter over the flat TreArchiveIndex.AllPaths index (whole-node bold) + Game.Repository install-time-snapshot overlay (FilenameCount+GetFilenameAt); GetForms() registration (Wave 2)
+- [ ] 07-03-PLAN.md — IffChunk.OffsetBytes (framework) + inspect-iff golden bump + Detail pane: metadata header + type/version banner (version-accurate encrypted) + universal IFF chunk tree (TAG·size·@offset) + raw hex peek + parse-fail states; AfterSelect on-demand resolve via TrePayloadResolver (Wave 3)
+- [ ] 07-04a-PLAN.md — Framework decoders: datatable + string-table + object-template (pure, LE scalars, division-form checked counts) + decode-iff CLI verb + golden tests (Wave 4)
+- [ ] 07-04b-PLAN.md — Mesh/skeleton/anim AppearanceSummary + shader/UI-page IffStructureSummary (criterion #3 coverage) + decode-iff dispatch + goldens + all five structured-view families in the detail pane (Wave 5)
 
 ### Phase 8: TJT subpanel — IFF Editor (read + write)
 **Architecture (DEC-C4):** Ships as an `IEditorPlugin` subpanel inside TJT. IFF chunk read/write primitives (`Iff::read`, `Iff::write`, FORM/PROP semantics, BLOB streams) ship in `TheJawaToolboxDotNet` and `TheJawaToolbox` (sibling classes to the panel) so Phases 9-11 layer on the same shared code WITHIN TJT — no inter-plugin coupling, no library-version surface.
@@ -275,7 +277,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 4. Tier 2 CLI shim + golden fixtures | 0/TBD | Not started | - |
 | 5. Tier 1 C++ unit tests | 0/TBD | Not started | - |
 | 6. Cleanups, dep bumps, open questions, Tier 4 doc, 1.0 cut | 5/6 | In Progress|  |
-| 7. Wave-1 plugin — TRE Browser | 0/4 | Planned | - |
+| 7. Wave-1 plugin — TRE Browser | 0/6 | Planned | - |
 | 8. Wave-1 plugin — IFF Editor | 0/TBD | Not started | - |
 | 9. Wave-1 plugin — Datatable Editor | 0/TBD | Not started | - |
 | 10. Wave-1 plugin — String-table Editor | 0/TBD | Not started | - |
