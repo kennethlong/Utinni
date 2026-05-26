@@ -98,6 +98,18 @@ install/uninstall round-trip on a clean VM.
 
 **v1.0.0-rc.1 tag clear to push.** Maintainer signed off 2026-05-25 (see signature above).
 
-## Post-tag entry (filled in at Task 5, after the tag push)
+## Post-tag entry (Task 5, after the tag push)
 
-[ PENDING — "v1.0.0-rc.1 tag pushed at <UTC>; GitHub Pre-release published; MSI artifact at <release URL>. Bake period begins (N≈10 days); promotion to v1.0.0 final is post-phase per D-22." ]
+**v1.0.0-rc.1 tag pushed 2026-05-25** (annotated, at sign-off commit `6f51b26`). `release.yml`
+run 26429522655 completed **success** on the self-hosted utinni-v145 runner: built Release|x86 +
+TheJawaToolbox (pinned `kennethlong/UtinniPlugins@c9cfa9d`), bundled TJT into the MSI, and
+published the GitHub Release.
+
+Verified:
+- `gh release view v1.0.0-rc.1 --json isPrerelease` → **true** (Pre-release).
+- Asset **`Utinni.msi`** attached.
+- Release URL: https://github.com/kennethlong/Utinni/releases/tag/v1.0.0-rc.1
+
+The cross-repo TJT build + stage + IncludeTjt MSI path (validated locally pre-tag) held in CI on
+a clean checkout. **Bake period begins (N≈10 days); promotion to v1.0.0 final is post-phase per D-22.**
+Bake follow-ups: right-edge cursor-clip, second GPU vendor, live MSI clean-VM round-trip (see Deferred items).
