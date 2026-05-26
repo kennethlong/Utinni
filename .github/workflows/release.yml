@@ -136,18 +136,23 @@ jobs:
         run: |
           $dest = "Utinni\installer\Payload\Plugins\TheJawaToolbox"
           New-Item -ItemType Directory -Force -Path $dest | Out-Null
-          # Copy the built TJT plugin DLLs (DotNet plugin output).
-          $tjtOut = Get-ChildItem -Path "UtinniPlugins\The Jawa Toolbox" -Recurse -Directory -ErrorAction SilentlyContinue |
-                    Where-Object { $_.FullName -match '\\bin\\Release$' } | Select-Object -First 1
-          if (-not $tjtOut) { throw "TJT build output (bin\Release) not found under 'The Jawa Toolbox'." }
-          Write-Host "Staging TJT DLLs from $($tjtOut.FullName)"
-          Copy-Item "$($tjtOut.FullName)\*.dll" $dest -Force
+          # TheJawaToolbox's project OutputPath targets the SIBLING Utinni's bin tree
+          # (..\..\..\Utinni\bin\Release\Plugins\TheJawaToolbox), NOT the UtinniPlugins
+          # tree — verified by a local build of TheJawaToolbox.sln. Stage from there.
+          $tjtOut = "Utinni\bin\Release\Plugins\TheJawaToolbox"
+          if (-not (Test-Path "$tjtOut\TheJawaToolboxDotNet.dll")) {
+            throw "TJT build output not found at $tjtOut (expected TheJawaToolboxDotNet.dll)."
+          }
+          Write-Host "Staging TJT DLLs from $tjtOut"
+          Copy-Item "$tjtOut\*.dll" $dest -Force
           Get-ChildItem $dest
 
       - name: Build MSI (WiX 5, TJT bundled)
         working-directory: Utinni
         run: |
-          dotnet build installer/Utinni.Installer.wixproj -c Release -p:DefineConstants=IncludeTjt
+          # -p:IncludeTjt=true (dedicated property), NOT -p:DefineConstants=... which would
+          # clobber the RepoRoot WiX preprocessor define set in the .wixproj.
+          dotnet build installer/Utinni.Installer.wixproj -c Release -p:IncludeTjt=true
           if ($LASTEXITCODE -ne 0) { throw "MSI build failed (exit $LASTEXITCODE)" }
           if (-not (Test-Path "installer\bin\x86\Release\Utinni.msi")) { throw "Utinni.msi not produced." }
 

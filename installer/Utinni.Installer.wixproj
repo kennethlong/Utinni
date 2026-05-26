@@ -19,8 +19,12 @@
     <OutputType>Package</OutputType>
     <!-- x86 MSI per CON-P-02 so ProgramFiles6432Folder resolves to Program Files (x86). -->
     <Platform Condition="'$(Platform)' == ''">x86</Platform>
-    <!-- RepoRoot trailing slash lets the .wxs concatenate as $(var.RepoRoot)bin\Release\... -->
+    <!-- RepoRoot trailing slash lets the .wxs concatenate as $(var.RepoRoot)bin\Release\...
+         Use a dedicated IncludeTjt property (release.yml passes -p:IncludeTjt=true) rather
+         than -p:DefineConstants=... — a command-line DefineConstants is a GLOBAL property
+         that would clobber RepoRoot defined here. -->
     <DefineConstants>$(DefineConstants);RepoRoot=$(MSBuildProjectDirectory)\..\</DefineConstants>
+    <DefineConstants Condition="'$(IncludeTjt)' == 'true'">$(DefineConstants);IncludeTjt</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

@@ -67,13 +67,17 @@ Output: `installer/bin/x86/Release/Utinni.msi` (the WiX SDK routes output throug
 Local builds omit TJT. The `release.yml` workflow checks out
 `kennethlong/UtinniPlugins` at a pinned SHA (see
 `../.planning/phases/06-cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut/06-06-MSI-TJT-PINNING.md`),
-builds TheJawaToolbox, stages its DLLs into
-`installer/Payload/Plugins/TheJawaToolbox/`, and builds the MSI with the
-`IncludeTjt` preprocessor constant defined:
+builds TheJawaToolbox (whose OutputPath targets the sibling `Utinni/bin/Release/Plugins/TheJawaToolbox/`),
+stages its DLLs into `installer/Payload/Plugins/TheJawaToolbox/`, and builds the MSI
+with the `IncludeTjt` property set:
 
 ```pwsh
-dotnet build installer/Utinni.Installer.wixproj -c Release -p:DefineConstants=IncludeTjt
+dotnet build installer/Utinni.Installer.wixproj -c Release -p:IncludeTjt=true
 ```
+
+Use `-p:IncludeTjt=true` (a dedicated property), **not** `-p:DefineConstants=IncludeTjt`
+— a command-line `DefineConstants` is a global property that would clobber the
+`RepoRoot` WiX preprocessor define the `.wixproj` sets, breaking the file harvest.
 
 ## Test on a clean VM (Tier-4 scenario, 06-06 Task 4)
 
