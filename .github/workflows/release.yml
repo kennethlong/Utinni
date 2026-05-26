@@ -1,0 +1,181 @@
+# Release workflow (D-20 / D-21 / D-22). Triggered by `v1.0*` tag pushes.
+#
+# Builds Utinni Release|x86, builds TheJawaToolbox (TJT) from kennethlong/UtinniPlugins
+# pinned at a fixed SHA (OPT-B, see 06-06-MSI-TJT-PINNING.md), stages TJT into the MSI
+# payload, builds the WiX 5 MSI with the IncludeTjt payload, and publishes a GitHub
+# Release with the MSI attached (Pre-release for `-rc` tags).
+#
+# Runner: SELF-HOSTED utinni-v145 (NOT windows-2022). The native build requires the
+# v145 (VS 2026 / MSVC 14.5x) toolset + VS 2019 (MSVC 14.29) for the CppSharp parser
+# STL pin — neither is on any GitHub-hosted image (see project_self_hosted_ci memory
+# and ci.yml). This workflow mirrors ci.yml's vcpkg + toolchain-verify steps.
+#
+# Wildcard scope note (CONTEXT.md threat model / T-06-06-06): `v1.0*` matches
+# v1.0.0-rc.1, future v1.0.x, and v1.0.0-rc.2/3. Intentional. Tag pushes (not branch
+# pushes) are the only trigger, and only the maintainer can push tags.
+name: Release
+
+on:
+  push:
+    tags: [v1.0*]
+
+# Least privilege: contents:write is the minimum to create a Release + upload assets
+# (T-06-06-04 / T-06-06-05). No other scopes granted.
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish-msi:
+    name: Build Release|x86 + MSI (TJT bundled) and publish GitHub Release
+    runs-on: [self-hosted, windows, x64, utinni-v145]
+    timeout-minutes: 50
+
+    defaults:
+      run:
+        shell: powershell
+
+    steps:
+      # Utinni into Utinni/ and UtinniPlugins into UtinniPlugins/ so they are siblings:
+      # TJT's HintPath ..\..\..\Utinni\bin\$(Configuration)\UtinniCoreDotNet.dll resolves.
+      - name: Checkout Utinni
+        uses: actions/checkout@v4
+        with:
+          path: Utinni
+          fetch-depth: 0      # full history so release notes can auto-generate
+
+      - name: Checkout UtinniPlugins (pinned — D-21 / 06-06-MSI-TJT-PINNING.md)
+        uses: actions/checkout@v4
+        with:
+          repository: kennethlong/UtinniPlugins
+          ref: c9cfa9d01417bea772142136b69ec333dd30fa3f
+          path: UtinniPlugins
+          # UtinniPlugins is public; the default token reads it. If it is ever made
+          # private, supply a PAT with read access here instead.
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Utinni/**/packages.lock.json', 'Utinni/**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Cache vcpkg installed tree
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/Utinni/vcpkg_installed
+            ~/AppData/Local/vcpkg/archives
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('Utinni/vcpkg.json', 'Utinni/vcpkg-configuration.json') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+
+      - name: Bootstrap vcpkg
+        run: |
+          $vcpkgDir = "$env:RUNNER_TEMP\vcpkg"
+          if (-not (Test-Path "$vcpkgDir\.git")) {
+            git clone --depth 1 https://github.com/microsoft/vcpkg "$vcpkgDir"
+          }
+          & "$vcpkgDir\bootstrap-vcpkg.bat" -disableMetrics
+          if ($LASTEXITCODE -ne 0) { throw "vcpkg bootstrap failed (exit $LASTEXITCODE)" }
+          "VCPKG_ROOT=$vcpkgDir" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "$vcpkgDir" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Install vcpkg dependencies (manifest mode, x86-windows)
+        run: |
+          vcpkg install --triplet x86-windows --x-manifest-root="${{ github.workspace }}\Utinni" --x-install-root="${{ github.workspace }}\Utinni\vcpkg_installed"
+          if ($LASTEXITCODE -ne 0) { throw "vcpkg install failed (exit $LASTEXITCODE)" }
+
+      - name: Verify v145 build tools
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $hasV145 = $false
+          if (Test-Path $vswhere) {
+            $msvcDirs = & $vswhere -products * -find "VC\Tools\MSVC\14.5*\bin" 2>$null
+            if ($msvcDirs) { $hasV145 = $true }
+          }
+          if (-not $hasV145) { throw "v145 (MSVC 14.5x / VS 2026) toolset not found on this self-hosted runner." }
+          Write-Host "v145 build tools present."
+
+      - name: Verify VS 2019 BuildTools (MSVC 14.29) for CppSharp parser STL pin
+        run: |
+          $has1429 = $false
+          $candidates = @(
+            "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC",
+            "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC",
+            "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Professional\VC\Tools\MSVC",
+            "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Enterprise\VC\Tools\MSVC"
+          )
+          foreach ($base in $candidates) {
+            if (Test-Path $base) {
+              $msvc = Get-ChildItem $base -Directory -Filter "14.29.*" -ErrorAction SilentlyContinue
+              if ($msvc) { $has1429 = $true; break }
+            }
+          }
+          if (-not $has1429) { throw "MSVC 14.29 (VS 2019 v142) not found. Required for the CppSharp parser STL pin." }
+          Write-Host "MSVC 14.29 (VS 2019 v142) present for CppSharp parser pin."
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build Utinni (Release|x86)
+        working-directory: Utinni
+        run: |
+          msbuild Utinni.sln /m /restore /p:Configuration=Release /p:Platform=x86 /p:RestorePackagesConfig=true
+          if ($LASTEXITCODE -ne 0) { throw "Utinni Release|x86 build failed (exit $LASTEXITCODE)" }
+
+      - name: Build TheJawaToolbox (Release) against the just-built Utinni
+        working-directory: UtinniPlugins
+        run: |
+          # HintPath ..\..\..\Utinni\bin\Release\UtinniCoreDotNet.dll now resolves
+          # (Utinni and UtinniPlugins are workspace siblings).
+          msbuild "The Jawa Toolbox\TheJawaToolbox.sln" /m /restore /p:Configuration=Release
+          if ($LASTEXITCODE -ne 0) { throw "TheJawaToolbox build failed (exit $LASTEXITCODE)" }
+
+      - name: Stage TJT into the MSI payload
+        run: |
+          $dest = "Utinni\installer\Payload\Plugins\TheJawaToolbox"
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          # Copy the built TJT plugin DLLs (DotNet plugin output).
+          $tjtOut = Get-ChildItem -Path "UtinniPlugins\The Jawa Toolbox" -Recurse -Directory -ErrorAction SilentlyContinue |
+                    Where-Object { $_.FullName -match '\\bin\\Release$' } | Select-Object -First 1
+          if (-not $tjtOut) { throw "TJT build output (bin\Release) not found under 'The Jawa Toolbox'." }
+          Write-Host "Staging TJT DLLs from $($tjtOut.FullName)"
+          Copy-Item "$($tjtOut.FullName)\*.dll" $dest -Force
+          Get-ChildItem $dest
+
+      - name: Build MSI (WiX 5, TJT bundled)
+        working-directory: Utinni
+        run: |
+          dotnet build installer/Utinni.Installer.wixproj -c Release -p:DefineConstants=IncludeTjt
+          if ($LASTEXITCODE -ne 0) { throw "MSI build failed (exit $LASTEXITCODE)" }
+          if (-not (Test-Path "installer\bin\x86\Release\Utinni.msi")) { throw "Utinni.msi not produced." }
+
+      - name: Create GitHub Release (Pre-release for rc tags)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Utinni/installer/bin/x86/Release/Utinni.msi
+          prerelease: ${{ contains(github.ref, '-rc') }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          body: |
+            # Utinni ${{ github.ref_name }}
+
+            Release candidate for v1.0. Bake period: ~10 days before promotion to
+            final v1.0.0 (D-22; promotion happens post-Phase-6).
+
+            ## Highlights (Phases 1-6)
+            - Phase 1: CI + xUnit scaffold (self-hosted v145 runner).
+            - Phase 2 + 02.1: 15 critical bug closures + correctness gap closures.
+            - Phase 3: 8 strategic reworks (R-A..R-H), incl. heap-free scene-change dispatch.
+            - Phase 4: Tier-2 CLI shim + golden fixtures.
+            - Phase 5: Tier-1 C++ unit tests (Catch2).
+            - Phase 6: vcpkg manifest migration, hand-rolled INI parser (LeksysINI removed),
+              DXSDK June 2010 removed, full Tier-4 manual residual doc, WiX 5 MSI installer,
+              TheJawaToolbox bundled at a pinned UtinniPlugins SHA.
+
+            ## Install
+            Download `Utinni.msi`, run it, and accept the SmartScreen warning (the MSI is
+            **unsigned** for V1 — D-23). Installs to `C:\Program Files (x86)\Utinni\`.
+            TheJawaToolbox panel is bundled. SWG client path ships blank (CON-D-01); use the
+            optional opt-in detector or set it from the Launcher.
