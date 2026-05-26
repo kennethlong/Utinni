@@ -224,6 +224,15 @@ namespace UtinniCoreDotNet.UI.Controls
             IntPtr swgHwnd = Native.GetSwgHwnd();
             if (swgHwnd == IntPtr.Zero) return;
 
+            // Don't reposition while the host form is minimized. WinForms reports a
+            // minimized window's PointToScreen(Empty) as the ~(-32000,-32000) sentinel,
+            // and the Resize handler fires on minimize -- propagating that to the SWG
+            // child parks it far off-screen, so it "disappears" and returns mis-placed
+            // (a gap) after restore. Restore is itself a Resize, which re-runs this with
+            // valid coordinates and re-syncs the embed. (Tier-4 06-06 UAT finding.)
+            Form host = FindForm();
+            if (host != null && host.WindowState == FormWindowState.Minimized) return;
+
             // Phase B-bis (#10): position AND size + Z-order to TOP. 2026-05-21
             // verify: SWG renders correctly at the new (smaller) size via D3D9's
             // own stretching, BUT was getting buried behind FormMain in Z-order
@@ -235,6 +244,10 @@ namespace UtinniCoreDotNet.UI.Controls
             // Subsequent FormMain activations carry SWG with them as a group
             // via the ownership relationship.
             Point screenOrigin = PointToScreen(Point.Empty);
+            // Defensive: reject the off-screen minimized/transitional sentinel even if a
+            // transitional WindowState slips past the guard above. Real panel origins are
+            // never near -32000; moving SWG there is the "disappeared" bug.
+            if (screenOrigin.X <= -30000 || screenOrigin.Y <= -30000) return;
             Size cs = ClientSize;
             bool ok = Native.SetWindowPos(swgHwnd, IntPtr.Zero,
                 screenOrigin.X, screenOrigin.Y,
