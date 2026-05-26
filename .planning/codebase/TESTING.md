@@ -152,7 +152,7 @@ The eight scenarios (a)–(h) are the D-19 enumeration. FlaUI-style automated Wi
   4. Exercise the imgui Demo window's seven widget categories: menus, sliders, buttons, tabs, plots, popups, drag-and-drop.
   5. Flip the flag back to `false`, rebuild.
 - **Success criterion:** Each of the seven widget categories behaves as in a standalone imgui demo application: menus cascade and dispatch; sliders drag smoothly with live updates and accept keyboard editing; buttons click and dispatch callbacks; tabs switch on click and render distinct content; plots render their animated waveforms; popups open as modals and dismiss cleanly; drag-and-drop source-to-target works with payload preview. The Demo window is draggable, resizable, and correctly layered atop SWG's client window (Z-order via `HWND_TOP`).
-- **Last-verified SHA:** `2e0dcf5` (2026-05-23, Kenneth Long; see `.planning/phases/06-cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut/06-01-VERIFICATION.md`) — refresh to the rc.1 commit SHA at the 06-06 Task 4 sign-off.
+- **Last-verified SHA:** `29a128e` (2026-05-25, Kenneth Long — 06-06 Tier-4 UAT; originally verified 2026-05-23 at `2e0dcf5` per `06-01-VERIFICATION.md`).
 - **Failure-mode escalation:** Re-open the 06-01 plan; rerun the [[feedback-d3d9-hook-diagnosis]] first-move check (d3d9.dll pattern-scan vs dummy-device) *before* assuming SWG-side RVA drift.
 
 ### Tier-4 Scenario (b): PanelGame.WndProc forwarding to live SWG
@@ -163,7 +163,7 @@ The eight scenarios (a)–(h) are the D-19 enumeration. FlaUI-style automated Wi
   2. With the game panel focused, press alphanumeric keys, the arrow keys, and Tab.
   3. Open the in-game chat (Enter) and type; confirm characters arrive.
 - **Success criterion:** `WM_CHAR` / `WM_KEYDOWN` messages reach SWG: typed characters appear in the SWG chat box; arrow keys move the camera/selection; Enter dispatches as `openChat` (game-mode) not `chatEnter` (input-mode) per the context-routing fix. No keystrokes are swallowed by the WinForms host.
-- **Last-verified SHA:** `<pending 06-06 Task 4 sign-off>`
+- **Last-verified SHA:** `29a128e` (2026-05-25, Kenneth Long — 06-06 Tier-4 UAT)
 - **Failure-mode escalation:** Re-open the Phase 3 D-06 (R-C) WndProc-forwarding rework; verify the context-routing detour at `0x00F3E420` is installed (see [[project-swg-context-routing]]).
 
 ### Tier-4 Scenario (c): hkPresent + MMO render lifecycle
@@ -173,7 +173,7 @@ The eight scenarios (a)–(h) are the D-19 enumeration. FlaUI-style automated Wi
   1. Launch, log in, then transition between scenes 3+ times (e.g. Tatooine → Naboo → Lok → Tatooine) via TJT's chat-command scene loader.
   2. Tail `utinni.log` during each transition.
 - **Success criterion:** Per transition, `utinni.log` shows a clean single cycle: `hkMainLoop: loadNewScene -> Game::cleanupScene -> hkSetScene(null) -> hkMainLoop: setupScene -> hkSetScene(<new>) -> firing 1 setSceneCallbacks`. No allocator-fragmentation crash (e.g. the historical `0x0051fb0a`); setup callbacks fire exactly once per transition. (Landing naked after a scene change is the expected baseline, not a failure — see [[project-tjt-scene-change-naked-baseline]].)
-- **Last-verified SHA:** `<pending 06-06 Task 4 sign-off>`
+- **Last-verified SHA:** `29a128e` (2026-05-25, Kenneth Long — 06-06 Tier-4 UAT)
 - **Failure-mode escalation:** Re-open Phase 3 R-H; confirm `dispatchSnapshot` in `ground_scene.cpp` remains heap-free on the callback hot path (see [[project-rh-snapshot-no-heap-alloc]]).
 
 ### Tier-4 Scenario (d): D3D9 device-loss / reset paths
@@ -184,7 +184,7 @@ The eight scenarios (a)–(h) are the D-19 enumeration. FlaUI-style automated Wi
   2. Alt-tab away from SWG and back repeatedly; alternatively change the SWG client resolution.
   3. Tail `utinni.log`.
 - **Success criterion:** `imgui_impl::isSetup` invalidates and recreates its device objects per CON-N-06; the overlay re-renders correctly after focus return; **no `D3DERR_INVALIDCALL` fatal** appears in `utinni.log`. (Per [[feedback-d3d9-reset-third-party]], Utinni never calls `IDirect3DDevice9::Reset` on the app's device — the windowed Present handles backbuffer/window mismatch; only the window is resized.)
-- **Last-verified SHA:** `<pending 06-06 Task 4 sign-off>`
+- **Last-verified SHA:** `29a128e` (2026-05-25, Kenneth Long — 06-06 Tier-4 UAT)
 - **Failure-mode escalation:** Re-open the imgui embedded-D3D9 work; confirm render-target-space mapping (DisplaySize + mouse scaled) still holds (see [[feedback-imgui-embedded-d3d9-rt-space]]).
 
 ### Tier-4 Scenario (e): Plugin loader against real plugin DLLs (TJT)
@@ -194,7 +194,7 @@ The eight scenarios (a)–(h) are the D-19 enumeration. FlaUI-style automated Wi
   1. Install Utinni via the MSI on a clean Windows VM with TheJawaToolbox bundled (see scenario in 06-VERIFICATION.md step 9), OR via the dev-build path with TJT copied into `Plugins/TheJawaToolbox/`.
   2. Launch; open the editor host; observe plugin discovery.
 - **Success criterion:** TJT loads as a panel/subpanel in the editor host with no exceptions in `utinni.log`; its chat-command parser callbacks register; no MEF compose `MissingMethodException` (cf. [[feedback-caller-attrs-binary-compat]] — cross-binary plugins must be rebuilt in lockstep).
-- **Last-verified SHA:** `<pending 06-06 Task 4 sign-off>`
+- **Last-verified SHA:** `29a128e` (2026-05-25, Kenneth Long — 06-06 Tier-4 UAT)
 - **Failure-mode escalation:** Re-open the plugin-framework work; check the MEF `[InheritedExport]` surface and the cross-repo TJT pin SHA in `06-06-MSI-TJT-PINNING.md`.
 
 ### Tier-4 Scenario (f): Drag-drop in editor + WinForms STA
@@ -205,7 +205,7 @@ The eight scenarios (a)–(h) are the D-19 enumeration. FlaUI-style automated Wi
   2. Drag a template entry into the world panel.
   3. Release over a ground target.
 - **Success criterion:** The preview object follows the cursor during the drag; on drop the ray-cast resolves a world position and commits the create (undoable). No STA cross-thread exception; the drag preview does not corrupt on WinForms resize (cf. the GC-pinned-callback pattern in CONVENTIONS.md).
-- **Last-verified SHA:** `<pending 06-06 Task 4 sign-off>`
+- **Last-verified SHA:** `29a128e` (2026-05-25, Kenneth Long — 06-06 Tier-4 UAT)
 - **Failure-mode escalation:** Re-open the post-Phase-02.1 WR-09 drag-drop work; verify the STA marshaling seam.
 
 ### Tier-4 Scenario (g): GPU-driver-specific bugs
@@ -215,7 +215,7 @@ The eight scenarios (a)–(h) are the D-19 enumeration. FlaUI-style automated Wi
   1. Run scenarios (a)–(d) once on Nvidia hardware (the usual dev machine).
   2. Run once more on Intel and/or AMD hardware if available; record GPU vendor + driver version in 06-VERIFICATION.md.
 - **Success criterion:** The overlay renders correctly on every tested vendor; depth-resolve callbacks fire correctly (no missing-depth artifacts); no vendor-specific crash. If only one vendor is available locally, the second vendor is explicitly DEFERRED to the rc-bake period and noted in 06-VERIFICATION.md.
-- **Last-verified SHA:** `<pending 06-06 Task 4 sign-off>`
+- **Last-verified SHA:** `29a128e` (2026-05-25, Kenneth Long — 06-06 Tier-4 UAT)
 - **Failure-mode escalation:** Capture the adapter line from `utinni.log`; if a vendor-specific failure appears, re-open the graphics/depth_texture work with the vendor + driver version recorded.
 
 ### Tier-4 Scenario (h): WinForms UI smoke
@@ -226,7 +226,7 @@ The eight scenarios (a)–(h) are the D-19 enumeration. FlaUI-style automated Wi
   2. Resize, minimize, and restore each.
 - **Success criterion:** No UI hangs, no unhandled exceptions, no layout corruption on resize/restore.
 - **FlaUI explicitly EXCLUDED per CON-TT-03** — automated WinForms UI driving (FlaUI / UIAutomation) is a deliberate Tier-3 V2 deferral; this scenario remains a manual smoke walk forever in V1 and is **not** a candidate for automation under this milestone.
-- **Last-verified SHA:** `<pending 06-06 Task 4 sign-off>`
+- **Last-verified SHA:** `29a128e` (2026-05-25, Kenneth Long — 06-06 Tier-4 UAT)
 - **Failure-mode escalation:** Re-open the offending form's layout/Designer; this scenario never escalates to "add FlaUI" within V1 scope.
 
 *Eight-scenario residual complete (06-06, 2026-05-25). The `Last-verified SHA` placeholders for (b)–(h) are filled in at the 06-06 Task 4 maintainer-signed UAT with the rc.1 commit SHA.*
