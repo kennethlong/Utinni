@@ -1,7 +1,8 @@
 ---
 phase: 7
 slug: tjt-subpanel-tre-browser-read-only
-status: draft
+status: approved
+reviewed_at: 2026-05-26
 shadcn_initialized: false
 preset: none
 created: 2026-05-26
