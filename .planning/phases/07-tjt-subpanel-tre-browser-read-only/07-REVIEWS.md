@@ -1,181 +1,127 @@
 ---
 phase: 7
+round: 2
+note: Second-pass review of the 6 revised plans (07-00..07-04b). Round-1 review (codex+cursor) is preserved in git history at commit ed61442; its feedback was incorporated via commit eb4ff8d.
 reviewers: [codex, cursor]
-reviewed_at: 2026-05-26T21:42:57Z
-plans_reviewed: [07-01-PLAN.md, 07-02-PLAN.md, 07-03-PLAN.md, 07-04-PLAN.md]
-self_skipped: claude (running inside Claude Code — excluded for review independence)
-unavailable: [gemini, coderabbit, opencode, qwen]
+skipped: [claude]
+skipped_reason: claude is the executing CLI (self-review excluded for independence)
+unavailable: [gemini, opencode, qwen]
+reviewed_at: 2026-05-26T22:19:10Z
+plans_reviewed: [07-00-PLAN.md, 07-01-PLAN.md, 07-02-PLAN.md, 07-03-PLAN.md, 07-04a-PLAN.md, 07-04b-PLAN.md]
 ---
 
-# Cross-AI Plan Review — Phase 7
+# Cross-AI Plan Review — Phase 7 (Round 2)
 
-Two independent external AI systems reviewed the four Phase-7 plans against the roadmap goal, locked decisions (D-01..D-13), research, and the approved UI-SPEC. `claude` was skipped (this session runs inside Claude Code). The per-reviewer sections are verbatim; the Consensus Summary is synthesized.
-
----
+> Second-pass review of the revised TRE Browser plan set. Both reviewers were given the full project/roadmap/requirements context, 07-CONTEXT, 07-RESEARCH, 07-UI-SPEC, and all six PLAN files, and were asked to focus on whether the round-1 revisions are sound and what gaps remain.
 
 ## Codex Review
-*(codex-cli 0.133.0, GPT via ChatGPT)*
 
 ## Summary
-
-The four-plan split is directionally strong: it isolates the riskiest parser work first, keeps CLI/browser parity explicit, and puts manual live-SWG verification at the right UI boundaries. However, the plans are still too optimistic for autonomous execution. The biggest risks are binary-parser correctness gaps, under-specified real mount discovery, weak enforcement of shared code paths, and an overlarge Plan 04 that tries to deliver several independent file-format decoders plus UI rendering in one wave. I would not treat these as execution-ready until the parser API contracts, fixture strategy, 5000 behavior, and cross-repo dependency mechanics are tightened.
+The revised Phase 7 plan set is materially stronger than the first-pass shape. The added `07-00` fixture gate and the `07-04a` / `07-04b` split are sound revisions: they reduce skip-only coverage, make parser work testable before UI work, and isolate the riskiest decoder families. Overall, the plans now have clear wave ordering, good attention to malformed TRE inputs, explicit CLI/browser code-path sharing, and reasonable manual gates for live SWG verification. Remaining risk is mostly in scope size and a few places where the plans specify behavior that may be harder or less well-defined than the acceptance criteria imply, especially `5000`, `COT2000` path resolution, object-template inheritance, UI-page detection, and WinForms performance at 100k+ paths.
 
 ## Strengths
+- `07-00` is a good second-pass fix. It turns prior “fixture assumptions” into deterministic artifacts and makes v6000/COT2000/malformed coverage available in CI instead of relying on `SWG_SAMPLE_TRE_DIR`.
 
-- The phase is split in the right broad order: shared TRE parser first, browser shell second, detail pane third, per-type decoders last.
-- The plans correctly identify the highest-risk parser issues: version-specific TOC layouts, zlib-vs-raw-deflate, lazy enumeration, v6000 enumerate-only behavior, and malicious count/offset handling.
-- CLI parity is repeatedly called out, with `parse-tre`, `inspect-iff`, and `decode-iff` intended to cover browser-used code paths.
-- The UI plan respects the locked product decision to host inside TJT via `GetForms()` without widening `IEditorPlugin`.
-- Manual checkpoints are appropriately limited to live-host behavior that CI cannot currently verify.
-- The read-only fence is explicit across all plans: no export, authoring, write, or Maya parity work.
+- `07-01` correctly preserves the existing 0005/0006 size-first path while adding crc-first v6000/COT2000 dispatch. That is the right conservative choice given the unresolved real-SWGEmu fixture question.
+
+- The explicit lazy contract in `07-01` is strong: `PayloadReadCount`, `Open(Stream)` documented failure for payload reads, and `parse-tre` zero-payload-read assertions directly target the main performance risk.
+
+- The `TreArchiveIndex` / `TrePayloadResolver` facade is a good architectural anchor. It gives the CLI and browser a shared browse/payload path rather than relying on review discipline.
+
+- `07-02` properly resolves the SubPanel/Form contradiction by following the approved UI spec: resizable `UtinniForm`, `GetForms()` registration, `GetSubPanels()` unchanged.
+
+- `07-03` fixes a real gap by adding `IffChunk.OffsetBytes` before promising `@offset` in the UI. That is a good example of plan claims being backed by framework data.
+
+- Splitting `07-04` into `07-04a` and `07-04b` is justified. The data/STF/template decoders and graphics/UI summaries have different references, risks, and validation needs.
+
+- The plans consistently preserve read-only scope and avoid adding extraction/write/export paths, which keeps DEC-A3 intact.
 
 ## Concerns
+- **HIGH: `07-01 Task 2` may underspecify how `TrePayloadResolver` resolves COT2000 entries back to physical `.tre` files.**  
+  `CotEntry` has `TreeFileIndex`, `Offset`, `Length`, `CompressedLength`, but the descriptor only lists `SourceArchive`. For COT2000, `SourceArchive` must be resolved relative to the `.toc` / sample directory and must carry enough information to open the right archive. If this mapping is wrong, the browser can enumerate paths but fail all payload resolution.
 
-- **HIGH: `Open(Stream)` vs lazy payload access is under-specified.**  
-  Plan 07-01/07-02 says `TreFile.Open(Stream)` exists, but lazy payload reads reopen by stored path only when constructed via `Open(string)`. The plan does not define what `GetRecordData()` does for stream-backed instances. Throwing later would surprise existing callers; keeping the whole stream would violate the lazy goal. This needs an explicit contract.
+- **HIGH: `07-04a Task 2` object-template “inherited-field walk” is likely underplanned.**  
+  Object template inheritance may require resolving base-template references across other IFFs/TRE entries, not just decoding one selected IFF document. The plan does not define whether inheritance is recursive, local-only, best-effort, or descriptor-resolver-backed. This could silently become either incomplete or much larger than planned.
 
-- **HIGH: 5000 handling is internally contradictory.**  
-  The plan says “recognized without asserting a layout,” but also says route through the v6000 32-byte stride. That is asserting enough layout to mis-enumerate silently. For a no-fixture/no-spec version, safer behavior is: parse header minimally, mark unsupported/enumerate-only, expose no records unless a fixture-gated parser is enabled.
+- **HIGH: `07-04b Task 1` UI-page recognition is ambiguous.**  
+  The plan says “use the SWG UI-page root FORM tag; if uncertain, recognize by extension hint passed in OR fall back to summarizing any FORM root.” But the decoder signature is `Summarize(IffDocument doc)`, with no extension hint. This creates a mismatch and risks criterion #3 being satisfied by a too-broad “any FORM root” summary rather than real UI-page detection.
 
-- **HIGH: COT2000/sample tests depend on local `D:/Sample-TRE-Files`, but CI coverage will skip the most important real-world path.**  
-  Env-gated skip is useful locally, but it means the v6000/COT2000 path can rot in CI. The plan needs small synthetic COT2000/v6000 fixtures in-repo that exercise zlib, 32-byte crc-first records, cumulative filename lengths, and treeFileIndex bounds.
+- **MEDIUM: `07-00 Task 1` fixture naming inconsistency may confuse later tests.**  
+  The file list says `zlib-framed-1record-v0006.tre`, but behavior/action says “single-record v6000 fixture” and `WriteZlibFramedV6000OneRecord(path)`. Either it is v0006 with zlib framing or v6000; the plan should make this consistent before implementation.
 
-- **HIGH: integer overflow checks are named but not specified enough.**  
-  Count × stride, cumulative name offsets, offset + compressedLength, declared output size, and row × col cell loops all need checked arithmetic. “ValidateLength” alone is not enough. Autonomous agents may miss `int` overflow before validation.
+- **MEDIUM: `07-00 Task 2` bad-Adler validation may be overpromised with .NET Framework `DeflateStream`.**  
+  The plan requires detecting invalid Adler trailers, but if the implementation strips the zlib header/trailer and feeds only raw deflate to `DeflateStream`, the Adler value is not validated by the BCL. The plan needs to explicitly require computing Adler32 over inflated bytes and comparing the trailer if “bad Adler” is a distinct error.
 
-- **HIGH: Plan 04 scope is too large and format-risky.**  
-  Datatable, STF, object-template inherited fields, mesh, skeletal mesh, skeleton, animation, CLI verb, golden tests, and WinForms structured views is too much for one plan. Object-template inheritance and graphics formats are especially likely to need multiple iterations.
+- **MEDIUM: `07-01 Task 1` treats all v6000 as enumerate-only while also testing payload block inflate.**  
+  That is not necessarily wrong, but the distinction should be explicit: v6000 TOC/name blocks are zlib-readable; v6000 file payloads are enumerate-only/obfuscated. Otherwise implementers may accidentally block all v6000 compressed-block reading, including TOC/name.
 
-- **HIGH: “same code path” is asserted but not mechanically enforced for browser payload resolution.**  
-  UI plans can still build TJT-side lookup/index models and accidentally bypass `TreFile`/`CotMasterIndex` for important behavior. Grep gates for class names are weak. The plan should require a shared framework model/service API consumed by both CLI and UI.
+- **MEDIUM: `07-02 Task 1/2` lazy tree plus filter behavior has a hidden complexity gap.**  
+  Filtering over `_allPaths` and “prune the tree to ancestor chains” can still imply building a large filtered `TreeNode` hierarchy on the UI thread. The plan says scan flat index once, but it should also cap or batch UI node creation for broad filters like `a` or `.iff`.
 
-- **MEDIUM: mount-source discovery is vague.**  
-  Plan 07-02 says “configured SWG client dir” and “reuse existing config accessor,” but does not identify the actual ini key, SWG cfg file, TRE mount order source, or COT2000 filename. This is a major integration point and should not be left to executor discovery.
+- **MEDIUM: `07-02 Task 2` `Control.Invoke` from background enumeration can still stall with many small invokes.**  
+  The plan says marshal every node mutation via `Control.Invoke`. For large trees this can be slow. It should batch node additions per top-level branch or per UI update tick.
 
-- **MEDIUM: `Game.Repository` threading is underspecified.**  
-  The plans say read via `Game.Repository` and marshal UI updates, but do not state whether repository access itself must occur on the game thread, UI thread, or is thread-safe. If bindings touch native state, this matters.
+- **MEDIUM: `07-03 Task 3` “non-FORM-tag obfuscation guard” may misclassify valid non-IFF assets.**  
+  The browser is supposed to surface datatables, shaders, UI pages, string tables, templates, etc., but not every selected payload may begin with `FORM`. If non-IFF assets exist or `.tab`/`.stf` wrappers differ, routing them to encrypted state could produce misleading UX. Consider “unsupported/readable raw” distinct from encrypted.
 
-- **MEDIUM: lazy `TreeView` plus search/filter conflicts.**  
-  Search over 213k entries requires an in-memory path index even if UI nodes are lazy. The plan says top-level-only nodes and filter prunes ancestor chains, but does not specify the backing trie/index structure or performance target.
+- **MEDIUM: `07-04a` decoder fixture acquisition is still partly open-ended.**  
+  “Probe `swg-main`, else synthesize tiny fixtures” is acceptable, but for object templates and STF, tiny hand-authored fixtures may not represent real loader layouts. This is okay for first coverage, but should be labeled smoke coverage rather than format confidence.
 
-- **MEDIUM: chunk tree offset display may not be supported by current `IffChunk`.**  
-  The plan wants `TAG · size · @offset`, but the provided interface lists no offset property. Either Plan 03 must add offsets to `IffReader`/`IffChunk` in the framework, or the UI cannot honestly render offsets without a second parser.
+- **LOW: `07-01` acceptance relies on grep gates that may be brittle.**  
+  Grep for specific field names/order, `% 31`, or absence of `GetRecordData` can catch obvious regressions, but these should not substitute for behavior tests. The behavior tests are present, so keep grep gates secondary.
 
-- **MEDIUM: v6000 encrypted detection may incorrectly label non-IFF assets.**  
-  “Payload does not begin with FORM/known tag” is not sufficient because some valid assets may not be IFF or may have other magic. It should distinguish archive-level enumerate-only from per-file unsupported type.
+- **LOW: `07-02` says “autonomous: false” because of human smoke, but tasks 1-2 are auto.**  
+  This is fine, but make sure the executor does not block before finishing the auto-verifiable build/grep work.
 
-- **MEDIUM: `DeflateStream` zlib handling is too hand-wavy around Adler32.**  
-  “Feed the remainder ignoring trailing 4 bytes” can accidentally include the Adler32 unless the input stream is bounded correctly. The plan should specify slicing `[2..^4]` for zlib-framed blocks and validating minimum length.
-
-- **MEDIUM: 0004 is accepted but no layout is specified.**  
-  The plan maps `0004` to the size-first 24-byte path without fixture evidence. This may be acceptable as defensive compatibility, but tests should include a synthetic 0004 header and clearly mark real-layout unverified.
-
-- **MEDIUM: compressed block semantics are unclear.**  
-  Compression kind values are assumed but not enumerated in the plan. `0`, raw deflate, zlib, and unknown compressor behavior should be explicitly defined, including error kind on unknown compressor.
-
-- **MEDIUM: Plan 03 claims same path as `inspect-iff`, but uses `IffReader.Read(Stream)` while CLI uses `Read(path)`.**  
-  Same parser, yes, but not identical surrounding path. If path-based `IffReader` has different validation or metadata behavior, tests may miss browser-only behavior. Probably acceptable, but the claim should be softened or tested.
-
-- **LOW: UI grep gates are brittle.**  
-  Checking for `Task`, `Control.Invoke`, `BeforeExpand`, or absence of `Color.FromArgb` does not prove correct behavior. Add small unit-testable model classes for tree indexing/filtering if possible.
-
-- **LOW: “bold matched substring in TreeView labels” is not feasible with standard WinForms `TreeView` per-substring styling.**  
-  Standard `TreeNode.NodeFont` can bold the whole node, not a substring, unless owner-draw is implemented. The plan should say bold matching nodes, not substring, or require owner draw.
-
-- **LOW: non-ASCII STF fixture conflicts with default ASCII editing guidance.**  
-  It is reasonable for a binary fixture/test, but the plan should specify fixture bytes generated by test helper or binary file, not source literals that risk encoding churn.
+- **LOW: `07-03 Task 2` “Color.Red only” conflicts slightly with existing theme abstraction.**  
+  UI spec allows `Color.Red`, so this is acceptable, but if the theme has a destructive accessor later, prefer that. Not a blocker.
 
 ## Suggestions
+- In `07-01`, explicitly define `TreEntryDescriptor` fields needed for COT2000 payload resolution: master index path, base directory, tree file name/index, physical archive path, and archive-local offset semantics.
 
-- Define the final `TreFile` contract before execution:
-  - `Open(string)` supports lazy `GetRecordData`.
-  - `Open(Stream)` either eagerly owns only metadata and `GetRecordData` throws a documented `InvalidOperationException`, or copies to a temp/owned stream with explicit lifecycle.
-  - Add tests for both.
+- In `07-00`, rename or rewrite the zlib fixture consistently: either `zlib-framed-1record-v6000.tre` / `WriteZlibFramedV6000OneRecord`, or keep `v0006` and explain why a 0006 archive can contain zlib-framed blocks.
 
-- Replace the 5000 behavior with safer fixture-gated semantics:
-  - Recognize tag.
-  - Set `Header.Version = V5000`, `EnumerateOnly = true`, `Records = empty` or throw a typed `UnsupportedVersion` only when payload enumeration is requested.
-  - Do not parse v6000-style records until a real/synthetic spec-backed fixture exists.
+- In `07-00` / `07-01`, if `InvalidZlibTrailer` means bad Adler, require explicit Adler32 verification after inflate. If not, rename the malformed fixture/error to “invalid zlib frame/truncated trailer.”
 
-- Add small in-repo synthetic fixtures for:
-  - v6000 crc-first zlib TOC/name block.
-  - COT2000 global TOC with two tree files.
-  - malformed count × stride overflow.
-  - offset + length overflow.
-  - zlib block with invalid Adler/truncated trailer.
-  - unknown compressor.
+- In `07-04a`, define object-template inheritance semantics before implementation: local fields only, one-level base reference display, or recursive resolution through `TreArchiveIndex`/`TrePayloadResolver`. For Phase 7, a best-effort read-only “declared base + local fields” may be safer than promising full inherited walk.
 
-- Move shared browse indexing out of TJT UI into framework code, for example:
-  - `TreArchiveIndex`
-  - `TreMountIndex`
-  - `TreEntryDescriptor`
-  - `TrePayloadResolver`
-  
-  Then CLI and browser can both consume the same descriptor/payload APIs, and success criterion #4 becomes enforceable.
+- In `07-04b`, change `IffStructureSummary.Summarize(IffDocument doc)` to accept metadata such as virtual path/extension, or define exact UI-page FORM tags in the plan. Avoid “summarize any FORM root” as proof of UI-page coverage.
 
-- Split Plan 04 into at least three plans:
-  - 04a datatable + STF decoders + CLI tests.
-  - 04b object-template decoder.
-  - 04c appearance/mesh/skeleton/animation summary + UI structured rendering.
-  
-  This reduces blast radius and makes format mistakes easier to isolate.
+- In `07-02`, add batching requirements for UI updates: build node batches off-thread as plain models, then `BeginInvoke` one branch or page at a time. Add a broad-filter stress test or manual check for `.iff`.
 
-- Explicitly document mount discovery:
-  - exact SWG config file(s) read,
-  - COT2000 master index filename/pattern,
-  - TRE search directory,
-  - archive precedence/order,
-  - behavior when no configured client path exists.
+- In `07-03`, add an “unsupported readable payload” state separate from encrypted/enumerate-only. Use encrypted only when `TreVersion.IsEnumerateOnly` or known obfuscation applies.
 
-- Add checked arithmetic requirements by name:
-  - use `checked` for `count * stride`,
-  - validate `offset >= 0`,
-  - validate `length >= 0`,
-  - validate `offset <= streamLength - length`,
-  - validate cumulative name offsets cannot overflow,
-  - validate `rows <= MaxRows`, `cols <= MaxCols`, and `rows * cols <= MaxCells`.
-
-- Update Plan 03 if offsets are required:
-  - either add `OffsetBytes` to `IffChunk` in `UtinniCoreDotNet/Formats/Iff`,
-  - or remove `@offset` from the UI requirement.
-
-- Replace substring-bold requirement with a feasible WinForms requirement:
-  - bold entire matching leaf/ancestor node, or
-  - explicitly require owner-drawn `TreeView`.
-
-- Add cross-repo build verification after Plan 04:
-  - `dotnet test Utinni.Cli.Tests`
-  - `msbuild Utinni.sln /p:Configuration=Release /p:Platform=x86`
-  - `msbuild TheJawaToolboxDotNet.csproj /p:Configuration=Release /p:Platform=x86`
+- In `07-04a/b`, label synthesized decoder fixtures as minimal contract fixtures and, where possible, add one env-gated real loose-IFF fixture test per decoder family.
 
 ## Risk Assessment
+Overall risk: **MEDIUM-HIGH**.
 
-**Overall risk: HIGH.**
-
-The plan handles the right problems, but this phase combines untrusted binary parsing, incomplete format knowledge, large data volumes, cross-repo integration, and WinForms UI work. Plan 07-01 is the critical path and still has contract ambiguity around lazy streams, overflow validation, and 5000. Plan 07-04 is the largest delivery risk because deep per-type decode across several unrelated SWG formats is unlikely to be completed robustly in one autonomous pass. With the suggested fixture additions, stricter parser contracts, and Plan 04 split, the risk would drop to **MEDIUM**.
+The parser foundation is now much better controlled, and the fixture gate materially lowers the chance of skip-heavy false green. The remaining risk comes from breadth: this phase includes archive dispatch, master-index enumeration, lazy WinForms browsing, live repository overlay, universal IFF detail rendering, and multiple per-type decoders. The riskiest areas are not basic TRE malformed handling anymore; they are semantic correctness of COT2000 payload resolution, object-template inheritance, UI-page/shader coverage, and WinForms responsiveness at real archive scale. The plan is implementable, but it should tighten those few contracts before execution to avoid discovering scope ambiguity mid-wave.
 
 ---
 
 ## Cursor Review
-*(cursor-agent, ask mode)*
 
-# Cross-AI Plan Review — Phase 7 (TRE Browser)
+# Phase 7 Plans — Second-Pass Cross-AI Review
 
 ## 1. Summary
 
-The four-plan split (framework TRE refactor → TJT shell/overlay → detail pane → per-type decoders) is well aligned with research, locked decisions, and the existing codebase. Plan **07-01** is the strongest: it turns verified binary pitfalls (field-order divergence, zlib framing, eager read) into concrete TDD tasks with a solid threat model. Plans **07-02–07-04** inherit that core but lean on grep/build gates and three blocking live-SWG smokes; several **PROD-01** asset classes (UI page, shader) and roadmap **list-objects** parity are only partially specified. **Wave 0** in `07-VALIDATION.md` is still unchecked while plans assume fixtures/env gates exist—execution risk before wave 1 starts. Overall: **executable with fixes**, not “ship as-is.”
+The first-pass revisions landed well: **07-00** as a Wave-0 gate, **07-04a/07-04b** split, **5000 enumerate-only** with a deliberately wrong layout fixture, **PayloadReadCount**, **TreArchiveIndex/TrePayloadResolver**, flat-index debounced search, **FilenameCount+GetFilenameAt** overlay semantics, **IffChunk.OffsetBytes**, and **shader/UI-page structured summaries** all directly address the prior review. Wave ordering (`07-00 → 07-01 → 07-02/03 → 07-04a → 07-04b`) is coherent, threat registers are tied to fixtures, and Tier-4 manual smokes are scoped correctly.
+
+The remaining gaps are mostly **integration seams the plans assume but do not specify**: where the browser gets the client `.tre` directory, whether **SearchTOC** master indexes are actually read, whether the **COT2000 synthetic fixture set is self-contained**, and whether **filter-driven tree rebuilds** stay responsive at 213k paths. Those are execution risks, not plan-structure failures. Overall the set is **approvable with targeted amendments** before Wave 1 execution.
 
 ---
 
 ## 2. Strengths
 
-- **Research → plan traceability:** Pitfalls 1–7 from `07-RESEARCH.md` map to explicit tasks (version dispatch, zlib `%31==0`, lazy TOC, `5000` enumerate-only, Pitfall 7 CLI lock-step). Matches current `TreFile.cs` (0005/0006-only gate, size-first loop, eager `compressedCache`, raw `DeflateStream`).
-- **07-01 security posture:** STRIDE register (T-07-01..05), `ValidateLength`, 256 MB caps, `treeFileIndex < numTreeFiles`, forged-count tests—appropriate for untrusted `.tre`/`.toc` input.
-- **Open Q1 handled conservatively:** Keeps size-first for V0004/V0005/V0006 so Phase 4 `parse-tre` goldens stay byte-identical; crc-first only for V6000/COT2000—reduces silent mis-decode risk.
-- **D-08 enforcement on the framework side:** Parsers/decoders in `UtinniCoreDotNet/Formats/`; new `decode-iff` verb; grep gates against JSON/console in decoders and `OBJS` scans—good drift prevention for **framework** code.
-- **UI architecture:** Resizable `UtinniForm` via `GetForms()` (not 417px `SubPanel`) matches `07-UI-SPEC.md`; lazy `BeforeExpand` + background `Task` + `Control.Invoke` address 213k-entry Pitfall 5; `TreDetailPane.LoadIff` sets up Phase 8 (D-13).
-- **Cross-repo awareness:** `Plugin.cs` registration pattern is accurate (`forms.Add(new FormObjectBrowser(this))` at line 57); `autonomous: false` on UI plans with explicit human-verify steps matches VALIDATION Tier-4 residual.
-- **Validation doc:** `07-VALIDATION.md` ties tasks to filters, documents env-gating on `SWG_SAMPLE_TRE_DIR`, and separates headless CLI coverage from TJT manual smoke.
+- **07-00 closes the CI blind spot cleanly.** Synthetic v6000/COT2000/5000/0004 + malformed fixtures, `TreFixtureBuilder` regenerate-and-compare, and `FixturePath.SampleTreDir()` directly fix the “everything env-gated” problem without re-litigating it.
+- **07-01 Task 1 is the right conservative split on Open Q1.** Keeping **size-first for 0004/0005/0006** to preserve Phase-4 goldens while using **crc-first only for v6000** is the correct tradeoff until a real SWGEmu archive exists.
+- **5000 handling is now provable, not speculative.** Empty records, no v6000 stride routing, and a non-6000 layout fixture (`synthetic-5000-header.tre`) match D-06b and review consensus #1.
+- **Shared facade is better than grep-for-classname.** `TreArchiveIndex` + `TrePayloadResolver` with dedicated tests (`TreArchiveIndexTests`) is a real mechanical lock-step mechanism for criterion #4’s browse/resolve paths.
+- **07-04 split reduces blast radius.** Framework decoders + `decode-iff` (04a) before graphics/UI summaries + detail-pane wiring (04b) is the right sequencing for a phase this large.
+- **07-03 OffsetBytes fix is minimal and correct.** Threading existing `chunkStart` through `IffReader` avoids a second parse pass and unblocks honest `@offset` rendering and Phase 8 reuse (D-13).
+- **Preservation guard-rails are explicit.** CON-M-01/02 (no SPI widening), CON-N-02 (read-only `Repository`), D-01/D-07 (read-only + enumerate-only degradation) appear in every plan’s must-haves.
+- **07-VALIDATION.md tracks the revised plan IDs** and documents the Wave-0 gate, decoder lanes, and three blocking-human smokes aligned with TEST-04.
 
 ---
 
@@ -183,104 +129,112 @@ The four-plan split (framework TRE refactor → TJT shell/overlay → detail pan
 
 ### HIGH
 
-- **Wave 0 not done vs. plan dependencies:** `07-VALIDATION.md` Wave 0 items (Sample-TRE wiring, zlib fixture, synthesized `5000` header, lazy-enumeration assertion, decoder IFF fixtures, SWGEmu fixture) are still `[ ]`. **07-01 Task 1** expects v6000/COT2000 env-gated tests and a synthesized `5000` fixture—executors will hit red CI or skip-heavy green unless Wave 0 runs first. Plans do not gate wave 1 on Wave 0 completion.
-- **PROD-01 “every asset class” vs. 07-04 scope:** Roadmap/PROD-01 requires IFF, datatable, template, **UI page**, **shader**, string-table. **07-04** ships decoders for DTII, STF, object template, and MESH/SKMG/SKTM/KFAT summaries only—no **UI page** decoder and no dedicated **shader** structured view (only `[SHDR]` tree tags + universal IFF tree). Manual smoke step 5 does not ask the human to verify UI page or shader structured views. Criterion 3 is at risk of “chunk tree = enough” without explicit acceptance.
-- **`list-objects` not in lock-step (success criterion #4):** Phase 7 success criteria cite **`parse-tre` and `list-objects`**. None of the four plans migrate `ListObjectsCommand` off the provisional `OBJS` byte-scan (documented debt since Phase 4). Browse enumeration uses `CotMasterIndex`/`TreFile`, not `list-objects`—criterion #4 is only half addressed unless criterion wording is narrowed.
-- **Repository overlay semantics vs. D-05:** Overlay is built from `Game.Repository` after `Game.IsRunning`. Native `Repository` captures a **one-time** harvest at construction (`filenames = treefile::getAllFilenames()` moves/clears the static set in `tree_file.cpp`). Entries mounted **after** that moment will show as “dimmed / not loaded” even if resolvable—contradicts “currently loaded/resolvable” unless documented as install-time snapshot only. Plan says “best-effort” but manual verify doesn’t test late-mounted trees.
-- **Filter over ~213k paths unspecified:** **07-02** requires debounced substring filter pruning ancestor chains but does not require a **flat path index** (e.g. `List<string>` or trie) built at enumeration time. Naive re-walk of the tree or rescan of `CotMasterIndex.Entries` on every 250 ms tick can still freeze or spike CPU—Pitfall 5 mitigation incomplete for search, not just initial build.
+- **SearchTOC master index is advertised but not tasked (07-01).** Objective and `CotMasterIndex` artifact text say “COT2000 / **SearchTOC**,” and `07-RESEARCH.md` documents both kinds. **07-01 Task 2** only detects `first 8 bytes == " COT2000"`. SWGEmu installs that use SearchTOC-style master indexes would fail “full mount set” browsing even with a correct per-`.tre` fallback, unless `TreArchiveIndex.Build` never sees a master index and only scans loose `.tre` files—which is not specified.
+- **Client `.tre` directory source is unspecified (07-02 Task 2).** The plan says “reuse the existing TJT/ini config accessor the same way other panels resolve client paths,” but **`FormObjectBrowser` does not read disk TREs at all**—it only consumes `Game.Repository`. There is no existing ini key or helper for `TreArchiveIndex.Build(clientDirOrIndexPath)`. Without an explicit decision (`utility.GetWorkingDirectory()`, SWG.exe directory, new `[TreBrowser] clientDir` ini setting, file picker, etc.), criterion 1+2 live smoke is blocked at implementation time.
+- **COT2000 synthetic fixture may be incomplete for end-to-end facade tests (07-00 / 07-01 Task 2).** `synthetic-cot2000-2tree.toc` lists **two `.tre` names**, but **07-00 only commits the `.toc`**, not companion archives. `TreArchiveIndexTests` and `TrePayloadResolver` “readable entry” cases need resolvable per-archive payloads; otherwise tests either skip the resolver path or pass only at the `CotMasterIndex` enumeration layer.
+- **UI-page root FORM tag is still fuzzy at the criterion-3 boundary (07-04b Task 1).** The plan admits uncertainty (“if exact UI-page root tag is uncertain… fall back to summarizing any FORM root”). That weakens the headless proof that **PROD-01 criterion #3** (“UI page” as a distinct asset class) is met, versus “any IFF gets a generic child-count summary.”
 
 ### MEDIUM
 
-- **`5000` as structural sibling of `6000`:** Reasonable given D-06b (recognize tag, enumerate-only, `TODO(5000-fixture)`), but routing **5000** through **32-byte crc-first** layout without a fixture can mis-enumerate if `5000` is not a 6000 sibling (research assumption A2). Mitigation (enumerate-only, no payload assert) limits blast radius; still a **silent wrong TOC** risk, not just “can’t decode content.”
-- **Lazy `GetRecordData` + `Open(Stream)` contract:** **07-01** drops eager cache and re-opens by path for `Open(string)`. `Open(Stream)` is used by tests/CLI; plan does not say how lazy payload read works when **no path** is stored—risk of regressing stream-based tests or reintroducing eager read for that entry point.
-- **“No payload read” test is weakly specified:** Task 2 acceptance allows “payload-read counter or timing/IO bound”—easy to satisfy without proving `parse-tre` never touches payloads. Prefer a hard seam (e.g. `IPayloadAccess` mock, or `TreFile.PayloadReads` test-only counter).
-- **Overlay build via `GetDirectoryInfo` only:** Plan grep-checks `GetDirectoryInfo`/`GetFilenameAt` but building a full-path `HashSet` realistically needs **`FilenameCount` + loop** (top-level `GetDirectoryInfo` only indexes first path segment per `repository.cpp`). Worth making explicit so implementers don’t under-harvest overlay coverage.
-- **Cross-repo CI gap:** `ci.yml` runs `dotnet test` on **Utinni** only; **07-02/03/04** verify TJT via local `msbuild` only. A broken TJT reference to new `Formats` APIs won’t fail master CI until release workflow or manual build—paired-commit discipline is assumed, not automated.
-- **0004 in enum, same decoder as 0005/0006:** D-06 includes **0004**; no distinct header/stride test if 0004 differs from 0005—only `Parse("0004")` enum test. Low probability issue but untested divergence.
-- **Integer overflow on `recordCount * stride`:** Bounds checks against stream length are specified; explicit **checked multiply** before allocation (e.g. `recordCount > streamLength / stride`) is not—relevant on 32-bit x86 host.
-- **Concurrent file access:** Lazy `GetRecordData` re-opens files without mentioning shared read locking; usually fine on Windows, but multiple rapid selections could overlap reads—minor, but worth a single shared open or `FileShare.Read` note (already used in `Open(string)`).
+- **Filter + lazy tree may still jank at scale (07-02 Task 1).** The flat `_allPaths` scan fixes per-tick tree re-walk, but **rebuilding/pruning/expanding the TreeView on every 250ms tick** for large match sets can still allocate heavily. No match cap, incremental update strategy, or “show flat results list when filter non-empty” fallback is specified.
+- **`TrePayloadResolver` enumerate-only contract is ambiguous (07-01 Task 2).** Action text says “returns decompressed bytes… **and reports/raises** enumerate-only.” **07-03 Task 3** branches on `d.EnumerateOnly` before calling `Resolve`, but the resolver API itself should specify one behavior (dedicated exception type vs. `TryResolve` out-param) so UI and tests don’t diverge.
+- **`Game.Repository` threading guidance conflicts with precedent (07-02 Task 2).** Plan requires `Control.Invoke` / `GameCallbacks` for overlay reads; **`FormObjectBrowser.LoadRepo()` reads `Game.Repository` directly from a background `Task`** without marshaling. If the native harvest vector isn’t thread-safe for concurrent reads, overlay builds could flake in live SWG—worth an explicit thread-safety assertion or matching the established pattern deliberately.
+- **Cross-repo CI gap (07-02, 07-03, 07-04b).** Framework changes ship in Utinni; UI in UtinniPlugins. Automated verification for TJT is **local `msbuild` only**—Utinni’s GitHub Actions lane won’t catch TJT compile breaks when `TreArchiveIndex`, new decoders, or `IffChunk.OffsetBytes` land. Paired commits are pre-authorized, but there’s no CI guard on the sibling repo.
+- **0004 dispatch lacks an explicit golden (07-00 + 07-01 Task 1).** `synthetic-0004-header.tre` is emitted, but Task 1 behavior tests list 0005/0006 goldens, v6000, 5000, zlib, malformed—not a dedicated **0004 enumeration** case. Risk of “recognized tag, untested path.”
+- **`PayloadReadCount` visibility left open (07-01 Task 2).** “Public or internal + InternalsVisibleTo” should be pinned; if public, it becomes shipping surface on `TreFile` beyond test intent.
+- **Criterion #4 wording vs. verb coverage.** The ROADMAP says `parse-tre` / `list-objects` goldens cover browse paths. The revised design honestly adds **`TreArchiveIndexTests` + `decode-iff` + `inspect-iff`** as the coverage mechanism. That’s sound, but **success criterion #4 in ROADMAP/PROD-W1-TRE acceptance text is now slightly stale** relative to the plans—executors may over-fit `parse-tre` alone.
 
 ### LOW
 
-- **Phase title vs. delivery:** Phase is “TJT **subpanel**” but locked decision is **`UtinniForm` / `GetForms()`**—naming confusion for executors skimming roadmap only.
-- **`cbTypeFacet` optional but in Designer:** UI-SPEC says V1-optional; included with “All types” only—harmless scope noise.
-- **Encrypted banner hard-codes “v6000”:** **07-03** copy says `Encrypted payload (v6000)` even for **V5000** enumerate-only—minor UX inaccuracy.
-- **`Color.Red` exception:** Theming rule is mostly `Colors.*`; parse-fail heading uses `Color.Red` per UI-SPEC—acceptable but inconsistent with “no literals” grep gates elsewhere.
+- **`zlib-framed-1record-v0006.tre` naming (07-00 Task 1).** Filename suggests **0006/size-first lineage**, but content is **v6000 crc-first zlib**. Low risk if builder tests document the intent, but easy to mis-wire in 07-01 dispatch tests.
+- **`TreFile` XML contract still documents eager-read (current code).** 07-01 should explicitly task updating the class docstring that still states “REVIEWS HIGH-4 eager-read path A”—otherwise future phases inherit wrong contract docs.
+- **Decoder IFF fixtures still Wave-0 `[ ]` items (07-VALIDATION.md lines 105–106).** Acceptable deferral to 07-04a/b Task 1, but **04a TDD starts blocked** if neither `swg-main/serverdata` nor hand-authored synth IFFs exist on the executor machine.
+- **Large structured ListViews without row caps (07-04b Task 2, T-07-17).** Threat register mentions UI freeze; no hard cap (e.g., first N rows + “truncated” label) for huge datatables.
+- **Phase title vs. UI host.** Roadmap still says “subpanel”; approved **07-UI-SPEC** chose **`UtinniForm` via `GetForms()`**. Plans 07-02+ align with UI-SPEC—cosmetic traceability only.
 
 ---
 
 ## 4. Suggestions
 
-- **Block 07-01 on Wave 0 completion** (or add a 07-00 plan): Check in minimal in-repo fixtures (zlib block, `5000` header, multi-record lazy test, tiny DTII/STF/template IFFs); document `SWG_SAMPLE_TRE_DIR` on the self-hosted runner in `ci.yml` or `release.yml` so v6000/COT2000 goldens aren’t permanently skipped on CI.
-- **Clarify PROD-01 coverage in 07-04 must_haves:** Either add lightweight **shader / UI page** summaries (even “FORM tag + child count” via `IffReader` only), or amend success criteria / manual smoke to state: *structured decode for DTII/STF/template/mesh family; UI page/shader via universal IFF tree only*—so criterion 3 isn’t ambiguous.
-- **Add `list-objects` migration task** (07-01 or small 07-05): Reimplement `ListObjectsCommand` using `CotMasterIndex`/`TreFile` + `IffReader`, or drop `list-objects` from Phase 7 success criterion #4 in ROADMAP.
-- **07-02 Task 2 — specify overlay harvest:** `for (i = 0; i < Game.Repository.FilenameCount; i++) loaded.Add(Game.Repository.GetFilenameAt(i));` on game thread or marshaled; document install-time snapshot limitation in legend copy.
-- **07-02 — require flat path list for filter:** e.g. `IReadOnlyList<string> _allPaths` from `CotMasterIndex.Entries` (paths only, no payloads) built once on background task; filter operates on that list, then projects to tree nodes.
-- **07-01 — harden lazy contract:** Store optional `sourcePath` on `TreFile`; `Open(Stream)` either requires path parameter for lazy mode or documents test-only eager exception; add deterministic `PayloadReadCount` for tests.
-- **07-01 — checked arithmetic:** `if (recordCount > 0 && recordCount > (streamLength - headerSize) / recordStride) throw ...` before `new List<TreRecord>(recordCount)`.
-- **Paired cross-repo verify:** After 07-01, add CI or release step: build `TheJawaToolboxDotNet` against freshly built `UtinniCoreDotNet` (release workflow already checks out both—mirror a subset in PR CI if possible).
-- **5000:** Add explicit acceptance: wrong TOC on synthetic “not actually 6000-layout” file must not throw—only `EnumerateOnly` + empty/garbage names acceptable; keeps defensive posture honest.
+1. **07-01 Task 2 — Add SearchTOC detection or document explicit deferral.** Either port `tre_reader.py`’s `detect_master_index_kind` fully (COT2000 **and** SearchTOC), or add a must-have: “SearchTOC unsupported in V1 → `TreArchiveIndex.Build` scans directory for `*.tre` only” with a skipped test gated on a future fixture. Do not leave SearchTOC in objective text without a task.
+
+2. **07-02 Task 2 — Pin the TRE root path source before coding.** Add a concrete decision block, e.g.:
+   - Primary: `utility.GetWorkingDirectory()` (or SWG process directory) + detect `*.toc` / `*.tre`;
+   - Fallback: new ini key `[TreBrowser] clientDir` with first-run error state if missing;
+   - Document in `07-02` acceptance: grep for the chosen API + manual smoke step “confirm tree populates without manual path entry.”
+
+3. **07-00 Task 1 — Emit companion archives for COT2000.** Extend `WriteCot2000TwoTree` to also write two tiny referenced `.tre` files (or a fixture subdirectory) so **07-01 `TreArchiveIndexTests` / `TrePayloadResolver.Resolve`** can run fully in CI without env vars.
+
+4. **07-04b Task 1 — Lock UI-page root FORM tag(s) during fixture authoring.** When synthesizing the UI-page golden, record the exact root tag in a comment + test name (e.g., `UIPG` / whatever the fixture uses). Remove “summarize any FORM root” as the primary path—keep that only for the unrecognized-type no-throw test.
+
+5. **07-02 Task 1 — Add filter performance guard.** When filter text is non-empty and matches exceed e.g. 5k paths, show a status label (“N matches—refine filter”) and avoid full TreeView rebuild; or switch to a flat `ListView` for filtered mode.
+
+6. **07-01 Task 2 — Specify `TrePayloadResolver` API:**
+   ```csharp
+   // Pick one:
+   bool TryResolve(TreEntryDescriptor d, out byte[] payload);
+   // or
+   byte[] Resolve(...) // throws TreEnumerateOnlyException
+   ```
+   Align **07-03 AfterSelect** with the same contract.
+
+7. **07-01 Task 1 — Add `ParseTre_0004Header_EnumeratesRecords` golden** using `synthetic-0004-header.tre` (even if record layout is “unverified,” assert non-throw + expected record count/names from builder).
+
+8. **Cross-repo CI (optional but high leverage).** Add a minimal Utinni workflow step or documented gate: build `TheJawaToolboxDotNet.csproj` against the pinned Utinni release output after framework waves—or note in **07-02/07-03 verification** that executor must run both builds before marking wave complete.
+
+9. **Update ROADMAP success criterion #4 text** to mention `TreArchiveIndex`/`decode-iff`/`inspect-iff` golden lanes, not only `parse-tre`/`list-objects`, so verification matches the revised architecture.
 
 ---
 
 ## 5. Risk Assessment
 
-**Overall risk: MEDIUM–HIGH**
+**Overall risk: MEDIUM**
 
-| Area | Level | Justification |
-|------|--------|----------------|
-| **07-01 framework / binary parsing** | **MEDIUM** | Strong TDD + threat model; main residual is Open Q1 (SWGEmu real fixture), `5000` layout guess, and lazy/stream API edge cases. |
-| **07-02 UI scale + overlay** | **MEDIUM–HIGH** | Lazy expand helps; filter + overlay semantics + no CI for TJT compound execution risk. |
-| **07-03 detail pane** | **MEDIUM** | Good isolation/try-catch; depends on correct lazy payload read and encryption detection. |
-| **07-04 decoders** | **MEDIUM–HIGH** | Largest porting surface (C++/Python → C#); fixture quality drives confidence; UI page/shader gap vs PROD-01. |
-| **Phase success criteria (all 4)** | **MEDIUM** | Criteria 1–2 achievable via 07-02 smokes; criterion 4 partial without `list-objects`; criterion 3 needs explicit scope line for UI page/shader. |
+**Justification:** The hardest parser work (version dispatch, zlib, lazy TOC, bounds checks, 5000 posture, fixture gate) is now well specified and test-backed—that was the first review’s core worry, and the revisions are sound. What remains is **integration and completeness risk**: disk enumeration may not find archives without a defined client path; SearchTOC may be silently dropped; COT2000 facade tests may not exercise payload resolution in CI; and filter/tree UX may still struggle at 213k paths despite debouncing. None of these are plan-structure failures, but any one could fail PROD-W1-TRE criteria 1–2 or weaken PROD-01 criterion #3 in live SWG even with green `dotnet test` lanes.
 
-**Why not LOW:** Wave 0/fixture gap, 213k-entry search ambiguity, Repository snapshot vs “loaded” wording, and PROD-01/class coverage holes can produce a green CLI + passing smokes on SWGEmu-only paths while Restoration browse or “every asset class” claims are weak.
+**Success criteria mapping (honest read):**
 
-**Why not uniformly HIGH:** 07-01 directly fixes verified production bugs (zlib, v6000 layout); validation strategy and CLI golden path are mature from Phase 4; human checkpoints are appropriate for TJT where automation cannot go.
+| Criterion | Likely met by revised plans? | Notes |
+|-----------|------------------------------|-------|
+| **1** — Subpanel loads in TJT against live client | **Conditional** | 07-02 registration + manual smoke OK; blocked on TRE path resolution |
+| **2** — Navigate full mount set, expand, metadata | **Conditional** | Lazy tree + overlay OK if enumeration root is correct |
+| **3** — Every asset class with structured view | **Mostly** | 07-04b + universal IFF tree; UI-page tag still soft |
+| **4** — CLI goldens cover same code paths | **Mostly** | Strong via shared `Formats/` + `TreArchiveIndexTests` / `decode-iff` / `inspect-iff`; ROADMAP wording lags the design |
 
----
-
-### Success criteria checklist (roadmap)
-
-| Criterion | Plans | Verdict |
-|-----------|--------|---------|
-| **1** TRE Browser loads in TJT vs live client | 07-02 Task 3 | Covered (manual) |
-| **2** Navigate full mount set, expand, metadata | 07-02 Tasks 1–2 + smoke | Covered if COT2000 + lazy expand work; filter/index risk |
-| **3** Every PROD-01 asset class | 07-03 (IFF tree) + 07-04 (partial structured) | **Gap** for UI page + shader structured views unless IFF tree alone counts |
-| **4** `parse-tre` / `list-objects` same paths as browse | 07-01 (`parse-tre`, `CotMasterIndex`) | **`parse-tre` yes; `list-objects` not planned** |
-
-I can go deeper on any single plan (e.g. draft Wave 0 task list or a tightened 07-04 acceptance table) if useful.
+**Revisions sound?** **Yes** for the items they targeted (Wave-0 gate, 5000, lazy contract, facade, 07-04 split, overlay semantics, OffsetBytes, shader/UI summary). **Second-pass focus:** fix the **TRE root path**, **SearchTOC/companion-fixture completeness**, and **filter scalability** before executing **07-02**—those are the highest-leverage remaining edits.
 
 ---
 
 ## Consensus Summary
 
-Both reviewers independently rate the phase **MEDIUM–HIGH risk** and agree the 4-plan split and its ordering are sound, that **07-01 is the strongest plan**, and that the read-only fence and CLI-parity intent are well expressed — but **neither would ship the plans as-is**. The substantive code risk concentrates in **07-01** (parser contract edges) and **07-04** (scope breadth + format coverage); several other items are cheap doc/criterion clarifications.
+Two independent reviewers (Codex, Cursor) agree the round-1 revisions landed well: the parser foundation, fixture gate, and architecture are sound, and the residual risk is **semantic correctness + integration seams, not plan structure**. Both consider the set approvable with targeted amendments before Wave-1 execution.
 
-### Agreed Strengths (raised by both)
-- Correct decomposition order: shared TRE parser → browser shell → detail pane → per-type decoders.
-- 07-01 security posture is strong and appropriate for untrusted `.tre`/`.toc` input: STRIDE register, `ValidateLength`, 256 MB caps, `treeFileIndex < numTreeFiles` bounds, forged-count tests.
-- Open Q1 handled conservatively — size-first kept for V0004/V0005/V0006 so Phase-4 `parse-tre` goldens stay byte-identical; crc-first only for V6000/COT2000.
-- Read-only fence (D-01) explicit across all plans; no write/authoring/export creep.
-- D-08 enforced framework-side (`Formats/` decoders + `decode-iff` verb + JSON/console grep gates) — good drift prevention for framework code.
-- UI architecture matches the approved UI-SPEC (resizable `UtinniForm` via `GetForms()`, lazy `BeforeExpand` + background `Task` + `Control.Invoke`); manual checkpoints correctly limited to live-host behavior CI can't reach.
+### Agreed Strengths (2+ reviewers)
+- **07-00 Wave-0 fixture gate closes the CI blind spot** — turns prior env-gated fixture *assumptions* into deterministic in-repo artifacts (v6000/COT2000/5000/0004 + malformed), available in CI without `SWG_SAMPLE_TRE_DIR`.
+- **07-01 conservative dispatch is the right call** — size-first for 0004/0005/0006 (preserves Phase-4 goldens), crc-first only for v6000, until a real SWGEmu v6000 archive exists.
+- **TreArchiveIndex / TrePayloadResolver shared facade is the correct architectural anchor** — gives CLI and browser a mechanically shared browse/resolve path instead of relying on review discipline.
+- **07-04 -> 07-04a/04b split is justified** — decoders vs graphics/UI summaries have different references, risks, and validation needs.
+- **07-03 IffChunk.OffsetBytes fix is minimal and correct** — backs the @offset UI claim with real framework data and unblocks Phase 8 reuse (D-13).
+- **Read-only scope preserved across all plans** — DEC-A3, D-01, CON-M-01/02, CON-N-02 appear in every plan's must-haves.
 
-### Agreed Concerns (raised by both — highest priority)
-1. **`5000` handling is unsound as specified.** (codex HIGH / cursor MEDIUM) Routing `5000` through the v6000 32-byte crc-first stride without a fixture *is* asserting layout and risks **silent mis-enumeration**. Both recommend: recognize the tag, set `EnumerateOnly`, expose **no** records (no payload assert) until a fixture exists; a synthetic non-6000-layout `5000` file must **not throw** — only enumerate-empty.
-2. **`Open(Stream)` lazy contract is under-specified.** (codex HIGH / cursor MEDIUM) Lazy `GetRecordData` re-opens by stored path, but stream-backed instances (used by tests/CLI) have no defined behavior. Define it explicitly (documented `InvalidOperationException`, or store an optional `sourcePath`) and add a deterministic `PayloadReadCount` test counter instead of the current timing/IO-bound proxy.
-3. **CI permanently skips the real COT2000/v6000 path.** (both HIGH) The `SWG_SAMPLE_TRE_DIR` env-gate means the most important Restoration path can rot. Add small **in-repo synthetic fixtures** (zlib block, crc-first TOC, malformed count×stride / offset+length overflow, truncated zlib trailer, unknown compressor) so v6000/COT2000 goldens run on CI.
-4. **Wave 0 is a prerequisite but isn't gated.** (cursor HIGH; codex implied) `07-VALIDATION.md` Wave 0 fixture items are still unchecked, yet 07-01 assumes they exist — executors will hit red CI or skip-heavy green. Block 07-01 on Wave 0 completion (or add a `07-00` fixture plan).
-5. **Plan 04 / PROD-01 "every asset class" coverage gap.** (both HIGH, different angles) Codex: 07-04 is too large (datatable + STF + object-template + mesh family + CLI + goldens + WinForms views in one) → split into ~3. Cursor: 07-04 ships **no UI-page decoder and no dedicated shader structured view**, so success criterion #3 is at risk of "chunk tree = enough." Resolution: either add lightweight shader/UI-page summaries (even FORM-tag + child-count via `IffReader`) **or** amend criterion #3 wording to state IFF-tree-only for those classes — and split the plan to shrink blast radius.
-6. **Search/filter over ~213k paths is under-specified.** (cursor HIGH / codex MEDIUM) Lazy tree nodes fix the initial build, but filter needs a **flat path index** (`List<string>`/trie) built once at enumeration; a naive re-walk per 250 ms tick will spike CPU. Mitigation must cover *search*, not just initial load.
-7. **Shared-code-path / criterion #4 not mechanically enforced.** (codex HIGH; cursor's `list-objects` angle) Codex: move shared browse indexing into framework (`TreArchiveIndex`/`TrePayloadResolver`) so CLI + UI provably share it — grep-for-classname gates are weak. Cursor: criterion #4 cites `parse-tre` **and `list-objects`**, but no plan migrates `ListObjectsCommand` off the provisional `OBJS` byte-scan — either add a migration task or narrow the ROADMAP criterion.
+### Agreed Concerns (2+ reviewers — highest priority)
+1. **HIGH — UI-page root FORM-tag recognition is ambiguous (07-04b Task 1).** Both: the "fall back to summarizing any FORM root" escape hatch weakens the headless proof that PROD-01 **criterion #3** (UI page as a *distinct* asset class) is met, and the `Summarize(IffDocument)` signature carries no extension/path hint. → Lock the exact UI-page root tag(s) during fixture authoring; pass virtual-path/extension metadata into the summarizer; reserve "any FORM root" for the unrecognized-type no-throw test only.
+2. **HIGH — COT2000 payload resolution is underspecified (07-01 Task 2 / 07-00 Task 1).** Codex: the descriptor only lists `SourceArchive`, but resolving a COT2000 entry to a physical `.tre` needs master-index path, base dir, tree-file index, and archive-local offset semantics. Cursor: 07-00 commits only the `.toc`, not the two companion `.tre` archives it references, so `TreArchiveIndexTests` / `TrePayloadResolver.Resolve` "readable entry" cases can't run in CI. → Define the descriptor fields for COT2000 resolution **and** emit the companion archives in the fixture.
+3. **HIGH/MEDIUM — Resolver contract + object-template inheritance semantics are undefined (07-01 Task 2, 07-04a Task 2).** Cursor: `TrePayloadResolver` "returns bytes **and** reports/raises enumerate-only" is two behaviors — pin one (`TryResolve` out-param **or** dedicated exception) and align 07-03 `AfterSelect`. Codex: the object-template inherited-field walk doesn't state whether inheritance is recursive / local-only / best-effort, risking silent scope blow-up. → Specify the resolver API once; pick a bounded inheritance posture for Phase 7 (e.g. declared base + local fields).
+4. **MEDIUM — Filter + lazy TreeView responsiveness at ~213k paths (07-02 Task 1/2).** Both: the flat `_allPaths` scan fixes the per-tick re-walk, but rebuilding/pruning the TreeView on every 250ms tick for broad filters ("a", ".iff") still allocates heavily, and per-node `Control.Invoke` can stall. → Add a match cap / flat-`ListView` fallback for non-empty filters; batch node mutations per branch.
+5. **MEDIUM/LOW — zlib fixture naming inconsistency (07-00 Task 1).** Both: `zlib-framed-1record-v0006.tre` implies a 0006/size-first lineage, but the content is v6000 crc-first. Easy to mis-wire in 07-01 dispatch tests. → Rename to `v6000` (and the `WriteZlibFramed…` builder) or document why a 0006 archive carries zlib-framed blocks.
 
 ### Divergent Views (worth investigating)
-- **Integer overflow on `count × stride`:** codex rates **HIGH** (autonomous agents may miss `int` overflow before validation; wants `checked` arithmetic specified by name); cursor rates it lower, noting the host is **32-bit x86** and stream-length bounds largely cover it. *Resolution:* the division-form guard (`recordCount > (streamLength - headerSize) / stride`) before allocation is nearly free — adopt codex's stricter stance.
-- **Repository overlay semantics (D-05):** cursor *uniquely* flags that `Game.Repository` is a **one-time harvest snapshot** (`treefile::getAllFilenames` moves/clears the static set), so trees mounted *after* construction render as "dimmed / not loaded," contradicting D-05's "currently loaded/resolvable." Recommends documenting it as an install-time snapshot. Codex raised only the related threading question (which thread Repository access must occur on), not the snapshot semantics.
-- **WinForms substring-bold:** codex *uniquely* notes standard `TreeView` cannot bold a *substring* (only the whole node) without owner-draw — the UI-SPEC requirement may be infeasible as written; bold the whole matching node or require owner-draw.
+- **Overall risk level differs:** Codex = **MEDIUM-HIGH** (emphasizes breadth — archive dispatch + master-index + lazy WinForms + live overlay + universal IFF detail + multiple decoders in one phase). Cursor = **MEDIUM** (parser core is now well test-backed; remainder is integration/completeness risk). Both agree the parser foundation is sound.
+- **Unique to Cursor:**
+  - **HIGH — Client `.tre` directory source is unspecified (07-02 Task 2).** `FormObjectBrowser` only reads `Game.Repository`, never disk TREs; there is no existing ini key/helper for `TreArchiveIndex.Build(clientDir)`. Without a concrete decision (working dir / SWG.exe dir / new `[TreBrowser] clientDir` ini / file picker), criterion 1+2 live smoke is blocked at implementation time.
+  - **HIGH — SearchTOC master index advertised but not tasked (07-01).** Objective and `CotMasterIndex` text mention COT2000 **and SearchTOC**, but Task 2 only detects `COT2000`. SWGEmu installs using SearchTOC-style master indexes would fail full-mount-set browse. → Either port the full master-index detection or explicitly defer SearchTOC with a skipped, fixture-gated test.
+  - **MEDIUM — Cross-repo CI gap (07-02/03/04b).** Framework changes ship in Utinni; UI in UtinniPlugins. Utinni's Actions lane won't catch TJT compile breaks when `TreArchiveIndex` / new decoders / `IffChunk.OffsetBytes` land. → Add a TJT build step or a documented "build both before marking wave complete" gate.
+  - **MEDIUM — No dedicated 0004 enumeration golden** despite emitting `synthetic-0004-header.tre` ("recognized tag, untested path").
+  - **MEDIUM — Game.Repository threading conflict:** `LoadRepo()` reads `Game.Repository` directly from a background `Task` while the plan elsewhere requires `Control.Invoke`/`GameCallbacks` for overlay reads — pin the thread-safety story.
+- **Unique to Codex:**
+  - **MEDIUM — bad-Adler validation may be overpromised (07-00 Task 2).** If the impl strips the zlib header/trailer and feeds raw deflate to `DeflateStream`, the BCL never validates the Adler32 trailer. → Require explicit Adler32 verification after inflate, or rename the malformed fixture/error to "invalid zlib frame / truncated trailer".
+  - **MEDIUM — non-FORM-tag obfuscation guard may misclassify (07-03 Task 3).** Not every selected payload begins with `FORM`; routing valid non-IFF assets to the "encrypted" state is misleading. → Add an "unsupported/readable raw" state distinct from encrypted/enumerate-only.
 
-### Recommended next step
-Several agreed concerns are cheap clarifications (criterion #3 wording, lazy-stream contract doc, `5000` enumerate-only acceptance, `list-objects` decision). The substantive work is: in-repo synthetic fixtures + Wave-0 gating, the `07-01` parser-contract hardening, and splitting/narrowing `07-04`. To fold these in:
-
-`/gsd:plan-phase 7 --reviews`
+### Recommended highest-leverage edits before executing 07-02
+Pin the **TRE root path source**, resolve **SearchTOC + COT2000 companion-fixture completeness**, lock the **UI-page FORM tag**, and define the **resolver/inheritance contracts** — these gate the live-smoke success criteria and PROD-01 criterion #3 even with green `dotnet test` lanes.
