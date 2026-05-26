@@ -132,18 +132,105 @@ Do not attempt to write tests that load the SWG client. That is an integration-t
 
 ---
 
-## Tier 4 — Manual Residual Enumeration
+## Tier 4 — Manual Residual (TEST-04)
 
-**Added:** 2026-05-23 (Phase 6 plan 06-01 Tier-4 sign-off; D-19 anticipates this section growing to the full residual enumeration as the remaining Phase 6 plans land their Tier-4 procedures).
+**Added:** 2026-05-23 (06-01 sign-off, scenario (a) only). **Completed:** 2026-05-25 (Phase 6 plan 06-06, D-19 — full eight-scenario residual enumeration).
 
-Tier 4 captures the manual verifications that Tiers 1–3 cannot cover — typically because they require a live SWG-injected session, GPU-driver-specific behavior, or maintainer visual evaluation. Each row records the scenario, the manual procedure, the success criterion, and the SHA at which it was last verified.
+**Correcting the TL;DR above:** the "There Are No Tests" narrative at the top of this file describes the repository as it was at ingest time (2026-05-16), *before* the Phase-1/3/4/5 test infrastructure landed. As of Phase 6 the repo ships **three CI test lanes** — `dotnet test` (UtinniCoreDotNet.Tests xUnit), the CLI golden-fixture lane (UtinniCoreDotNetGen golden compare), and `UtinniCore.Tests.exe` (Catch2 native) — **plus** the new PreservationAudit Facts (06-05). The historical narrative is preserved deliberately as a record of where the project started; the Tier-4 residual enumerated below is the **bounded** scope that remains manual and ships unautomated in V1 per REQUIREMENTS.md §TEST-04.
 
-| # | Scenario | Procedure | Success Criterion | Last-Verified SHA |
-|---|----------|-----------|-------------------|-------------------|
-| 1 | Imgui overlay Demo screen over live SWG | (1) Flip `g_showDemoWindowProbe` to `true` in `UtinniCore/swg/ui/imgui_impl.cpp` (file-scope inside `namespace imgui_impl`, near `bool enableUi;` / `bool rendering;`). (2) Rebuild Release x86: `msbuild Utinni.sln /p:Configuration=Release /p:Platform=x86 /t:UtinniCore`. (3) Launch via `Launcher.exe` against live SWGEmu; log in; load any scene. (4) Exercise the imgui Demo window's seven widget categories: menus, sliders, buttons, tabs, plots, popups, drag-and-drop. (5) Flip the flag back to `false`, rebuild. | Each of the seven widget categories behaves as it does in a standalone imgui demo application: menus cascade and dispatch; sliders drag smoothly with live updates and accept keyboard editing; buttons click and dispatch callbacks; tabs switch on click and render distinct content; plots render their animated waveforms; popups open as modals and dismiss cleanly; drag-and-drop source-to-target works with payload preview. The Demo window is draggable, resizable, and correctly layered atop SWG's client window (Z-order via `HWND_TOP`). | `<this-commit>` (2026-05-23, Kenneth Long; see `.planning/phases/06-cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut/06-01-VERIFICATION.md`) |
+Tier 4 captures the manual verifications that Tiers 1–3 cannot cover — typically because they require a live SWG-injected session, GPU-driver-specific behavior, or maintainer visual evaluation. Each scenario records why it is manual, the procedure, the success criterion, the SHA at which it was last verified, and the failure-mode escalation. This is the canonical Tier-4 boundary doc referenced from `CONVENTIONS.md` per TEST-04 acceptance.
 
-*Tier-4 enumeration grows as Phases 6-02 through 6-06 land their Tier-4 procedures per D-19. The final full residual list is owned by plan 06-06.*
+The eight scenarios (a)–(h) are the D-19 enumeration. FlaUI-style automated WinForms UI driving is **explicitly EXCLUDED per CON-TT-03** — see scenario (h).
+
+### Tier-4 Scenario (a): Imgui overlay rendering
+
+- **Why manual:** Visual judgment + live d3d9 device state inside an injected SWG process; no scriptable assertion exists for "did the user see the demo screen correctly."
+- **Procedure:**
+  1. Flip `g_showDemoWindowProbe` to `true` in `UtinniCore/swg/ui/imgui_impl.cpp` (file-scope inside `namespace imgui_impl`, near `bool enableUi;` / `bool rendering;`).
+  2. Rebuild Release x86: `msbuild Utinni.sln /p:Configuration=Release /p:Platform=x86 /t:UtinniCore`.
+  3. Launch via `Launcher.exe` against live SWGEmu; log in; load any scene.
+  4. Exercise the imgui Demo window's seven widget categories: menus, sliders, buttons, tabs, plots, popups, drag-and-drop.
+  5. Flip the flag back to `false`, rebuild.
+- **Success criterion:** Each of the seven widget categories behaves as in a standalone imgui demo application: menus cascade and dispatch; sliders drag smoothly with live updates and accept keyboard editing; buttons click and dispatch callbacks; tabs switch on click and render distinct content; plots render their animated waveforms; popups open as modals and dismiss cleanly; drag-and-drop source-to-target works with payload preview. The Demo window is draggable, resizable, and correctly layered atop SWG's client window (Z-order via `HWND_TOP`).
+- **Last-verified SHA:** `2e0dcf5` (2026-05-23, Kenneth Long; see `.planning/phases/06-cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut/06-01-VERIFICATION.md`) — refresh to the rc.1 commit SHA at the 06-06 Task 4 sign-off.
+- **Failure-mode escalation:** Re-open the 06-01 plan; rerun the [[feedback-d3d9-hook-diagnosis]] first-move check (d3d9.dll pattern-scan vs dummy-device) *before* assuming SWG-side RVA drift.
+
+### Tier-4 Scenario (b): PanelGame.WndProc forwarding to live SWG
+
+- **Why manual:** Requires a live SWG window receiving real OS input messages routed through the reparented FormMain → PanelGame → SWG client; the CUI key-context routing only resolves correctly with the game's input state machine running.
+- **Procedure:**
+  1. Launch SWGEmu via `Launcher.exe`; log in; enter any scene.
+  2. With the game panel focused, press alphanumeric keys, the arrow keys, and Tab.
+  3. Open the in-game chat (Enter) and type; confirm characters arrive.
+- **Success criterion:** `WM_CHAR` / `WM_KEYDOWN` messages reach SWG: typed characters appear in the SWG chat box; arrow keys move the camera/selection; Enter dispatches as `openChat` (game-mode) not `chatEnter` (input-mode) per the context-routing fix. No keystrokes are swallowed by the WinForms host.
+- **Last-verified SHA:** `<pending 06-06 Task 4 sign-off>`
+- **Failure-mode escalation:** Re-open the Phase 3 D-06 (R-C) WndProc-forwarding rework; verify the context-routing detour at `0x00F3E420` is installed (see [[project-swg-context-routing]]).
+
+### Tier-4 Scenario (c): hkPresent + MMO render lifecycle
+
+- **Why manual:** Scene-transition allocator behavior only manifests across repeated live scene loads; no headless harness reproduces SWG's per-frame Present pump + setup/cleanup callback ordering.
+- **Procedure:**
+  1. Launch, log in, then transition between scenes 3+ times (e.g. Tatooine → Naboo → Lok → Tatooine) via TJT's chat-command scene loader.
+  2. Tail `utinni.log` during each transition.
+- **Success criterion:** Per transition, `utinni.log` shows a clean single cycle: `hkMainLoop: loadNewScene -> Game::cleanupScene -> hkSetScene(null) -> hkMainLoop: setupScene -> hkSetScene(<new>) -> firing 1 setSceneCallbacks`. No allocator-fragmentation crash (e.g. the historical `0x0051fb0a`); setup callbacks fire exactly once per transition. (Landing naked after a scene change is the expected baseline, not a failure — see [[project-tjt-scene-change-naked-baseline]].)
+- **Last-verified SHA:** `<pending 06-06 Task 4 sign-off>`
+- **Failure-mode escalation:** Re-open Phase 3 R-H; confirm `dispatchSnapshot` in `ground_scene.cpp` remains heap-free on the callback hot path (see [[project-rh-snapshot-no-heap-alloc]]).
+
+### Tier-4 Scenario (d): D3D9 device-loss / reset paths
+
+- **Why manual:** Device-loss is triggered by OS-level events (alt-tab, resolution change) against a third-party-owned d3d9 device; CON-N-06 preservation context cannot be asserted without the live device.
+- **Procedure:**
+  1. Launch, log in, load a scene with the overlay active.
+  2. Alt-tab away from SWG and back repeatedly; alternatively change the SWG client resolution.
+  3. Tail `utinni.log`.
+- **Success criterion:** `imgui_impl::isSetup` invalidates and recreates its device objects per CON-N-06; the overlay re-renders correctly after focus return; **no `D3DERR_INVALIDCALL` fatal** appears in `utinni.log`. (Per [[feedback-d3d9-reset-third-party]], Utinni never calls `IDirect3DDevice9::Reset` on the app's device — the windowed Present handles backbuffer/window mismatch; only the window is resized.)
+- **Last-verified SHA:** `<pending 06-06 Task 4 sign-off>`
+- **Failure-mode escalation:** Re-open the imgui embedded-D3D9 work; confirm render-target-space mapping (DisplaySize + mouse scaled) still holds (see [[feedback-imgui-embedded-d3d9-rt-space]]).
+
+### Tier-4 Scenario (e): Plugin loader against real plugin DLLs (TJT)
+
+- **Why manual:** MEF discovery + native plugin load only exercises end-to-end with a real signed-shape plugin DLL dropped into `Plugins/`; the bundled TheJawaToolbox is the canonical real-world plugin.
+- **Procedure:**
+  1. Install Utinni via the MSI on a clean Windows VM with TheJawaToolbox bundled (see scenario in 06-VERIFICATION.md step 9), OR via the dev-build path with TJT copied into `Plugins/TheJawaToolbox/`.
+  2. Launch; open the editor host; observe plugin discovery.
+- **Success criterion:** TJT loads as a panel/subpanel in the editor host with no exceptions in `utinni.log`; its chat-command parser callbacks register; no MEF compose `MissingMethodException` (cf. [[feedback-caller-attrs-binary-compat]] — cross-binary plugins must be rebuilt in lockstep).
+- **Last-verified SHA:** `<pending 06-06 Task 4 sign-off>`
+- **Failure-mode escalation:** Re-open the plugin-framework work; check the MEF `[InheritedExport]` surface and the cross-repo TJT pin SHA in `06-06-MSI-TJT-PINNING.md`.
+
+### Tier-4 Scenario (f): Drag-drop in editor + WinForms STA
+
+- **Why manual:** OLE drag-drop is an STA-thread + cursor-capture interaction with the live world panel; ray-cast-on-drop commits against the SWG scene which has no headless equivalent.
+- **Procedure:**
+  1. In the editor host, open `FormObjectBrowser`.
+  2. Drag a template entry into the world panel.
+  3. Release over a ground target.
+- **Success criterion:** The preview object follows the cursor during the drag; on drop the ray-cast resolves a world position and commits the create (undoable). No STA cross-thread exception; the drag preview does not corrupt on WinForms resize (cf. the GC-pinned-callback pattern in CONVENTIONS.md).
+- **Last-verified SHA:** `<pending 06-06 Task 4 sign-off>`
+- **Failure-mode escalation:** Re-open the post-Phase-02.1 WR-09 drag-drop work; verify the STA marshaling seam.
+
+### Tier-4 Scenario (g): GPU-driver-specific bugs
+
+- **Why manual:** Driver-dependent depth-resolve / RESZ behavior and adapter-specific overlay rendering can only be validated on real silicon from different vendors.
+- **Procedure:**
+  1. Run scenarios (a)–(d) once on Nvidia hardware (the usual dev machine).
+  2. Run once more on Intel and/or AMD hardware if available; record GPU vendor + driver version in 06-VERIFICATION.md.
+- **Success criterion:** The overlay renders correctly on every tested vendor; depth-resolve callbacks fire correctly (no missing-depth artifacts); no vendor-specific crash. If only one vendor is available locally, the second vendor is explicitly DEFERRED to the rc-bake period and noted in 06-VERIFICATION.md.
+- **Last-verified SHA:** `<pending 06-06 Task 4 sign-off>`
+- **Failure-mode escalation:** Capture the adapter line from `utinni.log`; if a vendor-specific failure appears, re-open the graphics/depth_texture work with the vendor + driver version recorded.
+
+### Tier-4 Scenario (h): WinForms UI smoke
+
+- **Why manual:** Whole-form visual + interaction smoke across the editor host; deliberately kept human.
+- **Procedure:**
+  1. Open every form in the editor host (enumerate at task time — `FormMain`, `FormLog`, `FormObjectBrowser`, `FormPlugins`, and any others present).
+  2. Resize, minimize, and restore each.
+- **Success criterion:** No UI hangs, no unhandled exceptions, no layout corruption on resize/restore.
+- **FlaUI explicitly EXCLUDED per CON-TT-03** — automated WinForms UI driving (FlaUI / UIAutomation) is a deliberate Tier-3 V2 deferral; this scenario remains a manual smoke walk forever in V1 and is **not** a candidate for automation under this milestone.
+- **Last-verified SHA:** `<pending 06-06 Task 4 sign-off>`
+- **Failure-mode escalation:** Re-open the offending form's layout/Designer; this scenario never escalates to "add FlaUI" within V1 scope.
+
+*Eight-scenario residual complete (06-06, 2026-05-25). The `Last-verified SHA` placeholders for (b)–(h) are filled in at the 06-06 Task 4 maintainer-signed UAT with the rc.1 commit SHA.*
 
 ---
 
-*Testing analysis: 2026-05-16; Tier-4 section added 2026-05-23.*
+*Testing analysis: 2026-05-16; Tier-4 section added 2026-05-23; full eight-scenario residual completed 2026-05-25 (06-06).*

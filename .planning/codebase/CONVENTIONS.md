@@ -222,6 +222,12 @@ Aliases (`using X = Y;`) go at the end of the using block.
 
 - **No DXSDK June 2010.** The legacy DirectX SDK (June 2010) was retired in Phase 6 (Plan 06-03 Task 1, CON-O-08). It is no longer an include/lib path in any `.vcxproj`, and CI no longer verifies it. New code that needs GPU-side vector/matrix math must use **DirectXMath** (`<DirectXMath.h>`, shipped in the Windows SDK) rather than reintroducing the legacy `d3dx9.h` / `D3DXVECTOR*` / `D3DXMATRIX*` helpers. The sole prior `D3DXVECTOR3` use — a dummy vertex for the RESZ depth-resolve draw in `UtinniCore/swg/graphics/depth_texture.cpp` — is now a local 3-float `Vec3` struct (identical byte layout, so `DrawPrimitiveUP` stride math is unchanged).
 
+## Tier 4 — Manual Verification Residual
+
+Per REQUIREMENTS.md §TEST-04, V1 ships with a **bounded, documented** set of manual verifications rather than attempting to automate the parts that require a live SWG-injected session, GPU-driver-specific behavior, or maintainer visual judgment. See `.planning/codebase/TESTING.md` § "Tier 4 — Manual Residual (TEST-04)" for the canonical eight-scenario (a)–(h) enumeration — each scenario's procedure, success criterion, last-verified SHA, and failure-mode escalation. Automated WinForms UI driving (FlaUI) is deliberately EXCLUDED from V1 per CON-TT-03 and is recorded there as Tier-4 scenario (h).
+
+When adding a new subsystem whose correctness can only be confirmed in a live injected session, extend that `TESTING.md` Tier-4 section with a new scenario row rather than silently relying on an undocumented manual check.
+
 ---
 
-*Convention analysis: 2026-05-16*
+*Convention analysis: 2026-05-16; Tier-4 manual-residual cross-reference added 2026-05-25 (06-06, TEST-04).*
