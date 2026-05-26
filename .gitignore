@@ -17,6 +17,9 @@ bin/
 # login settings — they belong only in the build-output copies. See
 # scripts/local-test-setup.ps1 for the seeded-bin/Release pattern.
 obj/
+# Release-only MSI staging: release.yml stages the pinned TheJawaToolbox build into
+# installer/Payload/ before the IncludeTjt MSI build. Never committed.
+installer/Payload/
 ipch/
 .vs/
 *.sdf

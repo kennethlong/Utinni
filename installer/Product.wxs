@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  Utinni MSI (WiX 5). MIT License, derived from kennethlong/Utinni (upstream
+  Philip Klatt, 2020). Installs to C:\Program Files (x86)\Utinni\ per CON-P-02.
+  See installer/README.md for the UpgradeCode / ProductCode versioning strategy.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package Name="Utinni"
+           Manufacturer="Kenneth Long"
+           Version="1.0.0"
+           UpgradeCode="C4CC96BC-A1B4-4BD8-99D6-EF2CA3877D1D"
+           Scope="perMachine"
+           Compressed="yes">
+
+    <!-- Stable UpgradeCode (above) enables in-place upgrades for future v1.0.x. -->
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed. Setup will now exit." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="UtinniIcon" SourceFile="$(var.RepoRoot)bin\Release\Icons\TJT.ico" />
+    <Property Id="ARPPRODUCTICON" Value="UtinniIcon" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/kennethlong/Utinni" />
+
+    <!-- Install root: C:\Program Files (x86)\Utinni\ (ProgramFiles6432Folder + x86 package). -->
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="Utinni">
+        <Directory Id="IconsDir" Name="Icons" />
+<?ifdef IncludeTjt ?>
+        <Directory Id="PluginsDir" Name="Plugins">
+          <Directory Id="TjtDir" Name="TheJawaToolbox" />
+        </Directory>
+<?endif?>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="UtinniMenuDir" Name="Utinni" />
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="Utinni" Level="1">
+      <ComponentGroupRef Id="CoreFiles" />
+      <ComponentGroupRef Id="IconFiles" />
+      <ComponentRef Id="StartMenuShortcut" />
+<?ifdef IncludeTjt ?>
+      <ComponentGroupRef Id="TjtFiles" />
+<?endif?>
+    </Feature>
+
+    <!--
+      Opt-in SWG client detection (D-20). Default OFF (CON-D-01 ships blank).
+      The checkbox on SwgDetectDlg flips DETECTSWGPATH to "1"; only then do the
+      SetSwgDetectData (immediate) + DetectSwgPath (deferred, elevated) actions run.
+    -->
+    <Property Id="DETECTSWGPATH" Value="0" />
+
+    <Binary Id="SwgPathDetectorCA" SourceFile="$(var.SwgPathDetector.TargetDir)SwgPathDetector.CA.dll" />
+
+    <CustomAction Id="SetSwgDetectData"
+                  Property="DetectSwgPath"
+                  Value="INSTALLFOLDER=[INSTALLFOLDER]" />
+    <CustomAction Id="DetectSwgPath"
+                  BinaryRef="SwgPathDetectorCA"
+                  DllEntry="DetectSwgPath"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore" />
+
+    <InstallExecuteSequence>
+      <Custom Action="SetSwgDetectData" After="CostFinalize" Condition="DETECTSWGPATH = &quot;1&quot; AND NOT Installed" />
+      <Custom Action="DetectSwgPath" After="InstallFiles" Condition="DETECTSWGPATH = &quot;1&quot; AND NOT Installed" />
+    </InstallExecuteSequence>
+
+    <!-- Standard install-dir UI flow + a custom opt-in dialog spliced after InstallDirDlg. -->
+    <ui:WixUI Id="WixUI_InstallDir" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.RepoRoot)installer\License.rtf" />
+
+    <UI Id="UtinniInstallerUi">
+      <Dialog Id="SwgDetectDlg" Width="370" Height="270" Title="[ProductName] Setup">
+        <Control Id="Title" Type="Text" X="15" Y="15" Width="340" Height="15" Transparent="yes" NoPrefix="yes"
+                 Text="{\WixUI_Font_Title}Optional: detect SWG client path" />
+        <Control Id="Desc" Type="Text" X="15" Y="40" Width="340" Height="40" Transparent="yes" NoPrefix="yes"
+                 Text="Utinni intentionally ships with a blank SWG client path (CON-D-01). You may optionally let Setup look for an installed SWGEmu client and seed the config for you. This is OFF by default." />
+        <Control Id="DetectCheckBox" Type="CheckBox" X="15" Y="95" Width="340" Height="18"
+                 Property="DETECTSWGPATH" CheckBoxValue="1"
+                 Text="Detect SWG client path and seed utinni.cfg (optional)" />
+        <Control Id="Note" Type="Text" X="30" Y="118" Width="325" Height="70" Transparent="yes" NoPrefix="yes"
+                 Text="When ticked, Setup probes the common SWGEmu locations and registry after install. It writes a path ONLY if exactly one client is found; otherwise the config stays blank and you can set the path later from the Launcher." />
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="Back" />
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="Next" />
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+      </Dialog>
+
+      <!-- Insert SwgDetectDlg between InstallDirDlg and VerifyReadyDlg. -->
+      <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="SwgDetectDlg" Order="3"
+               Condition="WIXUI_INSTALLDIR_VALID = &quot;1&quot;" />
+      <Publish Dialog="SwgDetectDlg" Control="Back" Event="NewDialog" Value="InstallDirDlg" />
+      <Publish Dialog="SwgDetectDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="SwgDetectDlg" Order="3" />
+    </UI>
+
+  </Package>
+
+  <!-- Core runtime payload, harvested from the Release|x86 build output. -->
+  <!--
+    NOTE (06-06 deviation): the plan's file list named "UtINI.dll", but UtINI is
+    a STATIC library (bin/Release ships UtINI.lib only, no DLL) linked into
+    UtinniCore/Launcher, so there is no UtINI.dll to bundle. ut.ini + utinni.cfg
+    ship BLANK per CON-D-01.
+  -->
+  <Fragment>
+    <ComponentGroup Id="CoreFiles" Directory="INSTALLFOLDER">
+      <Component>
+        <File Id="LauncherExe" Source="$(var.RepoRoot)bin\Release\Launcher.exe" KeyPath="yes" />
+      </Component>
+      <Component>
+        <File Source="$(var.RepoRoot)bin\Release\UtinniCore.dll" />
+      </Component>
+      <Component>
+        <File Source="$(var.RepoRoot)bin\Release\UtinniCoreDotNet.dll" />
+      </Component>
+      <Component>
+        <File Source="$(var.RepoRoot)bin\Release\UtinniCore-Symbols.dll" />
+      </Component>
+      <Component>
+        <!-- ships BLANK swgClientPath per CON-D-01; the opt-in CA may seed it -->
+        <File Source="$(var.RepoRoot)data\ut.ini" />
+      </Component>
+      <Component>
+        <!-- ships BLANK login fields per CON-D-01 -->
+        <File Source="$(var.RepoRoot)data\utinni.cfg" />
+      </Component>
+      <!-- input.ini is intentionally NOT shipped: HotkeyManager generates it with
+           defaults on first launch, so bundling it would only stale-pin the hotkeys. -->
+      <Component>
+        <File Source="$(var.RepoRoot)licenses.txt" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="IconFiles" Directory="IconsDir">
+      <Files Include="$(var.RepoRoot)bin\Release\Icons\**" />
+    </ComponentGroup>
+  </Fragment>
+
+  <!-- Start Menu shortcut to the Launcher + an uninstall shortcut. -->
+  <Fragment>
+    <Component Id="StartMenuShortcut" Directory="UtinniMenuDir" Guid="*">
+      <Shortcut Id="LauncherShortcut"
+                Name="Utinni"
+                Description="Launch Utinni"
+                Target="[INSTALLFOLDER]Launcher.exe"
+                WorkingDirectory="INSTALLFOLDER"
+                Icon="UtinniIcon" />
+      <Shortcut Id="UninstallShortcut"
+                Name="Uninstall Utinni"
+                Description="Uninstall Utinni"
+                Target="[System64Folder]msiexec.exe"
+                Arguments="/x [ProductCode]" />
+      <RemoveFolder Id="RemoveUtinniMenuDir" On="uninstall" />
+      <RegistryValue Root="HKCU" Key="Software\Utinni" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+  </Fragment>
+
+<?ifdef IncludeTjt ?>
+  <!-- TheJawaToolbox payload, staged by release.yml from the pinned UtinniPlugins SHA. -->
+  <Fragment>
+    <ComponentGroup Id="TjtFiles" Directory="TjtDir">
+      <Files Include="$(var.RepoRoot)installer\Payload\Plugins\TheJawaToolbox\**" />
+    </ComponentGroup>
+  </Fragment>
+<?endif?>
+
+</Wix>

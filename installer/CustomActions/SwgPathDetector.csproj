@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Managed (DTF) custom action for the Utinni MSI: opt-in SWG client path
+    detection (D-20 / D-21). The WixToolset.Dtf.CustomAction package supplies the
+    MSBuild targets (build/WixToolset.Dtf.CustomAction.targets) that run
+    MakeSfxCA after compile, packaging the assembly + WixToolset.Dtf.WindowsInstaller
+    into SwgPathDetector.CA.dll. Product.wxs binds it via
+    $(var.SwgPathDetector.TargetDir)SwgPathDetector.CA.dll.
+
+    net472 matches the rest of the managed surface (UtinniCoreDotNet) per
+    CONVENTIONS.md.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>SwgPathDetector</AssemblyName>
+    <RootNamespace>Utinni.Installer.CustomActions</RootNamespace>
+    <!-- This is a class library packaged as an MSI custom action, not an app. -->
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Dtf.CustomAction" Version="5.0.2" />
+  </ItemGroup>
+
+</Project>

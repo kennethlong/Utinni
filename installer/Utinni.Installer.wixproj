@@ -1,0 +1,34 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+
+  <!--
+    Utinni WiX 5 MSI (D-20). Produces installer/bin/Release/Utinni.msi.
+
+    Build locally:
+      dotnet build installer/Utinni.Installer.wixproj -c Release
+
+    The core payload is harvested from $(var.RepoRoot)bin\Release\ (the
+    Release|x86 output of Utinni.sln) and $(var.RepoRoot) for licenses.txt, so
+    the solution must be built Release|x86 first. The TheJawaToolbox payload is
+    only bundled when the IncludeTjt preprocessor constant is defined (the
+    release.yml workflow stages it from the pinned UtinniPlugins SHA into
+    installer/Payload/Plugins/TheJawaToolbox/ and passes -p:DefineConstants=IncludeTjt).
+    Local builds omit TJT — see installer/README.md.
+  -->
+  <PropertyGroup>
+    <OutputName>Utinni</OutputName>
+    <OutputType>Package</OutputType>
+    <!-- x86 MSI per CON-P-02 so ProgramFiles6432Folder resolves to Program Files (x86). -->
+    <Platform Condition="'$(Platform)' == ''">x86</Platform>
+    <!-- RepoRoot trailing slash lets the .wxs concatenate as $(var.RepoRoot)bin\Release\... -->
+    <DefineConstants>$(DefineConstants);RepoRoot=$(MSBuildProjectDirectory)\..\</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" Version="5.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="CustomActions\SwgPathDetector.csproj" />
+  </ItemGroup>
+
+</Project>
