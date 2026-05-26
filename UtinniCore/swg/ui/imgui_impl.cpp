@@ -526,7 +526,14 @@ void render()
 
         imgui_gizmo::draw();
 
-        imguiHasHover = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow);
+        // Use io.WantCaptureMouse, NOT IsWindowHovered(AnyWindow), to arbitrate game-input
+        // suspend. WantCaptureMouse stays true for the FULL duration of an active drag
+        // (slider, text selection, window move, drag-and-drop) even after the cursor leaves
+        // the window bounds; IsWindowHovered drops the instant the cursor exits. The old
+        // hover gate therefore resumed SWG's DirectInput mouse polling mid-drag, letting the
+        // still-held button drive SWG's marquee drag-select ("select everything to the left
+        // of the cursor"). WantCaptureMouse also covers open popups/modals. (Tier-4 06-06 UAT finding.)
+        imguiHasHover = ImGui::GetIO().WantCaptureMouse;
         if (imguiHasHover && !gameInputSuspended)
         {
             gameInputSuspended = true;
