@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
+status: ready_to_plan
 stopped_at: Phase 6 context gathered
-last_updated: "2026-05-25T20:44:27.434Z"
-last_activity: 2026-05-25
+last_updated: "2026-05-26T00:22:17.816Z"
+last_activity: 2026-05-26 -- Phase 06 execution started
 progress:
   total_phases: 12
-  completed_phases: 6
+  completed_phases: 8
   total_plans: 24
-  completed_plans: 23
-  percent: 96
+  completed_plans: 24
+  percent: 67
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 
 ## Current Position
 
-Phase: 06 (cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut) — EXECUTING
-Plan: 5 of 6 complete
-Status: Wave 5 (06-05) complete + CI-green; 06-06 remains
-Last activity: 2026-05-25
+Phase: 7
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-26
 Next action: `/gsd-execute-phase 6` (runs the last plan, 06-06 — TEST-04 Tier-4 doc + WiX MSI installer + release.yml + v1.0.0-rc.1 tag). Phase-level verification is deferred until 06-06 lands.
 
 Progress: Phase 6 plans [█████████░] 5/6 · milestone phases 6/12
@@ -63,6 +63,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 **Wave 4 (06-04) complete 2026-05-25** — folded CI-stability fixes: loader-lock-harness 50ms contention flake (best-of-3 min) + GameCallbacks ForceGCCollect AV isolation. Per-fix atomic + regression assertion. See `06-04-SUMMARY.md`.
 
 **Wave 5 (06-05) complete 2026-05-25, CI-green** — STAB-03 cleanups + STAB-04 audit, executed inline (20 atomic commits on master + paired UtinniPlugins `c9cfa9d`):
+
 - Full-repo `.clang-format` (Allman/4-space, left pointers) in one commit + `.git-blame-ignore-revs` + CI `clang-format check` style gate.
 - `TJT.ico`/`TJT.png` ejected to UtinniPlugins/TheJawaToolbox; neutral gear `utinni.ico` is the new UtinniForm default. D-16 polish bundle (Directory.Build.props SDK unify, Prefer32Bit drop, ExampleEditorPlugin path, .gitignore doc, namespace Std, `Native.SendMessage` IntPtr+shim, licenses.txt UTF-8/DetourXS/nvapi, typos).
 - Dead-code purge (Launcher VS-attach machinery, dead render/scene/io hooks, empty stubs) with the `swg/ui/` carve-out preserved.
@@ -74,7 +75,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 
 **Velocity:**
 
-- Total plans completed: 8
+- Total plans completed: 15
 - Average duration: —
 - Total execution time: —
 
@@ -86,6 +87,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | 01 | 2 | - | - |
 | 04 | 4 | - | - |
 | 05 | 2 | - | - |
+| 06 | 7 | - | - |
 
 **Recent Trend:**
 

@@ -141,7 +141,7 @@ Plans:
 - [x] 06-03-PLAN.md — STAB-05 open questions (CON-O-08 DXSDK removal; CON-O-06 LeksysINI replacement inside UtINI::Impl; 12+ Catch2 INI fence cases)
 - [x] 06-04-PLAN.md — CI flake fixes (loader-lock-harness 50ms contention + GameCallbacks ForceGCCollect AV; per-flake atomic fix + regression assertion)
 - [x] 06-05-PLAN.md — STAB-03 cleanups + STAB-04 audit (full-repo clang-format + .git-blame-ignore-revs; TJT.ico cross-repo ejection; D-16 polish bundle a-h with Native.SendMessage IntPtr + int shim; dead-code purge excluding swg/ui/; 24-item preservation audit + xUnit grep tests)
-- [ ] 06-06-PLAN.md — TEST-04 Tier-4 doc + 1.0 packaging + tag (TESTING.md Tier-4 enumeration + CONVENTIONS.md cross-ref; WiX 5 MSI in installer/; release.yml on v1.0* tag; cross-repo TJT pinning; maintainer-signed 06-VERIFICATION.md; v1.0.0-rc.1 tag + GitHub Pre-release)
+- [x] 06-06-PLAN.md — TEST-04 Tier-4 doc + 1.0 packaging + tag (TESTING.md Tier-4 enumeration + CONVENTIONS.md cross-ref; WiX 5 MSI in installer/; release.yml on v1.0* tag; cross-repo TJT pinning; maintainer-signed 06-VERIFICATION.md; v1.0.0-rc.1 tag + GitHub Pre-release)
 
 ### Phase 7: TJT subpanel — TRE Browser (read-only)
 **Architecture (DEC-C4):** Ships as an `IEditorPlugin` subpanel INSIDE The Jawa Toolbox plugin in the `UtinniPlugins` repo. NOT a standalone plugin. Distribution: users install Utinni + TJT as a pair.
