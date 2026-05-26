@@ -155,10 +155,13 @@ Plans:
   2. User can navigate the full `.tre` mount set, expand subtrees, and view individual file metadata.
   3. The browse surface covers every asset class PROD-01 lists (IFF, datatable, template, UI page, shader, string-table entry).
   4. `utinni-cli parse-tre` / `list-objects` golden tests (from Phase 4) cover the same code paths the subpanel uses for browse.
-**Plans**: TBD
+**Plans**: 4 plans
 **UI hint**: yes
-**Plans (placeholder)**:
-- [ ] 07-01: TBD
+**Plans**:
+- [ ] 07-01-PLAN.md — TRE reader version-dispatch (0004/0005/0006/5000-defensive/6000/COT2000) + zlib framing + lazy TOC-only enumeration + CotMasterIndex; shared parse-tre CLI path + golden tests (Wave 1)
+- [ ] 07-02-PLAN.md — TRE Browser shell: resizable UtinniForm + virtual-path TreeView (lazy expand) + 250ms-debounced filter + Game.Repository loaded/dimmed overlay; GetForms() registration (Wave 2)
+- [ ] 07-03-PLAN.md — Detail pane: metadata header + type/version banner + universal IFF chunk tree + raw hex peek + encrypted/parse-fail states; AfterSelect on-demand payload read (Wave 3)
+- [ ] 07-04-PLAN.md — Per-type decoders (datatable/STF/object-template/mesh-skeleton-anim) + decode-iff CLI verb + golden tests + structured-view ListViews in the detail pane (Wave 4)
 
 ### Phase 8: TJT subpanel — IFF Editor (read + write)
 **Architecture (DEC-C4):** Ships as an `IEditorPlugin` subpanel inside TJT. IFF chunk read/write primitives (`Iff::read`, `Iff::write`, FORM/PROP semantics, BLOB streams) ship in `TheJawaToolboxDotNet` and `TheJawaToolbox` (sibling classes to the panel) so Phases 9-11 layer on the same shared code WITHIN TJT — no inter-plugin coupling, no library-version surface.
@@ -272,7 +275,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 4. Tier 2 CLI shim + golden fixtures | 0/TBD | Not started | - |
 | 5. Tier 1 C++ unit tests | 0/TBD | Not started | - |
 | 6. Cleanups, dep bumps, open questions, Tier 4 doc, 1.0 cut | 5/6 | In Progress|  |
-| 7. Wave-1 plugin — TRE Browser | 0/TBD | Not started | - |
+| 7. Wave-1 plugin — TRE Browser | 0/4 | Planned | - |
 | 8. Wave-1 plugin — IFF Editor | 0/TBD | Not started | - |
 | 9. Wave-1 plugin — Datatable Editor | 0/TBD | Not started | - |
 | 10. Wave-1 plugin — String-table Editor | 0/TBD | Not started | - |
