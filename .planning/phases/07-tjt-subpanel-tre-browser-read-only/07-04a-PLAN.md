@@ -19,14 +19,15 @@ must_haves:
   truths:
     - "A datatable (FORM DTII) decodes to columns (name + type) and rows of typed cells via the shared IFF reader, not a byte-scan (D-09/D-12)"
     - "A string-table (.stf) decodes to (string id, text) entries (D-09/D-12)"
-    - "An object template decodes its inherited-field walk (field, value, inherited-from) (D-09/D-12)"
+    - "An object template decodes its DECLARED base-template reference + its LOCAL fields (field, value) with a BOUNDED read-only posture — Phase 7 does NOT perform a recursive cross-IFF inherited-field walk that resolves base templates through TreArchiveIndex; the InheritedFrom column shows 'local' for locally-declared fields and the declared base-template name for the @base reference (review consensus #3 / Codex object-template inheritance posture)"
     - "IFF payload scalars are read little-endian (Pitfall 6) while tags stay big-endian"
     - "Every decoder is pure (no JSON, no console, no file-write) and is exercised by the decode-iff CLI verb with a golden test; the browser structured views (07-04b) call the same decoders (D-08, success criterion #4)"
     - "Forged numCols/numRows over-allocation is blocked by checked arithmetic (division-form count*stride guard) before allocation — a forged count throws DecoderException, not OutOfMemoryException"
     - "The reference split is honored: datatable/STF/object-template from the C++ engine loaders (D-09)"
     - "C++ engine loaders are read-to-port format specs only — layout/algorithm ported to C#, no code/identifiers copied, no runtime dependency (D-02)"
+    - "The synthesized in-repo decoder fixtures are labeled MINIMAL CONTRACT (smoke) fixtures, not real-loader-layout confidence; where a real loose-IFF asset is available it is added as an env-gated supplemental test per family (review LOW / Codex fixture-confidence finding)"
     - "The decoders expose read-only output only — no write/authoring/export surface is added; DEC-A3 stays locked (D-01)"
-    - "Each decoder is structured as the read-only foundation Phases 9-11 make editable with no rework (D-13)"
+    - "Each decoder is structured as the read-only foundation Phases 9-11 make editable with no rework (D-13) — and the BOUNDED inheritance posture (declared base + local fields) is the read-only surface Phase 11 extends, not a recursive walk to retrofit"
   artifacts:
     - path: "D:/Code/Utinni/UtinniCoreDotNet/Formats/Decoders/DataTableDecoder.cs"
       provides: "DTII -> columns + rows decoder over IffDocument"
@@ -35,7 +36,7 @@ must_haves:
       provides: "STF -> (id, text) entry decoder"
       contains: "class StringTableDecoder"
     - path: "D:/Code/Utinni/UtinniCoreDotNet/Formats/Decoders/ObjectTemplateDecoder.cs"
-      provides: "object-template inherited-field walk decoder"
+      provides: "object-template decoder: declared base reference + LOCAL fields (bounded read-only posture, no recursive cross-IFF walk)"
       contains: "class ObjectTemplateDecoder"
     - path: "D:/Code/Utinni/Utinni.Cli/Commands/DecodeIffCommand.cs"
       provides: "decode-iff CLI verb exercising the decoders for golden tests"
@@ -52,10 +53,10 @@ must_haves:
 ---
 
 <objective>
-Build the first three per-type structured decoders in the framework (`Formats/Decoders/`) — datatable, string-table, object-template — as pure consumers of the shared `Formats/Iff` parse output, ported from the D-09 C++ engine loaders. Add the `decode-iff` CLI verb so each decoder is golden-tested, and wire the verb dispatch on root FORM tag. This is the first of the two split plans that replace the original oversized 07-04 (codex HIGH: 07-04 too large) — it ships the data/STF/template decoders + CLI lock-step; 07-04b ships the mesh/shader/UI-page summaries + the detail-pane structured views.
+Build the first three per-type structured decoders in the framework (`Formats/Decoders/`) — datatable, string-table, object-template — as pure consumers of the shared `Formats/Iff` parse output, ported from the D-09 C++ engine loaders. The object-template decoder takes a BOUNDED read-only posture (declared base reference + local fields; no recursive cross-IFF inherited-field walk in Phase 7 — review consensus #3). Add the `decode-iff` CLI verb so each decoder is golden-tested, and wire the verb dispatch on root FORM tag. This is the first of the two split plans that replace the original oversized 07-04 (codex HIGH: 07-04 too large) — it ships the data/STF/template decoders + CLI lock-step; 07-04b ships the mesh/shader/UI-page summaries + the detail-pane structured views.
 
-Purpose: D-12's type-specific structured decode is the deepest part of Phase 7 and the read-only foundation Phases 9-11 make editable (D-13). Splitting the decoders into a framework-first plan (04a) and a graphics+UI plan (04b) shrinks blast radius so a format mistake in one family does not block the others. Keeping the decoders pure + CLI-golden-tested satisfies success criterion #4 and prevents the CLI/browser drift Pitfall 7 warns about.
-Output: three decoder classes + a shared `DecoderException`, the `decode-iff` verb + registration, and golden tests.
+Purpose: D-12's type-specific structured decode is the deepest part of Phase 7 and the read-only foundation Phases 9-11 make editable (D-13). Splitting the decoders into a framework-first plan (04a) and a graphics+UI plan (04b) shrinks blast radius so a format mistake in one family does not block the others. Pinning the object-template inheritance posture to "declared base + local fields" (review consensus #3 / Codex) prevents the silent scope blow-up of a recursive cross-IFF base-resolution walk. Keeping the decoders pure + CLI-golden-tested satisfies success criterion #4 and prevents the CLI/browser drift Pitfall 7 warns about.
+Output: three decoder classes + a shared `DecoderException`, the `decode-iff` verb + registration, and golden tests (synthesized minimal-contract fixtures + optional env-gated real loose-IFF supplements).
 </objective>
 
 <execution_context>
@@ -91,16 +92,10 @@ Datatable layout (PORT from swg-client-v2 .../sharedUtility/src/shared/DataTable
 
 STF / object-template reference split (D-09):
   StringTableDecoder    -> C++ LocalizedStringTableReaderWriter.cpp (iff-tre-codebase-map.md)
-  ObjectTemplateDecoder -> C++ ObjectTemplate.cpp inherited-field walk
-
-CLI verb idiom (Utinni.Cli/Commands/ParseTreCommand.cs + InspectIffCommand.cs):
-  [Verb("decode-iff", ...)] DecodeIffOptions { [Value(0)] Path }
-  static int Run(opts): FileNotFound->exit 3; Decoder/IffParseException->exit 2; IOException->exit 2; generic NOT caught
-  JsonOutput.EmitSuccess("decode-iff", BuildResult(...)) — result object NEVER pre-adds schemaVersion/command
-  Program.cs: add DecodeIffOptions to ParseArguments<...> list AND MapResult(...) lambda list
-
-Error idiom (Formats/Tre/TreParseException.cs + Formats/Iff/IffParseException.cs):
-  kind-enum + message; CLI surfaces ex.Kind.ToString() as error.kind
+  ObjectTemplateDecoder -> C++ ObjectTemplate.cpp — but READ-ONLY BOUNDED: decode this ONE IFF's declared
+    base-template reference (the @base / DERV-style chunk) + this template's LOCAL field set only. Do NOT
+    follow the base reference into another TRE entry / another IFF to materialize inherited fields. Phase 7
+    is local-only inheritance display (review consensus #3 / Codex).
 </interfaces>
 </context>
 
@@ -116,7 +111,7 @@ Error idiom (Formats/Tre/TreParseException.cs + Formats/Iff/IffParseException.cs
     - D:/Code/Utinni/Utinni.Cli/Commands/ParseTreCommand.cs and InspectIffCommand.cs (verb skeleton + BuildResult + exit codes to copy)
     - D:/Code/Utinni/Utinni.Cli/Program.cs (the ParseArguments + MapResult lists to extend)
     - D:/Code/Utinni/Utinni.Cli.Tests/Commands/InspectIffCommandTests.cs (golden-test idiom + fixture usage)
-    - .planning/phases/07-tjt-subpanel-tre-browser-read-only/07-RESEARCH.md ("Datatable structured decode" code example; Pitfall 6 endianness; Anti-Patterns "Naive OBJS byte-scan"; Open Q2 fixture acquisition)
+    - .planning/phases/07-tjt-subpanel-tre-browser-read-only/07-RESEARCH.md ("Datatable structured decode" code example; Pitfall 6 endianness; Anti-Patterns "Naive OBJS byte-scan"; Open Q2 fixture acquisition; Assumptions A3 loose-IFF availability)
     - .planning/phases/07-tjt-subpanel-tre-browser-read-only/07-PATTERNS.md (DataTableDecoder.cs section; parser-purity; error idiom; CLI lock-step)
     - reference (read-to-port, NOT copy): D:/Code/swg-client-v2/src/engine/shared/library/sharedUtility/src/shared/DataTable.cpp
   </read_first>
@@ -132,7 +127,7 @@ Error idiom (Formats/Tre/TreParseException.cs + Formats/Iff/IffParseException.cs
 
     Create the `decode-iff` CLI verb in `DecodeIffCommand.cs` copying the ParseTre/InspectIff skeleton: `[Verb("decode-iff", ...)]`, `Run(DecodeIffOptions o)` with FileNotFound=3 / DecoderException+IffParseException=2 / IOException=2 / generic-not-caught, reading via `IffReader.Read(o.Path)` then dispatching on root SubTypeId to the matching decoder (DTII -> DataTableDecoder in this task; the STF/template branches are added in Task 2) and emitting sorted-key JSON via `JsonOutput.EmitSuccess` (result object never pre-adds schemaVersion/command). Register `DecodeIffOptions` in `Program.cs` (add to both the `ParseArguments<...>` type list and the `.MapResult(...)` lambda list).
 
-    Add `DecoderTests.cs` golden tests for the datatable + the decode-iff verb. Acquire small fixtures: probe for `D:/Code/swg-main/serverdata` loose IFF (Open Q2); if absent, author a tiny in-repo synthesized datatable `.iff` fixture by hand (CON-O-09 in-repo-synth precedent, no LFS) under `Utinni.Cli.Tests/Fixtures/iff/`. The little-endian numCols and the forged-count bounds-check are required cases.
+    Add `DecoderTests.cs` golden tests for the datatable + the decode-iff verb. Acquire small fixtures: probe for `D:/Code/swg-main/serverdata` loose IFF (Open Q2); if absent, author a tiny in-repo synthesized datatable `.iff` fixture by hand (CON-O-09 in-repo-synth precedent, no LFS) under `Utinni.Cli.Tests/Fixtures/iff/`. LABEL the synthesized fixture in a comment as a MINIMAL CONTRACT (smoke) fixture proving the decoder's COLS/TYPE/ROWS contract — NOT real-loader-layout confidence (review LOW / Codex). If `D:/Code/swg-main/serverdata` (or another real loose-IFF datatable) IS present, add a SUPPLEMENTAL env-gated test (gated on a `SWG_LOOSE_IFF_DIR`-style resolver in FixturePath, Skip when unset) that decodes the real asset, so real-layout confidence is exercised when available. The little-endian numCols and the forged-count bounds-check are required cases on the synthesized fixture.
   </action>
   <verify>
     <automated>cd D:/Code/Utinni; dotnet test Utinni.Cli.Tests --filter "Decoder|DecodeIff"</automated>
@@ -144,13 +139,14 @@ Error idiom (Formats/Tre/TreParseException.cs + Formats/Iff/IffParseException.cs
     - `decode-iff` is registered: grep finds `DecodeIffOptions` in BOTH the `ParseArguments<` list and the `MapResult` list in Program.cs.
     - The datatable test asserts numCols read little-endian (a sentinel like 16777216 does NOT appear — proves LE not BE).
     - A forged numCols/numRows input throws `DecoderException` (asserted), not `OutOfMemoryException`; the division-form `Data.Length / stride` guard appears in DataTableDecoder.cs (grep, non-comment).
+    - The synthesized datatable fixture carries a MINIMAL CONTRACT (smoke) label comment (grep `minimal contract` or `smoke`), distinguishing it from real-layout confidence (review LOW); any real loose-IFF supplemental test Skips cleanly when the env dir is unset.
     - No `OBJS` sentinel byte-scan introduced (`grep -c OBJS` in Formats/Decoders returns 0).
   </acceptance_criteria>
-  <done>The datatable decoder is pure, bounds-checked, little-endian-correct, and golden-tested via decode-iff; the CLI and browser will share one decode path.</done>
+  <done>The datatable decoder is pure, bounds-checked, little-endian-correct, and golden-tested via decode-iff against a clearly-labeled minimal-contract fixture (+ optional env-gated real supplement); the CLI and browser will share one decode path.</done>
 </task>
 
 <task type="auto" tdd="true">
-  <name>Task 2: StringTableDecoder + ObjectTemplateDecoder + decode-iff dispatch + goldens</name>
+  <name>Task 2: StringTableDecoder + ObjectTemplateDecoder (bounded: declared base + local fields) + decode-iff dispatch + goldens</name>
   <files>D:/Code/Utinni/UtinniCoreDotNet/Formats/Decoders/StringTableDecoder.cs, D:/Code/Utinni/UtinniCoreDotNet/Formats/Decoders/ObjectTemplateDecoder.cs, D:/Code/Utinni/Utinni.Cli/Commands/DecodeIffCommand.cs, D:/Code/Utinni/Utinni.Cli.Tests/Commands/DecoderTests.cs</files>
   <read_first>
     - D:/Code/Utinni/UtinniCoreDotNet/Formats/Decoders/DataTableDecoder.cs (the sibling C# structure to copy — created in Task 1)
@@ -163,15 +159,16 @@ Error idiom (Formats/Tre/TreParseException.cs + Formats/Iff/IffParseException.cs
   </read_first>
   <behavior>
     - Test: an STF fixture decodes to the expected (string id, text) entries, including a non-ASCII text entry round-tripping correctly (e.g. an accented character), with text decoded via the table's declared encoding.
-    - Test: an object-template fixture decodes to its inherited-field walk (field name, value, inherited-from source).
+    - Test: an object-template fixture decodes to its DECLARED base-template reference (the @base name string) + its LOCAL fields (field name, value); the InheritedFrom value is 'local' for a locally-declared field and the declared base-template name for the base reference row — and the decoder does NOT open any other IFF/TRE entry to resolve inherited fields (the bounded posture; review consensus #3).
+    - Test: an object-template with NO base reference decodes to local fields only with no throw (base is optional).
     - Test: decode-iff dispatches STF and object-template root tags to their decoders and emits the schemaVersion:1 envelope; a forged-count STF/template input throws DecoderException, not OOM.
   </behavior>
   <action>
     Create `StringTableDecoder.cs` (sibling structure to DataTableDecoder) returning `StfTable { IReadOnlyList<StfEntry{ uint Id, string Text }> Entries }`, porting the layout from `LocalizedStringTableReaderWriter.cpp`. Decode text as the table's declared encoding so non-ASCII survives (UTF-16/UTF-8 per the format; verify the accented round-trip). Use replacement-on-invalid for malformed encoding sequences (no throw on bad bytes; T-07-16). Bound entry counts with the division-form guard before allocation.
 
-    Create `ObjectTemplateDecoder.cs` (sibling structure) returning `ObjectTemplateView { string BaseTemplate; IReadOnlyList<TemplateField{ string Name, string Value, string InheritedFrom }> Fields }`, porting the inherited-field walk from `ObjectTemplate.cpp`. Bound field counts with the division-form guard.
+    Create `ObjectTemplateDecoder.cs` (sibling structure) returning `ObjectTemplateView { string BaseTemplate; IReadOnlyList<TemplateField{ string Name, string Value, string InheritedFrom }> Fields }`. Port the LOCAL decode from `ObjectTemplate.cpp`: read this ONE template's declared base-template reference (the @base / DERV-style name string) into `BaseTemplate`, and read this template's LOCALLY-declared fields into `Fields` with `InheritedFrom = "local"`. BOUNDED POSTURE (review consensus #3 / Codex): Phase 7 is local-only — DO NOT follow `BaseTemplate` into another TRE entry / another IFF document to materialize inherited fields, DO NOT call TreArchiveIndex/TrePayloadResolver from the decoder, and DO NOT perform a recursive walk. The view DISPLAYS the declared base reference (so the user sees "inherits from X") and the local fields; resolving the full inherited chain is explicitly deferred (Phase 11 / a later milestone makes the editable + resolved surface). Add a `// Phase-7 bounded posture: declared base + local fields only; no recursive cross-IFF inheritance walk (review #3)` marker. Bound field counts with the division-form guard.
 
-    Both are `public static` pure decoders (no JSON/console/file-write). Extend the `decode-iff` verb dispatch (in `DecodeIffCommand.cs`) with the STF and object-template root-tag branches. Add `DecoderTests.cs` cases for each (fixtures acquired/synthesized as in Task 1; the non-ASCII STF round-trip and a forged-count case are required).
+    Both are `public static` pure decoders (no JSON/console/file-write). Extend the `decode-iff` verb dispatch (in `DecodeIffCommand.cs`) with the STF and object-template root-tag branches. Add `DecoderTests.cs` cases for each (synthesized minimal-contract fixtures acquired/synthesized as in Task 1, labeled smoke; the non-ASCII STF round-trip, the bounded-inheritance object-template assertions, and a forged-count case are required; optional env-gated real loose-IFF supplements when available).
   </action>
   <verify>
     <automated>cd D:/Code/Utinni; dotnet test Utinni.Cli.Tests --filter "Decoder|DecodeIff"</automated>
@@ -180,10 +177,12 @@ Error idiom (Formats/Tre/TreParseException.cs + Formats/Iff/IffParseException.cs
     - `dotnet test Utinni.Cli.Tests --filter "Decoder|DecodeIff"` passes including the STF + object-template cases.
     - `StringTableDecoder.cs` and `ObjectTemplateDecoder.cs` exist with their classes + provenance header (grep each + "original to Utinni under MIT"); both pure (no Newtonsoft/Console/File.Write).
     - The STF test asserts a non-ASCII string round-trips byte-for-byte (correct declared encoding, not raw ASCII).
+    - `ObjectTemplateDecoder.cs` is BOUNDED: it exposes `BaseTemplate` + local `Fields` with `InheritedFrom` (grep all three); grep finds NO `TreArchiveIndex`/`TrePayloadResolver`/recursive base-resolution call in the decoder (the local-only posture; review consensus #3), and a `// Phase-7 bounded posture` marker exists.
+    - A test asserts the object-template view shows the declared base name + local fields and does NOT materialize inherited fields from another document.
     - decode-iff dispatches DTII, STF, and object-template root tags (grep all three decoder names in DecodeIffCommand.cs).
     - A forged-count STF/template input throws `DecoderException` (asserted), not `OutOfMemoryException`.
   </acceptance_criteria>
-  <done>The STF and object-template decoders land, are pure + bounds-checked, decode non-ASCII correctly, and are golden-tested via decode-iff alongside the datatable decoder.</done>
+  <done>The STF and object-template decoders land, are pure + bounds-checked, decode non-ASCII correctly, and the object template uses the bounded read-only posture (declared base + local fields, no recursive cross-IFF walk); all golden-tested via decode-iff alongside the datatable decoder.</done>
 </task>
 
 </tasks>
@@ -204,19 +203,23 @@ Error idiom (Formats/Tre/TreParseException.cs + Formats/Iff/IffParseException.cs
 | T-07-14 | Tampering | out-of-bounds cell/field reads within a chunk payload | mitigate | Read scalars only within `IffLeafChunk.Data` bounds; advance a checked cursor and throw DecoderError.Truncated on a short read. |
 | T-07-15 | Denial of Service | pathological IFF nesting reaching the decoders | mitigate | The shared IffReader already enforces 64 MB cap + NestedChunkOverflow before the decoders run; decoders consume the bounded parse output only. |
 | T-07-16 | Tampering | malformed STF encoding / surrogate abuse | mitigate | Decode text via the format's declared encoding with replacement on invalid sequences (no throw on bad bytes); display as data only, never execute/resolve. |
+| T-07-19 | Tampering | object-template base reference pointing at an arbitrary path | mitigate | The bounded posture does NOT resolve the base reference against the filesystem/TRE — it is displayed as an opaque name string only; no cross-IFF read happens in Phase 7 (review consensus #3). |
 | T-07-SC | Tampering | npm/pip/cargo installs | mitigate | No package installs (BCL + in-repo only; RESEARCH Package Legitimacy Audit). |
 </threat_model>
 
 <verification>
-- `dotnet test Utinni.Cli.Tests --filter "Decoder|DecodeIff"` is green (datatable + STF + object-template + forged-count cases).
+- `dotnet test Utinni.Cli.Tests --filter "Decoder|DecodeIff"` is green (datatable + STF + bounded-object-template + forged-count cases).
 - Decoders are pure (no JSON/console/file-write grep gate) and bounds-checked (forged-count throws DecoderException).
+- Object-template decoder is bounded (declared base + local fields; no TreArchiveIndex/recursive walk — grep gate; review consensus #3).
+- Synthesized fixtures are labeled minimal-contract/smoke; real loose-IFF supplements are env-gated (review LOW).
 - decode-iff is registered and dispatches all three root tags; the JSON envelope is schemaVersion:1.
 </verification>
 
 <success_criteria>
 - Datatable, string-table, and object-template decode into pure framework models (D-12, PROD-01 data/STF/template coverage).
+- Object-template inheritance is a bounded read-only posture: declared base reference + local fields, no recursive cross-IFF walk in Phase 7 (review consensus #3).
 - IFF scalars read little-endian (Pitfall 6); non-ASCII STF round-trips.
-- Decoders pure + golden-tested via decode-iff; browser + CLI will share one path (D-08, criterion #4).
+- Decoders pure + golden-tested via decode-iff against labeled minimal-contract fixtures (+ optional real supplements); browser + CLI will share one path (D-08, criterion #4).
 - Reference split honored (D-09 — C++ engine loaders for data/STF/template).
 - The decoders stay read-only — no write/authoring/export surface (D-01); foundation Phases 9-11 make editable (D-13).
 </success_criteria>
@@ -224,3 +227,5 @@ Error idiom (Formats/Tre/TreParseException.cs + Formats/Iff/IffParseException.cs
 <output>
 Create `.planning/phases/07-tjt-subpanel-tre-browser-read-only/07-04a-SUMMARY.md` when done.
 </output>
+</objective>
+</content>

@@ -96,9 +96,9 @@ revision_note: "Reconciled against cross-AI review (07-REVIEWS.md). Added 07-00 
 > deterministic in-repo byte builder (`TreFixtureBuilder`) so the real-archive code paths run on
 > CI **without** depending on the env-gated `D:\Sample-TRE-Files` set (review consensus #3/#4).
 
-- [x] **In-repo synthetic fixtures** (07-00) — `synthetic-v6000-2record.tre`, `synthetic-cot2000-2tree.toc` (>=2 tree files), `synthetic-5000-header.tre` (deliberately NON-6000 layout), `synthetic-0004-header.tre`, `zlib-framed-1record-v0006.tre`, plus four malformed fixtures (count×stride, offset+length, bad-Adler zlib, unknown compressor). Run on every CI invocation.
+- [x] **In-repo synthetic fixtures** (07-00) — `synthetic-v6000-2record.tre`, `synthetic-cot2000-2tree.toc` (>=2 tree files) + its companion `cot2000/tree0.tre`+`tree1.tre` archives (self-contained resolver path, review consensus #2), `synthetic-5000-header.tre` (deliberately NON-6000 layout), `synthetic-0004-header.tre`, `zlib-framed-1record-v6000.tre` (renamed from v0006 for naming consistency, review item 5), plus four malformed fixtures (count×stride, offset+length, detectable-bad zlib frame, unknown compressor). Run on every CI invocation.
 - [x] **`FixturePath.SampleTreDir()` env resolver** (07-00) — real `D:\Sample-TRE-Files\` v6000/COT2000 + the synthesized 0005 fixture; the `SWG_SAMPLE_TRE_DIR` env-gate SUPPLEMENTS the in-repo synthetic coverage (does not replace it).
-- [x] zlib-vs-raw-deflate inflate test fixture (07-00 `zlib-framed-1record-v0006.tre` `0x78 0x9c`-framed + the existing raw-deflate 0005 fixture)
+- [x] zlib-vs-raw-deflate inflate test fixture (07-00 `zlib-framed-1record-v6000.tre` `0x78 0x9c`-framed + the existing raw-deflate 0005 fixture)
 - [x] Synthetic 5000-header fixture + enumerate-empty/no-throw test (07-00 fixture; 07-01 Task 1 asserts EnumerateOnly + zero records + no throw against the non-6000 layout)
 - [x] Lazy-enumeration assertion via deterministic `PayloadReadCount` counter (07-01 Task 2 — replaces the prior timing/IO proxy, review consensus #2)
 - [x] COT2000 master-index golden — in-repo synthetic (07-00 `synthetic-cot2000-2tree.toc`) + env-gated real count=213086/45-tre-names (07-01 Task 2, Skip when `SWG_SAMPLE_TRE_DIR` unset)
