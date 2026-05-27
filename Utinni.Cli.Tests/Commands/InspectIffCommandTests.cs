@@ -24,6 +24,7 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using UtinniCoreDotNet.Formats.Iff;
 using Utinni.Cli.Tests.Infrastructure;
 using Xunit;
 
@@ -74,6 +75,28 @@ namespace Utinni.Cli.Tests.Commands
         // ─────────────────────────────────────────────────────────────────────
         // Fact: missing file → exit 3 + FileNotFound
         // ─────────────────────────────────────────────────────────────────────
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Fact: 07-03 — IffChunk.OffsetBytes populated from the parser stream position
+        // ─────────────────────────────────────────────────────────────────────
+
+        [Fact]
+        public void IffReader_PopulatesOffsetBytes_RootZeroAndChildHeaderPositions()
+        {
+            // synthetic-nested.iff byte layout: root FORM@0, DATA leaf header@12,
+            // nested FORM:OBJS header@62 (0x3E). OffsetBytes is the TypeID's byte position.
+            IffDocument doc = IffReader.Read(FixturePath.Resolve("iff/synthetic-nested.iff"));
+
+            Assert.Equal(0L, doc.Root.OffsetBytes);
+
+            var root = Assert.IsType<IffContainerChunk>(doc.Root);
+            Assert.Equal("DATA", root.Children[0].TypeId);
+            Assert.Equal(12L, root.Children[0].OffsetBytes);
+
+            var nested = root.Children[3];
+            Assert.Equal("FORM", nested.TypeId);
+            Assert.Equal(62L, nested.OffsetBytes);
+        }
 
         [Fact]
         public void Run_WithMissingFile_ExitsThreeAndEmitsFileNotFoundError()

@@ -62,12 +62,21 @@ namespace UtinniCoreDotNet.Formats.Iff
         /// </summary>
         public string Id { get; }
 
+        /// <summary>
+        /// Phase 7 (07-03): byte offset of this chunk's 4-char TypeID header within the document
+        /// stream (the position of the TypeID's first byte). The root chunk's offset is 0. Sourced
+        /// directly from the parser's stream position — no second parse pass. Lets a viewer render
+        /// an honest <c>@offset</c> without re-walking the bytes.
+        /// </summary>
+        public long OffsetBytes { get; }
+
         /// <summary>Protected constructor for sub-types.</summary>
-        protected IffChunk(string typeId, int lengthBytes, string id)
+        protected IffChunk(string typeId, int lengthBytes, string id, long offsetBytes)
         {
             TypeId = typeId;
             LengthBytes = lengthBytes;
             Id = id;
+            OffsetBytes = offsetBytes;
         }
     }
 }

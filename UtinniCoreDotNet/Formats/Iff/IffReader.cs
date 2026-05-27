@@ -205,7 +205,7 @@ namespace UtinniCoreDotNet.Formats.Iff
             else
             {
                 return ReadLeafChunk(br, parentEnd, parentIdPrefix, ordinalWithinParent,
-                    preorderAccumulator, typeId, idTrimmed, length);
+                    preorderAccumulator, chunkStart, typeId, idTrimmed, length);
             }
         }
 
@@ -270,7 +270,7 @@ namespace UtinniCoreDotNet.Formats.Iff
                 childOrdinal++;
             }
 
-            var container = new IffContainerChunk(typeId, length, thisId, subTypeId, children.AsReadOnly());
+            var container = new IffContainerChunk(typeId, length, thisId, chunkStart, subTypeId, children.AsReadOnly());
 
             // Patch the placeholder with the constructed container.
             preorderAccumulator[containerSlot] = container;
@@ -284,6 +284,7 @@ namespace UtinniCoreDotNet.Formats.Iff
             string parentIdPrefix,
             int ordinalWithinParent,
             List<IffChunk> preorderAccumulator,
+            long chunkStart,
             string typeId,
             string idTrimmed,
             int length)
@@ -331,7 +332,7 @@ namespace UtinniCoreDotNet.Formats.Iff
                 }
             }
 
-            var leaf = new IffLeafChunk(typeId, length, thisId, payload);
+            var leaf = new IffLeafChunk(typeId, length, thisId, chunkStart, payload);
             preorderAccumulator.Add(leaf);
             return leaf;
         }

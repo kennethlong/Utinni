@@ -47,8 +47,8 @@ namespace UtinniCoreDotNet.Formats.Iff
         public byte[] Data { get; }
 
         /// <summary>Constructs an IffLeafChunk with all fields supplied by the reader.</summary>
-        public IffLeafChunk(string typeId, int lengthBytes, string id, byte[] data)
-            : base(typeId, lengthBytes, id)
+        public IffLeafChunk(string typeId, int lengthBytes, string id, long offsetBytes, byte[] data)
+            : base(typeId, lengthBytes, id, offsetBytes)
         {
             // Copy on construction — callers cannot mutate across read boundaries.
             if (data == null || data.Length == 0)

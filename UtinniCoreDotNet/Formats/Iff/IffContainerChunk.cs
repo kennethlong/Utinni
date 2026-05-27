@@ -52,8 +52,8 @@ namespace UtinniCoreDotNet.Formats.Iff
         public IReadOnlyList<IffChunk> Children { get; }
 
         /// <summary>Constructs an IffContainerChunk with all fields supplied by the reader.</summary>
-        public IffContainerChunk(string typeId, int lengthBytes, string id, string subTypeId, IReadOnlyList<IffChunk> children)
-            : base(typeId, lengthBytes, id)
+        public IffContainerChunk(string typeId, int lengthBytes, string id, long offsetBytes, string subTypeId, IReadOnlyList<IffChunk> children)
+            : base(typeId, lengthBytes, id, offsetBytes)
         {
             SubTypeId = subTypeId;
             Children = children;
