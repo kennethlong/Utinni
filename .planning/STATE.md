@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 07-04a-PLAN.md (decoders + decode-iff); next 07-04b — needs IffReader pad-tolerance precursor
-last_updated: "2026-05-27T15:08:37.775Z"
+status: verifying
+stopped_at: Phase 07 COMPLETE (6/6) — TRE Browser read-only shipped; live smoke approved
+last_updated: "2026-05-27T19:17:02.460Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 12
-  completed_phases: 7
-  total_plans: 31
-  completed_plans: 30
-  percent: 97
+  completed_phases: 8
+  total_plans: 30
+  completed_plans: 31
+  percent: 100
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 07 — tjt-subpanel-tre-browser-read-only
+**Current focus:** Phase 07 COMPLETE — TRE Browser (read-only) shipped as a TJT subpanel.
 
 ## Current Position
 
-Phase: 07 (tjt-subpanel-tre-browser-read-only) — EXECUTING
-Plan: 6 of 6 (07-04b — last plan)
-Status: 07-00..07-04a complete; 07-04b pending
+Phase: 07 (tjt-subpanel-tre-browser-read-only) — **COMPLETE (6/6)**, live smoke approved 2026-05-27
+Plan: 6 of 6 (07-04b done)
+Status: Phase complete — ready for phase verification / next phase
 Last activity: 2026-05-27
-Next action: execute **07-04b** (deep decoders: AppearanceSummary mesh/skeleton/anim + IffStructureSummary shader/UI-page; extend decode-iff; render row-capped structured views in `TreDetailPane.pnlStructured`; cross-repo + final human smoke). **PRECURSOR DONE:** the `IffReader` pad-tolerance fix landed (commit `7012d82`) — real un-padded SWG datatables now decode (verified via decode-iff over swg-main/serverdata). 07-04b is unblocked. See `[[project_swg_iff_no_pad]]` (RESOLVED).
+Next action: optionally run phase verification (`/gsd-verify-work` or `/gsd-ship`), then proceed to the next Wave-1 phase (Phase 08 — IFF editor, which builds editable surfaces on the read-only `LoadIff` chunk tree + decoders this phase shipped, D-13). All 6 plans have SUMMARYs; `decode-iff` is the CLI mirror of the browser's per-type decode (datatable/STF/object-template/mesh/shader/UI-page). Note: the project-wide progress counter reads 31/30 (off-by-one drift from the 07-04 → 04a/04b split); the ROADMAP per-phase tracker is authoritative (07 = Complete 6/6).
 
-Progress: [█████████░] 97% (total_plans bumped 30→31 to account for the 07-04 → 07-04a/04b split; project-wide update-progress had read 100% prematurely)
+Progress: [██████████] 100%
 
 ## Wave 2 Summary
 
@@ -100,6 +100,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 07 P02 | 2h | 3 tasks | 6 files |
 | Phase 07 P03 | 1.5h | 4 tasks | 8 files |
 | Phase 07 P04a | 3h | 2 tasks | 12 files |
+| Phase 07 P04b | 3h | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -174,8 +175,8 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-05-27T15:08:37.759Z
-Stopped at: Completed 07-04a-PLAN.md (decoders + decode-iff); next 07-04b — needs IffReader pad-tolerance precursor
+Last session: 2026-05-27T19:17:02.446Z
+Stopped at: Phase 07 COMPLETE (6/6) — TRE Browser read-only shipped; live smoke approved
 Resume file: None
 
 ## Ingest Provenance
