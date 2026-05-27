@@ -1,7 +1,31 @@
 # Phase 7 — UI Review
 
-**Audited:** 2026-05-27
+**Audited:** 2026-05-27 · **Remediated:** 2026-05-27 (all 9 findings addressed — see Remediation below)
 **Baseline:** 07-UI-SPEC.md (approved WinForms design contract)
+
+## Remediation (2026-05-27)
+
+All 9 findings (3 priority + 6 minor) were fixed in commits Utinni `2715874` + UtinniPlugins `80aa3ec`:
+
+| # | Finding | Fix |
+|---|---------|-----|
+| 1 | Missing search placeholder | `UtinniTextbox.CueBanner` (EM_SETCUEBANNER, reusable) → `txtFilter.CueBanner = "Filter files…"` |
+| 2 | Banner 10pt off-contract | banner → `new Font(Font, FontStyle.Bold)` (8.25pt base + Bold) |
+| 9 | Info-heading unauthorized Bold | info heading → base font (regular); differentiated by colour |
+| 3 | Cramped status/legend | `BuildStatusLegendPanel()` — inset bottom panel + 2px `PrimaryShadow()` divider |
+| 4 | Unthemed ListView header band | owner-draw `DrawColumnHeader` (dark fill + `Colors.Font()`) on `lvFiltered` + `lvStructured`; rows default |
+| 5 | Hidden Copy path/CRC | `ToolTip` "Right-click: Copy path / Copy CRC" on the metadata header + values |
+| 6 | Dead type-facet stub | `cbTypeFacet.Visible = false` for V1 |
+| 7 | Magic 150px strip + dead band | strip height 150→120; accent/banner offsets aligned (88/94) |
+| 8 | Hard 320px accent | offset tidied; rule stays L+R anchored (stretches) |
+
+Both repos build Release/x86. **Live re-check pending** for the cue banner + tooltip (injected-UI-only — not verifiable headlessly). Color pillar was already 4/4; the rest move toward full contract conformance.
+
+---
+
+**Original audit below.**
+
+
 **Screenshots:** not captured — WinForms desktop UI rendered inside an injected SWG client; no dev server / browser applies (code-only audit, ports 3000/5173/8080 all closed as expected). Live-smoke approvals are recorded in 07-02/07-03/07-04b SUMMARYs.
 
 ---
