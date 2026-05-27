@@ -433,6 +433,189 @@ namespace Utinni.Cli.Tests.Commands
             });
         }
 
+        // ── AppearanceSummary (mesh/skeleton/anim) fixtures + tests ────────────
+
+        // MESH: shader count in SPS/CNT; vertex count in VTXA/0003/INFO (2nd int32). Smoke fixture.
+        private static byte[] BuildStaticMesh() =>
+            IffBuilder.Form("MESH",
+                IffBuilder.Form("0005",
+                    IffBuilder.Form("SPS",
+                        IffBuilder.Form("0001",
+                            IffBuilder.Leaf("CNT", IffBuilder.Int32Le(2)), // shader count
+                            IffBuilder.Form("VTXA",
+                                IffBuilder.Form("0003",
+                                    IffBuilder.Leaf("INFO", IffBuilder.Concat(
+                                        IffBuilder.Int32Le(0),   // flags
+                                        IffBuilder.Int32Le(10)))))))));  // vertex count
+
+        // SKMG INFO: position(vertex) count at offset 16, per-shader(shader) count at offset 28.
+        private static byte[] BuildSkeletalMesh()
+        {
+            byte[] info = IffBuilder.Concat(
+                IffBuilder.Int32Le(0), IffBuilder.Int32Le(0), IffBuilder.Int32Le(0), IffBuilder.Int32Le(0), // 0..15
+                IffBuilder.Int32Le(8),                                   // 16: position(vertex) count
+                IffBuilder.Int32Le(0), IffBuilder.Int32Le(0),            // 20,24
+                IffBuilder.Int32Le(3));                                  // 28: per-shader(shader) count
+            return IffBuilder.Form("SKMG", IffBuilder.Form("0004", IffBuilder.Leaf("INFO", info)));
+        }
+
+        // SKTM: INFO = joint count; NAME = jointCount NUL-terminated names.
+        private static byte[] BuildSkeleton() =>
+            IffBuilder.Form("SKTM",
+                IffBuilder.Form("0002",
+                    IffBuilder.Leaf("INFO", IffBuilder.Int32Le(3)),
+                    IffBuilder.Leaf("NAME", IffBuilder.Concat(
+                        IffBuilder.CString("root"), IffBuilder.CString("spine"), IffBuilder.CString("head")))));
+
+        // KFAT INFO: fps (float) then frame count (int32) at offset 4.
+        private static byte[] BuildAnimation() =>
+            IffBuilder.Form("KFAT",
+                IffBuilder.Form("0003",
+                    IffBuilder.Leaf("INFO", IffBuilder.Concat(IffBuilder.FloatLe(30f), IffBuilder.Int32Le(24)))));
+
+        [Fact]
+        public void Summarize_StaticMesh_ReadsVertexAndShaderCounts()
+        {
+            AppearanceInfo a = AppearanceSummary.Summarize(Parse(BuildStaticMesh()));
+            Assert.Equal("mesh", a.Kind);
+            Assert.Equal(2, a.ShaderCount);
+            Assert.Equal(10, a.VertexCount);
+        }
+
+        [Fact]
+        public void Summarize_SkeletalMesh_ReadsCountsFromInfoOffsets()
+        {
+            AppearanceInfo a = AppearanceSummary.Summarize(Parse(BuildSkeletalMesh()));
+            Assert.Equal("skeletal-mesh", a.Kind);
+            Assert.Equal(8, a.VertexCount);
+            Assert.Equal(3, a.ShaderCount);
+        }
+
+        [Fact]
+        public void Summarize_Skeleton_ReadsJointCountAndNames()
+        {
+            AppearanceInfo a = AppearanceSummary.Summarize(Parse(BuildSkeleton()));
+            Assert.Equal("skeleton", a.Kind);
+            Assert.Equal(3, a.JointCount);
+            Assert.Equal(new[] { "root", "spine", "head" }, a.JointNames);
+        }
+
+        [Fact]
+        public void Summarize_Animation_ReadsFrameCount()
+        {
+            AppearanceInfo a = AppearanceSummary.Summarize(Parse(BuildAnimation()));
+            Assert.Equal("animation", a.Kind);
+            Assert.Equal(24, a.FrameCount);
+        }
+
+        [Fact]
+        public void Summarize_UnrecognizedRoot_ReturnsNull()
+        {
+            Assert.Null(AppearanceSummary.Summarize(Parse(IffBuilder.Form("WSNP", IffBuilder.Leaf("DATA", new byte[] { 1, 2 })))));
+        }
+
+        [Fact]
+        public void Summarize_Skeleton_ForgedJointCount_ThrowsDecoderExceptionNotOom()
+        {
+            byte[] iff = IffBuilder.Form("SKTM",
+                IffBuilder.Form("0002",
+                    IffBuilder.Leaf("INFO", IffBuilder.Int32Le(int.MaxValue)),
+                    IffBuilder.Leaf("NAME", IffBuilder.CString("a"))));
+            var ex = Assert.Throws<DecoderException>(() => AppearanceSummary.Summarize(Parse(iff)));
+            Assert.Equal(DecoderError.CountExceedsCap, ex.Kind);
+        }
+
+        // ── IffStructureSummary (shader + UI-page) tests ───────────────────────
+
+        // SSHT is the LOCKED shader root FORM tag (verified: StaticShaderTemplate.cpp + real 2d_bloom.sht).
+        private static byte[] BuildShaderSsht() =>
+            IffBuilder.Form("SSHT", IffBuilder.Form("0000", IffBuilder.Leaf("MATL", new byte[] { 1, 2, 3, 4 })));
+
+        [Fact]
+        public void Summarize_Shader_SSHT_RecognizedByLockedRootTag()
+        {
+            // Shader is recognized by its locked root FORM tag SSHT (NOT a path hint, NOT any-FORM).
+            StructureInfo s = IffStructureSummary.Summarize(Parse(BuildShaderSsht()), "shader/2d_bloom.sht");
+            Assert.Equal("shader", s.RecognizedAs);
+            Assert.Equal("SSHT", s.RootTag);
+            Assert.Equal(1, s.ChildCount);
+            Assert.Equal(new[] { "0000" }, s.ChildTags);
+        }
+
+        // UI page: SWG .gui files are TEXT (not IFF, no FORM tag) — recognized by the .gui extension /
+        // ui/ path hint per the plan's path/ext clause. This test LOCKS the recognition convention.
+        [Fact]
+        public void Summarize_UiPage_DotGuiOrUiPath_RecognizedByPathHint()
+        {
+            Assert.True(IffStructureSummary.IsUiPagePath("ui/window_login.gui"));
+            Assert.True(IffStructureSummary.IsUiPagePath("foo.GUI"));
+            Assert.True(IffStructureSummary.IsUiPagePath("ui/somepage"));
+            Assert.False(IffStructureSummary.IsUiPagePath("datatables/appearance/x.iff"));
+
+            // The summarizer classifies via the hint (any FORM doc + a .gui hint -> ui-page).
+            StructureInfo s = IffStructureSummary.Summarize(
+                Parse(IffBuilder.Form("WSNP", IffBuilder.Leaf("DATA", new byte[] { 1, 2 }))), "ui/window_login.gui");
+            Assert.Equal("ui-page", s.RecognizedAs);
+        }
+
+        [Fact]
+        public void Summarize_UnrecognizedFormNoHint_ReturnsEmptyRecognizedAs_NoThrow()
+        {
+            // The any-FORM fallback: a non-shader FORM with no UI-page hint returns RootTag + childcount
+            // but RecognizedAs == "" (UI hides the structured view) and does NOT throw.
+            StructureInfo s = IffStructureSummary.Summarize(
+                Parse(IffBuilder.Form("WSNP", IffBuilder.Leaf("DATA", new byte[] { 1, 2 }))), "snapshot/world.ws");
+            Assert.Equal("", s.RecognizedAs);
+            Assert.Equal("WSNP", s.RootTag);
+            Assert.Equal(1, s.ChildCount);
+        }
+
+        // ── decode-iff dispatch for mesh family + shader + UI-page text ────────
+
+        [Fact]
+        public void DecodeIff_SkeletalMesh_EmitsAppearanceEnvelope()
+        {
+            WithTempIff(BuildSkeletalMesh(), path =>
+            {
+                var result = InProcessCliRunner.Run("decode-iff", path);
+                Assert.Equal(0, result.ExitCode);
+                JToken r = JToken.Parse(result.Stdout)["result"];
+                Assert.Equal("appearance", r["type"].Value<string>());
+                Assert.Equal("skeletal-mesh", r["kind"].Value<string>());
+                Assert.Equal(8, r["vertexCount"].Value<int>());
+                Assert.Equal(3, r["shaderCount"].Value<int>());
+            });
+        }
+
+        [Fact]
+        public void DecodeIff_Shader_EmitsStructureEnvelopeRecognizedAsShader()
+        {
+            WithTempIff(BuildShaderSsht(), path =>
+            {
+                var result = InProcessCliRunner.Run("decode-iff", path);
+                Assert.Equal(0, result.ExitCode);
+                JToken r = JToken.Parse(result.Stdout)["result"];
+                Assert.Equal("structure", r["type"].Value<string>());
+                Assert.Equal("shader", r["recognizedAs"].Value<string>());
+                Assert.Equal("SSHT", r["rootTag"].Value<string>());
+            }, ".sht");
+        }
+
+        [Fact]
+        public void DecodeIff_UiPageTextGui_EmitsUiPageEnvelope()
+        {
+            byte[] guiText = Encoding.ASCII.GetBytes("<Page name='login'>...</Page>\n"); // text, not IFF
+            WithTempIff(guiText, path =>
+            {
+                var result = InProcessCliRunner.Run("decode-iff", path);
+                Assert.Equal(0, result.ExitCode);
+                JToken r = JToken.Parse(result.Stdout)["result"];
+                Assert.Equal("ui-page", r["type"].Value<string>());
+                Assert.Equal("ui-page", r["recognizedAs"].Value<string>());
+                Assert.True(r["isText"].Value<bool>());
+            }, ".gui");
+        }
+
         // ── SUPPLEMENTAL env-gated real-asset test (review LOW / Codex fixture-confidence) ──
 
         [Fact]

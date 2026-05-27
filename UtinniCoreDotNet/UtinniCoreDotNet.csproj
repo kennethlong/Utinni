@@ -79,6 +79,8 @@
     <Compile Include="Formats\Decoders\DataTableDecoder.cs" />
     <Compile Include="Formats\Decoders\StringTableDecoder.cs" />
     <Compile Include="Formats\Decoders\ObjectTemplateDecoder.cs" />
+    <Compile Include="Formats\Decoders\AppearanceSummary.cs" />
+    <Compile Include="Formats\Decoders\IffStructureSummary.cs" />
     <Compile Include="Callbacks\CuiCallbacks.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>

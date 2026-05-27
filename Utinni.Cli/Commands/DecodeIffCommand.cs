@@ -72,6 +72,13 @@ namespace Utinni.Cli.Commands
                         BuildStringTableResult(StringTableDecoder.Decode(bytes), o.Path));
                 }
 
+                // SWG UI pages (.gui) are TEXT, not IFF — recognize them by the path/extension hint
+                // and emit a text classification rather than feeding non-IFF bytes to the parser.
+                if (!StartsWithIffContainer(bytes) && IffStructureSummary.IsUiPagePath(o.Path))
+                {
+                    return JsonOutput.EmitSuccess("decode-iff", BuildUiPageTextResult(o.Path, bytes));
+                }
+
                 var doc = IffReader.Read(new MemoryStream(bytes));
                 object result;
                 if (!TryDecode(doc, o.Path, out result, out string unsupportedTag))
@@ -114,6 +121,25 @@ namespace Utinni.Cli.Commands
                 return true;
             }
 
+            // Mesh / skeletal-mesh / skeleton / animation -> structural-count summary.
+            if (subType == "MESH" || subType == "SKMG" || subType == "SKTM"
+                || subType == "KFAT" || subType == "CKAT")
+            {
+                var appearance = AppearanceSummary.Summarize(doc);
+                if (appearance != null)
+                {
+                    result = BuildAppearanceResult(appearance, sourcePath);
+                    return true;
+                }
+            }
+
+            // Shader (SSHT/CSHD) -> lightweight FORM-tag + child-count structure summary.
+            if (subType == "SSHT" || subType == "CSHD")
+            {
+                result = BuildStructureResult(IffStructureSummary.Summarize(doc, sourcePath), sourcePath);
+                return true;
+            }
+
             if (ObjectTemplateDecoder.LooksLikeObjectTemplate(doc.Root))
             {
                 result = BuildObjectTemplateResult(ObjectTemplateDecoder.Decode(doc), sourcePath);
@@ -122,6 +148,15 @@ namespace Utinni.Cli.Commands
 
             unsupportedTag = DescribeRoot(doc.Root);
             return false;
+        }
+
+        // True when the bytes begin with an EA-IFF-85 container tag (FORM/LIST/CAT ). Used to keep
+        // non-IFF text assets (.gui UI pages) out of the IFF parser.
+        private static bool StartsWithIffContainer(byte[] bytes)
+        {
+            if (bytes == null || bytes.Length < 4) return false;
+            string tag = System.Text.Encoding.ASCII.GetString(bytes, 0, 4);
+            return tag == "FORM" || tag == "LIST" || tag == "CAT ";
         }
 
         private static object BuildDataTableResult(DataTableView dt, string sourcePath)
@@ -165,6 +200,46 @@ namespace Utinni.Cli.Commands
                 source = sourcePath,
                 type = "objecttemplate",
                 version = ot.Version
+            };
+        }
+
+        private static object BuildAppearanceResult(AppearanceInfo a, string sourcePath)
+        {
+            return new
+            {
+                frameCount = a.FrameCount,
+                jointCount = a.JointCount,
+                jointNames = a.JointNames,
+                kind = a.Kind,
+                shaderCount = a.ShaderCount,
+                source = sourcePath,
+                type = "appearance",
+                vertexCount = a.VertexCount
+            };
+        }
+
+        private static object BuildStructureResult(StructureInfo s, string sourcePath)
+        {
+            return new
+            {
+                childCount = s.ChildCount,
+                childTags = s.ChildTags,
+                recognizedAs = s.RecognizedAs,
+                rootTag = s.RootTag,
+                source = sourcePath,
+                type = "structure"
+            };
+        }
+
+        private static object BuildUiPageTextResult(string sourcePath, byte[] bytes)
+        {
+            return new
+            {
+                byteCount = bytes != null ? bytes.Length : 0,
+                isText = true,
+                recognizedAs = "ui-page",
+                source = sourcePath,
+                type = "ui-page"
             };
         }
 
