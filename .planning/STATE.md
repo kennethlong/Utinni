@@ -29,7 +29,7 @@ Phase: 07 (tjt-subpanel-tre-browser-read-only) — EXECUTING
 Plan: 6 of 6 (07-04b — last plan)
 Status: 07-00..07-04a complete; 07-04b pending
 Last activity: 2026-05-27
-Next action: execute **07-04b** (deep decoders: AppearanceSummary mesh/skeleton/anim + IffStructureSummary shader/UI-page; extend decode-iff; render row-capped structured views in `TreDetailPane.pnlStructured`; cross-repo + final human smoke). **PRECURSOR:** land the `IffReader` pad-tolerance fix first (or scope it into 07-04b) — real un-padded SWG datatables currently fail to parse (see `07-04a-SUMMARY.md` Issues + `[[project_swg_iff_no_pad]]`).
+Next action: execute **07-04b** (deep decoders: AppearanceSummary mesh/skeleton/anim + IffStructureSummary shader/UI-page; extend decode-iff; render row-capped structured views in `TreDetailPane.pnlStructured`; cross-repo + final human smoke). **PRECURSOR DONE:** the `IffReader` pad-tolerance fix landed (commit `7012d82`) — real un-padded SWG datatables now decode (verified via decode-iff over swg-main/serverdata). 07-04b is unblocked. See `[[project_swg_iff_no_pad]]` (RESOLVED).
 
 Progress: [█████████░] 97% (total_plans bumped 30→31 to account for the 07-04 → 07-04a/04b split; project-wide update-progress had read 100% prematurely)
 
