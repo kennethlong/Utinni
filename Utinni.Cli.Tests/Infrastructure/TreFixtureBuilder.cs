@@ -169,7 +169,11 @@ namespace Utinni.Cli.Tests.Infrastructure
                 length: tree1.Locs[0].UncompressedLength, compressedLength: tree1.Locs[0].StoredLength);
             byte[] tocBlock = toc.ToArray();
 
-            byte[] treeNames = NameBlock(new[] { "tree0.tre", "tree1.tre" }, out int[] _);
+            // Tree-file names are stored as paths RELATIVE TO THE .toc's directory so a resolver
+            // can open them via Path.Combine(masterIndexBaseDir, treeName). The companions live in
+            // a cot2000/ subdir here; real COT2000 sets keep them beside the .toc (bare names also
+            // resolve). The resolver containment-checks the result (rejects ../rooted).
+            byte[] treeNames = NameBlock(new[] { "cot2000/tree0.tre", "cot2000/tree1.tre" }, out int[] _);
             byte[] nameBlock = NameBlock(vpaths, out int[] __);
 
             var ms = new MemoryStream();
