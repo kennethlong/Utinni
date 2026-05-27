@@ -28,6 +28,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using CommandLine;
+using UtinniCoreDotNet.Formats.Iff;
 using Utinni.Cli.Output;
 
 namespace Utinni.Cli.Commands
@@ -41,9 +42,10 @@ namespace Utinni.Cli.Commands
 
     public static class ListObjectsCommand
     {
-        // Max file size before we reject it (256 MB, same cap as TRE parser T-04-DoS).
-        private const int MaxFileSize = 256 * 1024 * 1024;
-
+        // 07-01 Task 3 (review consensus #7): the OBJS template-name block is now read through the
+        // shared Formats/Iff parser — the SAME core the TRE Browser detail pane uses — instead of
+        // the provisional sentinel byte-scan. This keeps success criterion #4's "parse-tre AND
+        // list-objects" genuinely lock-step on one IFF code path.
         public static int Run(ListObjectsOptions o)
         {
             // FileNotFound check: exit 3 (D-02).
@@ -53,56 +55,38 @@ namespace Utinni.Cli.Commands
                     "World-snapshot file not found: " + o.Path, exitCode: 3);
             }
 
-            byte[] bytes;
+            IffDocument doc;
             try
             {
-                var info = new FileInfo(o.Path);
-                if (info.Length > MaxFileSize)
-                {
-                    return JsonOutput.EmitError("list-objects", "FileTooLarge",
-                        "File size " + info.Length + " exceeds 256 MB cap.", exitCode: 2);
-                }
-                bytes = File.ReadAllBytes(o.Path);
+                doc = IffReader.Read(o.Path);
+            }
+            catch (IffParseException ex)
+            {
+                // IffParseError.Kind.ToString() yields the structured error.kind string.
+                return JsonOutput.EmitError("list-objects", ex.Kind.ToString(), ex.Message, exitCode: 2);
             }
             catch (IOException ex)
             {
                 return JsonOutput.EmitError("list-objects", "IoError", ex.Message, exitCode: 2);
             }
+            // NOTE: Generic Exception is intentionally NOT caught — unexpected types bubble up.
 
-            // REVIEWS MEDIUM-13: byte-scan is provisional architectural debt; Phase 6+ refactor on
-            // top of Plan 04-03's IffReader. See 04-02-PLAN.md <pitfalls> Pitfall A.
-            //
-            // Locate the OBJS chunk sentinel (4 ASCII bytes: 'O' 'B' 'J' 'S' = 0x4F 0x42 0x4A 0x53).
-            // After the sentinel: 4 bytes big-endian length L, then L bytes of null-terminated strings.
-            int objsIndex = IndexOfObjs(bytes);
-            if (objsIndex < 0)
+            // Locate the OBJS leaf via the parser (PROP/OBJS are leaves, not containers).
+            IffLeafChunk objs = doc.AllNodesInPreorder
+                .OfType<IffLeafChunk>()
+                .FirstOrDefault(c => c.TypeId == "OBJS");
+
+            if (objs == null)
             {
                 return JsonOutput.EmitError("list-objects", "NoObjsChunk",
                     "No OBJS chunk found in the supplied file.", exitCode: 2);
             }
 
-            // Read big-endian length (4 bytes at objsIndex+4).
-            if (objsIndex + 8 > bytes.Length)
-            {
-                return JsonOutput.EmitError("list-objects", "Truncated",
-                    "OBJS header is incomplete (file ends before length field).", exitCode: 2);
-            }
+            // The OBJS payload is the same null-terminated ASCII template-name block the byte-scan
+            // read — but now bounds-checked by the parser, and with the 8-byte chunk header stripped.
+            List<string> templatePaths = ExtractNullTerminatedStrings(objs.Data);
 
-            int chunkLength = (bytes[objsIndex + 4] << 24)
-                            | (bytes[objsIndex + 5] << 16)
-                            | (bytes[objsIndex + 6] << 8)
-                            | bytes[objsIndex + 7];
-
-            if (chunkLength < 0 || objsIndex + 8 + chunkLength > bytes.Length)
-            {
-                return JsonOutput.EmitError("list-objects", "Truncated",
-                    "OBJS chunk payload at offset " + (objsIndex + 8) + " with length " + chunkLength + " exceeds file bounds.", exitCode: 2);
-            }
-
-            // Extract null-terminated ASCII strings from the payload.
-            List<string> templatePaths = ExtractNullTerminatedStrings(bytes, objsIndex + 8, chunkLength);
-
-            // REVIEWS HIGH-7: objects sorted by id Ordinal for golden stability.
+            // REVIEWS HIGH-7: objects sorted by id Ordinal for golden stability (LOCKED contract).
             var sortedPaths = templatePaths
                 .OrderBy(p => p, StringComparer.Ordinal)
                 .ToList();
@@ -121,50 +105,27 @@ namespace Utinni.Cli.Commands
         }
 
         /// <summary>
-        /// Searches <paramref name="bytes"/> for the 4-byte 'OBJS' sentinel (big-endian ASCII).
-        /// Returns the byte index of the 'O' byte, or -1 if not found.
+        /// Extracts null-terminated ASCII strings from the OBJS payload (empty segments — e.g. a
+        /// trailing terminator — are skipped).
         /// </summary>
-        private static int IndexOfObjs(byte[] bytes)
-        {
-            // 0x4F=O 0x42=B 0x4A=J 0x53=S
-            for (int i = 0; i <= bytes.Length - 4; i++)
-            {
-                if (bytes[i]     == 0x4F &&
-                    bytes[i + 1] == 0x42 &&
-                    bytes[i + 2] == 0x4A &&
-                    bytes[i + 3] == 0x53)
-                {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
-        /// <summary>
-        /// Extracts null-terminated ASCII strings from a byte slice.
-        /// </summary>
-        private static List<string> ExtractNullTerminatedStrings(byte[] bytes, int payloadStart, int payloadLength)
+        private static List<string> ExtractNullTerminatedStrings(byte[] bytes)
         {
             var result = new List<string>();
-            int current = payloadStart;
-            int end = payloadStart + payloadLength;
+            int current = 0;
 
-            while (current < end)
+            while (current < bytes.Length)
             {
-                // Find the next null byte within the payload.
                 int nullPos = current;
-                while (nullPos < end && bytes[nullPos] != 0)
+                while (nullPos < bytes.Length && bytes[nullPos] != 0)
                 {
                     nullPos++;
                 }
 
                 if (nullPos > current)
                 {
-                    string s = Encoding.ASCII.GetString(bytes, current, nullPos - current);
-                    result.Add(s);
+                    result.Add(Encoding.ASCII.GetString(bytes, current, nullPos - current));
                 }
 
-                // Advance past the null terminator.
                 current = nullPos + 1;
             }
 

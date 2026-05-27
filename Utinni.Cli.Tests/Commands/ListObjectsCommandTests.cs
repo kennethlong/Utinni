@@ -22,6 +22,8 @@
  * SOFTWARE.
 **/
 
+using System;
+using System.IO;
 using Newtonsoft.Json.Linq;
 using Utinni.Cli.Tests.Infrastructure;
 using Xunit;
@@ -76,6 +78,67 @@ namespace Utinni.Cli.Tests.Commands
             var root = JToken.Parse(result.Stdout);
             Assert.Equal("list-objects",  root["command"].Value<string>());
             Assert.Equal("FileNotFound",   root["error"]["kind"].Value<string>());
+        }
+
+        /// <summary>
+        /// 07-01 Task 3: a valid IFF document with NO OBJS chunk exits 2 with the documented
+        /// NoObjsChunk error kind (the migration reads through the shared IffReader path).
+        /// </summary>
+        [Fact]
+        public void Run_WithObjsLessIff_ExitsTwoWithNoObjsChunk()
+        {
+            // Minimal valid IFF: FORM:TEST containing a single empty DATA leaf (no OBJS).
+            byte[] iff = BuildFormWithLeaf("TEST", "DATA", new byte[0]);
+            string temp = Path.Combine(Path.GetTempPath(), "ws-noobjs-" + Guid.NewGuid().ToString("N") + ".iff");
+            File.WriteAllBytes(temp, iff);
+            try
+            {
+                var result = InProcessCliRunner.Run("list-objects", temp);
+                Assert.Equal(2, result.ExitCode);
+                var root = JToken.Parse(result.Stdout);
+                Assert.Equal("list-objects", root["command"].Value<string>());
+                Assert.Equal("NoObjsChunk", root["error"]["kind"].Value<string>());
+            }
+            finally
+            {
+                try { if (File.Exists(temp)) File.Delete(temp); } catch (IOException) { }
+            }
+        }
+
+        /// <summary>Builds a minimal big-endian IFF FORM:&lt;subType&gt; with one leaf chunk.</summary>
+        private static byte[] BuildFormWithLeaf(string subType, string leafType, byte[] leafData)
+        {
+            using (var ms = new MemoryStream())
+            {
+                // Leaf: 4-char type + BE length + payload (even length, no pad needed here).
+                byte[] leaf;
+                using (var lm = new MemoryStream())
+                {
+                    WriteAscii4(lm, leafType);
+                    WriteInt32Be(lm, leafData.Length);
+                    lm.Write(leafData, 0, leafData.Length);
+                    leaf = lm.ToArray();
+                }
+                int formContentLength = 4 + leaf.Length; // subType + leaf chunk
+                WriteAscii4(ms, "FORM");
+                WriteInt32Be(ms, formContentLength);
+                WriteAscii4(ms, subType);
+                ms.Write(leaf, 0, leaf.Length);
+                return ms.ToArray();
+            }
+        }
+
+        private static void WriteAscii4(Stream s, string fourCc)
+        {
+            for (int i = 0; i < 4; i++) s.WriteByte((byte)fourCc[i]);
+        }
+
+        private static void WriteInt32Be(Stream s, int v)
+        {
+            s.WriteByte((byte)(v >> 24));
+            s.WriteByte((byte)(v >> 16));
+            s.WriteByte((byte)(v >> 8));
+            s.WriteByte((byte)v);
         }
     }
 }
