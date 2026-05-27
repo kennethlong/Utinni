@@ -454,6 +454,43 @@ namespace Utinni.Cli.Tests.Commands
             Assert.All(table.Entries, e => Assert.NotNull(e.Text));
         }
 
+        [Fact]
+        public void Decode_RealDatatable_FromLooseIffDir_DecodesColumnsAndRows()
+        {
+            // Real-layout confidence for DataTableDecoder over the IffReader's pad-tolerant parse
+            // (07-04a finding: real SWG datatables are not word-padded). Skips cleanly when unset.
+            if (!FixturePath.HasLooseIffDir()) return;
+
+            string datatable = Directory
+                .EnumerateFiles(FixturePath.LooseIffDir(), "*.iff", SearchOption.AllDirectories)
+                .FirstOrDefault(IsDtiiDatatable);
+            if (datatable == null) return; // no datatable .iff found — skip cleanly.
+
+            DataTableView dt = DataTableDecoder.Decode(IffReader.Read(datatable));
+            Assert.NotEmpty(dt.Columns);
+            Assert.All(dt.Columns, c => Assert.False(string.IsNullOrEmpty(c.Name)));
+            Assert.All(dt.Rows, r => Assert.Equal(dt.Columns.Count, r.Length));
+        }
+
+        // Cheap header check: a datatable is FORM <len> "DTII" — the sub-type tag at offset 8.
+        private static bool IsDtiiDatatable(string path)
+        {
+            try
+            {
+                byte[] head = new byte[12];
+                using (var fs = File.OpenRead(path))
+                {
+                    if (fs.Read(head, 0, 12) < 12) return false;
+                }
+                return head[0] == (byte)'F' && head[1] == (byte)'O' && head[2] == (byte)'R' && head[3] == (byte)'M'
+                    && head[8] == (byte)'D' && head[9] == (byte)'T' && head[10] == (byte)'I' && head[11] == (byte)'I';
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         // ── helper ──────────────────────────────────────────────────────────
 
         private static void WithTempIff(byte[] bytes, Action<string> body, string extension = ".iff")

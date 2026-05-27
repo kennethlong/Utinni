@@ -60,7 +60,7 @@ namespace Utinni.Cli.Tests.Commands
         [InlineData("synthetic-secondary", 0)]          // REVIEWS MEDIUM-12 + MEDIUM-14 — no real-sample; CAT  + PROP-as-leaf
         [InlineData("malformed-nested-overflow", 2)]     // iter-4 HIGH-1 — RENAMED from malformed-chunk-overflow; golden carries NestedChunkOverflow
         [InlineData("malformed-truncated", 2)]           // iter-4 HIGH-1 — redesigned byte layout; golden carries Truncated
-        [InlineData("malformed-missing-padbyte", 2)]     // REVIEWS MEDIUM-11 — odd-length leaf at EOF with no pad byte; golden carries Truncated
+        [InlineData("odd-chunk-no-pad", 0)]              // 07-04a reversal — odd-length leaf at boundary with no pad is VALID (real SWG datatables omit the pad); parses to a success tree
         public void Run_WithFixture_ExitsWithExpectedCodeAndMatchesGolden(string fixtureName, int expectedExitCode)
         {
             var fixturePath = FixturePath.Resolve("iff/" + fixtureName + ".iff");

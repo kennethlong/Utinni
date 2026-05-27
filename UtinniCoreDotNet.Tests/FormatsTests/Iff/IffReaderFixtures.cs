@@ -230,8 +230,8 @@ namespace UtinniCoreDotNet.Tests.FormatsTests.Iff
 
         /// <summary>
         /// Builds an outer FORM containing an odd-length leaf followed immediately by EOF (no pad byte).
-        /// REVIEWS MEDIUM-11: tests STRICT missing-pad-byte at file EOF (outermost parentEnd == stream.Length).
-        /// The outer FORM's declared length EXACTLY accounts for the leaf but NOT for the pad byte.
+        /// 07-04a reversal: this is now a VALID no-pad file (real SWG IFF omits the EA-IFF-85 pad).
+        /// The outer FORM's declared length EXACTLY accounts for the leaf but NOT for any pad byte.
         /// </summary>
         public static byte[] BuildOddLengthLeafAtEofMissingPad()
         {
@@ -252,7 +252,7 @@ namespace UtinniCoreDotNet.Tests.FormatsTests.Iff
             // FORM outer payload length = SubType(4) + TypeID(4) + Len(4) + data(7) = 19
             // But FORM declared length = 19 → parentEnd = 8 + 19 = 27.
             // After reading leaf data: position = 8 (FORM header) + 4 (sub-type) + 4 (TypeID) + 4 (Len) + 7 (data) = 27.
-            // position (27) >= parentEnd (27) → STRICT: throw Truncated. ✓
+            // position (27) >= parentEnd (27) → no pad to consume → parses as VALID (07-04a). ✓
 
             using (var ms = new MemoryStream())
             using (var bw = new BinaryWriter(ms, Encoding.ASCII, leaveOpen: true))
@@ -275,7 +275,8 @@ namespace UtinniCoreDotNet.Tests.FormatsTests.Iff
         /// <summary>
         /// Builds an outer FORM containing a nested FORM, where the nested FORM contains
         /// an odd-length leaf exactly at the nested FORM's parentEnd with NO pad byte.
-        /// Iter-3 MED-3: boundary is parentEnd of the PARENT (nested FORM), not file EOF.
+        /// 07-04a reversal: VALID no-pad file; the boundary (parentEnd of the nested FORM, not
+        /// file EOF) terminates the chunk — no pad is expected.
         /// </summary>
         public static byte[] BuildOddLengthLeafAtParentEndNoPad()
         {
@@ -292,7 +293,7 @@ namespace UtinniCoreDotNet.Tests.FormatsTests.Iff
             //   position = 8 (outer header) + 4 (outer sub-type) + 8 (inner header) + 4 (inner sub-type) + 8 (TEST header) + 5 (TEST data) = 37
             // inner FORM parentEnd = 8 (outer header) + 4 (outer sub-type) + 8 (inner header) + 17 (inner payload) = 37
             // Actually inner parentEnd = chunkStart_inner + 8 + length_inner = (8+4) + 8 + 17 = 37
-            // position (37) >= parentEnd_inner (37) → STRICT: throw Truncated. ✓
+            // position (37) >= parentEnd_inner (37) → no pad to consume → parses as VALID (07-04a). ✓
 
             using (var ms = new MemoryStream())
             using (var bw = new BinaryWriter(ms, Encoding.ASCII, leaveOpen: true))
@@ -311,7 +312,7 @@ namespace UtinniCoreDotNet.Tests.FormatsTests.Iff
                 WriteFourCc(bw, "TEST");
                 WriteInt32Be(bw, 5);
                 bw.Write(new byte[] { 0x01, 0x02, 0x03, 0x04, 0x05 });
-                // NO pad byte — position == inner parentEnd → Truncated
+                // NO pad byte — position == inner parentEnd → parses as VALID (07-04a no-pad)
 
                 return ms.ToArray();
             }

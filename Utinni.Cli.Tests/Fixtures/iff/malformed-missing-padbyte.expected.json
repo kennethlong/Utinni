@@ -1,8 +1,0 @@
-{
-  "command": "inspect-iff",
-  "error": {
-    "kind": "Truncated",
-    "message": "Odd-length chunk at parent boundary missing required pad byte. TypeID='TEST', Length=7, parentEnd=27."
-  },
-  "schemaVersion": 1
-}

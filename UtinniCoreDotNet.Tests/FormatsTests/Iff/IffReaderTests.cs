@@ -228,41 +228,50 @@ namespace UtinniCoreDotNet.Tests.FormatsTests.Iff
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // STRICT missing-pad-byte tests (REVIEWS MEDIUM-11 + iter-3 MED-3)
+        // Pad-tolerant odd-chunk tests (07-04a reversal of the REVIEWS MEDIUM-11 +
+        // iter-3 MED-3 STRICT rule). Real SWG datatables omit the EA-IFF-85 pad byte,
+        // so an odd-length chunk ending at the parent/stream boundary with no pad is VALID,
+        // not Truncated. See the memory note on SWG IFF no-padding.
         // ─────────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Test 6 (REVIEWS MEDIUM-11 — EOF case): Odd-length leaf at EOF with no pad byte.
-        /// parentEnd == stream.Length for outermost FORM. Must throw Truncated.
+        /// Test 6 (07-04a reversal — EOF case): Odd-length leaf at EOF with no pad byte
+        /// (parentEnd == stream.Length for the outermost FORM). Parses as VALID — the missing
+        /// trailing pad is not an error (real SWG IFF omits it).
         /// </summary>
         [Fact]
-        public void Read_OddLengthLeafAtEofMissingPad_ThrowsTruncated()
+        public void Read_OddLengthLeafAtEof_NoPad_ParsesAsValid()
         {
             byte[] bytes = IffReaderFixtures.BuildOddLengthLeafAtEofMissingPad();
             using (var ms = new MemoryStream(bytes))
             {
-                var ex = Record.Exception(() => IffReader.Read(ms));
-                var iffEx = Assert.IsType<IffParseException>(ex);
-                Assert.Equal(IffParseError.Truncated, iffEx.Kind);
-                Assert.Contains("Odd-length chunk at parent boundary missing required pad byte", iffEx.Message);
+                var doc = IffReader.Read(ms);
+                var root = Assert.IsType<IffContainerChunk>(doc.Root);
+                Assert.Equal("TEST", root.SubTypeId);
+                var leaf = Assert.IsType<IffLeafChunk>(Assert.Single(root.Children));
+                Assert.Equal("TEST", leaf.TypeId);
+                Assert.Equal(7, leaf.LengthBytes); // odd-length, no pad, at EOF
             }
         }
 
         /// <summary>
-        /// Test 6b (iter-3 MED-3 — nested parentEnd case): Odd-length leaf exactly at the
-        /// NESTED parent's end with no pad byte. parentEnd is the parent FORM's payload end,
-        /// not file EOF. Must throw Truncated.
+        /// Test 6b (07-04a reversal — nested parentEnd case): Odd-length leaf exactly at the
+        /// NESTED parent's end with no pad byte. Parses as VALID — the boundary, not a pad,
+        /// terminates the chunk.
         /// </summary>
         [Fact]
-        public void Read_OddLengthLeafAtParentEnd_NoPad_ThrowsTruncated()
+        public void Read_OddLengthLeafAtNestedParentEnd_NoPad_ParsesAsValid()
         {
             byte[] bytes = IffReaderFixtures.BuildOddLengthLeafAtParentEndNoPad();
             using (var ms = new MemoryStream(bytes))
             {
-                var ex = Record.Exception(() => IffReader.Read(ms));
-                var iffEx = Assert.IsType<IffParseException>(ex);
-                Assert.Equal(IffParseError.Truncated, iffEx.Kind);
-                Assert.Contains("Odd-length chunk at parent boundary missing required pad byte", iffEx.Message);
+                var doc = IffReader.Read(ms);
+                var outer = Assert.IsType<IffContainerChunk>(doc.Root);
+                var inner = Assert.IsType<IffContainerChunk>(Assert.Single(outer.Children));
+                Assert.Equal("INNR", inner.SubTypeId);
+                var leaf = Assert.IsType<IffLeafChunk>(Assert.Single(inner.Children));
+                Assert.Equal("TEST", leaf.TypeId);
+                Assert.Equal(5, leaf.LengthBytes); // odd-length, no pad, at nested boundary
             }
         }
 

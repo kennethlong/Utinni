@@ -45,9 +45,10 @@ namespace UtinniCoreDotNet.Formats.Iff
     ///         NOT applied to the top-level chunk (top-level FORM IS the file).</item>
     ///   <item>Streaming-read EOF — <c>BinaryReader.ReadBytes(n)</c> returns fewer than n bytes
     ///         → throws <see cref="IffParseError.Truncated"/>.</item>
-    ///   <item>Pad-byte at parentEnd missing — odd-length chunk at parent boundary with no
-    ///         pad byte → throws <see cref="IffParseError.Truncated"/>
-    ///         (REVIEWS MEDIUM-11 + iter-3 MED-3).</item>
+    ///   <item>Pad byte after an odd-length chunk — DETECTED, not assumed (07-04a real-asset
+    ///         reversal of the REVIEWS MEDIUM-11 STRICT rule): a trailing 0x00 is consumed as the
+    ///         EA-IFF-85 pad; a printable TypeID or the parent boundary means SWG wrote no pad
+    ///         (real datatables omit it). A missing pad is NO LONGER a Truncated error.</item>
     /// </list>
     ///
     /// <para><b>Container set (REVIEWS MEDIUM-14 — EA-IFF-85):</b>
@@ -303,33 +304,26 @@ namespace UtinniCoreDotNet.Formats.Iff
                     + ", Read=" + payload.Length + ".");
             }
 
-            // REVIEWS MEDIUM-11 + iter-3 MED-3 STRICT: pad-byte at parent boundary.
-            // If this chunk has odd length, a single 0x00 pad byte MUST precede the next chunk.
-            if (length % 2 == 1)
+            // Pad-byte handling (07-04a real-asset reversal of the REVIEWS MEDIUM-11 STRICT rule).
+            // EA-IFF-85 pads an odd-length chunk to an even boundary with a single 0x00 byte that is
+            // NOT counted in the chunk length. REAL SWG datatables, however, are written WITHOUT that
+            // pad — the next chunk's printable-ASCII TypeID (or the parent/stream boundary) follows
+            // immediately (see the memory note on SWG IFF no-padding). So DETECT the pad rather than
+            // assume it: consume a trailing byte only when it is actually 0x00. A non-0x00 byte is the
+            // next chunk's TypeID (leave it), and reaching the parent boundary means there is nothing
+            // to pad. This reads BOTH padded and unpadded SWG IFF correctly; genuine mid-payload
+            // truncation is still caught by the ReadBytes short-read check above.
+            if (length % 2 == 1 && br.BaseStream.Position < parentEnd)
             {
-                if (br.BaseStream.Position < parentEnd)
+                long beforePad = br.BaseStream.Position;
+                int next = br.BaseStream.ReadByte();
+                if (next != 0x00)
                 {
-                    // Pad byte should be present in parent range — consume it.
-                    try
-                    {
-                        br.ReadByte();
-                    }
-                    catch (EndOfStreamException)
-                    {
-                        // Unexpected EOF on the pad byte read itself.
-                        throw new IffParseException(IffParseError.Truncated,
-                            "Odd-length chunk at parent boundary missing required pad byte. TypeID='"
-                            + typeId + "', Length=" + length + ", parentEnd=" + parentEnd + ".");
-                    }
+                    // Not a pad byte (the next chunk's TypeID, or an unexpected EOF) — restore so the
+                    // next ReadChunk sees it.
+                    br.BaseStream.Position = beforePad;
                 }
-                else
-                {
-                    // STRICT: odd-length chunk at parent boundary (or EOF) with no pad byte.
-                    // REVIEWS MEDIUM-11 + iter-3 MED-3: throw Truncated.
-                    throw new IffParseException(IffParseError.Truncated,
-                        "Odd-length chunk at parent boundary missing required pad byte. TypeID='"
-                        + typeId + "', Length=" + length + ", parentEnd=" + parentEnd + ".");
-                }
+                // else: consumed the single 0x00 pad byte.
             }
 
             var leaf = new IffLeafChunk(typeId, length, thisId, chunkStart, payload);

@@ -1,0 +1,49 @@
+{
+  "command": "inspect-iff",
+  "result": {
+    "flat": {
+      "edges": [
+        {
+          "from": "FORM:TEST/0",
+          "to": "FORM:TEST/0/TEST:TEST/0"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "FORM:TEST/0",
+          "kind": "container",
+          "lengthBytes": 19,
+          "name": "FORM TEST",
+          "parentId": null,
+          "typeId": "FORM"
+        },
+        {
+          "id": "FORM:TEST/0/TEST:TEST/0",
+          "kind": "leaf",
+          "lengthBytes": 7,
+          "name": "TEST",
+          "parentId": "FORM:TEST/0",
+          "typeId": "TEST"
+        }
+      ]
+    },
+    "source": "<fixture-path>",
+    "tree": {
+      "children": [
+        {
+          "dataBase64": "AQIDBAUGBw==",
+          "id": "FORM:TEST/0/TEST:TEST/0",
+          "kind": "leaf",
+          "lengthBytes": 7,
+          "typeId": "TEST"
+        }
+      ],
+      "id": "FORM:TEST/0",
+      "kind": "container",
+      "lengthBytes": 19,
+      "subTypeId": "TEST",
+      "typeId": "FORM"
+    }
+  },
+  "schemaVersion": 1
+}
