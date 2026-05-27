@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Phase 07 COMPLETE (6/6) — TRE Browser read-only shipped; live smoke approved
-last_updated: "2026-05-27T19:17:02.460Z"
+stopped_at: Phase 8 context gathered
+last_updated: "2026-05-27T20:59:41.242Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 12
@@ -175,9 +175,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-05-27T19:17:02.446Z
-Stopped at: Phase 07 COMPLETE (6/6) — TRE Browser read-only shipped; live smoke approved
-Resume file: None
+Last session: 2026-05-27T20:59:41.170Z
+Stopped at: Phase 8 context gathered
+Resume file: .planning/phases/08-tjt-subpanel-iff-editor-read-write/08-CONTEXT.md
 
 ## Ingest Provenance
 
