@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Phase 8 context gathered
-last_updated: "2026-05-27T20:59:41.242Z"
+stopped_at: Phase 8 UI-SPEC approved
+last_updated: "2026-05-27T21:13:25.945Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 12
@@ -175,9 +175,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-05-27T20:59:41.170Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-tjt-subpanel-iff-editor-read-write/08-CONTEXT.md
+Last session: 2026-05-27T21:13:25.928Z
+Stopped at: Phase 8 UI-SPEC approved
+Resume file: .planning/phases/08-tjt-subpanel-iff-editor-read-write/08-UI-SPEC.md
 
 ## Ingest Provenance
 
