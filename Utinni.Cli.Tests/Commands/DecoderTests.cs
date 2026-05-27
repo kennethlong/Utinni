@@ -24,6 +24,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Newtonsoft.Json.Linq;
 using UtinniCoreDotNet.Formats.Decoders;
@@ -430,6 +431,27 @@ namespace Utinni.Cli.Tests.Commands
                 Assert.Equal("object/tangible/base.iff", r["baseTemplate"].Value<string>());
                 Assert.Equal("radius", r["fields"][1]["name"].Value<string>());
             });
+        }
+
+        // ── SUPPLEMENTAL env-gated real-asset test (review LOW / Codex fixture-confidence) ──
+
+        [Fact]
+        public void Decode_RealStf_FromLooseIffDir_DecodesEntriesWithText()
+        {
+            // SUPPLEMENT to the synthesized minimal-contract fixtures: when SWG_LOOSE_IFF_DIR points
+            // at a real serverdata-style tree, decode an actual .stf so the StringTableDecoder is
+            // exercised against the real on-disk layout. Skips cleanly (no-op) when the dir is unset,
+            // so CI passes on the synthesized fixtures alone.
+            if (!FixturePath.HasLooseIffDir()) return;
+
+            string stf = Directory
+                .EnumerateFiles(FixturePath.LooseIffDir(), "*.stf", SearchOption.AllDirectories)
+                .FirstOrDefault();
+            if (stf == null) return; // dir present but no .stf found — skip cleanly.
+
+            StfTable table = StringTableDecoder.Decode(File.ReadAllBytes(stf));
+            Assert.NotEmpty(table.Entries);
+            Assert.All(table.Entries, e => Assert.NotNull(e.Text));
         }
 
         // ── helper ──────────────────────────────────────────────────────────

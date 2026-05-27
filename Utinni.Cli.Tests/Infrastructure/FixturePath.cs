@@ -78,5 +78,28 @@ namespace Utinni.Cli.Tests.Infrastructure
             var dir = SampleTreDir();
             return dir != null && Directory.Exists(dir);
         }
+
+        /// <summary>
+        /// Resolves the optional real loose-IFF asset directory from the SWG_LOOSE_IFF_DIR
+        /// environment variable (e.g. a checkout's serverdata/ tree with real .stf / datatable
+        /// assets). Returns the raw value, or null when unset/blank.
+        ///
+        /// Like <see cref="SampleTreDir"/>, this is a SUPPLEMENT to the in-repo synthesized
+        /// minimal-contract decoder fixtures — it lets the per-type decoders be exercised against
+        /// real-loader layouts when present (review LOW / Codex fixture-confidence), while CI keeps
+        /// passing on the synthesized fixtures alone. Never throws on a missing path.
+        /// </summary>
+        public static string LooseIffDir()
+        {
+            var dir = Environment.GetEnvironmentVariable("SWG_LOOSE_IFF_DIR");
+            return string.IsNullOrWhiteSpace(dir) ? null : dir;
+        }
+
+        /// <summary>True when SWG_LOOSE_IFF_DIR resolves to a non-blank value AND the directory exists.</summary>
+        public static bool HasLooseIffDir()
+        {
+            var dir = LooseIffDir();
+            return dir != null && Directory.Exists(dir);
+        }
     }
 }
