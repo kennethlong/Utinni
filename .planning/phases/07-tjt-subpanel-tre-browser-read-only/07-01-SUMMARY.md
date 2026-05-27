@@ -69,7 +69,9 @@ completed: 2026-05-26
 
 # Phase 7 Plan 01: Version-Dispatching Zlib-Aware Lazy TRE Reader + Shared Facade Summary
 
-**Refactored the 0005/0006-only eager TRE reader into a version-dispatching (0004/0005/0006 + 5000-enumerate-empty + 6000), zlib-aware, lazy TOC-only enumerator; added the COT2000/SearchTOC master-index reader and the shared TreArchiveIndex + TrePayloadResolver.TryResolve facade that the CLI and browser both consume; migrated list-objects onto the shared IffReader path.**
+> **CORRECTION (07-02 live smoke, 2026-05-27):** this plan originally treated **5000 as enumerate-empty** (per planning assumption D-06b). That was WRONG — 5000 is the readable SWGEmu Pre-CU client format (crc-first 24-byte stride, zlib blocks). Corrected in commit `d75c701`: `IsCrcFirst(V5000)=true`, `IsEnumerateOnly(V5000)=false`, the synthetic-5000 fixture is now a valid readable archive, and the 5000 tests assert enumeration. See 07-02-SUMMARY + [[project-tre-version-support-gap]]. Read all "5000 enumerate-empty" statements below as superseded.
+
+**Refactored the 0005/0006-only eager TRE reader into a version-dispatching (0004/0005/0006 + 5000 + 6000), zlib-aware, lazy TOC-only enumerator; added the COT2000/SearchTOC master-index reader and the shared TreArchiveIndex + TrePayloadResolver.TryResolve facade that the CLI and browser both consume; migrated list-objects onto the shared IffReader path.**
 
 ## Performance
 - **Duration:** ~2h
