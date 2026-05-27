@@ -48,5 +48,35 @@ namespace Utinni.Cli.Tests.Infrastructure
                 "Fixture not found: " + candidate + " (BaseDirectory: " + AppContext.BaseDirectory + ")",
                 candidate);
         }
+
+        /// <summary>
+        /// Resolves the optional real-archive sample directory from the SWG_SAMPLE_TRE_DIR
+        /// environment variable. Returns the raw env value, or null when the variable is
+        /// unset or blank.
+        ///
+        /// This env gate is a SUPPLEMENT to the in-repo synthetic fixtures emitted by
+        /// TreFixtureBuilder — it is NOT a replacement for CI coverage. The large real
+        /// COT2000/v6000 goldens (e.g. the 213,086-path SwgRestoration set) live outside the
+        /// repo, so the tests that consume them Skip cleanly when SWG_SAMPLE_TRE_DIR is absent,
+        /// while the synthetic v6000/COT2000/5000/0004 fixtures keep the real-archive code
+        /// paths exercised on every CI run. Never throws on a missing/garbage path — callers
+        /// decide whether to Skip.
+        /// </summary>
+        public static string SampleTreDir()
+        {
+            var dir = Environment.GetEnvironmentVariable("SWG_SAMPLE_TRE_DIR");
+            return string.IsNullOrWhiteSpace(dir) ? null : dir;
+        }
+
+        /// <summary>
+        /// True when SWG_SAMPLE_TRE_DIR resolves to a non-blank value AND the directory exists
+        /// on disk. Env-gated tests use this to Skip rather than fail when the sample set is
+        /// not present on the current machine.
+        /// </summary>
+        public static bool HasSampleTreDir()
+        {
+            var dir = SampleTreDir();
+            return dir != null && Directory.Exists(dir);
+        }
     }
 }
