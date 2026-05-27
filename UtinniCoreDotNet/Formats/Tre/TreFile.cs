@@ -186,17 +186,11 @@ namespace UtinniCoreDotNet.Formats.Tre
                     NameSize           = nameSize
                 };
 
-                // ── 5000: recognized tag, NO verified layout (D-06b, review consensus #1) ──
-                // Enumerate-empty: never parse the record region, never assert a layout, never
-                // route through the V6000 crc-first stride. A non-6000-layout 5000 file MUST
-                // enumerate empty and never throw.
-                // TODO(5000-fixture): no record layout — enumerate-empty until a real 5000
-                // fixture/spec exists, then implement its true record decode here.
-                if (version == TreVersion.V5000)
-                {
-                    return new TreFile(header, new List<TreRecord>(0).AsReadOnly(), sourcePath);
-                }
-
+                // V5000 is the readable SWGEmu Pre-CU format (size-first header + 24-byte stride,
+                // zlib-compressed TOC/name blocks) — verified against the live client. It flows
+                // through the same size-first parse as 0004/0005/0006 below; the zlib-aware
+                // ReadBlock handles its compressor=2 blocks. (Corrects the prior enumerate-empty
+                // assumption.)
                 int recordStride = TreVersions.RecordStride(version);
 
                 // ── Checked arithmetic guards (review consensus #4 — division/subtraction form) ──
@@ -276,15 +270,19 @@ namespace UtinniCoreDotNet.Formats.Tre
 
                         if (crcFirst)
                         {
-                            // V6000 crc-first 32-byte stride: crc, length, offset, compressor,
-                            // compressedLength, fileNameOffset, + 8 pad.
+                            // crc-first field order: crc, length, offset, compressor,
+                            // compressedLength, fileNameOffset. V5000 is 24-byte (no pad); V6000 is
+                            // 32-byte (+8 pad).
                             checksum         = infoBr.ReadInt32();   // crc
                             uncompressedSize = infoBr.ReadInt32();   // length
                             offset           = infoBr.ReadInt32();
                             compressor       = infoBr.ReadInt32();
                             compressedSize   = infoBr.ReadInt32();   // compressedLength
                             nameOffset       = infoBr.ReadInt32();   // fileNameOffset
-                            infoBr.ReadInt32(); infoBr.ReadInt32();  // 8 bytes pad
+                            if (recordStride == 32)
+                            {
+                                infoBr.ReadInt32(); infoBr.ReadInt32();  // V6000 8-byte pad
+                            }
                         }
                         else
                         {

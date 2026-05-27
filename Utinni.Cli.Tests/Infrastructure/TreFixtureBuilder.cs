@@ -192,25 +192,58 @@ namespace Utinni.Cli.Tests.Infrastructure
         }
 
         /// <summary>
-        /// Synthetic 5000 header whose record region is DELIBERATELY not a coherent 32-byte
-        /// crc-first 6000 TOC (a short garbage region) — so 07-01's "5000 recognized,
-        /// enumerate-empty, no throw" contract is provable against a real, non-6000 artifact.
+        /// Synthetic 5000 archive — the READABLE SWGEmu Pre-CU format (verified against the live
+        /// client): size-first-style header (EERT + "5000" + recordCount/infoOffset/infoCompression/
+        /// infoCompressedSize/nameCompression/nameCompressedSize/nameSize) with a CRC-FIRST 24-byte
+        /// record stride (= 6000's field order WITHOUT the 8-byte pad) and zlib-compressed TOC/name
+        /// blocks. Physical layout mirrors the real files: [header][payloads][zlib TOC][zlib names].
         /// </summary>
         public static void WriteSynthetic5000(string path)
         {
+            byte[] payload0 = Ascii("v5000-payload-alpha");
+            byte[] payload1 = Ascii("v5000-payload-beta!!");
+            string[] names = { "texture/alpha.dds", "appearance/beta.msh" };
+            byte[] nameRaw = NameBlock(names, out int[] nameOffsets);
+
+            const int headerSize = 36;
+            int offset0 = headerSize;
+            int offset1 = offset0 + payload0.Length;
+            byte[] payloadRegion = Concat(payload0, payload1);
+
+            // crc-first 24-byte TOC (NO 8-byte pad): crc, length, offset, compressor, compressedLength, fileNameOffset.
+            var tocMs = new MemoryStream();
+            WriteCrcFirst24(tocMs, 0x5A5A0001, payload0.Length, offset0, 0, payload0.Length, nameOffsets[0]);
+            WriteCrcFirst24(tocMs, 0x5A5A0002, payload1.Length, offset1, 0, payload1.Length, nameOffsets[1]);
+            byte[] tocRaw = tocMs.ToArray(); // 48 bytes = 2 * 24
+            byte[] tocZlib = ZlibFrame(tocRaw);
+            byte[] nameZlib = ZlibFrame(nameRaw);
+
+            int tocOffset = headerSize + payloadRegion.Length;
+
             var ms = new MemoryStream();
             ms.Write(Ascii("EERT"), 0, 4);
             ms.Write(Ascii("5000"), 0, 4);
-            WriteU32(ms, 2);   // numFiles claims 2 ...
-            WriteU32(ms, 36);  // tocOffset
-            WriteU32(ms, 2);   // tocCompressor
-            WriteU32(ms, 10);  // sizeOfTOC (too small to be 2*32 — deliberately incoherent)
-            WriteU32(ms, 2);   // blockCompressor
-            WriteU32(ms, 0);   // sizeOfNameBlock
-            WriteU32(ms, 0);   // uncompSizeOfNameBlock
-            // ... but only 10 bytes of garbage follow — NOT a valid 64-byte crc-first TOC.
-            for (int i = 0; i < 10; i++) ms.WriteByte(0xCC);
+            WriteU32(ms, 2);                     // recordCount
+            WriteU32(ms, (uint)tocOffset);       // infoOffset (TOC after payloads)
+            WriteU32(ms, 2);                     // infoCompression = zlib
+            WriteU32(ms, (uint)tocZlib.Length);  // infoCompressedSize
+            WriteU32(ms, 2);                     // nameCompression = zlib
+            WriteU32(ms, (uint)nameZlib.Length); // nameCompressedSize
+            WriteU32(ms, (uint)nameRaw.Length);  // nameSize
+            ms.Write(payloadRegion, 0, payloadRegion.Length);
+            ms.Write(tocZlib, 0, tocZlib.Length);
+            ms.Write(nameZlib, 0, nameZlib.Length);
             WriteBytes(path, ms.ToArray());
+        }
+
+        private static void WriteCrcFirst24(MemoryStream s, uint crc, int length, int offset, int compressor, int compressedLength, int fileNameOffset)
+        {
+            WriteU32(s, crc);
+            WriteI32(s, length);
+            WriteI32(s, offset);
+            WriteI32(s, compressor);
+            WriteI32(s, compressedLength);
+            WriteI32(s, fileNameOffset);
         }
 
         /// <summary>

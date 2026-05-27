@@ -40,7 +40,7 @@ namespace UtinniCoreDotNet.Formats.Tre
         V0005,
         /// <summary>SWGEmu Pre-CU 0006. Size-first 24-byte stride (fixture-validated).</summary>
         V0006,
-        /// <summary>Restoration 5000. Recognized tag only — NO verified record layout (D-06b). Enumerate-empty; never routed through the V6000 stride.</summary>
+        /// <summary>SWGEmu Pre-CU 5000. Size-first 24-byte stride, zlib-compressed TOC/name blocks; READABLE — verified against the live SWGEmu client's 'EERT5000' .tre (corrects the planning assumption that 5000 was an unknown/encrypted layout).</summary>
         V5000,
         /// <summary>Restoration 6000. Crc-first 32-byte stride, zlib-framed TOC/name blocks; payloads encrypted (enumerate-only, D-07).</summary>
         V6000
@@ -78,22 +78,30 @@ namespace UtinniCoreDotNet.Formats.Tre
         /// </summary>
         public static bool IsEnumerateOnly(TreVersion v)
         {
-            return v == TreVersion.V5000 || v == TreVersion.V6000;
+            // Only V6000 (Restoration, encrypted payloads) is enumerate-only. V5000 turned out to be
+            // the readable SWGEmu Pre-CU client format (size-first header, zlib-compressed TOC/name
+            // blocks) — verified against the live client's 53 'EERT5000' .tre. It is NOT an unknown/
+            // encrypted layout (corrects the Phase-7 planning assumption D-06b).
+            return v == TreVersion.V6000;
         }
 
         /// <summary>
-        /// On-disk record info stride in bytes: 24 (size-first) for V0004/V0005/V0006,
-        /// 32 (crc-first + 8 pad) for V6000. V5000 has no record layout (enumerate-empty).
+        /// On-disk record info stride in bytes: 24 (size-first) for V0004/V0005/V0006/V5000,
+        /// 32 (crc-first + 8 pad) for V6000.
         /// </summary>
         public static int RecordStride(TreVersion v)
         {
             return v == TreVersion.V6000 ? 32 : 24;
         }
 
-        /// <summary>True for the crc-first 32-byte record layout (V6000); false for the size-first family.</summary>
+        /// <summary>
+        /// True for the crc-first record field order (crc, length, offset, compressor,
+        /// compressedLength, fileNameOffset): V5000 (24-byte stride, no pad) and V6000 (32-byte
+        /// stride, +8 pad). False for the size-first family (V0004/V0005/V0006).
+        /// </summary>
         public static bool IsCrcFirst(TreVersion v)
         {
-            return v == TreVersion.V6000;
+            return v == TreVersion.V6000 || v == TreVersion.V5000;
         }
     }
 }

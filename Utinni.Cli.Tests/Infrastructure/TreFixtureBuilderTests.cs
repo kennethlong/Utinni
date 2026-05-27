@@ -129,17 +129,16 @@ namespace Utinni.Cli.Tests.Infrastructure
         }
 
         [Fact]
-        public void Synthetic5000_RecordRegionIsNotValid6000Toc_AndMatchesCommitted()
+        public void Synthetic5000_IsReadableCrcFirst24Zlib_AndMatchesCommitted()
         {
+            // 5000 is the READABLE SWGEmu Pre-CU format (verified against the live client):
+            // size-first-style header + crc-first 24-byte records + zlib-compressed blocks.
             byte[] emitted = AssertCommittedMatches("synthetic-5000-header.tre", TreFixtureBuilder.WriteSynthetic5000);
 
             Assert.Equal("EERT5000", Encoding.ASCII.GetString(Take(emitted, 0, 8)));
-            int numFiles = (int)ReadU32(emitted, 8);
-            int regionLen = emitted.Length - 36;
-            // The record region is deliberately too short to be numFiles * 32-byte crc-first TOC.
-            Assert.True(regionLen < numFiles * 32,
-                "5000 fixture record region must NOT be a coherent 32-byte crc-first 6000 TOC");
-            Assert.NotEqual(0, regionLen % 32); // not a clean multiple of the 6000 stride either
+            Assert.Equal(2u, ReadU32(emitted, 8));   // recordCount
+            Assert.Equal(2u, ReadU32(emitted, 16));  // infoCompression = zlib
+            Assert.Equal(2u, ReadU32(emitted, 24));  // nameCompression = zlib
         }
 
         [Fact]

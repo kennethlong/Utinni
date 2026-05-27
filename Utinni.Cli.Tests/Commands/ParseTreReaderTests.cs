@@ -55,7 +55,7 @@ namespace Utinni.Cli.Tests.Commands
             var treEx = Assert.IsType<TreParseException>(ex);
             Assert.Equal(TreParseError.UnsupportedVersion, treEx.Kind);
 
-            Assert.True(TreVersions.IsEnumerateOnly(TreVersion.V5000));
+            Assert.False(TreVersions.IsEnumerateOnly(TreVersion.V5000)); // readable SWGEmu Pre-CU
             Assert.True(TreVersions.IsEnumerateOnly(TreVersion.V6000));
             Assert.False(TreVersions.IsEnumerateOnly(TreVersion.V0005));
         }
@@ -106,13 +106,17 @@ namespace Utinni.Cli.Tests.Commands
         // ── 5000 enumerate-empty / no throw (review consensus #1) ───────────
 
         [Fact]
-        public void ParseTre_V5000_EnumerateEmpty_NoThrow()
+        public void ParseTre_V5000_EnumeratesRecords_CrcFirst24()
         {
-            TreFile tre = TreFile.Open(Fx("synthetic-5000-header.tre")); // must NOT throw
+            // 5000 is the readable SWGEmu Pre-CU format (crc-first 24-byte stride, zlib blocks) —
+            // verified against the live client. It enumerates records; NOT enumerate-only.
+            TreFile tre = TreFile.Open(Fx("synthetic-5000-header.tre"));
             Assert.Equal("5000", tre.Header.VersionTag);
             Assert.Equal(TreVersion.V5000, tre.Header.Version);
-            Assert.True(tre.Header.EnumerateOnly);
-            Assert.Empty(tre.Records); // never routed through the v6000 stride
+            Assert.False(tre.Header.EnumerateOnly);
+            Assert.Equal(2, tre.Records.Count);
+            Assert.Equal("texture/alpha.dds", tre.Records[0].Name);
+            Assert.Equal("appearance/beta.msh", tre.Records[1].Name);
         }
 
         // ── Malformed inputs raise documented kinds (not OOM) ───────────────
