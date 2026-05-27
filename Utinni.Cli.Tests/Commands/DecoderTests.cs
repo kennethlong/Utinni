@@ -24,6 +24,7 @@
 
 using System;
 using System.IO;
+using System.Text;
 using Newtonsoft.Json.Linq;
 using UtinniCoreDotNet.Formats.Decoders;
 using UtinniCoreDotNet.Formats.Iff;
@@ -77,6 +78,59 @@ namespace Utinni.Cli.Tests.Commands
         }
 
         private static IffDocument Parse(byte[] iff) => IffReader.Read(new MemoryStream(iff));
+
+        // ── StringTable (.stf) fixture synthesis — raw magic+version binary, NOT IFF ──
+
+        /// <summary>
+        /// A 2-entry v1 .stf: id 1 = "café" (name "welcome") and id 2 = "hello" (name "greeting").
+        /// The accented 'é' exercises the UTF-16LE round-trip. MINIMAL CONTRACT (smoke) fixture.
+        /// </summary>
+        private static byte[] BuildStf()
+        {
+            using (var ms = new MemoryStream())
+            {
+                void U32(int v) { var b = IffBuilder.Int32Le(v); ms.Write(b, 0, b.Length); }
+                void Utf16(string s) { var b = Encoding.Unicode.GetBytes(s); ms.Write(b, 0, b.Length); }
+                void Ascii(string s) { var b = Encoding.ASCII.GetBytes(s); ms.Write(b, 0, b.Length); }
+
+                U32(0xABCD);          // magic (little-endian: CD AB 00 00)
+                ms.WriteByte(1);      // version
+                U32(99);              // nextUniqueId (ignored)
+                U32(2);               // entry count
+
+                // string table: id, crc, charCount, UTF-16LE text
+                U32(1); U32(0); U32("café".Length); Utf16("café");
+                U32(2); U32(0); U32("hello".Length); Utf16("hello");
+
+                // name table: id, nameLen, ASCII name
+                U32(1); U32("welcome".Length); Ascii("welcome");
+                U32(2); U32("greeting".Length); Ascii("greeting");
+
+                return ms.ToArray();
+            }
+        }
+
+        // ── ObjectTemplate fixture synthesis (FORM type -> DERV -> FORM version -> count + params) ──
+
+        /// <summary>
+        /// A FORM SBMK object template deriving from "object/tangible/base.iff" with two local params:
+        /// radius (float 1.0) and numberOfPoles (int 4). MINIMAL CONTRACT (smoke) fixture.
+        /// </summary>
+        private static byte[] BuildObjectTemplate(bool withBase)
+        {
+            byte[] versionForm = IffBuilder.Form("0000",
+                IffBuilder.Leaf("PCNT", IffBuilder.Int32Le(2)),
+                IffBuilder.Leaf("PARM", IffBuilder.Concat(IffBuilder.CString("radius"), IffBuilder.FloatLe(1.0f))),
+                IffBuilder.Leaf("PARM", IffBuilder.Concat(IffBuilder.CString("numberOfPoles"), IffBuilder.Int32Le(4))));
+
+            if (withBase)
+            {
+                byte[] derv = IffBuilder.Form("DERV",
+                    IffBuilder.Leaf("NAME", IffBuilder.CString("object/tangible/base.iff")));
+                return IffBuilder.Form("SBMK", derv, versionForm);
+            }
+            return IffBuilder.Form("SBMK", versionForm);
+        }
 
         // ── Decoder unit tests ─────────────────────────────────────────────────
 
@@ -243,12 +297,147 @@ namespace Utinni.Cli.Tests.Commands
             });
         }
 
+        // ── StringTable decoder tests ──────────────────────────────────────────
+
+        [Fact]
+        public void Decode_Stf_ReadsIdNameTextEntries_AndNonAsciiRoundTrips()
+        {
+            StfTable stf = StringTableDecoder.Decode(BuildStf());
+
+            Assert.Equal(1, stf.Version);
+            Assert.Equal(2, stf.Entries.Count);
+
+            StfEntry first = stf.Entries[0];
+            Assert.Equal(1u, first.Id);
+            Assert.Equal("welcome", first.Name);
+            Assert.Equal("café", first.Text); // non-ASCII round-trips via UTF-16LE, not mangled to ASCII
+
+            StfEntry second = stf.Entries[1];
+            Assert.Equal(2u, second.Id);
+            Assert.Equal("greeting", second.Name);
+            Assert.Equal("hello", second.Text);
+        }
+
+        [Fact]
+        public void Decode_Stf_ForgedCount_ThrowsDecoderExceptionNotOom()
+        {
+            using (var ms = new MemoryStream())
+            {
+                void U32(int v) { var b = IffBuilder.Int32Le(v); ms.Write(b, 0, b.Length); }
+                U32(0xABCD);              // magic
+                ms.WriteByte(1);          // version
+                U32(0);                   // nextUniqueId
+                U32(int.MaxValue);        // forged entry count, no entry data follows
+                var ex = Assert.Throws<DecoderException>(() => StringTableDecoder.Decode(ms.ToArray()));
+                Assert.Equal(DecoderError.CountExceedsCap, ex.Kind);
+            }
+        }
+
+        [Fact]
+        public void Decode_Stf_BadMagic_ThrowsUnexpectedForm()
+        {
+            byte[] notStf = { 0x00, 0x11, 0x22, 0x33, 0x01, 0x00, 0x00, 0x00, 0x00 };
+            var ex = Assert.Throws<DecoderException>(() => StringTableDecoder.Decode(notStf));
+            Assert.Equal(DecoderError.UnexpectedForm, ex.Kind);
+        }
+
+        // ── ObjectTemplate decoder tests (bounded posture) ─────────────────────
+
+        [Fact]
+        public void Decode_ObjectTemplate_ReadsDeclaredBaseAndLocalFields()
+        {
+            ObjectTemplateView ot = ObjectTemplateDecoder.Decode(Parse(BuildObjectTemplate(withBase: true)));
+
+            Assert.Equal("SBMK", ot.RootType);
+            Assert.Equal("object/tangible/base.iff", ot.BaseTemplate);
+            Assert.Equal("0000", ot.Version);
+
+            // Fields = the @base reference row + the two LOCAL params. No inherited fields are
+            // materialized from another document (bounded posture): exactly 3 rows, not the base's.
+            Assert.Equal(3, ot.Fields.Count);
+
+            ObjectTemplateField baseRow = ot.Fields[0];
+            Assert.Equal("@base", baseRow.Name);
+            Assert.Equal("object/tangible/base.iff", baseRow.Value);
+            Assert.Equal("object/tangible/base.iff", baseRow.InheritedFrom); // base-name, NOT "local"
+
+            ObjectTemplateField radius = ot.Fields[1];
+            Assert.Equal("radius", radius.Name);
+            Assert.Equal("local", radius.InheritedFrom);
+            Assert.Equal("0000803f", radius.Value); // float 1.0f raw bytes, little-endian
+
+            ObjectTemplateField poles = ot.Fields[2];
+            Assert.Equal("numberOfPoles", poles.Name);
+            Assert.Equal("local", poles.InheritedFrom);
+            Assert.Equal("04000000", poles.Value);
+        }
+
+        [Fact]
+        public void Decode_ObjectTemplate_NoBase_DecodesLocalFieldsOnlyWithoutThrow()
+        {
+            ObjectTemplateView ot = ObjectTemplateDecoder.Decode(Parse(BuildObjectTemplate(withBase: false)));
+
+            Assert.Null(ot.BaseTemplate);
+            Assert.Equal(2, ot.Fields.Count); // only the two local params, no @base row
+            Assert.All(ot.Fields, f => Assert.Equal("local", f.InheritedFrom));
+        }
+
+        [Fact]
+        public void Decode_ObjectTemplate_ForgedParamCount_ThrowsDecoderExceptionNotOom()
+        {
+            // version form claims int.MaxValue params but supplies only one -> CountExceedsCap.
+            byte[] versionForm = IffBuilder.Form("0000",
+                IffBuilder.Leaf("PCNT", IffBuilder.Int32Le(int.MaxValue)),
+                IffBuilder.Leaf("PARM", IffBuilder.Concat(IffBuilder.CString("x"), IffBuilder.Int32Le(1))));
+            byte[] iff = IffBuilder.Form("SBMK", versionForm);
+
+            var ex = Assert.Throws<DecoderException>(() => ObjectTemplateDecoder.Decode(Parse(iff)));
+            Assert.Equal(DecoderError.CountExceedsCap, ex.Kind);
+        }
+
+        // ── decode-iff dispatch tests for STF + object template ────────────────
+
+        [Fact]
+        public void DecodeIff_Stf_EmitsStringtableEnvelope()
+        {
+            WithTempIff(BuildStf(), path =>
+            {
+                var result = InProcessCliRunner.Run("decode-iff", path);
+                Assert.Equal(0, result.ExitCode);
+
+                var root = JToken.Parse(result.Stdout);
+                Assert.Equal("decode-iff", root["command"].Value<string>());
+                JToken r = root["result"];
+                Assert.Equal("stringtable", r["type"].Value<string>());
+                Assert.Equal(2, r["entryCount"].Value<int>());
+                Assert.Equal("café", r["entries"][0]["text"].Value<string>());
+                Assert.Equal("welcome", r["entries"][0]["name"].Value<string>());
+            }, ".stf");
+        }
+
+        [Fact]
+        public void DecodeIff_ObjectTemplate_EmitsObjecttemplateEnvelope()
+        {
+            WithTempIff(BuildObjectTemplate(withBase: true), path =>
+            {
+                var result = InProcessCliRunner.Run("decode-iff", path);
+                Assert.Equal(0, result.ExitCode);
+
+                var root = JToken.Parse(result.Stdout);
+                JToken r = root["result"];
+                Assert.Equal("objecttemplate", r["type"].Value<string>());
+                Assert.Equal("SBMK", r["rootType"].Value<string>());
+                Assert.Equal("object/tangible/base.iff", r["baseTemplate"].Value<string>());
+                Assert.Equal("radius", r["fields"][1]["name"].Value<string>());
+            });
+        }
+
         // ── helper ──────────────────────────────────────────────────────────
 
-        private static void WithTempIff(byte[] bytes, Action<string> body)
+        private static void WithTempIff(byte[] bytes, Action<string> body, string extension = ".iff")
         {
             string path = Path.Combine(Path.GetTempPath(),
-                "utinni-decode-" + Guid.NewGuid().ToString("N") + ".iff");
+                "utinni-decode-" + Guid.NewGuid().ToString("N") + extension);
             File.WriteAllBytes(path, bytes);
             try
             {

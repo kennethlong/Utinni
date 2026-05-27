@@ -77,6 +77,8 @@
     <Compile Include="Formats\Decoders\DecoderException.cs" />
     <Compile Include="Formats\Decoders\IffPayloadCursor.cs" />
     <Compile Include="Formats\Decoders\DataTableDecoder.cs" />
+    <Compile Include="Formats\Decoders\StringTableDecoder.cs" />
+    <Compile Include="Formats\Decoders\ObjectTemplateDecoder.cs" />
     <Compile Include="Callbacks\CuiCallbacks.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>

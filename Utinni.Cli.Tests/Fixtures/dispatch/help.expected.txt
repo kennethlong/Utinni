@@ -8,6 +8,9 @@ Copyright (c) 2005 - 2020 Giacomo Stelluti Scala & Contributors
 
   inspect-iff        Emit the chunk tree of an IFF file as JSON.
 
+  decode-iff         Decode a typed IFF asset (datatable / string-table /
+                     object-template) to JSON.
+
   validate-plugin    Reflect on a plugin directory and report compliance.
                      WARNING: Loads each .dll under the given directory; only
                      run against trusted plugin directories. PluginLoader

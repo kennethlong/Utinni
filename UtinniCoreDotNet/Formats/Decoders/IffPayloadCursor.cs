@@ -33,11 +33,13 @@ using System.Text;
 namespace UtinniCoreDotNet.Formats.Decoders
 {
     /// <summary>
-    /// A forward-only, bounds-checked reader over an <see cref="Formats.Iff.IffLeafChunk"/> payload.
-    /// All multi-byte scalars are read LITTLE-endian (Pitfall 6); a read that would run past the end
-    /// of the payload throws <see cref="DecoderException"/> with <see cref="DecoderError.Truncated"/>
-    /// rather than reading out of bounds. The cursor never allocates based on attacker-controlled
-    /// counts — callers bound counts with the division-form guard before looping reads.
+    /// A forward-only, bounds-checked reader over a byte buffer — an
+    /// <see cref="Formats.Iff.IffLeafChunk"/> payload (datatable/object-template) or a whole raw
+    /// asset (the .stf string table, which is not IFF-wrapped). All multi-byte scalars are read
+    /// LITTLE-endian (Pitfall 6); a read that would run past the end of the buffer throws
+    /// <see cref="DecoderException"/> with <see cref="DecoderError.Truncated"/> rather than reading
+    /// out of bounds. The cursor never allocates based on attacker-controlled counts — callers bound
+    /// counts with the division-form guard before looping reads.
     /// </summary>
     internal sealed class IffPayloadCursor
     {
@@ -66,6 +68,32 @@ namespace UtinniCoreDotNet.Formats.Decoders
                   | (_data[_pos + 3] << 24);
             _pos += 4;
             return v;
+        }
+
+        /// <summary>
+        /// Reads a 32-bit little-endian UNSIGNED integer as a <see cref="long"/> (0 .. 4294967295),
+        /// advancing 4 bytes. Used for the .stf id/count fields, which are <c>unsigned long</c> on
+        /// disk — returning a long keeps bound arithmetic safe from int overflow.
+        /// </summary>
+        public long ReadUInt32Le()
+        {
+            Need(4);
+            long v = (long)((uint)_data[_pos]
+                  | ((uint)_data[_pos + 1] << 8)
+                  | ((uint)_data[_pos + 2] << 16)
+                  | ((uint)_data[_pos + 3] << 24));
+            _pos += 4;
+            return v;
+        }
+
+        /// <summary>Reads <paramref name="count"/> raw bytes, advancing past them.</summary>
+        public byte[] ReadBytes(int count)
+        {
+            Need(count);
+            byte[] result = new byte[count];
+            System.Array.Copy(_data, _pos, result, 0, count);
+            _pos += count;
+            return result;
         }
 
         /// <summary>Reads a 32-bit little-endian IEEE-754 float, advancing 4 bytes.</summary>

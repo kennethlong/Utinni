@@ -62,7 +62,17 @@ namespace Utinni.Cli.Commands
 
             try
             {
-                var doc = IffReader.Read(o.Path);
+                byte[] bytes = File.ReadAllBytes(o.Path);
+
+                // A .stf string table is NOT IFF-wrapped — it is a raw magic+version binary. Sniff the
+                // leading magic and decode the raw bytes before handing anything to the IFF parser.
+                if (StringTableDecoder.LooksLikeStf(bytes))
+                {
+                    return JsonOutput.EmitSuccess("decode-iff",
+                        BuildStringTableResult(StringTableDecoder.Decode(bytes), o.Path));
+                }
+
+                var doc = IffReader.Read(new MemoryStream(bytes));
                 object result;
                 if (!TryDecode(doc, o.Path, out result, out string unsupportedTag))
                 {
@@ -104,6 +114,12 @@ namespace Utinni.Cli.Commands
                 return true;
             }
 
+            if (ObjectTemplateDecoder.LooksLikeObjectTemplate(doc.Root))
+            {
+                result = BuildObjectTemplateResult(ObjectTemplateDecoder.Decode(doc), sourcePath);
+                return true;
+            }
+
             unsupportedTag = DescribeRoot(doc.Root);
             return false;
         }
@@ -120,6 +136,35 @@ namespace Utinni.Cli.Commands
                 source = sourcePath,
                 type = "datatable",
                 version = dt.Version
+            };
+        }
+
+        private static object BuildStringTableResult(StfTable stf, string sourcePath)
+        {
+            return new
+            {
+                entries = stf.Entries
+                    .Select(e => new { id = e.Id, name = e.Name, text = e.Text })
+                    .ToList(),
+                entryCount = stf.Entries.Count,
+                source = sourcePath,
+                type = "stringtable",
+                version = stf.Version
+            };
+        }
+
+        private static object BuildObjectTemplateResult(ObjectTemplateView ot, string sourcePath)
+        {
+            return new
+            {
+                baseTemplate = ot.BaseTemplate,
+                fields = ot.Fields
+                    .Select(f => new { inheritedFrom = f.InheritedFrom, name = f.Name, value = f.Value })
+                    .ToList(),
+                rootType = ot.RootType,
+                source = sourcePath,
+                type = "objecttemplate",
+                version = ot.Version
             };
         }
 
