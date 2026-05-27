@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 7 UI-SPEC approved
-last_updated: "2026-05-26T22:47:54.295Z"
-last_activity: 2026-05-26 -- Phase 07 planning complete
+last_updated: "2026-05-27T00:32:01.657Z"
+last_activity: 2026-05-27
 progress:
   total_phases: 12
   completed_phases: 7
   total_plans: 30
-  completed_plans: 25
-  percent: 58
+  completed_plans: 26
+  percent: 87
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 06 — cleanups-dep-bumps-open-questions-tier-4-doc-1-0-cut
+**Current focus:** Phase 07 — tjt-subpanel-tre-browser-read-only
 
 ## Current Position
 
-Phase: 7
-Plan: Not started
+Phase: 07 (tjt-subpanel-tre-browser-read-only) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-05-26 -- Phase 07 planning complete
+Last activity: 2026-05-27
 Next action: `/gsd-execute-phase 6` (runs the last plan, 06-06 — TEST-04 Tier-4 doc + WiX MSI installer + release.yml + v1.0.0-rc.1 tag). Phase-level verification is deferred until 06-06 lands.
 
-Progress: Phase 6 plans [█████████░] 5/6 · milestone phases 6/12
+Progress: [█████████░] 87%
 
 ## Wave 2 Summary
 
@@ -95,6 +95,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 - Trend: (no data)
 
 *Updated after each plan completion*
+| Phase 07 P00 | 25 min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
