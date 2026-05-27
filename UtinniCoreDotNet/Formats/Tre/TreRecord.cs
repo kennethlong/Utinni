@@ -62,6 +62,13 @@ namespace UtinniCoreDotNet.Formats.Tre
         public int Checksum { get; internal set; }
 
         /// <summary>
+        /// Phase 7 (07-01): raw compressor value from the info struct (0=none, 1=raw-deflate,
+        /// 2=zlib). Internal — drives the on-demand inflate path in GetRecordData; not exposed in
+        /// the JSON contract (which carries the derived <see cref="CompressionKind"/> string).
+        /// </summary>
+        internal int Compressor { get; set; }
+
+        /// <summary>
         /// Byte offset into the names block where this record's null-terminated
         /// filename begins. Used internally during parsing; not exposed in JSON.
         /// </summary>

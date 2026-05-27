@@ -80,7 +80,7 @@ namespace Utinni.Cli.Commands
                 source = sourcePath,
                 header = new
                 {
-                    version            = tre.Header.Version,
+                    version            = tre.Header.VersionTag,   // raw 4-char on-disk tag (LOCKED JSON contract)
                     recordCount        = tre.Header.RecordCount,            // REVIEWS HIGH-7: NOT resourceCount
                     infoOffset         = tre.Header.InfoOffset,
                     infoCompression    = tre.Header.InfoCompression,

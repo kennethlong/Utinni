@@ -2,7 +2,7 @@
   "command": "parse-tre",
   "error": {
     "kind": "UnsupportedVersion",
-    "message": "Unsupported TRE version '0009'. Phase 4 supports 0005 and 0006 only."
+    "message": "Unsupported TRE version '0009'. Supported: 0004, 0005, 0006, 5000, 6000."
   },
   "schemaVersion": 1
 }

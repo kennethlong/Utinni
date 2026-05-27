@@ -37,7 +37,17 @@ namespace UtinniCoreDotNet.Formats.Tre
         Truncated,
         NegativeLength,
         ChunkLengthExceedsCap,
-        DeflateExpansionExceedsCap
+        DeflateExpansionExceedsCap,
+
+        // Phase 7 (07-01): a TOC entry / block declares a compressor value that is neither
+        // none(0), raw-deflate(1), nor zlib(2).
+        UnknownCompressor,
+
+        // Phase 7 (07-01): a block declared as zlib (compressor 2) has an invalid RFC1950
+        // frame — bad 2-byte header (%31 != 0), too short to hold header+trailer, or an
+        // inflate-side short read / DeflateStream error on the body. Detection is inflate-side,
+        // NOT an Adler32 comparison (the .NET BCL DeflateStream does not validate Adler32).
+        InvalidZlibTrailer
     }
 
     /// <summary>

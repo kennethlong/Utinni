@@ -34,8 +34,26 @@ namespace UtinniCoreDotNet.Formats.Tre
     /// </summary>
     public sealed class TreHeader
     {
-        /// <summary>Version string (4 ASCII chars), e.g., "0005" or "0006".</summary>
-        public string Version { get; internal set; }
+        /// <summary>
+        /// Raw 4-char version tag exactly as it appears on disk, e.g., "0004", "0005",
+        /// "0006", "5000", "6000". This is the value emitted as the locked JSON
+        /// <c>version</c> field (Plan 04-02 contract — unchanged in Phase 7).
+        /// </summary>
+        public string VersionTag { get; internal set; }
+
+        /// <summary>
+        /// Phase 7 (07-01): the dispatched version enum (D-06). Distinct from
+        /// <see cref="VersionTag"/> (the raw on-disk string) so callers can switch on the
+        /// lineage without string compares.
+        /// </summary>
+        public TreVersion Version { get; internal set; }
+
+        /// <summary>
+        /// Phase 7 (07-01): true when this archive's PAYLOADS are not directly decodable —
+        /// V5000 (no verified layout, D-06b) and V6000 (encrypted/obfuscated payloads, D-07).
+        /// Enumeration (TOC/names/CRC) still works; only content reads degrade to enumerate-only.
+        /// </summary>
+        public bool EnumerateOnly { get; internal set; }
 
         /// <summary>
         /// Number of resource records in this archive.

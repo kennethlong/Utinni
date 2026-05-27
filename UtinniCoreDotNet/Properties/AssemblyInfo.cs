@@ -27,6 +27,11 @@ using System.Runtime.InteropServices;
 // shared `Drain(ConcurrentQueue<Action>)` helper without reflection.
 [assembly: InternalsVisibleTo("UtinniCoreDotNet.Tests")]
 
+// Phase 7 (07-01): expose TreFile.PayloadReadCount (internal test seam, NOT public
+// shipping surface) to the CLI test assembly so it can prove lazy TOC-only enumeration
+// performs zero payload reads.
+[assembly: InternalsVisibleTo("Utinni.Cli.Tests")]
+
 // Version information for an assembly consists of the following four values:
 //
 //      Major Version

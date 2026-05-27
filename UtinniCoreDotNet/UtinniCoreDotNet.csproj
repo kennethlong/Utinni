@@ -67,6 +67,7 @@
     <Compile Include="Formats\Iff\IffParseException.cs" />
     <Compile Include="Formats\Iff\IffReader.cs" />
     <Compile Include="Formats\Tre\TreFile.cs" />
+    <Compile Include="Formats\Tre\TreVersion.cs" />
     <Compile Include="Formats\Tre\TreHeader.cs" />
     <Compile Include="Formats\Tre\TreParseException.cs" />
     <Compile Include="Formats\Tre\TreRecord.cs" />
