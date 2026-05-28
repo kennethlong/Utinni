@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 8 UI-SPEC approved
-last_updated: "2026-05-28T17:16:42.743Z"
-last_activity: 2026-05-28 -- Phase 08 planning complete
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-05-28T22:00:00.000Z"
+last_activity: 2026-05-28 -- Phase 08 plan 1 complete (IFF write primitives + provenance union)
 progress:
   total_phases: 12
   completed_phases: 8
   total_plans: 37
-  completed_plans: 31
-  percent: 84
+  completed_plans: 32
+  percent: 86
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 07 COMPLETE — TRE Browser (read-only) shipped as a TJT subpanel.
+**Current focus:** Phase 08 — tjt-subpanel-iff-editor-read-write (plan 1/7 done; plan 2 next)
 
 ## Current Position
 
-Phase: 07 (tjt-subpanel-tre-browser-read-only) — **COMPLETE (6/6)**, live smoke approved 2026-05-27
-Plan: 6 of 6 (07-04b done)
-Status: Ready to execute
-Last activity: 2026-05-28 -- Phase 08 planning complete
-Next action: optionally run phase verification (`/gsd-verify-work` or `/gsd-ship`), then proceed to the next Wave-1 phase (Phase 08 — IFF editor, which builds editable surfaces on the read-only `LoadIff` chunk tree + decoders this phase shipped, D-13). All 6 plans have SUMMARYs; `decode-iff` is the CLI mirror of the browser's per-type decode (datatable/STF/object-template/mesh/shader/UI-page). Note: the project-wide progress counter reads 31/30 (off-by-one drift from the 07-04 → 04a/04b split); the ROADMAP per-phase tracker is authoritative (07 = Complete 6/6).
+Phase: 08 (tjt-subpanel-iff-editor-read-write) — EXECUTING
+Plan: 2 of 7
+Status: Plan 08-01 complete; ready to execute 08-02 (CLI round-trip-iff verb)
+Last activity: 2026-05-28 -- Phase 08 plan 1 complete (IFF write primitives + provenance union)
+Next action: Execute 08-02-PLAN.md (roundtrip-iff CLI verb + structural --remove-leaf + golden fixtures). The Task-1 `MutableIffDocument.RemoveByStableId(string)` API is in place to satisfy 08-02's CLI structural-removal golden (closes round-3 R3-M3).
 
 Progress: [██████████] 100%
 
@@ -101,6 +101,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 07 P03 | 1.5h | 4 tasks | 8 files |
 | Phase 07 P04a | 3h | 2 tasks | 12 files |
 | Phase 07 P04b | 3h | 3 tasks | 7 files |
+| Phase 08 P01 | ~95 min | 4 tasks | 9 new + 2 modified |
 
 ## Accumulated Context
 
