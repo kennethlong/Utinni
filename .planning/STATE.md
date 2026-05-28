@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 8 Plan 5 — auto tasks (1-4 + 4b) complete; Task 5 live-SWG smoke checkpoint awaiting
-last_updated: "2026-05-28T21:57:50Z"
+stopped_at: Phase 8 Plan 5 — complete (smoke approved 'approved, dig in'); plan 08-06 next
+last_updated: "2026-05-28T23:30:00Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 12
   completed_phases: 8
   total_plans: 37
-  completed_plans: 35
-  percent: 95
+  completed_plans: 36
+  percent: 97
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 08 — tjt-subpanel-iff-editor-read-write (plan 3/7 done; plan 4 next)
+**Current focus:** Phase 08 — tjt-subpanel-iff-editor-read-write (plan 5/7 done; plan 6 next)
 
 ## Current Position
 
 Phase: 08 (tjt-subpanel-iff-editor-read-write) — EXECUTING
-Plan: 5 of 7 (auto tasks 1, 2, 3, 4, 4b complete; Task 5 checkpoint outstanding)
-Status: Awaiting live-SWG smoke checkpoint
+Plan: 6 of 7 (plans 01-05 complete; plan 06 next — in-memory live patch via CON-N-04 bracket)
+Status: 08-05 smoke approved ("approved, dig in"); ready for plan 06 dispatch
 Last activity: 2026-05-28
-Next action: Maintainer runs Task 5 live-SWG smoke per `08-05-PLAN.md` `<how-to-verify>`, records the verified loose-override directory + per-asset tiered reload matrix + OpenSource construction confirmation, types "approved" to resume.
+Next action: Orchestrator dispatches plan 08-06 (in-memory live patch via CON-N-04 VirtualProtect bracket; ships disabled-by-default pending ClientMemory provenance discovery in a follow-up phase).
 
-Progress: [██████████] 95%
+Progress: [██████████] 97%
 
 ## Wave 2 Summary
 
@@ -105,6 +105,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 08 P02 | ~75 min | 2 tasks | 10 new + 3 modified |
 | Phase 08 P03 | ~8 min | 2 tasks | 1 new + 2 modified |
 | Phase 08 P04 | 15 | 4 tasks | 9 files |
+| Phase 08 P05 | ~240 min | 5 tasks (4 auto + 1 smoke) | 8 new + 5 modified |
 
 ## Accumulated Context
 
@@ -119,6 +120,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: Phase 08 P03: extracted Phase 7's IFF chunk-tree TreeView + BuildChunkNode into shared IffChunkTree UserControl (D-09); TreDetailPane delegates LoadIff to it with zero public-read-API change.
 - [Phase ?]: Phase 08 P04: FormIffEditor editable host + IffEditController editor-local undo/redo (D-08) + 8 D-03 structural ops + D-04 leaf editing in hex/text/replace-from-file modes; cross-repo (Utinni controller + tests, UtinniPlugins forms); round-2 HIGH-A csproj coverage closed across both old-style projects.
 - [Phase 8]: Phase 08 P05 auto tasks: framework-side LooseOverridePath (root-containment, 14 tests) + ReloadAssetClassifier (4-tier routing table, 22 tests) + TreRecordIndexResolver (W-3 degraded fallback, 4 tests); plugin-side IffSaveTargets (SaveLooseOverride / SaveToPath / SaveInPlace with Flush(true) MEDIUM-9 barrier) + ClientReloadDispatcher (game-thread tiered reload with GroundScene.Get().ReloadTerrain() INSTANCE call); FormIffEditor Save▾ menu (Save in place / Save as loose override / Save As… / Patch live client / Repack — Source-gated per W-3 + round-2 MEDIUM 5) + Reload-in-client (4 outcomes) + Open… + TRE Browser hand-off via OpenFromTreEntry; FormTreBrowser context-menu Open-in-IFF-Editor; Plugin.cs registration in try/catch (SPI unchanged). 143/143 IFF + Saving tests pass.
+- [Phase 8]: Phase 08 P05 Task 5 smoke approved 2026-05-28 ("approved, dig in"). Singleton-form hide-not-dispose pattern emerged as canonical fix for all MEF-registered editor forms (Phases 9-11 must apply from start): on `CloseReason.UserClosing` cancel close + Hide() instead of disposing; editor-host shutdown reasons fall through normally. Smoke-discovered defects b899504 (FormIffEditor AV closure) + ce2a0a4 (FormTreBrowser defensive) landed mid-smoke in UtinniPlugins. Open Q2 (loose-override subdir) + Open Q3 (per-asset reload matrix) deferred for follow-on observation pass; dirty-discard UX gap on TRE-Browser hand-off path deferred as polish.
 
 ### Pending Todos
 
@@ -183,9 +185,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-05-28T21:57:50Z
-Stopped at: Phase 8 Plan 5 — auto tasks (1-4 + 4b) complete; Task 5 live-SWG smoke checkpoint awaiting
-Resume file: .planning/phases/08-tjt-subpanel-iff-editor-read-write/08-05-PLAN.md (Task 5)
+Last session: 2026-05-28T23:30:00Z
+Stopped at: Phase 8 Plan 5 — COMPLETE (Task 5 smoke approved "approved, dig in"); plan 06 next
+Resume file: .planning/phases/08-tjt-subpanel-iff-editor-read-write/08-06-PLAN.md
 
 ## Ingest Provenance
 
