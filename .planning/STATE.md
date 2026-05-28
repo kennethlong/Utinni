@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 8 UI-SPEC approved
-last_updated: "2026-05-28T21:36:52.687Z"
+stopped_at: Phase 8 Plan 5 — auto tasks (1-4 + 4b) complete; Task 5 live-SWG smoke checkpoint awaiting
+last_updated: "2026-05-28T21:57:50Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 12
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 08 (tjt-subpanel-iff-editor-read-write) — EXECUTING
-Plan: 5 of 7
-Status: Ready to execute
+Plan: 5 of 7 (auto tasks 1, 2, 3, 4, 4b complete; Task 5 checkpoint outstanding)
+Status: Awaiting live-SWG smoke checkpoint
 Last activity: 2026-05-28
-Next action: Execute 08-04-PLAN.md. 08-03 ships the shared IffChunkTree UserControl with two binding modes (LoadDocument/LoadMutable) — 08-04's FormIffEditor consumes the editable path with the structural-op context menu, undo/redo stack, and hex editing.
+Next action: Maintainer runs Task 5 live-SWG smoke per `08-05-PLAN.md` `<how-to-verify>`, records the verified loose-override directory + per-asset tiered reload matrix + OpenSource construction confirmation, types "approved" to resume.
 
 Progress: [██████████] 95%
 
@@ -118,6 +118,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 
 - [Phase ?]: Phase 08 P03: extracted Phase 7's IFF chunk-tree TreeView + BuildChunkNode into shared IffChunkTree UserControl (D-09); TreDetailPane delegates LoadIff to it with zero public-read-API change.
 - [Phase ?]: Phase 08 P04: FormIffEditor editable host + IffEditController editor-local undo/redo (D-08) + 8 D-03 structural ops + D-04 leaf editing in hex/text/replace-from-file modes; cross-repo (Utinni controller + tests, UtinniPlugins forms); round-2 HIGH-A csproj coverage closed across both old-style projects.
+- [Phase 8]: Phase 08 P05 auto tasks: framework-side LooseOverridePath (root-containment, 14 tests) + ReloadAssetClassifier (4-tier routing table, 22 tests) + TreRecordIndexResolver (W-3 degraded fallback, 4 tests); plugin-side IffSaveTargets (SaveLooseOverride / SaveToPath / SaveInPlace with Flush(true) MEDIUM-9 barrier) + ClientReloadDispatcher (game-thread tiered reload with GroundScene.Get().ReloadTerrain() INSTANCE call); FormIffEditor Save▾ menu (Save in place / Save as loose override / Save As… / Patch live client / Repack — Source-gated per W-3 + round-2 MEDIUM 5) + Reload-in-client (4 outcomes) + Open… + TRE Browser hand-off via OpenFromTreEntry; FormTreBrowser context-menu Open-in-IFF-Editor; Plugin.cs registration in try/catch (SPI unchanged). 143/143 IFF + Saving tests pass.
 
 ### Pending Todos
 
@@ -182,9 +183,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-05-28T21:36:34.305Z
-Stopped at: Phase 8 UI-SPEC approved
-Resume file: None
+Last session: 2026-05-28T21:57:50Z
+Stopped at: Phase 8 Plan 5 — auto tasks (1-4 + 4b) complete; Task 5 live-SWG smoke checkpoint awaiting
+Resume file: .planning/phases/08-tjt-subpanel-iff-editor-read-write/08-05-PLAN.md (Task 5)
 
 ## Ingest Provenance
 
