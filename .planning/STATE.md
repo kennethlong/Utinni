@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
+status: executing
 stopped_at: Phase 8 UI-SPEC approved
-last_updated: "2026-05-27T21:13:25.945Z"
-last_activity: 2026-05-27
+last_updated: "2026-05-28T02:39:28.442Z"
+last_activity: 2026-05-28 -- Phase 08 planning complete
 progress:
   total_phases: 12
   completed_phases: 8
-  total_plans: 30
+  total_plans: 37
   completed_plans: 31
-  percent: 100
+  percent: 84
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 
 Phase: 07 (tjt-subpanel-tre-browser-read-only) — **COMPLETE (6/6)**, live smoke approved 2026-05-27
 Plan: 6 of 6 (07-04b done)
-Status: Phase complete — ready for phase verification / next phase
-Last activity: 2026-05-27
+Status: Ready to execute
+Last activity: 2026-05-28 -- Phase 08 planning complete
 Next action: optionally run phase verification (`/gsd-verify-work` or `/gsd-ship`), then proceed to the next Wave-1 phase (Phase 08 — IFF editor, which builds editable surfaces on the read-only `LoadIff` chunk tree + decoders this phase shipped, D-13). All 6 plans have SUMMARYs; `decode-iff` is the CLI mirror of the browser's per-type decode (datatable/STF/object-template/mesh/shader/UI-page). Note: the project-wide progress counter reads 31/30 (off-by-one drift from the 07-04 → 04a/04b split); the ROADMAP per-phase tracker is authoritative (07 = Complete 6/6).
 
 Progress: [██████████] 100%
