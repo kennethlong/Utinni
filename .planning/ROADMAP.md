@@ -166,7 +166,7 @@ Plans:
 - [x] 07-04b-PLAN.md — Mesh/skeleton/anim AppearanceSummary + shader/UI-page IffStructureSummary (locked UI-page tag + path/ext hint; criterion #3 coverage) + decode-iff dispatch + goldens + all five row-capped structured-view families in the detail pane (Wave 5)
 
 ### Phase 8: TJT subpanel — IFF Editor (read + write)
-**Architecture (DEC-C4):** Ships as an `IEditorPlugin` subpanel inside TJT. IFF chunk read/write primitives (`Iff::read`, `Iff::write`, FORM/PROP semantics, BLOB streams) ship in `TheJawaToolboxDotNet` and `TheJawaToolbox` (sibling classes to the panel) so Phases 9-11 layer on the same shared code WITHIN TJT — no inter-plugin coupling, no library-version surface.
+**Architecture (DEC-C4 + D-01 reconciliation):** Editor subpanel still ships inside TJT (DEC-C4 host placement unchanged). IFF chunk read/write primitives (`IffReader`, `IffWriter`, `MutableIffDocument`, `OpenSource`) ship in `UtinniCoreDotNet/Formats/Iff/` (next to the existing reader) so Phases 9-11 consume them via the direct `UtinniCoreDotNet.dll` reference — no inter-plugin coupling, no library-version surface. The original DEC-C4 intent (one shared code path; no public-API/plugin-version concern) is preserved; only the primitives' assembly location is reconciled per CONTEXT.md D-01.
 **Goal**: Foundational read/write subpanel over IFF chunks across the client's IFF surface. Replaces SOE-era `IFFEditor`. Most-leveraged Wave-1 subpanel — Phases 9, 10, 11 all consume the IFF primitives that ship here.
 **Depends on**: Phase 7 (TRE Browser proves subpanel pattern; IFF Editor builds on the same browse surface for "open from TRE").
 **Requirements**: PROD-W1-IFF; contributes to PROD-02 aggregate.
@@ -177,7 +177,7 @@ Plans:
   2. User can open an IFF file (via TRE Browser subpanel or file picker), view chunk hierarchy, edit chunk content, and save modifications back to a file the live client reloads correctly.
   3. `utinni-cli inspect-iff` golden test (from Phase 4) covers the same read path the subpanel uses.
   4. Edits survive a save → reload round trip without corrupting unedited chunks.
-  5. IFF primitives are exported from `TheJawaToolboxDotNet` such that Phases 9-11 subpanels can consume them via direct same-assembly reference, no public-API versioning concern.
+  5. IFF primitives are exported from a shared, non-plugin assembly (`UtinniCoreDotNet/Formats/Iff`) that Phases 9-11 reference directly via the existing `UtinniCoreDotNet.dll` reference — preserving the original intent (no public-API/plugin-version concern). Reconciled per CONTEXT.md D-01 (DEC-C4 host placement is unchanged; only the primitives' assembly location is reconciled).
 **Plans**: 7 plans
 **UI hint**: yes
 **Plans**:
