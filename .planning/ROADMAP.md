@@ -184,7 +184,7 @@ Plans:
 - [x] 08-01-PLAN.md — IffWriter + mutable hybrid DOM (D-07) + framework xUnit + ROADMAP Criterion 5 amendment (D-01) + OpenSource 4-case provenance + RemoveByStableId (round-3 R3-M3)
 - [x] 08-02-PLAN.md — roundtrip-iff CLI verb + golden fixtures (D-02; byte-exact gate for Criterion 4); structural --remove-leaf golden closes round-2 MEDIUM 8 / cursor N-M4
 - [x] 08-03-PLAN.md — Extract shared IffChunkTree control (D-09); TreDetailPane consumes it (read API preserved)
-- [ ] 08-04-PLAN.md — FormIffEditor shell + leaf editing (D-04) + structural ops (D-03) + editor-local undo/redo (D-08)
+- [x] 08-04-PLAN.md — FormIffEditor shell + leaf editing (D-04) + structural ops (D-03) + editor-local undo/redo (D-08)
 - [ ] 08-05-PLAN.md — File save modes 1/2 (D-05.1/2) + tiered forced reload (D-06) + TRE hand-off + Plugin.cs registration + live smoke
 - [ ] 08-06-PLAN.md — In-memory live patch (D-05.3) via CON-N-04 bracket + confirm dialog + live smoke
 - [ ] 08-07-PLAN.md — .tre repack (D-05.4) TreWriter + repack save target + live smoke + Phase 8 criteria sign-off
@@ -284,7 +284,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 5. Tier 1 C++ unit tests | 0/TBD | Not started | - |
 | 6. Cleanups, dep bumps, open questions, Tier 4 doc, 1.0 cut | 5/6 | In Progress|  |
 | 7. Wave-1 plugin — TRE Browser | 0/6 | Planned | - |
-| 8. Wave-1 plugin — IFF Editor | 0/7 | Planned | - |
+| 8. Wave-1 plugin — IFF Editor | 4/7 | In Progress|  |
 | 9. Wave-1 plugin — Datatable Editor | 0/TBD | Not started | - |
 | 10. Wave-1 plugin — String-table Editor | 0/TBD | Not started | - |
 | 11. Wave-1 plugin — Object Template Editor | 0/TBD | Not started | - |

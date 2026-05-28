@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 08-03-PLAN.md
-last_updated: "2026-05-28T21:12:48.341Z"
-last_activity: 2026-05-28 -- Phase 08 plan 3 complete (shared IffChunkTree UserControl extracted from TreDetailPane; D-09; TRE Browser unchanged)
+stopped_at: Phase 8 UI-SPEC approved
+last_updated: "2026-05-28T21:36:52.687Z"
+last_activity: 2026-05-28
 progress:
   total_phases: 12
   completed_phases: 8
   total_plans: 37
-  completed_plans: 34
-  percent: 92
+  completed_plans: 35
+  percent: 95
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 08 (tjt-subpanel-iff-editor-read-write) — EXECUTING
-Plan: 4 of 7
-Status: Plan 08-03 complete; ready to execute 08-04 (FormIffEditor editable host that consumes the shared IffChunkTree)
-Last activity: 2026-05-28 -- Phase 08 plan 3 complete (shared IffChunkTree UserControl extracted from TreDetailPane; D-09; TRE Browser unchanged)
+Plan: 5 of 7
+Status: Ready to execute
+Last activity: 2026-05-28
 Next action: Execute 08-04-PLAN.md. 08-03 ships the shared IffChunkTree UserControl with two binding modes (LoadDocument/LoadMutable) — 08-04's FormIffEditor consumes the editable path with the structural-op context menu, undo/redo stack, and hex editing.
 
-Progress: [█████████░] 92%
+Progress: [██████████] 95%
 
 ## Wave 2 Summary
 
@@ -104,6 +104,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 08 P01 | ~95 min | 4 tasks | 9 new + 2 modified |
 | Phase 08 P02 | ~75 min | 2 tasks | 10 new + 3 modified |
 | Phase 08 P03 | ~8 min | 2 tasks | 1 new + 2 modified |
+| Phase 08 P04 | 15 | 4 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -116,6 +117,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four locked anti-goal decisions (DEC-A1..A4 — not a server-side manager, not a launcher, not a DCC, not a cheat enabler) and three non-locked candidate decisions (DEC-C1 product target, DEC-C2 anti-goals as scope filter, DEC-C3 tiered testing strategy).
 
 - [Phase ?]: Phase 08 P03: extracted Phase 7's IFF chunk-tree TreeView + BuildChunkNode into shared IffChunkTree UserControl (D-09); TreDetailPane delegates LoadIff to it with zero public-read-API change.
+- [Phase ?]: Phase 08 P04: FormIffEditor editable host + IffEditController editor-local undo/redo (D-08) + 8 D-03 structural ops + D-04 leaf editing in hex/text/replace-from-file modes; cross-repo (Utinni controller + tests, UtinniPlugins forms); round-2 HIGH-A csproj coverage closed across both old-style projects.
 
 ### Pending Todos
 
@@ -180,7 +182,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-05-28T21:12:23.162Z
+Last session: 2026-05-28T21:36:34.305Z
 Stopped at: Phase 8 UI-SPEC approved
 Resume file: None
 
