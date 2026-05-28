@@ -1,216 +1,223 @@
 ---
 phase: 8
-review_round: 2
+review_round: 3
 reviewers: [codex, cursor]
-reviewed_at: 2026-05-28T18:00:00Z
+reviewed_at: 2026-05-28T20:00:00Z
 plans_reviewed: [08-01-PLAN.md, 08-02-PLAN.md, 08-03-PLAN.md, 08-04-PLAN.md, 08-05-PLAN.md, 08-06-PLAN.md, 08-07-PLAN.md]
-overall_risk_codex: HIGH
-overall_risk_cursor: MEDIUM-HIGH
-prior_round_commit: 52468b3
-prior_round_overall_risk_codex: HIGH
-prior_round_overall_risk_cursor: HIGH
+overall_risk_codex: MEDIUM-HIGH
+overall_risk_cursor: MEDIUM
+prior_round_2_overall_risk_codex: HIGH
+prior_round_2_overall_risk_cursor: MEDIUM-HIGH
+prior_round_1_overall_risk_codex: HIGH
+prior_round_1_overall_risk_cursor: HIGH
+prior_round_1_commit: 52468b3
+prior_round_2_commit: 776a94d
 self_reviewer_skipped: claude (CLAUDE_CODE_ENTRYPOINT=cli)
 ---
 
-# Cross-AI Plan Review — Phase 8 (round 2, post-replan)
+# Cross-AI Plan Review — Phase 8 (round 3, post-round-2-replan)
 
-Both reviewers (Codex / `gpt-5.5` and Cursor agent) re-reviewed all 7 PLAN.md files plus the uplifted `08-CONTEXT.md`, `08-RESEARCH.md`, `08-PATTERNS.md`, `08-UI-SPEC.md`, **and the round-1 `08-REVIEWS.md`** (preserved at git commit `52468b3`) — so the reviewers could verify whether the prior round's HIGH dispositions actually held up in the revised plans.
+Round 3 reviews the round-2 replan (commit `aad1911`) that folded the round-2 review's HIGH csproj coverage concern + consensus MEDIUM 08-06 bounds-gate gap + 10 other MEDIUM/LOW items.
 
-**Verdict on the four prior agreed-HIGH design holes from round 1: all four RESOLVED at the plan level.** Neither reviewer re-flagged any of them as unresolved (cursor flagged HIGH-2 and HIGH-4 as PARTIALLY-RESOLVED with non-blocking deltas).
+**Both reviewers downgraded by one tier** vs their round-2 verdicts:
 
-**New round-2 verdict:** the replan trade is "four underspecified design holes" → "execute with known residual execution risk." The remaining concerns are mostly **build-system mismatches, missing automated tests, and verification gaps** — not new design holes.
+| Reviewer | Round 1 | Round 2 | **Round 3** | Direction |
+|---|---|---|---|---|
+| Codex | HIGH | HIGH | **MEDIUM-HIGH** | Down ↓ |
+| Cursor | HIGH | MEDIUM-HIGH | **MEDIUM** | Down ↓ |
+
+**Both reviewers recommend proceeding with `/gsd:execute-phase 8`.** Neither flags any plan-text issue as execute-blocking. The remaining MEDIUMs are surgical fixes (NameOffset wording, routing-table test optionality, `RemoveByStableId` API pinning) that can be folded in either as another small `--reviews` cycle or addressed inline during execute-phase.
+
+**No round-1 HIGH dispositions regressed.** TRE byte-identity (08-07 raw-slice copy), OpenSource provenance (4-case union), 08-06 same-length-only, and D-06 tiered acceptance all hold.
 
 ---
 
-## Codex Review (round 2)
+## Codex Review (round 3)
 
 ### Summary
 
-The replan substantially addresses the four prior agreed-HIGH design holes: `.tre` repack now copies raw compressed slices for untouched entries, provenance is explicit via `OpenSource`, live patch is same-length-only, and reload semantics are honestly tiered. I would not re-flag those original HIGHs as unresolved. **However, the revision introduced a new execution blocker:** several plans add new `.cs` files but do not consistently update old-style explicit-compile `.csproj` files, so the new code may not build or ship.
+Round 3 is materially better than my round-2 verdict. The major round-2 blocker, old-style explicit-compile csproj coverage, is now addressed across the production files in 08-01, 08-03, 08-04, 08-05, 08-06, and 08-07, with owning csproj files in `files_modified` and grep-gated acceptance. The 08-06 bounds-gate concern is resolved at plan level via a framework-side `LivePatchValidator` plus five xUnit cases. I would downgrade overall risk from **HIGH** to **MEDIUM-HIGH**. Remaining risk is mostly inherent live-client / `.tre` repack blast radius plus one new 08-05 ambiguity.
 
-### HIGH-Item Verification Matrix
+### Round-2 Verification Matrix
 
-| Prior HIGH item | Disposition | Evidence |
+| Round-2 item | Status | Evidence |
 |---|---|---|
-| TRE byte-identity contradiction | **RESOLVED** | 08-07 replaces the full-archive byte-identity claim with logical payload identity + raw compressed slice preservation, and requires `TreFile.GetRecordCompressedBytes` plus untouched-entry TOC invariant tests. See `08-07-PLAN.md:19-27, 204-221, 226-275`. |
-| Missing live-patch / repack provenance | **RESOLVED, with reduced-mode live patch** | `OpenSource` has `LooseFile`, `TreArchive`, `ClientMemory`, and `Unknown`; TRE hand-off resolves `recordIndex`; live patch is gated on `ClientMemory`; `Unknown` excludes in-place/repack gates. See `08-01-PLAN.md:21-32, 245-252; 08-05-PLAN.md:332-399; 08-07-PLAN.md:319-344`. |
-| Shrinking live-patch stale-tail corruption | **RESOLVED** | 08-06 requires validation before write and refuses `rewritten.Length != target.OriginalMappedLength`, covering both growth and shrink before `Memory.memory.Copy`. See `08-06-PLAN.md:15-24, 142-153, 167-171`. |
-| D-06 scene-change fallback unspecified | **RESOLVED** | 08-05 now refuses speculative `AddSetSceneCallback` reloads; textures call `Graphics.ReloadTextures`, terrain calls `GroundScene.ReloadTerrain`, all other IFFs return `PendingNextSceneChange`. Bindings verified in code: `GraphicsImpl.ReloadTextures` uses `GameCallbacks.AddMainLoopCall` and `Graphics.ReloadTextures`; `GroundSceneImpl.Reload` uses `GroundScene.Get().ReloadTerrain`. See `08-05-PLAN.md:274-317`; `Generated/UtinniCore.cs:12060, 14428`. |
+| csproj explicit-compile coverage | **RESOLVED** | 08-01 adds `UtinniCoreDotNet.csproj` and four IFF `<Compile Include>` gates; 08-03 adds `TheJawaToolboxDotNet.csproj` for `IffChunkTree`; 08-04, 08-05, 08-06, 08-07 do the same for new production files. Actual repo confirms `UtinniCoreDotNet.csproj` is explicit at lines 63-76 and TJT form/control precedent exists at `TheJawaToolboxDotNet.csproj:75-82`. |
+| 08-02 SDK-style assumption | **RESOLVED** | Actual `Utinni.Cli.csproj:1` and `Utinni.Cli.Tests.csproj:1` are `<Project Sdk="Microsoft.NET.Sdk">`; fixtures glob exists at `Utinni.Cli.Tests.csproj:31`. 08-02 documents no csproj edit needed. |
+| Form `.cs` / `.Designer.cs` pattern | **RESOLVED** | Actual `FormTreBrowser.cs` pattern is `<SubType>Form</SubType>` and Designer `<DependentUpon>` at plugin csproj lines 75-79. 08-04 and 08-06 mirror this for new forms; 08-03 mirrors UserControl subtype for `IffChunkTree`. |
+| 08-06 bounds-gate unit tests | **RESOLVED** | 08-06 adds `UtinniCoreDotNet/Editing/LivePatchValidator.cs`, `UtinniCoreDotNet.csproj`, and `LivePatchValidatorTests.cs`; Task 2 requires five tests: no client, zero target, growth, shrink, same-length happy path. |
+| LivePatchSaveTarget consumes validator | **RESOLVED** | 08-06 Task 3 explicitly requires `LivePatchValidator.Validate(...)` before `AddMainLoopCall` / `Memory.memory.Copy`, with grep gate. |
+| OpenSource.Unknown Save-As wording | **RESOLVED** | 08-05 picks one rule: on `Unknown`, Save As is always enabled; in-place, loose override, live patch, and repack are disabled with a clear tooltip. |
+| 08-07 name block preservation | **PARTIALLY-RESOLVED** | 08-07 adds `GetRecordNameBytes`, raw-name-byte copy, and test assertions. However, plan text still alternates between exact `NameOffset` preservation and recomputation / "OR computed correctly." See new concern N-M2. |
+| GroundScene instance call | **RESOLVED** | 08-05 pins `GroundScene.Get().ReloadTerrain()` and includes both positive and negative grep gates against bare `GroundScene.ReloadTerrain`. |
+| 08-02 structural-removal golden | **RESOLVED** | 08-02 adds `--remove-leaf`, `mutation-leaf-removed.iff`, expected JSON, and acceptance for `byteExactExceptRemovedLeaf`. |
+| Asset-class routing table | **PARTIALLY-RESOLVED** | 08-05 pins routing table and asks for a parameterized test, but Task 3 makes framework-side classifier extraction optional and says the test may be skipped. See N-M1. |
+| D-05.3 completion semantics | **RESOLVED** | 08-06 must-haves explicitly say D-05.3 is "infra-ready, user-disabled," with honest tooltip and follow-up needed for ClientMemory open path. |
+| Stale `CONTEXT-UPLIFT-NEEDED` tags | **RESOLVED** | No `CONTEXT-UPLIFT-NEEDED` match in current plan files; 08-05 explicitly notes it was stripped. |
+| Prior HIGH: TRE byte identity | **NO REGRESSION** | 08-07 continues raw compressed slice strategy and drops full-archive byte-identical claim. |
+| Prior HIGH: provenance | **NO REGRESSION** | 08-01 defines `OpenSource` four-case union; 08-05 handoff resolves `TreArchive` or `Unknown`; 08-06/07 gate by provenance. |
+| Prior HIGH: same-length live patch | **NO REGRESSION** | 08-06 preserves `rewrittenLength != originalMappedLength` refusal before memory write. |
+| Prior HIGH: tiered reload | **NO REGRESSION** | 08-05 keeps textures/terrain hot reload and `PendingNextSceneChange` for cached asset classes; refuses speculative `AddSetSceneCallback`. |
 
 ### NEW Concerns
 
-- **HIGH — New source files are not consistently added to old-style explicit-compile project files.**
-  `UtinniCoreDotNet.csproj` is not SDK-style and explicitly lists files (e.g. `Formats\Iff\IffReader.cs` and `Formats\Tre\TreFile.cs` at `UtinniCoreDotNet.csproj:68-69`). `TheJawaToolboxDotNet.csproj` is also explicit, listing current forms/controls at lines `65-131`. But 08-01 adds `IffWriter.cs`, `MutableIff*.cs`, `OpenSource.cs` without listing `UtinniCoreDotNet.csproj`; 08-03/04/06/07 add many TJT files without listing `TheJawaToolboxDotNet.csproj`; 08-07 adds `TreWriter.cs` without listing `UtinniCoreDotNet.csproj`. This will compile-test only files that are explicitly included, so the phase can silently omit implementation or fail at compile time. **This should block execution until every plan adding production `.cs` files includes the owning `.csproj`.**
+- **MEDIUM — 08-05 routing-table test is not actually guaranteed.** 08-05 lists `UtinniCoreDotNet.Tests/SavingTests/ClientReloadDispatcherTests.cs` in `files_modified` and says the routing table is unit-tested, but Task 3 makes the framework-side classifier extraction optional and says if extraction is rejected, "skip the routing-table unit test." That weakens the round-2 asset-class routing fix. If the classifier is optional, `ReloadAssetClassifier.cs` is also missing from `files_modified`. Make extraction mandatory or remove the test claim.
 
-- **MEDIUM — 08-05 incorrectly describes `UtinniCoreDotNet.csproj` as having default compile glob behavior.** 08-05 says to "confirm the default Compile glob covers `Saving/*.cs`," but the actual project is old-style explicit compile. The fallback says add an explicit `<Compile>` if excluded, but the premise is wrong and likely to be missed. Fold this into the HIGH csproj fix.
+- **MEDIUM — 08-07 name-offset invariant wording is still ambiguous.** The plan says untouched entries preserve `NameOffset` exactly, but later allows `new.NameOffset == old.NameOffset OR the new offset, computed correctly`. For the round-2 name-block fix to be crisp, require one invariant: either copy/rebuild the name block byte-identically so `NameOffset` is equal, or explicitly define it as a relative offset that may be recomputed and test the pointed-to bytes. Avoid the "OR" acceptance.
 
-- **MEDIUM — 08-06 says the disabled live-patch path is "unit-testable," but no automated test is planned.** The uplifted CONTEXT says D-05.3 reduced-mode acceptance is "implementation-complete and unit-tested for its bounds gate." 08-06 only has grep verification plus human/debug smoke. Add a pure validator or extracted bounds method with xUnit coverage for no-client / zero-target / wrong-length / same-length-allowed before execution.
+- **LOW — 08-05 is now large enough to be execution-noisy.** It has six tasks including a human gate and a `4b` helper task. It is not a blocker, but it is the only plan that exceeds the round-3 "task count over 5" smell. Splitting `TreRecordIndexResolver` into 08-05a or folding it into Task 4 would reduce execution ambiguity.
 
-- **MEDIUM — `OpenSource.Unknown` save-mode wording is internally inconsistent.** 08-05 first says when `Source is OpenSource.Unknown`, "ALL FOUR save items are disabled," then says `Save As…` may remain enabled (`08-05-PLAN.md:339-343`). That does not undermine the required in-place/repack disablement, but the implementer needs one unambiguous rule: disable loose / in-place / repack / live-patch on `Unknown`; explicitly decide whether user-chosen Save-As remains enabled.
-
-- **MEDIUM — `TreWriter` must explicitly preserve or reconstruct the name block layout to make `NameOffset` preservation true.** 08-07 requires `NameOffset` and `NameString` preservation (`08-07-PLAN.md:214-221, 226-228`), but the writer instructions mostly discuss payload blobs and TOC fields. If the name block is rebuilt in a different order/layout, exact `NameOffset` preservation fails. Add an explicit requirement to copy the original name block or rebuild it byte-identically for untouched entries.
+- **LOW — 08-07 still carries a `TODO` in an assumption.** The linked-source `TreFixtureBuilder` assumption says "TODO: confirm this addition is the right placement." The task later defines the placement clearly, so this is stale wording, not a design hole.
 
 ### Remaining Risk
 
-Block `/gsd:execute-phase 8` until the csproj issue is corrected across all plans. This is not a coding nuance; it is a build-system mismatch with the existing projects. I would also amend 08-06 to add automated bounds tests, because the current reduced-mode live patch acceptance depends on that gate.
+I would not block `/gsd:execute-phase 8` on the prior csproj or 08-06 unit-test concerns anymore. Those are resolved at plan level.
 
-### Overall Risk Assessment: HIGH
+I would fix N-M1 before execution because it is cheap and prevents a plan from claiming an automated routing gate that may be skipped. N-M2 can also be fixed surgically in 08-07 before execution, but it can survive as a test-review checkpoint if the implementer writes the invariant clearly.
 
-The original HIGH design holes are mostly resolved at the planning level, and the revised safety posture is much better. The overall phase risk remains **HIGH** because execution can currently produce non-building or non-included code due to missing explicit `.csproj` updates across both repos, and because live patch still has only reduced-mode functionality. Once the csproj coverage and 08-06 bounds tests are fixed, I would lower this to **MEDIUM-HIGH** due to the inherent `.tre` repack and live-client smoke risk.
+The `.tre` repack path remains inherently high blast radius and correctly maintainer-gated. Live patch remains reduced-mode and user-disabled, which is honest.
+
+### Overall Risk Assessment (Round 3): MEDIUM-HIGH
+
+Delta from my round-2 **HIGH**: downgraded. The explicit-compile blocker is now systematically handled, and 08-06's bounds gate has real planned unit coverage. The remaining risk is no longer "plans will omit code from builds"; it is mostly expected Phase-8 execution risk: cross-repo manual build gaps, live-SWG Tier-4 verification, `.tre` repack archive safety, and a small number of plan-text ambiguities.
 
 ---
 
-## Cursor Review (round 2)
+## Cursor Review (round 3)
 
 ### Summary
 
-The replan **materially addresses all four agreed-HIGH design holes** from round-1 `08-REVIEWS.md`: TRE repack acceptance is rewritten around `GetRecordCompressedBytes` + raw-slice copy (08-07), provenance is centralized in `OpenSource` with a `TreArchive` hand-off and `Unknown` sentinel (08-01/08-05), live patch shrink corruption is closed via **same-length-only** before any `Memory.memory.Copy` (08-06), and D-06 is honestly **tiered** with no fabricated scene triggers (08-05 + uplifted `08-CONTEXT.md`). CONTEXT uplift on 2026-05-28 aligns with the plans on D-05.3 (reduced-mode, menu disabled) and D-06 (tiered matrix).
+The round-2 `--reviews` replan **materially closes the execution-blocking gaps** from round 2. Codex's csproj HIGH is addressed plan-wide with explicit `<Compile Include>` entries, grep gates, and correct SDK vs old-style assumptions. The consensus 08-06 bounds-gate gap is closed via `LivePatchValidator` + five xUnit cases. OpenSource.Unknown Save-As disambiguation, `GroundScene.Get().ReloadTerrain()`, structural `--remove-leaf` golden, name-block preservation, and D-05.3 "infra-ready, user-disabled" semantics all landed in plan text.
 
-The revision also **folds in several prior MEDIUM items** (IffEditController framework-side, `LooseOverridePath` framework-side, mutation golden, Ctrl+Z collision, flush-before-reload, timestamped backups, `TreHandoffFallbackTests`).
+**Net direction: better** vs round-2. I would **downgrade Codex's execution-blocking csproj HIGH to RESOLVED** and **downgrade the bounds-gate MEDIUM to RESOLVED**. Overall risk moves from **HIGH / MEDIUM-HIGH → MEDIUM** — not because runtime blast radius disappeared (repack, live patch, Tier-4, no UtinniPlugins CI), but because the prior **plan-level** blockers are now explicit and grep-gated.
 
-**New/regression concerns remain**, mostly execution and verification gaps rather than missing design: edited-entry **Checksum preservation** is still an unproven live-client assumption; `GroundScene.ReloadTerrain()` needs an instance call site the plan does not name; **08-06 lacks the unit tests CONTEXT claims** for the bounds gate; CI still **does not build UtinniPlugins**; and phase completion semantics for D-05.3 (disabled menu vs "four save modes must-have") need explicit sign-off language.
+A few **new or sharpened ambiguities** remain: optional vs mandatory routing-table unit test, `NameOffset` TOC wording vs rebuild reality, and `RemoveByStableId` not pinned in 08-01 for 08-02's CLI structural golden.
 
-**Overall:** safe to **proceed with execute-phase** on the de-risked 08-01→08-05 spine; treat 08-06/08-07 as **maintainer-gated** until Tier-4 smoke passes.
+### Round-2 Verification Matrix
 
-### HIGH-Item Verification Matrix
+#### Agreed round-2 concerns (consensus summary)
 
-| Prior HIGH (08-REVIEWS round 1) | Disposition | Evidence |
-|-------------------------|-------------|----------|
-| **HIGH-1 — TRE repack "byte-identical untouched entries" contradicts recompress-all** | **RESOLVED** (plan + test contract) | `08-07-PLAN.md` Task 1 adds `TreFile.GetRecordCompressedBytes(int)`; Task 2 `TreWriter` branches untouched → verbatim raw slice, edited-only recompress; drops full-file "archive bytes identical"; two-guarantee + per-record TOC invariant tests. |
-| **HIGH-2 — Live patch / repack lack `targetAddr` / `recordIndex` provenance** | **PARTIALLY-RESOLVED** | **Resolved for file/repack:** `08-01-PLAN.md` Task 3 (`OpenSource` four cases); `08-04` `FormIffEditor.Source`; `08-05` Task 4 hand-off → `OpenSource.TreArchive(trePath, recordIndex, logicalPath)`; Task 4b `TreRecordIndexResolver.ResolveOrUnknown` + unit test; `08-07` Task 3 gates repack on `Source is OpenSource.TreArchive`. **Deferred by design:** `ClientMemory` never constructed in 08-04/08-05; `08-06` menu disabled until follow-up. |
-| **HIGH-3 — Shrinking live patch leaves stale tail bytes** | **RESOLVED** | `08-06-PLAN.md` Task 2: refuse `rewritten.Length != target.OriginalMappedLength` **before** `AddMainLoopCall` / `Memory.memory.Copy`; matches uplifted `08-CONTEXT.md` D-05.3 same-length-only. |
-| **HIGH-4 — D-06 scene-change fallback unspecified / over-promised** | **PARTIALLY-RESOLVED** | **Resolved at product level:** uplifted `08-CONTEXT.md` D-06 tier matrix; `08-05` Task 3 `ClientReloadDispatcher` returns `ReloadedTextures` / `ReloadedTerrain` / `PendingNextSceneChange` / `Unavailable`; explicitly refuses `AddSetSceneCallback` as a trigger. **Gap:** texture hook is concrete (`Graphics.ReloadTextures()` exists in `Generated/UtinniCore.cs` ~12060); terrain hook is **instance** (`GroundScene.ReloadTerrain()` ~14428) but plan text reads like a static call — implementer must use `GroundScene.Get().ReloadTerrain()`. |
+| Round-2 item | Round-3 disposition | Evidence |
+|---|---|---|
+| **Codex HIGH — csproj explicit-compile coverage** | **RESOLVED** | Every plan adding old-style production `.cs` files lists the owning `.csproj` in `files_modified` and has grep-gated acceptance: 08-01 Task 4; 08-03 Task 1; 08-04 Tasks 1–2; 08-05 Tasks 1–3/4b; 08-06 Tasks 1–3; 08-07 Tasks 2–3. 08-02 correctly documents SDK-style auto-glob for `Utinni.Cli*.csproj`. |
+| **Codex MEDIUM — 08-05 default Compile glob misconception** | **RESOLVED** | 08-05 `assumes` + Task 1 explicitly corrects prior-round error; requires explicit entries for `Saving\LooseOverridePath.cs` and `Formats\Tre\TreRecordIndexResolver.cs`. |
+| **Consensus MEDIUM — 08-06 bounds gate unit tests** | **RESOLVED** | 08-06 Task 2: `LivePatchValidator.Validate(...)` + enum + 5 named `[Fact]s`; Task 3 consumes validator before `AddMainLoopCall`; grep gates on both. |
+| **Codex MEDIUM — OpenSource.Unknown Save-As wording** | **RESOLVED** | 08-05 `must_haves`, Task 2, Task 4: on `Unknown`, in-place / loose / repack / live-patch disabled; **Save As… always enabled** with explicit tooltip copy. |
+| **Codex MEDIUM — TreWriter name block layout** | **PARTIALLY-RESOLVED** | 08-07 adds `GetRecordNameBytes`, verbatim copy, and `GetRecordNameBytes` identity in TOC tests. **Remaining tension:** `must_haves`/threat model still say literal `NameOffset` byte-for-byte preservation while `<behavior>` allows `new.NameOffset == old.NameOffset OR …` (see R3-M1). |
+| **Cursor MEDIUM — `GroundScene.Get().ReloadTerrain()`** | **RESOLVED** | 08-05 Task 3: pinned call site + positive/negative grep gates; `assumes` names instance pattern. |
+| **Cursor MEDIUM — structural-op golden (N-M4)** | **RESOLVED** | 08-02 Task 1 `--remove-leaf` + Task 2 `mutation-leaf-removed.{iff,expected.json}` in `must_haves`. |
+| **Cursor MEDIUM — asset-class routing (N-M3)** | **PARTIALLY-RESOLVED** | 08-05 Task 3 pins extension/TypeId table in source with grep gates. But `ClientReloadDispatcherTests` + `ReloadAssetClassifier` extraction is **implementer-optional** — test may not ship (see R3-M2). |
+| **Cursor MEDIUM — D-05.3 completion semantics (N-M7)** | **RESOLVED** | 08-06 `must_haves` first bullet: "infra-ready, user-disabled" + honest tooltip; Tier-4 reduced-mode documented. |
+| **Cursor LOW — stale `CONTEXT-UPLIFT-NEEDED`** | **RESOLVED** | 08-01/08-05 `assumes` now say uplift complete (commit 33cd3b9); no `CONTEXT-UPLIFT-NEEDED` in repo grep. |
+| **Cursor HIGH — CI does not build UtinniPlugins (N-H3)** | **NOT RESOLVED (by design)** | Still true; plans acknowledge Tier-4 + maintainer MSBuild. Not a plan regression — inherent V1 constraint. |
+| **Cursor HIGH — edited-entry CRC unproven (N-H1)** | **ACKNOWLEDGED / gated Tier-4** | 08-07 Task 4 step 7 explicit PATH-CRC-OK vs PATH-CRC-INVALIDATED — appropriate disposition. |
+| **Cursor HIGH — TreWriter blast radius (N-H2)** | **ACKNOWLEDGED** | Wave-6 isolation, timestamped backup, locked-archive fallback, strong automated tests — unchanged inherent risk. |
+| **Cross-repo coupling (N-M6)** | **PARTIALLY-RESOLVED** | Cross-repo `assumes` + wave ordering for `FormIffEditor.cs` / `TheJawaToolboxDotNet.csproj` collisions. No automated same-commit pin beyond narrative. |
 
-### NEW Concerns
+#### Round-1 HIGH design holes (regression check)
 
-#### HIGH
+| Round-1 HIGH | Round-3 disposition | Evidence |
+|---|---|---|
+| TRE repack byte-identity contradiction | **RESOLVED — no regression** | 08-07: `GetRecordCompressedBytes` + raw-slice copy; two-guarantee tests; full-file identity claim dropped. |
+| OpenSource provenance | **RESOLVED — no regression** | 08-01 four-case union; 08-05 hand-off + `TreRecordIndexResolver`; 08-06/07 provenance gates. |
+| Live-patch shrink stale-tail | **RESOLVED — no regression** | 08-06 same-length-only before `Memory.memory.Copy`; unit-tested via `LivePatchValidator`. |
+| D-06 over-promise / scene trigger | **RESOLVED — no regression** | 08-05 tiered outcomes; explicit refusal of `AddSetSceneCallback` as trigger. |
 
-| ID | Concern | Where |
-|----|---------|-------|
-| **N-H1** | **Edited-entry `Checksum` preservation may break client resolution.** 08-07 Task 2 preserves path CRC for the edited record because path is unchanged (Open Q1/A1). If the client validates CRC against payload (not path-only), live repack smoke can fail silently or at runtime. Prior A1 remains unproven until Tier-4. | `08-07-PLAN.md` Task 2 |
-| **N-H2** | **`TreWriter` repack is still the highest-blast-radius path** with many moving parts (header layout, name block, TOC stride v24/v32, compressor flags, new payload offsets). Plan tests are good but synthetic; live archive + locked-handle fallback is the real gate. One wrong invariant → broken `.tre`. | `08-07` Tasks 2–4 |
-| **N-H3** | **UtinniPlugins is not in CI** (`ci.yml` builds `Utinni.sln` only). Framework-side fixes green CI; **all WinForms/TJT wiring is unguarded in CI** until maintainer MSBuild + Tier-4. | `.github/workflows/ci.yml`; cross-plan |
+### NEW Concerns (round-3)
 
-#### MEDIUM
+| ID | Severity | Concern | Where |
+|---|---|---|---|
+| **R3-M1** | **MEDIUM** | **`NameOffset` TOC invariant wording is internally inconsistent.** `must_haves`, acceptance criteria, and T-08-17b say preserve `NameOffset` byte-for-byte, but rebuild necessarily relocates the name block. Task 2 `<behavior>` correctly allows `new.NameOffset == old.NameOffset OR computed offset with byte-identical name bytes`, and adds `GetRecordNameBytes` identity — the **literal NameOffset equality assertion in Fact 1/3 may fail on any repack that changes layout.** Clarify: TOC field is *recomputed consistently*, identity is on **name bytes**, not literal offset values. | `08-07-PLAN.md` Task 2 |
+| **R3-M2** | **MEDIUM** | **`ClientReloadDispatcherTests` is optional but listed in `files_modified`.** Task 3 PART B says extraction of `ReloadAssetClassifier` is preferred but skippable; acceptance criteria mark routing-table test as "(IF classifier extracted)". Yet `files_modified` always includes `ClientReloadDispatcherTests.cs`, and `assumes` claims parameterized routing test. Executor could skip test without violating acceptance. | `08-05-PLAN.md` Task 3, frontmatter |
+| **R3-M3** | **MEDIUM** | **`RemoveByStableId` API not pinned in 08-01.** 08-02 `--remove-leaf` requires `MutableIffDocument.RemoveByStableId(string leafId)` (or equivalent), but 08-01 only lists generic `Remove` structural op without stable-id lookup contract. Risk: CLI golden blocked or ad-hoc removal logic diverges from editor. | `08-01-PLAN.md` Task 1 vs `08-02-PLAN.md` Task 1 |
+| **R3-L1** | **LOW** | **08-01 Task 1 verify runs MSBuild before Task 4 adds csproj entries.** Within-plan ordering means early Task 1 acceptance depends on Task 4 csproj work (or interim manual includes). Harmless if tasks run sequentially; confusing if an agent validates Task 1 in isolation. | `08-01-PLAN.md` Tasks 1 vs 4 |
+| **R3-L2** | **LOW** | **08-05 task count = 6** (Tasks 4, 4b, 5). Slightly above the "≤5 tasks" soft guard; 4b is small and justified. | `08-05-PLAN.md` |
+| **R3-L3** | **LOW** | **`ReloadAssetClassifier.cs` not in `files_modified` if extraction chosen.** Task 3 says add csproj entry "if extracted" but frontmatter omits the file — easy to ship classifier without compile include. | `08-05-PLAN.md` Task 3 |
 
-| ID | Concern | Where |
-|----|---------|-------|
-| **N-M1** | **08-06 "unit-tested bounds gate" vs plan:** CONTEXT D-05.3 says "implementation-complete and unit-tested for its bounds gate," but `08-06-PLAN.md` has no xUnit task for `LivePatchSaveTarget` — only grep gates + Tier-4. Extract validation to a pure function and test refusal paths without a live client. | `08-06` Task 2; `08-CONTEXT.md` D-05.3 |
-| **N-M2** | **`GroundScene.ReloadTerrain()` call site underspecified.** Native binding is instance `ThisCall`; TJT uses `GroundScene.Get()` elsewhere. Plan should name that pattern or reload-terrain tier may ship as no-op / compile error. | `08-05` Task 3 |
-| **N-M3** | **Asset-class routing is "planner's discretion" (extension sniff).** Texture vs datatable vs template misclassification → wrong reload tier (false "Reloaded (textures)" or spurious `PendingNextSceneChange`). | `08-05` Task 3 `<action>` |
-| **N-M4** | **08-02 mutation golden covers one-leaf edit only**, not structural ops (add / remove / reorder). Criterion 4 for structural paths still relies on `08-01` unit tests + editor manual path. | `08-02` Task 2 |
-| **N-M5** | **Open Q2 (loose-override subdirectory) still Tier-4-only.** `LooseOverridePath` fixes traversal; wrong subdir under client root = "saved but never loaded" remains until Task 5 smoke. | `08-05` Task 1/5 |
-| **N-M6** | **Cross-repo coupling:** 08-03–08-07 modify `UtinniPlugins` while 08-01/02/07 modify `Utinni`; no plan step pins **same-commit / rebuild TJT against new DLL** beyond narrative. Drift risk if only one repo is built. | cross-plan |
-| **N-M7** | **D-05.3 completion semantics:** CONTEXT still lists all four save modes as "hard V1 must-haves," but D-05.3 acceptance is **reduced-mode + disabled menu**. Honest for engineering, but PROD-W1-IFF literal acceptance is file-save + reload (REQUIREMENTS.md); phase sign-off should explicitly record live patch as **infra-ready, user-disabled** to avoid false "100% D-05" claims. | `08-CONTEXT.md` D-05; `08-06` objective |
-| **N-M8** | **Record-index resolution by linear `Offset == ArchiveLocalOffset` scan** (`TreRecordIndexResolver`) — correct for normal archives, but plan does not handle **duplicate offsets** or document O(n) per open on huge `.tre` files. Low probability, easy to miss in smoke. | `08-05` Task 4/4b |
-| **N-M9** | **08-07 links `TreFixtureBuilder` from `Utinni.Cli.Tests`** into `UtinniCoreDotNet.Tests` — valid CI pattern (matches existing linked-source block), but adds **test-assembly coupling**; breakage if `TreFixtureBuilder` moves. | `08-07` Task 2 |
+No new **HIGH** regressions found. Wave/dependency graph for `LivePatchValidator` is sound (08-06 wave 5, depends on 08-05; no new parallel collision).
 
-#### LOW
+### Remaining Risk — Execute Gate
 
-| ID | Concern | Where |
-|----|---------|-------|
-| **N-L1** | `08-01`/`08-05` `assumes:` still say `CONTEXT-UPLIFT-NEEDED` though CONTEXT was uplifted 2026-05-28 — stale metadata only. | plan frontmatter |
-| **N-L2** | `08-03` signature-pin via grep + compile, not automated API snapshot test. | `08-03` Task 2 |
-| **N-L3** | ROADMAP title "subpanel" vs `FormIffEditor` via `GetForms()` — doc drift. | ROADMAP vs UI-SPEC |
-| **N-L4** | `08-RESEARCH.md` user_constraints excerpt in the review packet still shows **pre-tier D-06** wording; canonical source is uplifted `08-CONTEXT.md`. | research staleness |
+**Do not block `/gsd:execute-phase 8` on plan quality.** Round-2 plan-level blockers are closed.
 
-### Focus-Area Checks
+**Still block phase sign-off / merge without maintainer:**
+- **08-05 Task 5** — Tier-4 live smoke (loose-override dir, tiered reload matrix)
+- **08-06 Task 5** — live patch (full or reduced-mode)
+- **08-07 Task 4** — repack + PATH-CRC live check + consolidated criteria
 
-**OpenSource consistency (08-01 / 04 / 05 / 06 / 07):** mostly consistent. Single union in `UtinniCoreDotNet/Formats/Iff/OpenSource.cs` with four cases. W-3 check: on `Unknown`, **both SaveInPlace and Repack are disabled** (neither `is LooseFile` nor `is TreArchive`). Plan also disables loose override; **Save As… may stay enabled** as escape hatch — consistent with checker intent.
+**Optional pre-execute hardening (cheap, not blocking):**
+1. Mandate `ReloadAssetClassifier` + `ClientReloadDispatcherTests` (close R3-M2)
+2. Pin `RemoveByStableId` (or equivalent) in 08-01 Task 1 acceptance (close R3-M3)
+3. Fix 08-07 NameOffset acceptance to test name-byte identity, not literal offset equality (close R3-M1)
 
-**08-07 raw-slice strategy vs recompress-all:** strategy is replaced, not cosmetic. Task 2 explicitly branches: untouched → `GetRecordCompressedBytes` verbatim + preserve TOC fields; edited → recompress only that index. Directly fixes the prior HIGH-1 contradiction.
+**Inherent residual (unchanged):** UtinniPlugins not in CI; repack blast radius; path-CRC assumption until Tier-4; cross-repo DLL rebuild discipline.
 
-**08-06 same-length-only before VirtualProtect bracket:** yes. Task 2 validates `Game.IsRunning`, zero target, and `rewritten.Length != OriginalMappedLength` **before** queuing `AddMainLoopCall` → `Memory.memory.Copy`. Growth and shrink both refused.
+### Overall Risk Assessment (Round 3): MEDIUM (down from round-2 MEDIUM-HIGH)
 
-**08-05 tiered reload + named call sites:** tiered UI/outcomes accurate per uplifted D-06. Texture/shaders use static `Graphics.ReloadTextures()`. Terrain uses **instance** `GroundScene.Get().ReloadTerrain()` (TJT precedent — plan should be amended to say this explicitly). Datatable/STF/template → `PendingNextSceneChange` + candid copy.
+The replan successfully converts round-2's primary failure mode — "silent non-compile due to old-style csproj" — into explicit, grep-verified tasks across all seven plans. The CONTEXT-accurate live-patch bounds gate is now plan-backed with CI-runnable tests. Round-1 design holes remain closed with no regressions.
 
-**LooseOverridePath → UtinniCoreDotNet/Saving/ fixes CI break:** yes for the specific prior CI break. `ci.yml` checks out Utinni only (line 35); runs `UtinniCoreDotNet.Tests` + `Utinni.Cli.Tests`. Framework-side relocation eliminates the prior 08-04 MEDIUM-5 break. **Does not** CI-gate TJT/plugin UI.
+Overall risk stays above LOW because **execution** still carries real blast radius: `.tre` repack, disabled-but-implemented live patch, no CI for TJT WinForms wiring, and Tier-4 gates on PROD-W1-IFF Criteria 1–2. Those are **appropriate phased-execute risks**, not planning holes.
 
-**D-05.3 disabled vs phase completion:** honest if sign-off uses the uplifted contract (D-05.3 = code path + bounds gate + disabled menu + reduced Tier-4). **Not** end-user demo of live patch. Align phase completion checklist with `08-CONTEXT.md` D-05.3 reduced-mode wording.
-
-**08-05 → 08-07 `recordIndex` contract:** aligned. 08-05 Task 4 resolves index via `TreRecordIndexResolver`; 08-07 `TreRepackSaveTarget.Apply(OpenSource.TreArchive target, …)` uses `target.RecordIndex`. Task 4b unit test closes the degraded path.
-
-### Remaining Risk — What Should Still Block Execute?
-
-| Gate | Recommendation |
-|------|------------------|
-| **`/gsd:execute-phase 8` (start implementation)** | **Do not block.** Prior HIGH design holes are plan-level closed. |
-| **Wave 4+ merge without maintainer** | **08-05 Task 5** is correctly blocking (`autonomous: false`). |
-| **08-06 / 08-07 phase sign-off** | **Block** until Tier-4 smoke passes (repack resolution, locked-archive fallback, tiered reload matrix, loose-override dir). |
-| **Optional pre-execute hardening** (not blocking, but cheap) | (1) Add `LivePatchSaveTarget` pure unit tests in 08-06; (2) name `GroundScene.Get().ReloadTerrain()` in 08-05 Task 3; (3) strip stale `CONTEXT-UPLIFT-NEEDED` from plan assumes. |
-
-### Overall Risk Assessment: MEDIUM-HIGH
-
-The replan successfully downgrades the phase from "four underspecified design holes" to "execute with known residual execution risk." The **08-01 / 08-02 / 08-04 / 08-05.1–2 spine** (writer, CLI gate, editor, file saves, tiered reload UX) is **LOW–MEDIUM** risk and CI-heavy. **08-07 repack** and **08-06 live patch** remain **HIGH blast-radius** at runtime, but are now **isolated, provenance-gated, honestly scoped**, and backed by stronger automated tests than round 1.
-
-What keeps overall risk above MEDIUM: **edited-entry CRC assumption (N-H1)**, **no CI for TJT (N-H3)**, **maintainer-only Tier-4 gates on criteria 1–2**, and **terrain reload call-site ambiguity (N-M2)**. None of these re-open the original four HIGH *planning* holes; they are **implementation and verification** risks appropriate for a phased execute with blocking human checkpoints on 08-05 / 06 / 07.
+**Recommendation:** Proceed with `/gsd:execute-phase 8`. Address R3-M1..M3 inline during execute (first tasks of 08-01/05/07) rather than another full review cycle unless you want zero ambiguity before starting.
 
 ---
 
-## Consensus Summary — Round 2
+## Consensus Summary — Round 3
 
-### Agreed Strengths (both reviewers)
+### Agreed verdict
 
-- **All four prior agreed-HIGH design holes are resolved at the plan level.** Neither reviewer re-flagged HIGH-1 (TRE byte-identity), HIGH-2 (provenance), HIGH-3 (shrink-safety), or HIGH-4 (D-06 reload) as unresolved. Cursor flagged HIGH-2 and HIGH-4 as PARTIALLY-RESOLVED with non-blocking deltas (ClientMemory deferred by design; terrain call-site needs `GroundScene.Get().ReloadTerrain()`).
-- **`OpenSource` discriminated union is consistently wired** across 08-01 / 04 / 05 / 06 / 07 — single union owner, four cases, pattern-match gates on each consumer.
-- **08-07's `GetRecordCompressedBytes` + raw-slice strategy actually REPLACES the recompress-all approach** (not just adds a new API). Codex and cursor both verified the branch in Task 2.
-- **08-06's SAME-LENGTH-ONLY gate runs BEFORE the VirtualProtect bracket** — growth and shrink both refused; matches the uplifted D-05.3 wording.
-- **08-05 tiered reload disposition is honest and matches the uplifted D-06** — no speculative `AddSetSceneCallback` triggers.
-- **LooseOverridePath relocation to UtinniCoreDotNet/Saving/ closes the prior MED-5 CI break.**
-- **OpenSource.Unknown sentinel correctly disables both SaveInPlace AND SaveRepack** on the degraded TRE hand-off (no false-enable bug from round-1 checker's W-3).
+**Both reviewers downgraded by one tier:** codex `HIGH → MEDIUM-HIGH`, cursor `MEDIUM-HIGH → MEDIUM`. **Both recommend proceeding to `/gsd:execute-phase 8`.** Neither flags any plan-text issue as execute-blocking.
 
-### Agreed Concerns (raised by both — highest priority)
+### Agreed Strengths
 
-| Severity | Concern | Both reviewer IDs | Plans |
-|----------|---------|---|-------|
-| **HIGH (codex) / HIGH (cursor)** | **CI does not build UtinniPlugins.** `ci.yml` checks out Utinni only (line 35), runs `UtinniCoreDotNet.Tests` + `Utinni.Cli.Tests`. Framework-side fixes pass CI; all WinForms/TJT wiring (08-03/04/05/06/07) is unguarded in CI until maintainer MSBuild + Tier-4 smoke. | codex (implicit in HIGH csproj); cursor N-H3 | cross-plan |
-| **MEDIUM (both)** | **08-06 bounds gate has no automated test, but CONTEXT D-05.3 claims it is "unit-tested for its bounds gate."** Plan has grep gates + Tier-4 only — needs `LivePatchSaveTarget` pure unit tests (refusal paths: no-client, zero-target, wrong-length, same-length-allowed). | codex MEDIUM N-3; cursor N-M1 | `08-06` Task 2; `08-CONTEXT.md` D-05.3 |
-| **MEDIUM (both, different framing)** | **Cross-repo build coupling not pinned at plan level.** No plan step explicitly pins same-commit Utinni + UtinniPlugins build; drift risk on uncommitted `Generated/UtinniCore.cs` for `Memory.memory.Copy` line citations. | codex (implicit in HIGH csproj — explicit-compile makes drift more dangerous); cursor N-M6 | cross-plan |
+- **Round-2 csproj coverage RESOLVED.** Every plan adding old-style explicit-compile production `.cs` files now lists owning `.csproj` in `files_modified` + has grep-gated acceptance. 08-02 SDK-style assumption is verified correct. Form / Designer / UserControl SubType patterns match existing precedents.
+- **08-06 bounds-gate RESOLVED.** `LivePatchValidator` extracted framework-side with 5 xUnit cases; `LivePatchSaveTarget` consumes the validator before `AddMainLoopCall`.
+- **All other round-2 MEDIUMs resolved or partially resolved.** No round-2 item is NOT-RESOLVED.
+- **No round-1 HIGH regressions.** TRE byte-identity rewrite, OpenSource 4-case provenance, 08-06 same-length-only, and D-06 tiered acceptance all hold.
 
-### Divergent / Unique Findings (single-reviewer, still worth investigating)
+### Agreed Concerns (both reviewers raised — these are the only items both raise)
+
+| Severity | Concern | Codex ID | Cursor ID | Plans |
+|----------|---------|----------|-----------|-------|
+| **MEDIUM** | **08-07 NameOffset wording ambiguity.** Plan acceptance still says "preserve NameOffset byte-for-byte" while `<behavior>` allows recomputed offsets. Rebuild necessarily relocates the name block — literal offset equality may fail. Pick ONE invariant: test on **name bytes** (via `GetRecordNameBytes`) not literal offset values. | N-M2 | R3-M1 | 08-07 |
+| **MEDIUM** | **08-05 routing-table test optionality.** Task 3 lists `ClientReloadDispatcherTests.cs` in `files_modified` but makes `ReloadAssetClassifier` extraction implementer-optional and the test "skippable if extraction rejected." Weakens the round-2 MEDIUM-9 closure. Make extraction mandatory + test required, OR remove the test file from frontmatter. | N-M1 | R3-M2 | 08-05 |
+| **LOW** | **08-05 task count = 6** (one over the soft ≤5 guard). Not blocking; 4b is small and justified. Could fold 4b into Task 4 if desired. | LOW | R3-L2 | 08-05 |
+
+### Divergent / Unique Findings
 
 | Reviewer | Concern | Severity | Plan |
 |----------|---------|----------|------|
-| **Codex (UNIQUE — execution-blocking)** | **csproj explicit-compile coverage.** `UtinniCoreDotNet.csproj` (lines 68-69 list `Formats\Iff\IffReader.cs`, `Formats\Tre\TreFile.cs`) and `TheJawaToolboxDotNet.csproj` (lines 65-131) are old-style explicit-compile, not SDK-style default-glob. 08-01 adds `IffWriter.cs`/`MutableIff*.cs`/`OpenSource.cs` without csproj edits; 08-03/04/06/07 add many TJT files without `TheJawaToolboxDotNet.csproj` edits; 08-07 adds `TreWriter.cs` without csproj edit. **Fix:** every plan adding production `.cs` files must list the owning `.csproj` in `files_modified` and add the `<Compile Include="...">` entries explicitly. | HIGH | 08-01, 03, 04, 06, 07 |
-| **Codex (UNIQUE)** | **08-05 incorrectly describes default Compile glob behavior** — the actual csproj is explicit-compile. Fold into the HIGH csproj fix. | MEDIUM | 08-05 |
-| **Codex (UNIQUE)** | **`OpenSource.Unknown` Save-As wording inconsistency:** 08-05 says "ALL FOUR save items disabled" then says "Save As… may remain enabled" — disambiguate. | MEDIUM | 08-05 (around `08-05-PLAN.md:339-343`) |
-| **Codex (UNIQUE)** | **TreWriter name block layout preservation underspecified.** 08-07 requires `NameOffset`/`NameString` preservation but writer instructions focus on payload blobs and TOC fields. If name block is rebuilt in different order, NameOffset preservation fails. Add explicit requirement: copy original name block OR rebuild byte-identically for untouched entries. | MEDIUM | 08-07 |
-| **Cursor (UNIQUE)** | **Edited-entry `Checksum` preservation may break client resolution.** 08-07 preserves path CRC because path is unchanged, but if client validates CRC against payload (not path-only), live repack can fail. Unproven until Tier-4. | HIGH | 08-07 |
-| **Cursor (UNIQUE)** | **TreWriter repack is highest-blast-radius regardless of plan quality** — header layout, name block, TOC stride v24/v32, compressor flags, new payload offsets all interact. Live archive + locked-handle fallback is the real gate. | HIGH | 08-07 |
-| **Cursor (UNIQUE)** | **`GroundScene.ReloadTerrain()` is instance, not static.** Plan text reads like static call; implementer must use `GroundScene.Get().ReloadTerrain()` (TJT precedent in `FormObjectBrowser.cs`). Risk: tier ships as no-op / compile error. | MEDIUM | 08-05 Task 3 |
-| **Cursor (UNIQUE)** | **Asset-class routing is "planner's discretion" (extension sniff).** Misclassification → wrong reload tier. | MEDIUM | 08-05 Task 3 |
-| **Cursor (UNIQUE)** | **08-02 mutation golden is leaf-edit-only**, not structural ops. Criterion 4 for structural paths still relies on 08-01 unit tests + editor manual path. | MEDIUM | 08-02 |
-| **Cursor (UNIQUE)** | **Open Q2 (loose-override subdirectory)** still Tier-4-only — wrong subdir = "saved but never loaded." | MEDIUM | 08-05 |
-| **Cursor (UNIQUE)** | **D-05.3 completion semantics drift:** CONTEXT lists all four save modes as "hard V1 must-haves," but D-05.3 acceptance is reduced-mode. Phase sign-off should explicitly record live patch as **infra-ready, user-disabled** to avoid false "100% D-05" claims. | MEDIUM | `08-CONTEXT.md` D-05; `08-06` objective |
-| **Cursor (UNIQUE)** | **Linear `Offset == ArchiveLocalOffset` scan in `TreRecordIndexResolver`** — doesn't handle duplicate offsets; O(n) per open on huge `.tre`. Low probability, easy to miss in smoke. | MEDIUM | 08-05 Task 4 |
-| **Cursor (UNIQUE)** | **08-07 links `TreFixtureBuilder` from `Utinni.Cli.Tests` into `UtinniCoreDotNet.Tests`** — valid CI pattern but adds test-assembly coupling. | MEDIUM | 08-07 |
-| **Cursor (UNIQUE)** | **Stale `CONTEXT-UPLIFT-NEEDED` tags in 08-01/05 `assumes` blocks** — CONTEXT was uplifted 2026-05-28; tags are now stale metadata. | LOW | 08-01, 08-05 frontmatter |
-| **Cursor (UNIQUE)** | **08-03 signature-pin via grep + compile**, not automated API snapshot test. | LOW | 08-03 |
-| **Cursor (UNIQUE)** | **ROADMAP title "subpanel"** vs `FormIffEditor` via `GetForms()` — doc drift. | LOW | ROADMAP vs UI-SPEC |
+| **Cursor (UNIQUE)** | **`RemoveByStableId` API not pinned in 08-01.** 08-02's `--remove-leaf` golden requires `MutableIffDocument.RemoveByStableId(string leafId)` (or equivalent stable-id lookup contract). 08-01 only lists generic `Remove`. Risk: CLI golden blocked or removal logic diverges between CLI and editor. | MEDIUM (R3-M3) | 08-01 ↔ 08-02 |
+| **Cursor (UNIQUE)** | **08-01 within-plan ordering:** Task 1 verify runs MSBuild before Task 4 adds csproj entries. Harmless if tasks run sequentially; confusing if validated in isolation. | LOW (R3-L1) | 08-01 |
+| **Cursor (UNIQUE)** | **`ReloadAssetClassifier.cs` missing from frontmatter if extraction chosen.** Task 3 says "add csproj entry if extracted" but frontmatter omits the file. | LOW (R3-L3) | 08-05 |
+| **Codex (UNIQUE)** | **08-07 stale `TODO` in assumption** for `TreFixtureBuilder` linked-source placement. Task later defines placement clearly — stale wording, not a design hole. | LOW | 08-07 |
 
 ### Recommended Disposition
 
-The two reviewers **disagree on overall threshold** (codex HIGH = block; cursor MEDIUM-HIGH = proceed with maintainer-gated 08-06/07 smoke). The disagreement boils down to **how to weigh the csproj explicit-compile coverage finding**:
+The two reviewers **agree on direction** for the first time in three rounds: both recommend **proceed to execute-phase**. They also agree on the two MEDIUMs worth fixing pre-execute (NameOffset wording + routing-table optionality) plus the 08-05 task-count smell.
 
-- **Codex argues:** explicit-compile means new `.cs` files **must** be listed in csproj or they will not compile. The phase can silently produce non-building code if every plan does not update the owning `.csproj`. This is execution-blocking.
-- **Cursor implicitly accepts** that csproj edits will be added during execute-phase Task 1 of each plan (the "modify csproj as needed" task), so doesn't flag it as separately blocking.
+**Three paths forward:**
 
-**Both views are defensible.** If you trust execute-phase to catch the csproj omission on the first compile-fail of each wave, cursor's MEDIUM-HIGH is the right read. If you want zero compile-fail surprises during execute-phase, codex's HIGH is the right read.
-
-The **agreed MEDIUM items (08-06 unit tests, terrain instance call, OpenSource.Unknown Save-As wording, name-block preservation, mutation golden scope, asset-class routing, stale CONTEXT-UPLIFT-NEEDED tags)** are all cheap fixes that materially raise confidence. Whether to address them in another `/gsd:plan-phase 8 --reviews` cycle or fold into execute-phase first-task corrections is a workflow preference.
-
-Recommended next step (your choice):
-
-```text
-# Option A — fold round-2 concerns at plan level first (codex's HIGH-block view)
+**A. Surgical pre-execute fixes (recommended if you want zero ambiguity before execute):**
+```
 /gsd:plan-phase 8 --reviews
+```
+Planner addresses R3-M1 (NameOffset wording), R3-M2 (routing-table mandatory or remove), R3-M3 (RemoveByStableId pinning in 08-01), R3-L1..3 (LOW items). Estimated 5-10 min planner work. Cursor's recommendation.
 
-# Option B — proceed to execute (cursor's MEDIUM-HIGH proceed-with-caution view)
+**B. Proceed to execute, address inline:**
+```
 /gsd:execute-phase 8
 ```
+Both reviewers explicitly say this is safe. The 3 MEDIUMs surface naturally in the first tasks of 08-01 / 08-05 / 08-07 and the executor can fix them in-flight. Codex's milder recommendation.
 
-Either path is defensible. If you pick **Option A**, the planner will read this REVIEWS.md and produce surgical edits targeting the agreed-MEDIUM items first plus codex's HIGH csproj. If you pick **Option B**, you accept compile-fail-as-feedback on the first wave and trust the maintainer-gated checkpoints on 08-05/06/07 Tier-4 smoke to catch the rest.
+**C. Another review round (round 4):**
+```
+/gsd:review --phase 8 --all
+```
+Likely diminishing returns — both reviewers have downgraded twice and now agree on direction. A round-4 review would mostly confirm the round-3 verdict.
+
+**Strong recommendation: A or B.** Round 3 has converged the cross-AI verdict from "two reviewers HIGH" → "two reviewers within one tier of each other, both saying proceed." The remaining MEDIUMs are surgical wording fixes, not design holes. The choice between A and B is purely workflow preference: belt-and-suspenders (A) vs trust-execute-to-catch-3-text-fixes (B).
 
 ---
 
-*Generated 2026-05-28 by /gsd:review --phase 8 --all (round 2). Reviewers: codex (`gpt-5.5` via `codex exec --skip-git-repo-check`), cursor (default model via `cursor-agent.cmd -p --mode ask --trust`). Self-reviewer claude skipped per CLAUDE_CODE_ENTRYPOINT=cli. Round-1 review at git commit `52468b3`.*
+*Generated 2026-05-28 by /gsd:review --phase 8 --all (round 3). Reviewers: codex (`gpt-5.5` via `codex exec --skip-git-repo-check`), cursor (default model via `cursor-agent.cmd -p --mode ask --trust`). Self-reviewer claude skipped per CLAUDE_CODE_ENTRYPOINT=cli. Round-1 review at git commit `52468b3`; round-2 review at git commit `776a94d`.*
