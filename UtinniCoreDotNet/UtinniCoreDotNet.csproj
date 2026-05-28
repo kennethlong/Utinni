@@ -79,6 +79,7 @@
     <Compile Include="Formats\Tre\TreParseException.cs" />
     <Compile Include="Formats\Tre\TreRecord.cs" />
     <Compile Include="Saving\LooseOverridePath.cs" />
+    <Compile Include="Saving\ReloadAssetClassifier.cs" />
     <Compile Include="Formats\Decoders\DecoderException.cs" />
     <Compile Include="Formats\Decoders\IffPayloadCursor.cs" />
     <Compile Include="Formats\Decoders\DataTableDecoder.cs" />
