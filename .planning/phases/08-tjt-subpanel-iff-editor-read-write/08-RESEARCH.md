@@ -502,7 +502,7 @@ all the foundation to extend.
 | A4 | The `txtHex` TextBox made editable is adequate for byte-accurate hex editing in V1. | Don't Hand-Roll | If column-accurate editing proves unworkable, a hex-grid control becomes necessary (UI-SPEC flags this as revisitable). |
 | A5 | Capturing each node's verbatim source-byte slice (via `OffsetBytes` + length) is the cleanest D-07 implementation. | Pattern 2 | An alternative (store payload + dirty flag, re-synthesize header) is equally valid; planner's call. Low risk either way. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact SWG `.tre` TreeFile path-CRC algorithm (for repack mode 4).**
    - What we know: each TOC entry stores a 32-bit path CRC; the reader reads it but never computes
@@ -514,6 +514,7 @@ all the foundation to extend.
      stored CRC (path unchanged ⇒ CRC unchanged). If the planner wants add/rename support later,
      reverse `Crc.cpp` then (a documented sub-phase). Verify repack byte-compares untouched entries
      against the original.
+   - **RESOLVED:** sidestepped in plan 08-07 Task 1 — for payload-only edits the writer preserves each entry's stored `Checksum` (path unchanged ⇒ CRC unchanged), with no CRC-computation code path. Path add/rename is out of scope for Phase 8 (D-03 is chunk-level inside the IFF, not TRE-path-level).
 
 2. **Loose-override directory + priority (save mode 1).**
    - What we know: SWG resolves loose files with priority over packed `.tre` (swg-client-v2 §6,
@@ -524,6 +525,7 @@ all the foundation to extend.
    - Recommendation: derive from the injected client config; expose a `[IffEditor] looseOverrideDir`
      ini fallback (mirror `[TreBrowser] clientDir`); verify on live SWG which directory the client
      actually re-reads.
+   - **RESOLVED:** handled in plan 08-05 Task 1 — `IffSaveTargets` derives the loose-override directory from the injected client config (`FormTreBrowser.ResolveClientTreDir` precedent) with an `[IffEditor] looseOverrideDir` ini fallback; verified live in plan 08-05 Task 4's maintainer smoke.
 
 3. **Which asset classes a scene-change-style reload actually refreshes (D-06).**
    - What we know: `ReloadTextures`/`ReloadTerrain` are class-specific; scene change reloads scene
@@ -532,6 +534,7 @@ all the foundation to extend.
      cached at first load.
    - Recommendation: a Tier-4 live-SWG smoke per asset class; document the matrix in
      `TESTING.md`. The UI affordance + copy already degrade gracefully (UI-SPEC).
+   - **RESOLVED:** handled in plan 08-05 Task 4's live-SWG smoke matrix — the maintainer runs one of each asset class (texture / terrain / shader / datatable / STF / template) and records which reload tier surfaces the edit; outcome documented in `TESTING.md` for cross-phase reuse. The UI fallback copy ('reloads on next scene change') makes the unknown-tier case non-blocking.
 
 ## Environment Availability
 
