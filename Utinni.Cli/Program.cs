@@ -45,12 +45,14 @@ namespace Utinni.Cli
                         Commands.ListObjectsOptions,
                         Commands.InspectIffOptions,
                         Commands.DecodeIffOptions,
+                        Commands.RoundtripIffOptions,
                         Commands.ValidatePluginOptions>(args)
                     .MapResult(
                         (Commands.ParseTreOptions o)       => Commands.ParseTreCommand.Run(o),
                         (Commands.ListObjectsOptions o)    => Commands.ListObjectsCommand.Run(o),
                         (Commands.InspectIffOptions o)     => Commands.InspectIffCommand.Run(o),
                         (Commands.DecodeIffOptions o)      => Commands.DecodeIffCommand.Run(o),
+                        (Commands.RoundtripIffOptions o)   => Commands.RoundtripIffCommand.Run(o),
                         (Commands.ValidatePluginOptions o) => Commands.ValidatePluginCommand.Run(o),
                         errs => 1);  // exit 1 on usage error per D-02
             }
