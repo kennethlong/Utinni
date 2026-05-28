@@ -183,7 +183,7 @@ Plans:
 **Plans**:
 - [x] 08-01-PLAN.md — IffWriter + mutable hybrid DOM (D-07) + framework xUnit + ROADMAP Criterion 5 amendment (D-01) + OpenSource 4-case provenance + RemoveByStableId (round-3 R3-M3)
 - [x] 08-02-PLAN.md — roundtrip-iff CLI verb + golden fixtures (D-02; byte-exact gate for Criterion 4); structural --remove-leaf golden closes round-2 MEDIUM 8 / cursor N-M4
-- [ ] 08-03-PLAN.md — Extract shared IffChunkTree control (D-09); TreDetailPane consumes it (read API preserved)
+- [x] 08-03-PLAN.md — Extract shared IffChunkTree control (D-09); TreDetailPane consumes it (read API preserved)
 - [ ] 08-04-PLAN.md — FormIffEditor shell + leaf editing (D-04) + structural ops (D-03) + editor-local undo/redo (D-08)
 - [ ] 08-05-PLAN.md — File save modes 1/2 (D-05.1/2) + tiered forced reload (D-06) + TRE hand-off + Plugin.cs registration + live smoke
 - [ ] 08-06-PLAN.md — In-memory live patch (D-05.3) via CON-N-04 bracket + confirm dialog + live smoke
