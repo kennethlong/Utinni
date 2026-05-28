@@ -1,7 +1,8 @@
 # Phase 8: TJT subpanel — IFF Editor (read + write) - Context
 
 **Gathered:** 2026-05-27
-**Status:** Ready for planning
+**Status:** Ready for execution (plans pass; reviews integrated)
+**Last uplift:** 2026-05-28 — D-05 (V1 same-length-only + ClientMemory disposition) and D-06 (tiered acceptance) updated to match plans after cross-AI review (codex + cursor, both HIGH risk → resolved). See `08-REVIEWS.md` for the full review record and `08-01`/`08-05`/`08-06` plans' `assumes:` blocks for plan-level traceability.
 
 <domain>
 ## Phase Boundary
@@ -31,7 +32,18 @@ A **read + write IFF editor**, shipped as an `IEditorPlugin` WinForms SubPanel *
   3. **In-memory live patch** of the loaded IFF via the **CON-N-04 VirtualProtect bracket** (instant in-session feedback; volatile / lost on reload; touches mapped client memory — higher risk).
   4. **Repack into the source `.tre`** (full repack with CRC/TOC rebuild) — closest to edit-in-place; highest risk.
   > **PLAN-SPLIT FLAG:** This is a large, risk-bearing surface. The planner should split Phase 8 into multiple plans (and consider 8a/8b sub-phasing). The `.tre` repack (CRC/TOC rebuild) and the mapped-memory live patch (CON-N-04) each carry distinct failure modes and warrant **isolated plans** with their own verification. Files opened from the TRE Browser come from read-only packed `.tre`, so for those, save mode 1/2/4 apply (not in-place).
-- **D-06:** **The editor forces an in-session client reload** after a file-based save (loose-override / Save-As / `.tre` repack), so the running client re-reads the saved file immediately. **RESEARCH ITEM (high priority):** investigate whether a client-side asset-reload / cache-invalidation hook exists in SWG/Utinni and how it interacts with the existing **TJT-driven scene-change** path (which already reloads assets). If no reload mechanism exists, designing one is its own research + risk item — surface a fallback (e.g. trigger a scene-change-style reload) if a direct hook is infeasible.
+  >
+  > **V1 SAME-LENGTH-ONLY (post-cross-AI-review, 2026-05-28):** live-patch (mode 3) refuses any rewritten IFF whose serialized length differs from the original mapped length (both growth AND shrink). Refusing growth is necessary; refusing shrink avoids stale tail bytes after the new EOF inside the mapped region. Shrink-safe live patches (zero-fill or length-field update) are a documented post-V1 milestone.
+  >
+  > **V1 ClientMemory open path (post-cross-AI-review, 2026-05-28):** no current Phase-8 open path constructs an `OpenSource.ClientMemory` provenance descriptor (mapped-memory address + length) for an opened IFF. 08-06 ships with the live-patch menu **DISABLED** behind an honest tooltip until a follow-up phase wires the discovery path. Acceptance for D-05.3 in Phase 8 is **reduced-mode: implementation-complete and unit-tested for its bounds gate, ready to be enabled by the follow-up phase**. Future phase TBD.
+- **D-06:** **TIERED forced in-session client reload (post-cross-AI-review, 2026-05-28):** the editor surfaces the reload outcome candidly per asset class — it never pretends a class reloads when it doesn't:
+  - **(a) Textures / shaders / terrain → in-session pass** via `Graphics.ReloadTextures()` / `GroundScene.ReloadTerrain()` (or equivalent direct hook). The client re-reads on the next frame.
+  - **(b) Datatable / STF / object-template / unknown IFF → "reloads on next scene change."** The editor candidly tells the user the asset re-resolves on the next TJT-driven scene change (the existing chat-command parser callback path) — it does NOT fabricate speculative scene-setup triggers via `AddSetSceneCallback` (which is a notification hook, not a trigger).
+  - **(c) No live client → "Unavailable."** The reload button is disabled with an honest tooltip when no injected client is running.
+  >
+  > **Rationale for the tier (recorded 2026-05-28):** the cross-AI reviewers (codex + cursor) both flagged the original "forces an in-session reload for all asset types" wording as a HIGH design hole — no concrete reload mechanism exists for datatable/STF/object-template in-session today, and inventing one via speculative scene-setup triggers would risk reentrancy. Tiered acceptance trades silent over-promise for explicit, honest UX. PROD-W1-IFF Criterion 2 ("client reloads correctly") is interpreted under this tier matrix.
+  >
+  > **Original wording (superseded):** "The editor forces an in-session client reload after a file-based save … investigate whether a client-side asset-reload / cache-invalidation hook exists in SWG/Utinni and how it interacts with the existing TJT-driven scene-change path. If no reload mechanism exists, designing one is its own research + risk item — surface a fallback (e.g. trigger a scene-change-style reload) if a direct hook is infeasible." The research resolved as: direct hooks exist only for textures/shaders/terrain; datatable/STF/object-template have no in-session reload — TIERED disposition adopted.
 
 ### Edit model & round-trip fidelity
 - **D-07:** **Hybrid mutable DOM.** Each node retains its **original raw bytes** from the read. On save: untouched leaves **emit their original bytes verbatim** (guarantees byte-exact unedited chunks AND preserves the SWG no-pad quirk for free — Criterion 4 becomes near-tautological for untouched subtrees); edited / added leaves emit fresh bytes; **container lengths roll up bottom-up** from children. Handles both payload edits and structural ops. (The existing `IffDocument` is `sealed`/immutable — the mutable model is a sibling, not a mutation of the reader's output type.)
