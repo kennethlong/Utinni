@@ -207,6 +207,7 @@
     <Compile Include="UI\Theme\ThemeUtility.cs" />
     <Compile Include="UndoRedo\IUndoCommand.cs" />
     <Compile Include="UndoRedo\UndoRedoManager.cs" />
+    <Compile Include="Editing\IffEditController.cs" />
     <Compile Include="Utility\Log.cs" />
     <Compile Include="Utility\Native.cs" />
   </ItemGroup>
