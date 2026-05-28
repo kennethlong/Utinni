@@ -1,0 +1,10 @@
+{
+  "command": "roundtrip-iff",
+  "result": {
+    "byteExact": true,
+    "originalLength": 72,
+    "rewrittenLength": 72,
+    "source": "<fixture-path>"
+  },
+  "schemaVersion": 1
+}

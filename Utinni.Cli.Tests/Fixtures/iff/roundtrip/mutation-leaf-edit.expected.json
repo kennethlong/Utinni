@@ -1,0 +1,13 @@
+{
+  "command": "roundtrip-iff",
+  "result": {
+    "byteExact": false,
+    "mutatedLeafId": "FORM:WSNP/0/NAME:NAME/1",
+    "originalLength": 72,
+    "rewrittenLength": 72,
+    "source": "<fixture-path>",
+    "untouchedLeafCount": 3,
+    "untouchedLeafRangesIdentical": true
+  },
+  "schemaVersion": 1
+}

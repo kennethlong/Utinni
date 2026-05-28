@@ -11,6 +11,9 @@ Copyright (c) 2005 - 2020 Giacomo Stelluti Scala & Contributors
   decode-iff         Decode a typed IFF asset (datatable / string-table /
                      object-template) to JSON.
 
+  roundtrip-iff      Parse -> [optional mutate-leaf | remove-leaf] -> serialize
+                     -> re-parse an IFF; assert byte-exact untouched chunks.
+
   validate-plugin    Reflect on a plugin directory and report compliance.
                      WARNING: Loads each .dll under the given directory; only
                      run against trusted plugin directories. PluginLoader

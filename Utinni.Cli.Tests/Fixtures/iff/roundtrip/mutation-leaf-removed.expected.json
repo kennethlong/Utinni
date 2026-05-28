@@ -1,0 +1,16 @@
+{
+  "command": "roundtrip-iff",
+  "result": {
+    "byteExact": false,
+    "byteExactExceptRemovedLeaf": true,
+    "originalLength": 72,
+    "parentContainerChildCountAfter": 2,
+    "parentContainerChildCountBefore": 3,
+    "removedLeafId": "FORM:WSNP/0/FORM:OBJS/1/EXTR:EXTR/2",
+    "removedLeafTypeId": "EXTR",
+    "rewrittenLength": 60,
+    "source": "<fixture-path>",
+    "untouchedLeafCount": 3
+  },
+  "schemaVersion": 1
+}
