@@ -201,10 +201,16 @@ Plans:
   2. User can open a `.tab` file, view rows and columns, edit cell values, and save back.
   3. The live SWG client picks up the edit on the relevant reload path for the datatable in question.
   4. Edits preserve schema (column types, foreign-key-style references) without silent corruption.
-**Plans**: TBD
+**Plans**: 7 plans (5 waves; 09-04 + 09-05 parallel in Wave 3)
 **UI hint**: yes
-**Plans (placeholder)**:
-- [ ] 09-01: TBD
+**Plans**:
+- [ ] 09-01-PLAN.md — Typed DTII format primitives (CF-01 framework-side): DataTableColumnType + MangleValue + DataTableHashCrc port + DataTableDocument.FromIff + MutableDataTable* hybrid DOM (CF-04 per-cell originalSlice) + DataTableWriter composing IffWriter; UI-SPEC Assumption A1 enum-syntax typo correction (Task 0)
+- [ ] 09-02-PLAN.md — `utinni-cli roundtrip-tab` verb + golden suite + DataTableFixtureBuilder; SC4 byte-exact-on-untouched-cells CLI gate (CF-02)
+- [ ] 09-03-PLAN.md — FormDatatableEditor host + ThemedDataGridView + per-type cell widgets + Plugin.cs registration + singleton hide-not-dispose pattern from commit 1 + DataGridView bind-latency probe (gates Plan 09-06 VirtualMode decision)
+- [ ] 09-04-PLAN.md — DatatableEditController (CF-06) + 11 T4 commands + D-04 cascade + FormAddColumnDialog + FormTypeChangeCascadeDialog + R-04 save-block on every Save▾ item + D-02 safety-net via reused FormSaveConfirmDialog
+- [ ] 09-05-PLAN.md — DatatableSaveTargets composition shim + FormDatatableEditor Save▾ wire (4 modes; mode 3 disabled per CF-03) + TRE Browser D-10.2 hand-off + IFF Editor D-10.3 hand-off + ClientReloadDispatcher tier-(b) wire (CF-05 locked UI)
+- [ ] 09-06-PLAN.md — CSV/TSV delta-import + Find/Replace + column-click view-only sort (D-09 grep gate + Sort_DoesNotMutateModelOrder xUnit fact) + DT_Comment frozen-row toggle + framework CsvCellCoercion (checker B-1 extraction) + conditional VirtualMode fallback (gated on 09-03 measurement)
+- [ ] 09-07-PLAN.md — Tier-4 maintainer live-SWG smoke (Phase 8 precedent: smoke=automation-augmented; live ACK deferred-but-acceptable for V1)
 
 ### Phase 10: TJT subpanel — String-table Editor (`.stf`)
 **Architecture (DEC-C4):** Ships as an `IEditorPlugin` subpanel inside TJT. Reuses Phase 8 IFF primitives.

@@ -837,29 +837,34 @@ public byte[] Serialize()
 - A6: Build `DataTableFixtureBuilder` for synthetic fixtures (V0 + V1 minimal + per-DT_* + DT_Comment); planner may also instruct executor to extract one small real `.tab` via TRE Browser → save loose for ground-truth comparison.
 - A8: Confirm CSV header schema (bare `name` vs `name:type` annotation) before sealing the CSV importer's parser contract.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`Crc::normalizeAndCalculate` exact algorithm**
+   - **RESOLVED:** Plan 09-01 Task 1 (`DataTableHashCrc.cs`) ports `Crc::normalizeAndCalculate` (`Crc.cpp:19-119` + `CrcString.cpp:24-55`) 1:1; reference-value parity facts in `DataTableHashCrcTests.cs` pin `Compute("")`, slash/backslash collapse, and `Compute("Foo/Bar")` vs `Compute("foo/bar")` case-fold equality.
    - What we know: `DataTableColumnType.cpp:434` calls it on `DT_HashString` cells; `Crc::crcNull` is the empty-string sentinel.
    - What's unclear: The exact CRC32 polynomial + normalize semantics (lowercase? trim whitespace? path-separator normalize?).
    - Recommendation: Locate `sharedFoundation/Crc.{h,cpp}` and port the implementation 1:1 in `DataTableHashCrc.cs`. Add a unit test against a known reference value (the planner / executor can hash an SOE-source string in C++ and use that as the test expectation, OR round-trip a real `.tab` containing DT_HashString cells and assert the int32 storage matches).
 
 2. **DT_PackedObjVars / DT_BitVector parse-back depth**
+   - **RESOLVED:** Strict at commit. Plan 09-01 Task 1 (`DataTableColumnType.cs` MangleValue + `ValidatePackedObjVars`) ports `consumePackedObjVarIntField` / `consumePackedObjVarStringField` per `DataTableColumnType.cpp:44-69` (the strict validator floor). Plan 09-03 wires the per-type widget contract that surfaces the validator failures at CellValidating time per D-03.
    - What we know: CONTEXT marks these as planner discretion. UI-SPEC § Per-type cell widget contract sets the floor: text input + format syntax hint via `ToolTipText`.
    - What's unclear: Whether the parse-back validator on `CellValidating` is `[ASSUMED]` strict (full grammar) or lenient (accept anything, let `mangleValue` reject at save).
    - Recommendation: Strict at commit (per D-03 strict edit-time validation). The parse functions exist in `DataTableColumnType.cpp:44-69` (`consumePackedObjVarIntField` / `consumePackedObjVarStringField`) — port them for the validator. Cost is < 50 lines.
 
 3. **`.tab` files in-repo for golden fixtures**
+   - **RESOLVED:** No on-disk binaries. Plan 09-01 Task 2 ships `DatatableFixtures.cs` (framework-test side); Plan 09-02 Task 1 mirrors it in `Utinni.Cli.Tests/Infrastructure/DataTableFixtureBuilder.cs` (CLI-test side). All seven fixtures emit DTII bytes via Phase 8 `MutableIffDocument` + `IffWriter.Write` (synthetic-by-construction).
    - What we know: No `.tab` files exist under `D:/Code/swg-client-v2/data/` (verified `find` returned no matches). Phase 4/7/8 use synthetic IFF/TRE fixtures built in test code via `IffBuilder` + `TreFixtureBuilder`.
    - What's unclear: Whether any small real-world `.tab` is committable (CONTEXT line 109 references `CombatDataTable.tab` but does not point at an in-repo path).
    - Recommendation: Use the synthetic-fixtures-via-builder pattern. Build a `DataTableFixtureBuilder` in `Utinni.Cli.Tests/Infrastructure/` that emits valid DTII bytes for V0 minimal + V1 minimal + per-DT_* + DT_Comment-row variants. This mirrors `IffBuilder` and `TreFixtureBuilder`. If the maintainer later wants to add a small real fixture from a live client, the harness already accepts a path argument.
 
 4. **CSV header schema** (`name` vs `name:type`)
+   - **RESOLVED:** Bare-name header default with optional `#`-prefixed type-spec second row. Plan 09-06 Task 2 (`DatatableCsvSerializer.Export` / `LoadAndPlan`) implements the bare-name + optional `#` row contract; Excel-friendly and Excel round-trip preserves leading-# lines.
    - What we know: UI-SPEC marks this as planner discretion; Excel/Sheets users typically expect bare column names; the SOE spreadsheet format used row 1 = names, row 2 = type-spec.
    - What's unclear: Whether modders editing in Excel expect to see types alongside names for sanity-checking.
    - Recommendation: Default to bare `name` header (Excel-friendly). Add an optional second header row (commented with leading `#`) emitting the type-spec string for human inspection, ignored on import. This survives an Excel round-trip (Excel preserves leading-# rows as text).
 
 5. **Whether `DataTableManager` reload semantics differ between SWGEmu 0004/0005 and Restoration 5000+**
+   - **RESOLVED:** Plan 09-05 inherits the V6000 refusal from Phase 8 WR-06 (`TreRepackSaveTarget.Apply` already refuses V6000 archives); Plan 09-05 Task 1 adds a confirming xUnit fact (`RepackIntoSourceTre_V6000Archive_RefusedWithLooseOverrideRecommendation`) for the DTII payload case. Loose-override (mode 1) remains available for V6000-sourced .tab files.
    - What we know: Per memory `project_tre_version_support_gap`: Restoration uses v5000/v6000 .tre archives; v6000+ payloads are encrypted. Phase 7 reader enumerates v6000 but cannot decrypt; payload bytes are inaccessible for Restoration v6000+ assets without per-archive decryption keys.
    - What's unclear: Whether a `.tab` extracted from a v6000 archive that the user re-saves via mode 4 (`.tre` repack) preserves the encryption envelope OR drops it.
    - Recommendation: **The `.tre` repack flow refuses v6000 archives** per Phase 8 WR-06 fix (verified via Phase 8 SUMMARY 8-07; `TreWriter` round-trip refuses encrypted payloads). Phase 9 inherits this — datatable repack into a v6000 source archive is REFUSED with the locked tooltip. Loose-override (mode 1) remains available because the override file is plain unencrypted .tab bytes the client searches FIRST on a higher-priority path. Document this in the Save▾ menu's per-archive disabled-tooltip if the file came from a v6000 source.
