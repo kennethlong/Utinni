@@ -187,7 +187,7 @@ Plans:
 - [x] 08-04-PLAN.md — FormIffEditor shell + leaf editing (D-04) + structural ops (D-03) + editor-local undo/redo (D-08)
 - [x] 08-05-PLAN.md — File save modes 1/2 (D-05.1/2) + tiered forced reload (D-06) + TRE hand-off + Plugin.cs registration + live smoke (approved 2026-05-28)
 - [x] 08-06-PLAN.md — In-memory live patch (D-05.3) via CON-N-04 bracket + confirm dialog; LivePatchValidator + 5 [Fact]s (round-2 HIGH-B); 4 new csproj entries (round-2 HIGH-A); Task 5 approved on automation alone (smoke=automation-only); D-05.3 infra-ready, user-disabled (round-2 MEDIUM 11)
-- [ ] 08-07-PLAN.md — .tre repack (D-05.4) TreWriter + repack save target + live smoke + Phase 8 criteria sign-off
+- [x] 08-07-PLAN.md — .tre repack (D-05.4) TreWriter + repack save target + 5 new test classes (15 outcomes) automating the on-disk contract per maintainer direction; smoke=automation-augmented; Open Q1 (cursor N-H1 live-client path-CRC ACK) + Open Q5 (UI end-to-end) deferred; consolidated Phase 8 criteria sign-off pending
 
 ### Phase 9: TJT subpanel — Datatable Editor (`.tab`)
 **Architecture (DEC-C4):** Ships as an `IEditorPlugin` subpanel inside TJT. Reuses the IFF primitives that Phase 8 shipped in `TheJawaToolboxDotNet` — same-assembly reference, no public-API contract.
