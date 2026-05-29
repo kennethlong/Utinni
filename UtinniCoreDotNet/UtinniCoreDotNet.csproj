@@ -224,6 +224,9 @@
     <Compile Include="UI\Theme\ThemeUtility.cs" />
     <Compile Include="UndoRedo\IUndoCommand.cs" />
     <Compile Include="UndoRedo\UndoRedoManager.cs" />
+    <Compile Include="Editing\DatatableEditCommands.cs" />
+    <Compile Include="Editing\DatatableEditController.cs" />
+    <Compile Include="Editing\IDatatableEditCommand.cs" />
     <Compile Include="Editing\IffEditController.cs" />
     <Compile Include="Editing\LivePatchValidator.cs" />
     <Compile Include="Utility\Log.cs" />

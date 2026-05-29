@@ -196,6 +196,30 @@ namespace UtinniCoreDotNet.Formats.Datatable
         }
 
         /// <summary>
+        /// Rebaselines this cell after a successful save (Plan 09-04 <c>DatatableEditController.MarkSaved</c>,
+        /// iter-2 item 8). Re-serializes the CURRENT value under the given column type and adopts those
+        /// bytes as the new <c>originalSlice</c>, then clears the dirty + needs-review bits. After this
+        /// call <see cref="IsDirty"/> reads false (the just-saved bytes are now canonical); the NEXT real
+        /// <see cref="Value"/> set nulls the slice + flips dirty true again, so dirtiness is re-computed
+        /// against the saved state rather than the original-load state.
+        /// </summary>
+        internal void RebaselineAfterSave(DataTableColumnType columnType)
+        {
+            if (columnType == null) throw new ArgumentNullException("columnType");
+
+            using (var ms = new MemoryStream())
+            using (var bw = new BinaryWriter(ms))
+            {
+                DataTableCellValue.SerializeFresh(bw, columnType, value);
+                bw.Flush();
+                originalSlice = ms.ToArray();
+            }
+
+            isDirty = false;
+            needsReview = false;
+        }
+
+        /// <summary>
         /// Writes this cell's ROWS payload to the given writer. A clean cell with a non-empty original
         /// slice re-emits that slice verbatim (CF-04 byte preservation); otherwise it reserializes
         /// fresh via <see cref="DataTableCellValue.SerializeFresh"/>. A clean DT_Comment cell has a

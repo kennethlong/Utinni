@@ -84,6 +84,24 @@ namespace UtinniCoreDotNet.Formats.Datatable
             cell.SetParentRow(this);
         }
 
+        // Insert a cell at the given column index during an AddColumn / RemoveColumn-undo structural
+        // edit (Plan 09-04). Internal because row-cell shape is owned by the document-level structural
+        // helpers + the DatatableEditCommands ops — both live in this assembly. The cell's ParentRow
+        // back-ref is wired here so the inserted cell rolls dirty up correctly. Used by AddColumn.Do
+        // (insert a fresh default cell), RemoveColumn.UndoOp (re-insert the captured cell BY REFERENCE
+        // per the Phase 8 CR-01 insert-by-reference posture), and the column-move swap helpers.
+        internal void InsertCellInternal(int index, MutableDataTableCell cell)
+        {
+            if (cell == null) throw new ArgumentNullException("cell");
+            if (index < 0 || index > cells.Count)
+            {
+                throw new ArgumentOutOfRangeException("index", index, "Cell insert index is out of range for this row.");
+            }
+
+            cells.Insert(index, cell);
+            cell.SetParentRow(this);
+        }
+
         // Remove the cell at the given column index during a RemoveColumn structural edit. Internal
         // because row-cell shape is owned by the document-level structural helpers
         // (MutableDataTableDocument.RemoveColumnAt) — direct callers go through the document so the
