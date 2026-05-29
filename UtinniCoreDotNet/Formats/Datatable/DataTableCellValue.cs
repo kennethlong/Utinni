@@ -98,6 +98,49 @@ namespace UtinniCoreDotNet.Formats.Datatable
         internal abstract bool ValueEquals(DataTableCellValue other);
 
         /// <summary>
+        /// Renders this value as the CSV cell text for the given column type (Plan 09-06 — added for
+        /// the CSV serializer + the framework CsvCellCoercion round-trip property). The rendering is
+        /// keyed on the column's BASIC type so it round-trips through
+        /// <see cref="DataTableColumnType.TryCoerceCellValue"/> for the non-mangled basic types:
+        /// <list type="bullet">
+        ///   <item>DT_Int basic type → the int32 formatted with the invariant culture.</item>
+        ///   <item>DT_Float basic type → the float formatted round-trippable ("R", invariant).</item>
+        ///   <item>DT_String basic type → the string verbatim.</item>
+        ///   <item>DT_Comment → empty string (comment cells carry no on-disk value).</item>
+        /// </list>
+        ///
+        /// <para><b>DT_HashString lossiness (iter-2 item 9 — both reviewers):</b> a DT_HashString
+        /// column's BasicType is DT_Int, so the stored int32 hash is rendered here — NOT the source
+        /// string (which is never persisted; only the int32 hash reaches disk per RESEARCH Pitfall 4).
+        /// A CSV round-trip therefore CANNOT reconstruct the original source string for an
+        /// already-saved DT_HashString cell. The CSV header carries a <c>#</c>-comment documenting
+        /// this; 09-07 smoke Step 10 verifies the behavior (it does NOT expect source-string
+        /// round-trip).</para>
+        /// </summary>
+        public string ToCsvString(DataTableColumnType ct)
+        {
+            if (ct == null) throw new ArgumentNullException("ct");
+
+            if (ct.Type == DataType.Comment)
+            {
+                return string.Empty;
+            }
+
+            switch (ct.BasicType)
+            {
+                case DataType.Int:
+                    return AsInt().ToString(CultureInfo.InvariantCulture);
+                case DataType.Float:
+                    return AsFloat().ToString("R", CultureInfo.InvariantCulture);
+                case DataType.String:
+                    return AsString();
+                default:
+                    // DT_Unknown (cross-table enum 'z' / malformed) — best-effort string form.
+                    return ToString();
+            }
+        }
+
+        /// <summary>
         /// Serializes a fresh per-cell ROWS payload for the given value under the given column type,
         /// matching the SOE <c>_saveRows</c> encoder (<c>DataTableWriter.cpp:860-911</c>) keyed on the
         /// column's BASIC type:

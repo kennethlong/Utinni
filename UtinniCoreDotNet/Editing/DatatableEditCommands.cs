@@ -144,13 +144,18 @@ namespace UtinniCoreDotNet.Editing
         }
 
         /// <summary>
-        /// Bulk CSV-import transaction (Plan 09-06 fills the body). The signature is present so Plan
-        /// 09-06's CsvImportPlan integration is purely additive — it does NOT require touching the
-        /// controller or the command interface.
+        /// Bulk CSV-import transaction (Plan 09-06 — D-08). Wraps the N per-cell diffs in the plan's
+        /// <see cref="CsvImportPlan.Changes"/> as a SINGLE undo entry: Do applies every patch (capturing
+        /// each cell's full state first); UndoOp restores every cell in REVERSE order so one Ctrl+Z
+        /// reverts the entire import byte-exact (RestoreState re-attaches the original slices — item 3).
+        /// Cells in <see cref="CsvImportPlan.Unchanged"/> are NOT touched (they stay clean, preserving
+        /// originalSlice per CF-04); cells in <see cref="CsvImportPlan.Invalid"/> are skipped entirely.
         /// </summary>
-        public static IDatatableEditCommand ApplyCsvImport(MutableDataTableDocument doc, object plan)
+        public static IDatatableEditCommand ApplyCsvImport(MutableDataTableDocument doc, CsvImportPlan plan)
         {
-            throw new NotImplementedException("Wired by Plan 09-06");
+            if (doc == null) throw new ArgumentNullException("doc");
+            if (plan == null) throw new ArgumentNullException("plan");
+            return new ApplyCsvImportCommand(plan);
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -183,6 +188,60 @@ namespace UtinniCoreDotNet.Editing
             {
                 if (!captured) return;
                 cell.RestoreState(capturedState);
+            }
+        }
+
+        private sealed class ApplyCsvImportCommand : IDatatableEditCommand
+        {
+            private readonly CsvImportPlan plan;
+
+            // Captured pre-change state for each applied patch, in apply order. UndoOp walks this in
+            // reverse so the document returns to its exact pre-import bytes (RestoreState re-attaches
+            // each cell's original slice — item 3 byte-exact restore).
+            private List<CapturedPatch> captured;
+
+            public ApplyCsvImportCommand(CsvImportPlan plan)
+            {
+                this.plan = plan;
+            }
+
+            public void Do(MutableDataTableDocument doc)
+            {
+                // Re-capture each time Do runs (Apply + Redo) so UndoOp always restores the state that
+                // immediately preceded THIS application.
+                captured = new List<CapturedPatch>(plan.Changes.Count);
+                for (int i = 0; i < plan.Changes.Count; i++)
+                {
+                    EditCellPatch p = plan.Changes[i];
+                    if (p.Row < 0 || p.Row >= doc.Rows.Count) continue;
+                    MutableDataTableRow row = doc.Rows[p.Row];
+                    if (p.Col < 0 || p.Col >= row.Cells.Count) continue;
+
+                    MutableDataTableCell cell = row.Cells[p.Col];
+                    captured.Add(new CapturedPatch(cell, cell.CaptureState()));
+                    cell.Value = p.NewValue;
+                }
+            }
+
+            public void UndoOp(MutableDataTableDocument doc)
+            {
+                if (captured == null) return;
+                for (int i = captured.Count - 1; i >= 0; i--)
+                {
+                    captured[i].Cell.RestoreState(captured[i].State);
+                }
+            }
+
+            private struct CapturedPatch
+            {
+                public readonly MutableDataTableCell Cell;
+                public readonly MutableDataTableCell.CellState State;
+
+                public CapturedPatch(MutableDataTableCell cell, MutableDataTableCell.CellState state)
+                {
+                    Cell = cell;
+                    State = state;
+                }
             }
         }
 

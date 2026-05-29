@@ -600,14 +600,116 @@ namespace UtinniCoreDotNet.Tests.FormatsTests.Datatable
             Assert.True(c.IsDirty);
         }
 
-        // ── ApplyCsvImport stub ──────────────────────────────────────────────
+        // ── ApplyCsvImport transaction (Plan 09-06 — D-08) ───────────────────
+
+        // Build a CsvImportPlan whose Changes flip cells [0,0] and [1,0] of the all-types fixture
+        // (both DT_Int "anInt" cells) to new values; used by the single-transaction facts below.
+        private static CsvImportPlan PlanChanges(MutableDataTableDocument doc, params (int row, int col, int newInt)[] edits)
+        {
+            var plan = new CsvImportPlan();
+            foreach (var e in edits)
+            {
+                plan.Changes.Add(new EditCellPatch(e.row, e.col, DataTableCellValue.FromInt(e.newInt)));
+            }
+            return plan;
+        }
 
         [Fact]
-        public void ApplyCsvImport_Throws_NotImplemented_WiredByPlan0906()
+        public void ApplyCsvImport_FivePatches_AppliesAllInSingleTransaction()
+        {
+            var doc = LoadMutable(DatatableFixtures.BuildV1CombatDataTableLike());
+            // int columns are c % 3 == 0; rows 0..4 column 0 are all DT_Int cells.
+            var plan = PlanChanges(doc,
+                (0, 0, 9001), (1, 0, 9002), (2, 0, 9003), (3, 0, 9004), (4, 0, 9005));
+            var c = new DatatableEditController(doc);
+            c.Apply(DatatableEditCommands.ApplyCsvImport(doc, plan));
+
+            for (int r = 0; r < 5; r++)
+            {
+                Assert.True(CellAt(doc, r, 0).IsDirty);
+            }
+            // One transaction → a single undo entry.
+            Assert.True(c.CanUndo);
+            c.Undo();
+            Assert.False(c.CanUndo);
+        }
+
+        [Fact]
+        public void ApplyCsvImport_Undo_RevertsAllPatches()
+        {
+            byte[] loaded = DatatableFixtures.BuildV1CombatDataTableLike();
+            var doc = LoadMutable(loaded);
+            var plan = PlanChanges(doc,
+                (0, 0, 9001), (1, 0, 9002), (2, 0, 9003), (3, 0, 9004), (4, 0, 9005));
+            var c = new DatatableEditController(doc);
+            c.Apply(DatatableEditCommands.ApplyCsvImport(doc, plan));
+            c.Undo();
+
+            for (int r = 0; r < 5; r++)
+            {
+                Assert.False(CellAt(doc, r, 0).IsDirty);
+            }
+            Assert.False(c.IsDirty);
+            // Byte-exact: the whole import undone leaves the document identical to load.
+            Assert.Equal(loaded, Serialize(doc));
+        }
+
+        [Fact]
+        public void ApplyCsvImport_RedoAfterUndo_ReAppliesAll()
+        {
+            var doc = LoadMutable(DatatableFixtures.BuildV1CombatDataTableLike());
+            var plan = PlanChanges(doc, (0, 0, 9001), (1, 0, 9002), (2, 0, 9003));
+            var c = new DatatableEditController(doc);
+            c.Apply(DatatableEditCommands.ApplyCsvImport(doc, plan));
+            c.Undo();
+            c.Redo();
+
+            for (int r = 0; r < 3; r++)
+            {
+                Assert.True(CellAt(doc, r, 0).IsDirty);
+            }
+            Assert.True(c.IsDirty);
+        }
+
+        [Fact(DisplayName = "SC4 (controller): ApplyCsvImport with all-unchanged plan leaves bytes EXACTLY equal loaded")]
+        public void ApplyCsvImport_BytesEqualOnUnchangedCells()
+        {
+            byte[] loaded = DatatableFixtures.BuildV1AllTypes();
+            var doc = LoadMutable(loaded);
+
+            // A plan that changes exactly one cell ([0,0] anInt) and lists the rest unchanged.
+            var plan = new CsvImportPlan();
+            plan.Changes.Add(new EditCellPatch(0, 0, DataTableCellValue.FromInt(424242)));
+            // Mark every other cell unchanged (they keep their original slices — CF-04).
+            for (int r = 0; r < doc.Rows.Count; r++)
+            {
+                for (int col = 0; col < doc.Columns.Count; col++)
+                {
+                    if (r == 0 && col == 0) continue;
+                    plan.Unchanged.Add(new UnchangedCellMatch(r, col));
+                }
+            }
+
+            var c = new DatatableEditController(doc);
+            c.Apply(DatatableEditCommands.ApplyCsvImport(doc, plan));
+            // The one changed cell is dirty; the rest stay clean.
+            Assert.True(CellAt(doc, 0, 0).IsDirty);
+            for (int col = 1; col < doc.Columns.Count; col++)
+            {
+                Assert.False(CellAt(doc, 0, col).IsDirty);
+            }
+
+            // Undo the whole import → byte-exact equal to the loaded bytes (CF-04 + D-08 + CF-02).
+            c.Undo();
+            Assert.Equal(loaded, Serialize(doc));
+        }
+
+        [Fact]
+        public void ApplyCsvImport_NullArgs_Throw()
         {
             var doc = LoadMutable(DatatableFixtures.BuildV1Minimal());
-            Assert.Throws<System.NotImplementedException>(
-                () => DatatableEditCommands.ApplyCsvImport(doc, null));
+            Assert.Throws<System.ArgumentNullException>(() => DatatableEditCommands.ApplyCsvImport(null, new CsvImportPlan()));
+            Assert.Throws<System.ArgumentNullException>(() => DatatableEditCommands.ApplyCsvImport(doc, null));
         }
     }
 }

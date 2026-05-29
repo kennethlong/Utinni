@@ -70,6 +70,7 @@
     <Compile Include="Formats\Iff\MutableIffDocument.cs" />
     <Compile Include="Formats\Iff\MutableIffNode.cs" />
     <Compile Include="Formats\Iff\OpenSource.cs" />
+    <Compile Include="Formats\Datatable\CsvCellCoercion.cs" />
     <Compile Include="Formats\Datatable\DataTableCellValue.cs" />
     <Compile Include="Formats\Datatable\DataTableColumnType.cs" />
     <Compile Include="Formats\Datatable\DataTableDocument.cs" />
