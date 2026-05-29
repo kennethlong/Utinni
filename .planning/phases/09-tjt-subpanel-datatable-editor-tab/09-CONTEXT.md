@@ -39,7 +39,7 @@ A **typed view + edit surface for `.tab` datatables** (FORM `DTII` IFF — versi
   - `DT_Int` → numeric spinner (whole numbers)
   - `DT_Float` → numeric spinner with decimals
   - `DT_Bool` → checkbox
-  - `DT_Enum` → dropdown sourced from the column's type-spec string (`e[a:0,b:1,c:2]`)
+  - `DT_Enum` → dropdown sourced from the column's type-spec string (`e(a=0,b=1,c=2)[default]` — Assumption A1 corrected 2026-05-29 per RESEARCH Pitfall 2)
   - `DT_HashString` → text input + computed hash preview adjacent
   - `DT_String`, `DT_Comment` → free text
   - `DT_PackedObjVars`, `DT_BitVector` → text input with format syntax hint (planner discretion on validator depth)

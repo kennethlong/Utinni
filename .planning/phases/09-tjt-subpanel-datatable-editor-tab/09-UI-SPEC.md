@@ -5,7 +5,8 @@ status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-05-28
-reviewed_at: 2026-05-28
+reviewed_at: 2026-05-29
+last_amendment: "2026-05-29 — enum-syntax typo (Assumption A1) corrected"
 platform: winforms-desktop
 inherits:
   - 07-UI-SPEC.md
@@ -281,7 +282,7 @@ copy on validation failure goes to `lblStatus` at `Color.Red` (Phase 8 idiom).
 | `DT_Int` | `UtinniNumericUpDown` (existing themed control) swapped in via `DataGridView.EditingControlShowing` | `DecimalPlaces = 0`; min/max from column type-spec or `int.MinValue` / `int.MaxValue` |
 | `DT_Float` | `UtinniNumericUpDown` with `DecimalPlaces = 6` (planner may tune); `Increment = 0.1m` | min/max from column type-spec or `float.MinValue` / `float.MaxValue` |
 | `DT_Bool` | `DataGridViewCheckBoxColumn` (no editor swap needed) | N/A — checkbox can only be `true`/`false` |
-| `DT_Enum` | `DataGridViewComboBoxColumn` populated from type-spec string `e[a:0,b:1,c:2]` | dropdown — user cannot type a non-member value |
+| `DT_Enum` | `DataGridViewComboBoxColumn` populated from type-spec string `e(a=0,b=1,c=2)[default]` | dropdown — user cannot type a non-member value |
 | `DT_HashString` | `DataGridViewTextBoxColumn` (free text) + floating `UtinniLabel` (`Consolas 9pt`, `Colors.FontDisabled()`) anchored to the cell rect showing the computed hash (`0x{hash:X8}`) | No keystroke validation; hash recomputes on every keystroke |
 | `DT_String` | `DataGridViewTextBoxColumn` (free text) | None — any string accepted |
 | `DT_Comment` | `DataGridViewTextBoxColumn` (free text); read-only when row is the frozen header AND `editCommentRows` toggle is OFF | None |
@@ -593,6 +594,24 @@ These do not change locked decisions; flag any disagreement at planning time.
 | Registry | Blocks Used | Safety Gate |
 |----------|-------------|-------------|
 | not applicable (WinForms; no shadcn/component registry) | none | not applicable — no third-party UI registry, no `components.json`, no npm/registry component install. All UI is built from in-repo themed WinForms controls (`UtinniCoreDotNet.UI.Controls` + the new TJT-side `ThemedDataGridView` wrapper) and BCL `System.Windows.Forms` types. No new package install. shadcn initialization gate is N/A: the stack is .NET Framework 4.7.2 WinForms desktop, not React/Next.js/Vite. |
+
+---
+
+## Amendments
+
+### 2026-05-29 — enum syntax (RESEARCH Assumption A1)
+
+NOTE: The DT_Enum cell-widget contract and CONTEXT D-03 previously cited the type-spec
+grammar using square brackets with colon-separated label:value pairs. This was incorrect.
+Per `DataTableColumnType.cpp:142-153` the
+type-spec's first character is the type discriminator (`i`/`f`/`s`/`c`/`h`/`p`/`b`/`e`/`v`/`z`);
+enum and bitvector lists are delimited by **parentheses** and use `=` as the label/value
+separator (`e(label=val,label=val,…)[default]`), while **square brackets are reserved for the
+optional `[default]` value group** (extracted via `getDelimStr(desc, '[', ']')`). The `z`
+discriminator (cross-table enum) is out of scope for V1 per CONTEXT D-05 and routes to
+`DT_Unknown` read-only handling per the R-03 recommendation. The corrected grammar
+`e(a=0,b=1,c=2)[default]` is now used throughout this UI-SPEC and CONTEXT, and is implemented
+verbatim by `DataTableColumnType.cs` in Plan 09-01.
 
 ---
 
