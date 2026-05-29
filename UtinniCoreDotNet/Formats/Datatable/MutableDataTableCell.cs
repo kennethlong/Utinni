@@ -121,6 +121,25 @@ namespace UtinniCoreDotNet.Formats.Datatable
             needsReview = false;
         }
 
+        /// <summary>
+        /// Returns a COPY of this cell's captured original ROWS-payload byte slice, or an empty array
+        /// when the cell carries no slice (a freshly-built or edited cell). This is the read-side the
+        /// Plan 09-02 <c>roundtrip-tab</c> per-cell ROWS-slice comparison algorithm uses against a fresh
+        /// no-op re-load of a byte array — it never exposes the live backing array, so a caller cannot
+        /// mutate the cell's captured slice.
+        /// </summary>
+        public byte[] GetOriginalSliceForCompare()
+        {
+            if (originalSlice == null || originalSlice.Length == 0)
+            {
+                return Array.Empty<byte>();
+            }
+
+            byte[] copy = new byte[originalSlice.Length];
+            Array.Copy(originalSlice, copy, originalSlice.Length);
+            return copy;
+        }
+
         internal void SetParentRow(MutableDataTableRow row)
         {
             Row = row;

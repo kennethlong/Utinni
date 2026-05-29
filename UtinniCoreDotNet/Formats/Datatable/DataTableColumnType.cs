@@ -279,6 +279,64 @@ namespace UtinniCoreDotNet.Formats.Datatable
             }
         }
 
+        /// <summary>
+        /// Coerces a raw editor string toward this column's typed on-disk value: runs
+        /// <see cref="MangleValue"/> (which substitutes defaults and maps Bool/Hash/Enum/BitVector to
+        /// their int32 form), then constructs the <see cref="DataTableCellValue"/> for this column's
+        /// <see cref="BasicType"/>. Returns <c>false</c> (and leaves <paramref name="result"/> null) on
+        /// a mangle failure or an unparseable numeric. Reusable by Plan 09-02's <c>roundtrip-tab
+        /// --mutate-cell</c>, Plan 09-04's EditCellValue, and Plan 09-06's ApplyCsvImport.
+        /// </summary>
+        public bool TryCoerceCellValue(string raw, out DataTableCellValue result)
+        {
+            result = null;
+            string mangled = raw ?? string.Empty;
+            if (!MangleValue(ref mangled))
+            {
+                return false;
+            }
+
+            switch (BasicType)
+            {
+                case DataType.Int:
+                {
+                    int v;
+                    if (!int.TryParse(mangled, NumberStyles.Integer, CultureInfo.InvariantCulture, out v))
+                    {
+                        return false;
+                    }
+
+                    result = DataTableCellValue.FromInt(v);
+                    return true;
+                }
+
+                case DataType.Float:
+                {
+                    float v;
+                    if (!float.TryParse(mangled, NumberStyles.Float, CultureInfo.InvariantCulture, out v))
+                    {
+                        return false;
+                    }
+
+                    result = DataTableCellValue.FromFloat(v);
+                    return true;
+                }
+
+                case DataType.String:
+                    result = DataTableCellValue.FromString(mangled);
+                    return true;
+
+                case DataType.Comment:
+                    // Comment cells carry no on-disk value; model as empty string.
+                    result = DataTableCellValue.FromString(string.Empty);
+                    return true;
+
+                default:
+                    // DT_Unknown (e.g. cross-table enum 'z' or a malformed spec) is not editable.
+                    return false;
+            }
+        }
+
         // ──────────────────────────────────────────────────────────────────────
         // Enum / bitvector map construction (DataTableColumnType.cpp:136-194)
         // ──────────────────────────────────────────────────────────────────────

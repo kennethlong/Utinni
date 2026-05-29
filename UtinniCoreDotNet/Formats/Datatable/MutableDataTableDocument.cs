@@ -101,6 +101,76 @@ namespace UtinniCoreDotNet.Formats.Datatable
         }
 
         /// <summary>
+        /// Removes the row at the given index. Thin wrapper over <see cref="Rows"/>.RemoveAt that also
+        /// rolls the document dirty. Plan 09-04 will wrap this in an undoable IDatatableEditCommand; the
+        /// Plan 09-02 <c>roundtrip-tab --remove-row</c> verb calls it directly for the structural gate.
+        /// </summary>
+        public void RemoveRowAt(int rowIndex)
+        {
+            if (rowIndex < 0 || rowIndex >= Rows.Count)
+            {
+                throw new ArgumentOutOfRangeException("rowIndex", rowIndex, "Row index is out of range.");
+            }
+
+            Rows.RemoveAt(rowIndex);
+            MarkDirty();
+        }
+
+        /// <summary>
+        /// Removes the column at the given index AND trims the corresponding cell from every row so the
+        /// column list and each row's cell list stay in lock-step (a bare <see cref="Columns"/>.RemoveAt
+        /// would desync the ROWS payload — RESEARCH Pitfall: column/row shape must move together).
+        /// Plan 09-04 will wrap this in an undoable IDatatableEditCommand; the Plan 09-02
+        /// <c>roundtrip-tab --remove-column</c> verb calls it directly for the structural gate.
+        /// </summary>
+        public void RemoveColumnAt(int columnIndex)
+        {
+            if (columnIndex < 0 || columnIndex >= Columns.Count)
+            {
+                throw new ArgumentOutOfRangeException("columnIndex", columnIndex, "Column index is out of range.");
+            }
+
+            Columns.RemoveAt(columnIndex);
+            for (int r = 0; r < Rows.Count; r++)
+            {
+                // A row may have fewer cells than columns only in a malformed in-memory doc; guard it.
+                if (columnIndex < Rows[r].Cells.Count)
+                {
+                    Rows[r].RemoveCellInternal(columnIndex);
+                }
+            }
+
+            MarkDirty();
+        }
+
+        /// <summary>
+        /// Resolves a column index from a string that is either a 0-based integer index or a column
+        /// name (ordinal match on <see cref="MutableDataTableColumn.Name"/>). Returns -1 when no column
+        /// matches. Used by the <c>roundtrip-tab --remove-column N|name</c> verb.
+        /// </summary>
+        public int ResolveColumnIndex(string indexOrName)
+        {
+            if (indexOrName == null) return -1;
+
+            int parsed;
+            if (int.TryParse(indexOrName, System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out parsed))
+            {
+                return (parsed >= 0 && parsed < Columns.Count) ? parsed : -1;
+            }
+
+            for (int c = 0; c < Columns.Count; c++)
+            {
+                if (string.Equals(Columns[c].Name, indexOrName, StringComparison.Ordinal))
+                {
+                    return c;
+                }
+            }
+
+            return -1;
+        }
+
+        /// <summary>
         /// Materializes a fresh <c>FORM DTII { FORM &lt;ver&gt; { COLS, TYPE, ROWS } }</c>
         /// <see cref="MutableIffDocument"/> for serialization. The three leaf payloads are built as:
         /// <list type="bullet">

@@ -84,6 +84,21 @@ namespace UtinniCoreDotNet.Formats.Datatable
             cell.SetParentRow(this);
         }
 
+        // Remove the cell at the given column index during a RemoveColumn structural edit. Internal
+        // because row-cell shape is owned by the document-level structural helpers
+        // (MutableDataTableDocument.RemoveColumnAt) — direct callers go through the document so the
+        // column list and every row's cell list stay in lock-step.
+        internal void RemoveCellInternal(int index)
+        {
+            if (index < 0 || index >= cells.Count)
+            {
+                throw new ArgumentOutOfRangeException("index", index, "Cell index is out of range for this row.");
+            }
+
+            cells.RemoveAt(index);
+            MarkDirty();
+        }
+
         /// <summary>Notifies the parent document that this row changed (one-level propagation).</summary>
         internal void MarkDirty()
         {
