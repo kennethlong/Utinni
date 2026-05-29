@@ -262,6 +262,65 @@ namespace UtinniCoreDotNet.Tests.FormatsTests.Iff
         }
 
         // ─────────────────────────────────────────────────────────────────────
+        // 08-REVIEW WR-04: case-insensitive Equals + GetHashCode on Windows paths.
+        // Equality contract: if Equals returns true, GetHashCode MUST match. The Equals/GetHashCode
+        // halves must use the same comparer.
+        // ─────────────────────────────────────────────────────────────────────
+
+        [Fact]
+        public void LooseFile_GetHashCode_PathCaseInsensitive_AgreesWithEquals()
+        {
+            var lower = new OpenSource.LooseFile(@"C:\swg-client\datatables\foo.iff");
+            var upper = new OpenSource.LooseFile(@"C:\SWG-CLIENT\DATATABLES\FOO.IFF");
+            var mixed = new OpenSource.LooseFile(@"c:\swg-Client\DataTables\Foo.IFF");
+
+            Assert.Equal(lower, upper);
+            Assert.Equal(lower, mixed);
+            Assert.Equal(lower.GetHashCode(), upper.GetHashCode());
+            Assert.Equal(lower.GetHashCode(), mixed.GetHashCode());
+        }
+
+        [Fact]
+        public void LooseFile_DifferentPaths_AreNotEqual_AcrossCasing()
+        {
+            var a = new OpenSource.LooseFile(@"C:\swg-client\foo.iff");
+            var b = new OpenSource.LooseFile(@"C:\swg-client\bar.iff");
+            Assert.NotEqual(a, b);
+        }
+
+        [Fact]
+        public void TreArchive_GetHashCode_PathsCaseInsensitive_AgreesWithEquals()
+        {
+            var lower = new OpenSource.TreArchive(
+                @"C:\swg-client\packed.tre", 42, "datatables/foo.iff");
+            var upper = new OpenSource.TreArchive(
+                @"C:\SWG-CLIENT\PACKED.TRE", 42, "DATATABLES/FOO.IFF");
+
+            Assert.Equal(lower, upper);
+            Assert.Equal(lower.GetHashCode(), upper.GetHashCode());
+        }
+
+        [Fact]
+        public void TreArchive_DifferentRecordIndex_StillNotEqual_AcrossCasing()
+        {
+            // Sanity: case-insensitive paths do NOT collapse different RecordIndex values.
+            var a = new OpenSource.TreArchive(@"C:\packed.tre", 42, "x/y.iff");
+            var b = new OpenSource.TreArchive(@"c:\PACKED.tre", 43, "X/Y.iff");
+            Assert.NotEqual(a, b);
+        }
+
+        [Fact]
+        public void ClientMemory_GetHashCode_LogicalPathCaseInsensitive_AgreesWithEquals()
+        {
+            var addr = new IntPtr(0x12345678);
+            var lower = new OpenSource.ClientMemory(addr, 1024, "datatables/foo.iff");
+            var upper = new OpenSource.ClientMemory(addr, 1024, "DATATABLES/FOO.IFF");
+
+            Assert.Equal(lower, upper);
+            Assert.Equal(lower.GetHashCode(), upper.GetHashCode());
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
         // Unknown singleton invariant
         // ─────────────────────────────────────────────────────────────────────
 

@@ -99,7 +99,10 @@ namespace UtinniCoreDotNet.Formats.Iff
             {
                 if (ReferenceEquals(other, null)) return false;
                 if (ReferenceEquals(other, this)) return true;
-                return Path == other.Path;
+                // 08-REVIEW WR-04: Windows file paths are case-insensitive (NTFS default + the project
+                // is Windows-only per MEMORY). "C:\swg\foo.iff" and "c:\SWG\foo.iff" reference the
+                // same file; Equals + GetHashCode must agree on that.
+                return string.Equals(Path, other.Path, StringComparison.OrdinalIgnoreCase);
             }
 
             /// <inheritdoc/>
@@ -111,7 +114,9 @@ namespace UtinniCoreDotNet.Formats.Iff
             /// <inheritdoc/>
             public override int GetHashCode()
             {
-                return Path == null ? 0 : Path.GetHashCode();
+                // 08-REVIEW WR-04: must agree with Equals (above) — case-insensitive hash so two
+                // case-different but otherwise-identical paths bucket the same in dictionaries.
+                return Path == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(Path);
             }
         }
 
@@ -149,9 +154,12 @@ namespace UtinniCoreDotNet.Formats.Iff
             {
                 if (ReferenceEquals(other, null)) return false;
                 if (ReferenceEquals(other, this)) return true;
-                return TrePath == other.TrePath
+                // 08-REVIEW WR-04: TrePath is a Windows file path; LogicalPath is the archive-internal
+                // TOC path (SWG treats these case-insensitively). Both compare ordinal-ignore-case so
+                // GetHashCode + Equals agree across casing.
+                return string.Equals(TrePath, other.TrePath, StringComparison.OrdinalIgnoreCase)
                     && RecordIndex == other.RecordIndex
-                    && LogicalPath == other.LogicalPath;
+                    && string.Equals(LogicalPath, other.LogicalPath, StringComparison.OrdinalIgnoreCase);
             }
 
             /// <inheritdoc/>
@@ -163,10 +171,10 @@ namespace UtinniCoreDotNet.Formats.Iff
             /// <inheritdoc/>
             public override int GetHashCode()
             {
-                // Simple combine — none of the fields are nullable in a valid instance.
-                int h = TrePath == null ? 0 : TrePath.GetHashCode();
+                // 08-REVIEW WR-04: case-insensitive hash matching Equals above.
+                int h = TrePath == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(TrePath);
                 h = unchecked((h * 397) ^ RecordIndex);
-                h = unchecked((h * 397) ^ (LogicalPath == null ? 0 : LogicalPath.GetHashCode()));
+                h = unchecked((h * 397) ^ (LogicalPath == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(LogicalPath)));
                 return h;
             }
         }
@@ -214,9 +222,10 @@ namespace UtinniCoreDotNet.Formats.Iff
             {
                 if (ReferenceEquals(other, null)) return false;
                 if (ReferenceEquals(other, this)) return true;
+                // 08-REVIEW WR-04: LogicalPath is the SWG-internal asset path (case-insensitive).
                 return TargetAddr == other.TargetAddr
                     && OriginalMappedLength == other.OriginalMappedLength
-                    && LogicalPath == other.LogicalPath;
+                    && string.Equals(LogicalPath, other.LogicalPath, StringComparison.OrdinalIgnoreCase);
             }
 
             /// <inheritdoc/>
@@ -230,7 +239,8 @@ namespace UtinniCoreDotNet.Formats.Iff
             {
                 int h = TargetAddr.GetHashCode();
                 h = unchecked((h * 397) ^ OriginalMappedLength);
-                h = unchecked((h * 397) ^ (LogicalPath == null ? 0 : LogicalPath.GetHashCode()));
+                // 08-REVIEW WR-04: case-insensitive hash matching Equals above.
+                h = unchecked((h * 397) ^ (LogicalPath == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(LogicalPath)));
                 return h;
             }
         }
