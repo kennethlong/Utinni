@@ -77,6 +77,27 @@ namespace UtinniCoreDotNet.Saving
             if (relAssetPath == null) throw new ArgumentNullException("relAssetPath");
             if (relAssetPath.Length == 0) throw new ArgumentException("relAssetPath must not be empty.", "relAssetPath");
 
+            // 08-REVIEW WR-07: Re-canonicalize resolvedRoot defensively. The docstring says the
+            // caller is responsible, but every observed caller in TJT (FormIffEditor.ResolveClientRoot
+            // around lines 1477-1511) feeds in raw paths from Process.MainModule.FileName /
+            // GetWorkingDirectory / Utinni.ini — none of which guarantee canonical form. A root like
+            //   "C:\swg-client\..\swg-client"
+            // would Path.GetFullPath(combined) into "C:\swg-client\foo.iff" but the StartsWith gate
+            // (which compared against the un-canonicalized rootWithSep "C:\swg-client\..\swg-client\")
+            // would return false — falsely rejecting a legitimate path. Canonicalize the root once
+            // at entry; downstream StartsWith / trailing-separator logic then operates on a stable
+            // value. Same exception class as the candidate-side canonicalization failure path.
+            try
+            {
+                resolvedRoot = Path.GetFullPath(resolvedRoot);
+            }
+            catch (Exception ex)
+            {
+                throw new ArgumentException(
+                    "resolvedRoot produced an invalid path: " + ex.Message,
+                    "resolvedRoot", ex);
+            }
+
             // (b) Rooted candidates (C:\evil.iff, D:foo, \unc, /abs) are immediate rejects —
             // they would Path.Combine away from resolvedRoot.
             if (Path.IsPathRooted(relAssetPath))
@@ -103,6 +124,7 @@ namespace UtinniCoreDotNet.Saving
             // Normalize the root: append the OS separator if the caller didn't, so the
             // StartsWith gate cannot be defeated by a prefix-match attack (e.g.
             // 'C:\swg-clientx\loot' StartsWith 'C:\swg-client' would otherwise return true).
+            // (WR-07: operates on the now-canonicalized resolvedRoot.)
             string rootWithSep = resolvedRoot;
             if (rootWithSep[rootWithSep.Length - 1] != Path.DirectorySeparatorChar
                 && rootWithSep[rootWithSep.Length - 1] != Path.AltDirectorySeparatorChar)

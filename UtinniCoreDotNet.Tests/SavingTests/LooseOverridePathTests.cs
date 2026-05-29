@@ -185,5 +185,65 @@ namespace UtinniCoreDotNet.Tests.SavingTests
             string fullB = LooseOverridePath.Resolve(@"C:\swg-client\", @"foo.iff");
             Assert.Equal(fullA, fullB, ignoreCase: true);
         }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // 08-REVIEW WR-07: Resolve re-canonicalizes the resolvedRoot defensively
+        //
+        // The prior version trusted the docstring's "caller is responsible" claim, but every
+        // observed caller (FormIffEditor.ResolveClientRoot) fed paths from
+        // Process.MainModule.FileName / GetWorkingDirectory / Utinni.ini — none guaranteed
+        // canonical. A non-canonical root caused the StartsWith gate to falsely reject
+        // legitimate paths because the candidate side was Path.GetFullPath'd but the root was
+        // not. These tests pin the fix in place.
+        // ─────────────────────────────────────────────────────────────────────
+
+        [Fact]
+        public void Resolve_RootWithDotDotSegment_NormalizesAndAccepts()
+        {
+            // Non-canonical root containing '..' that collapses to a real directory must NOT
+            // falsely reject a legitimate child path. Pre-fix: StartsWith compared
+            //   "C:\swg-client\foo.iff" against "C:\swg-client\..\swg-client\"
+            // and returned false. Post-fix: root canonicalized to "C:\swg-client" before the
+            // trailing-separator + StartsWith logic.
+            string root = @"C:\swg-client\..\swg-client";
+            string full = LooseOverridePath.Resolve(root, @"datatables\foo.iff");
+            Assert.StartsWith(@"C:\swg-client\", full, StringComparison.OrdinalIgnoreCase);
+            Assert.EndsWith(@"datatables\foo.iff", full, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public void Resolve_RootWithSingleDotSegment_NormalizesAndAccepts()
+        {
+            // './' segment in the root — Path.GetFullPath collapses it; pre-fix the StartsWith
+            // gate would have compared the un-canonicalized form.
+            string root = @"C:\swg-client\.\subdir\..\.";
+            string full = LooseOverridePath.Resolve(root, @"foo.iff");
+            // Resolves to C:\swg-client\foo.iff after canonicalization.
+            Assert.StartsWith(@"C:\swg-client\", full, StringComparison.OrdinalIgnoreCase);
+            Assert.EndsWith(@"foo.iff", full, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public void Resolve_RootWithMixedSeparators_NormalizesAndAccepts()
+        {
+            // Mixed-separator root — Path.GetFullPath normalizes to OS-native form before
+            // the StartsWith gate runs.
+            string root = @"C:/swg-client/datatables/..";
+            string full = LooseOverridePath.Resolve(root, @"foo.iff");
+            Assert.StartsWith(@"C:\swg-client\", full, StringComparison.OrdinalIgnoreCase);
+            Assert.EndsWith(@"foo.iff", full, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public void Resolve_RootWithBothCanonicalAndNonCanonicalForms_ResultIsIdempotent()
+        {
+            // Two roots that canonicalize to the same path must produce the same resolved value
+            // (post-canonicalization the trailing-separator logic + StartsWith are stable).
+            string fullA = LooseOverridePath.Resolve(@"C:\swg-client", @"datatables\foo.iff");
+            string fullB = LooseOverridePath.Resolve(@"C:\swg-client\..\swg-client", @"datatables\foo.iff");
+            string fullC = LooseOverridePath.Resolve(@"C:/swg-client", @"datatables/foo.iff");
+            Assert.Equal(fullA, fullB, ignoreCase: true);
+            Assert.Equal(fullA, fullC, ignoreCase: true);
+        }
     }
 }
