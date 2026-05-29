@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 9 Plan 03 autonomous tasks complete — awaiting Task 4 live-host verification
-last_updated: "2026-05-29T23:59:00.000Z"
+stopped_at: Phase 9 Plan 03 — autonomous Tasks 1-3 committed; Task 4 live-host checkpoint awaiting maintainer
+last_updated: "2026-05-29T23:32:07.107Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 12
   completed_phases: 9
   total_plans: 44
-  completed_plans: 40
-  percent: 91
+  completed_plans: 42
+  percent: 95
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 09 (tjt-subpanel-datatable-editor-tab) — EXECUTING
-Plan: 3 of 7 — IN PROGRESS (autonomous Tasks 1-3 done; Task 4 live-host checkpoint pending)
-Status: Awaiting maintainer live-host visual sanity check (Task 4)
+Plan: 04 of 7 — COMPLETE (T4 schema-mutation engine: DatatableEditController + 11 commands + cascade + 2 TJT modals + form wire)
+Status: Ready to execute 09-05 (Wave 4 — entry points + save targets; depends_on [09-03, 09-04])
 Last activity: 2026-05-29
-Next action: Maintainer runs the editor-host visual check (open Datatable Editor, bind a .tab, edit a cell, close->reopen for hide-not-dispose). On "approved", mark 09-03 complete + advance to 09-04/09-05 (Wave 3). Bind-latency measured ~265 ms cold / ~90-122 ms warm -> Plan 09-06 SHOULD include a VirtualMode fallback.
+Next action: Execute Plan 09-05 (Wave 4). It composes Save▾ provenance gating ON TOP of 09-04's NeedsReview gate and calls controller.MarkSaved() on save success; shares FormDatatableEditor.cs but modifies different method bodies (Save▾ click handlers + entry points). 09-03 Task 4 live-host checkpoint still pending maintainer sanity check (non-blocking for 09-05). Bind-latency ~265 ms cold / ~90-122 ms warm -> Plan 09-06 SHOULD include a VirtualMode fallback.
 
-Progress: [█████████░] 91%
+Progress: [██████████] 95%
 
 ## Wave 2 Summary
 
@@ -112,6 +112,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 09 P01 | ~50 min | 3 tasks (Task 0 docs + 2 TDD) | 15 new + 3 modified |
 | Phase 09 P02 | 40 min | 2 tasks | 18 files |
 | Phase 09 P03 | ~95 min | 3 auto tasks (+ 1 live-host checkpoint pending) | 9 new + 3 modified across both repos |
+| Phase 09 P04 | 75 min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase 8]: Phase 08 P06 (in-memory live patch, D-05.3) COMPLETE 2026-05-28. Framework-side `LivePatchValidator` pure-function bounds gate (BCL-only; no WinForms / UtinniCore.Memory / GameCallbacks / TJT — checker B-1) closes round-2 HIGH-B / CONTEXT D-05.3 "unit-tested" claim with 5 [Fact]s (NoClient / ZeroTarget / Growth / Shrink / SameLengthHappyPath). Plugin-side `LivePatchSaveTarget` (game-thread CON-N-04 mapped-memory write via `GameCallbacks.AddMainLoopCall` + `UtinniCore.Memory.memory.Copy`; pin/unpin in finally on same thread) consumes the validator before AddMainLoopCall. `FormSaveConfirmDialog` (risk-proportional per-call modal with Color.Red emphasis + explicit-verb buttons; reusable by 08-07 repack). `FormIffEditor` Save▾ ▸ Patch live client menu wire: provenance-gated on `Source is OpenSource.ClientMemory cm` AND `Game.IsRunning`; honest-disabled tooltip otherwise (round-2 MEDIUM 11, 3 hits). Round-2 HIGH-A: 4 new csproj entries (1 in Utinni + 3 in UtinniPlugins). Task 5 approved by maintainer on automation alone (option 3 — smoke=automation-only); Open Q4 (full functional live-patch smoke with maintainer-only ClientMemory debug construction) deferred to later observation/doc pass. Singleton-form pattern note: FormSaveConfirmDialog is per-call modal (`using (var dlg = ...)`) — default WinForms dispose-on-close is CORRECT; the 08-05 hide-not-dispose pattern applies only to plugin-registered GetForms() instances.
 - [Phase 9]: Phase 09 P03 (FormDatatableEditor host + grid + per-type widgets) autonomous Tasks 1-3 COMPLETE 2026-05-29 (Task 4 live-host checkpoint pending). Cross-repo: UtinniPlugins ships ThemedDataGridView (UI-SPEC token map verbatim, no ARGB literals, non-virtual BindMutable + CellFormatting overlays), DatatableColumnFactory, DatatableHashStringEditor (int-vs-source UX, source not persisted), DatatableNumericUpDownEditingControl, FormDatatableEditor host + Designer (CF-09 add-order) + Plugin.cs registration; Utinni ships SingletonFormClosePolicy framework helper (CI-coverable hide-not-dispose decision, no TJT ref) + 6-fact xUnit guard + the DataGridView bind-latency probe. Grid-binding commit-back seam isolated to FormDatatableEditor.CommitCell so 09-04 swaps the direct cell.Value setter for controller.Apply(EditCellValue). **Bind-latency: cold ~265 ms, warm ~89-122 ms (200x30, production CellFormatting path) — STRADDLES 100 ms; Plan 09-06 SHOULD include a VirtualMode fallback.** DEVIATION (Rule 3): STA probe via created+joined STA thread instead of adding Xunit.StaFact package. 411/411 UtinniCoreDotNet.Tests pass (404 baseline + 6 + 1); both repos build Debug|x86 clean. Commits: Utinni 6a40e05/84a24c6, UtinniPlugins 697a30c/ef0a0c8.
 - [Phase ?]: Phase 09 P02: roundtrip-tab CLI verb is the SC4 byte-exact-untouched-cells gate via a per-cell ROWS-slice comparison (re-parse both byte arrays, pair untouched cells by stable (row,col) with explicit remove-row/remove-column index-shift maps). Added public framework primitives RemoveRowAt/RemoveColumnAt/ResolveColumnIndex/TryCoerceCellValue/GetOriginalSliceForCompare (reusable by 09-04/09-06). 16 facts, 8 committed goldens; Utinni.Cli.Tests 139 pass, UtinniCoreDotNet.Tests 404/404.
+- [Phase ?]: Phase 09 P04 (T4 schema-mutation engine) COMPLETE 2026-05-29. DatatableEditController (verbatim IffEditController port + NeedsReviewCount/PendingCascadeContext/MarkSaved seams) + 11 D-01 T4 commands (EditCellValue via CaptureState/RestoreState byte-exact undo; RemoveRow/RemoveColumn insert-by-reference CR-01 port; ChangeColumnType D-04 mangle cascade) + ApplyCsvImport stub for 09-06. Cascade state on controller, ZERO form-local lastCascadeContext. MarkSaved rebaseline = per-cell (RebaselineAfterSave). TJT FormAddColumnDialog + FormTypeChangeCascadeDialog per-call modals; FormDatatableEditor controller wire + R-04 NeedsReview save-block on every Save menu item + D-02 safety-net (reused FormSaveConfirmDialog). DEVIATION (Rule 3): added MutableDataTableRow.InsertCellInternal + MutableDataTableCell.RebaselineAfterSave. 37 controller Facts; 111/111 Datatable subsuite; both repos Debug+Release|x86 clean. Commits Utinni 997716a / UtinniPlugins 0868c88.
 
 ### Pending Todos
 
@@ -196,9 +198,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-05-29T23:59:00.000Z
+Last session: 2026-05-29T23:31:35.538Z
 Stopped at: Phase 9 Plan 03 — autonomous Tasks 1-3 committed; Task 4 live-host checkpoint awaiting maintainer
-Resume file: .planning/phases/09-tjt-subpanel-datatable-editor-tab/09-03-SUMMARY.md
+Resume file: None
 
 ## Ingest Provenance
 
