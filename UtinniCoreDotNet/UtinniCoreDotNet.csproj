@@ -70,6 +70,10 @@
     <Compile Include="Formats\Iff\MutableIffDocument.cs" />
     <Compile Include="Formats\Iff\MutableIffNode.cs" />
     <Compile Include="Formats\Iff\OpenSource.cs" />
+    <Compile Include="Formats\Datatable\DataTableCellValue.cs" />
+    <Compile Include="Formats\Datatable\DataTableColumnType.cs" />
+    <Compile Include="Formats\Datatable\DataTableHashCrc.cs" />
+    <Compile Include="Formats\Datatable\DataTableParseException.cs" />
     <Compile Include="Formats\Tre\TreFile.cs" />
     <Compile Include="Formats\Tre\TreVersion.cs" />
     <Compile Include="Formats\Tre\CotMasterIndex.cs" />
