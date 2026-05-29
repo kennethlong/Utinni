@@ -341,36 +341,20 @@ namespace UtinniCoreDotNet.Formats.Iff
             return true;
         }
 
-        /// <summary>
-        /// Removes the descendant with the given stable id (as derived by
-        /// <see cref="MutableIffDocument.DeriveStableId"/>). Returns true iff a node was removed.
-        /// Used by the CLI structural-op verbs (08-02 <c>--remove-leaf</c>) and editor surfaces that
-        /// only have a stable id to address by (Rule-2 auto-add: 08-REVIEWS R3-M3).
-        /// </summary>
-        public bool RemoveByStableId(string stableId)
-        {
-            if (stableId == null) throw new ArgumentNullException("stableId");
-            // Walk children depth-first; the document's RemoveByStableId entry point uses this
-            // method on the root container.
-            for (int i = 0; i < children.Count; i++)
-            {
-                var c = children[i];
-                string cid = MutableIffDocument.DeriveStableId(c, this == null ? "" : this.GetStableIdRecursive(), i);
-                if (cid == stableId)
-                {
-                    Remove(c);
-                    return true;
-                }
-                if (c.Kind == MutableIffNodeKind.Container)
-                {
-                    if (c.RemoveByStableIdRecursive(stableId, cid + "/"))
-                        return true;
-                }
-            }
-            return false;
-        }
+        // 08-REVIEW WR-02: The prior public `RemoveByStableId(string)` instance method on
+        // MutableIffNode was deleted. It built the descendant-prefix without a trailing '/' (so
+        // DeriveStableId(child, "FORM:WSNP/0", 0) produced "FORM:WSNP/0DATA:DATA/0" with no '/'
+        // separator, which would never match an id produced by MutableIffDocument.DeriveStableId)
+        // AND carried a dead `this == null` check inside an instance method. It had no V1
+        // callers — MutableIffDocument.RemoveByStableId (the actually-consumed API) calls
+        // RemoveByStableIdRecursive directly with a correctly-suffixed root prefix.
+        //
+        // The `GetStableIdRecursive` instance helper was deleted with it (its only caller was the
+        // removed public method, plus its own recursive self-call). Future stable-id construction
+        // should go through MutableIffDocument.DeriveStableId per the documented public surface.
 
-        // Helper used by RemoveByStableId — walks a subtree using the precomputed prefix.
+        // Helper used by MutableIffDocument.RemoveByStableId — walks a subtree using the precomputed
+        // prefix (which the document entry point constructs as DeriveStableId(Root, "", 0) + "/").
         internal bool RemoveByStableIdRecursive(string targetStableId, string idPrefix)
         {
             for (int i = 0; i < children.Count; i++)
@@ -389,29 +373,6 @@ namespace UtinniCoreDotNet.Formats.Iff
                 }
             }
             return false;
-        }
-
-        // Recursively derives the stable id of THIS node by walking the parent chain. Used by
-        // RemoveByStableId on the root entry point. Internal — production callers should use
-        // MutableIffDocument.DeriveStableId directly.
-        internal string GetStableIdRecursive()
-        {
-            if (Parent == null)
-            {
-                return MutableIffDocument.DeriveStableId(this, "", 0);
-            }
-            // Find this node's ordinal in its parent.
-            int ord = 0;
-            var siblings = Parent.children;
-            for (int i = 0; i < siblings.Count; i++)
-            {
-                if (object.ReferenceEquals(siblings[i], this))
-                {
-                    ord = i;
-                    break;
-                }
-            }
-            return MutableIffDocument.DeriveStableId(this, Parent.GetStableIdRecursive() + "/", ord);
         }
 
         /// <summary>
