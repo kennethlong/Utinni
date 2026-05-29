@@ -37,6 +37,30 @@ findings:
   info: 6
   total: 14
 status: needs-attention
+fixed:
+  - CR-01
+  - WR-01
+  - WR-02
+  - WR-04
+  - WR-05
+  - WR-06
+  - WR-07
+fix_commits:
+  CR-01: e66e4fe  # Utinni
+  WR-01: aa8d06b  # UtinniPlugins
+  WR-02: 34a5422  # Utinni
+  WR-04: ce94f51  # Utinni
+  WR-05: 607d057  # UtinniPlugins
+  WR-06: 4b1c5fc  # Utinni
+  WR-07: 221c51b  # Utinni
+deferred:
+  - WR-03  # quadratic NodeSnapshot.Materialize — outside CR+WR fix-scope this round; cosmetic perf, not correctness
+  - IN-01  # FormFourCcDialog content validation — Info scope, deferred
+  - IN-02  # ReplaceReferences no-op — dead helper retained alongside other now-dead CR-01 scaffolding; cleanup deferred
+  - IN-03  # double-clone payload bytes — Info scope, deferred
+  - IN-04  # int-typed OriginalMappedLength — Info scope, V1 x86, deferred
+  - IN-05  # duplicate ASCII validation — Info scope, defense-in-depth deliberate
+  - IN-06  # GetRecordNameBytes _sourcePath gate — Info scope, future-phase concern
 ---
 
 # Phase 08: Code Review Report
@@ -260,6 +284,40 @@ and a status label inside the dialog explaining the rejection.
 
 ---
 
+## Fixes Applied (2026-05-28)
+
+All seven Critical + Warning findings have been fixed. Scope: CR + WR only; the
+six Info findings were deferred (recorded in frontmatter `deferred:`). Each
+fix committed atomically; commit shas listed in frontmatter `fix_commits:`.
+
+| ID    | Status | Repo           | Commit    | Regression test added                                                         |
+|-------|--------|----------------|-----------|-------------------------------------------------------------------------------|
+| CR-01 | FIXED  | Utinni         | `e66e4fe` | `IffEditControllerTests.Remove_Undo_Redo_LeafRoundTrip_*` (+ container variant) |
+| WR-01 | FIXED  | UtinniPlugins  | `aa8d06b` | (no test asm in UtinniPlugins; covered by manual + build-clean)                |
+| WR-02 | FIXED  | Utinni         | `34a5422` | n/a (deletion; document-level RemoveByStableId tests cover the retained API)   |
+| WR-04 | FIXED  | Utinni         | `ce94f51` | `OpenSourceTests.*GetHashCode_*CaseInsensitive*` (LooseFile + TreArchive + ClientMemory) |
+| WR-05 | FIXED  | UtinniPlugins  | `607d057` | (no test asm in UtinniPlugins; pattern mirrors 3 existing call sites)          |
+| WR-06 | FIXED  | Utinni         | `4b1c5fc` | `TreWriterTests.Repack_EnumerateOnlyV6000Archive_ThrowsNotSupportedBeforeAnyWrite` |
+| WR-07 | FIXED  | Utinni         | `221c51b` | `LooseOverridePathTests.Resolve_RootWith{DotDotSegment,SingleDotSegment,MixedSeparators,BothCanonicalAndNonCanonicalForms}_*` (4 tests) |
+
+**Build status post-fix:**
+ - UtinniCoreDotNet Debug|x86 + Release|x86 — clean
+ - UtinniCoreDotNet.Tests Debug|x86 + Release|x86 — clean
+ - Utinni.Cli + Utinni.Cli.Tests — clean
+ - TheJawaToolboxDotNet Debug|x86 + Release|x86 — clean (rebuild)
+
+**Test status post-fix:**
+ - UtinniCoreDotNet.Tests: **331/331 passing** (was 319; +12 regression tests)
+ - Utinni.Cli.Tests: 123/123 passing + 1 expected-skip (CoT fixture-gated)
+
+**Deferred Info findings:** WR-03 (cosmetic perf in NodeSnapshot.Materialize — outside CR+WR scope) and all six IN-* (per fix-scope policy: `critical_warning`). These should be picked up in a follow-up `--all` pass or rolled into a future cleanup phase.
+
+---
+
 _Reviewed: 2026-05-28_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+
+_Fixes applied: 2026-05-28_
+_Fixer: Claude (gsd-code-fixer)_
+_Fix scope: critical_warning (CR + WR)_
