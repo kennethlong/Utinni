@@ -76,5 +76,16 @@ namespace UtinniCoreDotNet.Formats.Tre
 
         /// <summary>Null-terminated filename resolved from the names block.</summary>
         public string Name { get; internal set; }
+
+        /// <summary>
+        /// Phase 8 (08-07): byte length of this record's name AS STORED IN THE NAME BLOCK,
+        /// including the null terminator if the format wrote one. Equals the number of bytes
+        /// <see cref="TreFile.Parse"/> consumed from the uncompressed names block starting at
+        /// <see cref="NameOffset"/>. <see cref="TreFile.GetRecordNameBytes"/> uses this to
+        /// return a verbatim slice of the name-block bytes so <see cref="TreFile"/>'s
+        /// TreWriter sibling can preserve the name-block byte layout for untouched entries
+        /// (round-2 MEDIUM 6). Internal — derived during parse, not exposed in JSON.
+        /// </summary>
+        internal int NameByteLength { get; set; }
     }
 }

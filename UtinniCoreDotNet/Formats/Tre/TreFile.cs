@@ -67,6 +67,18 @@ namespace UtinniCoreDotNet.Formats.Tre
         // Set by Open(string); null for Open(Stream). Drives lazy payload reads.
         private readonly string _sourcePath;
 
+        // Phase 8 (08-07 Task 1, round-2 MEDIUM 6): the UNCOMPRESSED names block bytes captured
+        // during Parse. GetRecordNameBytes(i) returns a fresh slice from this buffer at
+        // [rec.NameOffset, rec.NameOffset + rec.NameByteLength). The block is already in memory
+        // post-Parse (it had to be, to materialize rec.Name); retaining the reference adds no
+        // re-read or re-decompress on the GetRecordNameBytes path. Typical archives' name blocks
+        // are well under 1 MB; the 256 MB MaxBlockSize cap during Parse is the hard upper bound.
+        // Capture is independent of _sourcePath (works for both Open(string) and Open(Stream)) —
+        // but the stream-backed path still rejects GetRecordNameBytes via the InvalidOperationException
+        // gate to mirror GetRecordData's lazy contract: a stream-backed instance has no stored
+        // path and the API surface stays uniform across the three on-demand readers.
+        private readonly byte[] _namesBytes;
+
         /// <summary>Parsed TRE header.</summary>
         public TreHeader Header { get; }
 
@@ -81,11 +93,12 @@ namespace UtinniCoreDotNet.Formats.Tre
         /// </summary>
         internal int PayloadReadCount { get; private set; }
 
-        private TreFile(TreHeader header, IReadOnlyList<TreRecord> records, string sourcePath)
+        private TreFile(TreHeader header, IReadOnlyList<TreRecord> records, string sourcePath, byte[] namesBytes)
         {
             Header = header;
             Records = records;
             _sourcePath = sourcePath;
+            _namesBytes = namesBytes;
             PayloadReadCount = 0;
         }
 
@@ -325,7 +338,8 @@ namespace UtinniCoreDotNet.Formats.Tre
                         // their "none"/"deflate" kinds are unchanged.
                         string compressionKind = CompressorKind(compressor, i);
 
-                        string name = ReadNullTerminatedAscii(namesBytes, nameOffset);
+                        int nameByteLength;
+                        string name = ReadNullTerminatedAsciiWithLength(namesBytes, nameOffset, out nameByteLength);
 
                         records.Add(new TreRecord
                         {
@@ -336,12 +350,13 @@ namespace UtinniCoreDotNet.Formats.Tre
                             CompressedSize   = compressedSize,
                             Checksum         = checksum,
                             NameOffset       = nameOffset,
-                            Name             = name
+                            Name             = name,
+                            NameByteLength   = nameByteLength
                         });
                     }
                 }
 
-                return new TreFile(header, records.AsReadOnly(), sourcePath);
+                return new TreFile(header, records.AsReadOnly(), sourcePath, namesBytes);
             }
         }
 
@@ -422,6 +437,136 @@ namespace UtinniCoreDotNet.Formats.Tre
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Phase 8 Plan 07 Task 1 (08-REVIEWS HIGH-1): returns the raw compressed slice
+        /// <c>[rec.Offset, rec.Offset + rec.CompressedSize)</c> from the source <c>.tre</c>
+        /// VERBATIM — never decompresses, never validates framing. <see cref="TreWriter"/>
+        /// uses this to copy untouched entries byte-for-byte into a rebuilt archive so the
+        /// repack acceptance can guarantee BOTH (a) logical payload identity (GetRecordData
+        /// equality) AND (b) raw compressed slice identity for every untouched entry.
+        ///
+        /// <para><b>Lazy contract (mirrors <see cref="GetRecordData"/>):</b> a stream-backed
+        /// instance (opened via <see cref="Open(Stream)"/>) has no stored path and throws
+        /// <see cref="InvalidOperationException"/> — open via <see cref="Open(string)"/> for
+        /// payload access. The PayloadReadCount counter is NOT touched by this method (it
+        /// counts only decompressed reads via <see cref="GetRecordData"/>).</para>
+        ///
+        /// <para><b>Empty / zero-length records:</b> returns <c>new byte[0]</c> when
+        /// <c>rec.CompressedSize == 0</c> (consistent with <see cref="GetRecordData"/>'s
+        /// empty-payload behavior).</para>
+        ///
+        /// <para><b>WR-01:</b> every call returns a fresh byte[] callers may mutate freely.</para>
+        ///
+        /// <para><b>Truncated source:</b> if the file at <c>_sourcePath</c> has been truncated
+        /// since <see cref="Parse"/> ran (so the recorded
+        /// <c>[rec.Offset, rec.Offset + rec.CompressedSize)</c> range no longer fits in the
+        /// file), throws <see cref="TreParseException"/> with
+        /// <see cref="TreParseError.Truncated"/>.</para>
+        /// </summary>
+        public byte[] GetRecordCompressedBytes(int index)
+        {
+            if (index < 0 || index >= Records.Count)
+            {
+                throw new ArgumentOutOfRangeException("index", "Record index " + index + " is out of range [0, " + Records.Count + ").");
+            }
+
+            if (_sourcePath == null)
+            {
+                throw new InvalidOperationException(
+                    "This TreFile was opened from a Stream and has no stored source path, so it cannot "
+                    + "perform lazy on-demand raw-slice reads. Open the archive via TreFile.Open(string path) "
+                    + "for raw-slice access (enumeration via Open(Stream) is metadata-only).");
+            }
+
+            var rec = Records[index];
+
+            if (rec.CompressedSize == 0)
+            {
+                return new byte[0];
+            }
+
+            byte[] compressed = new byte[rec.CompressedSize];
+            using (var fs = new FileStream(_sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                fs.Seek(rec.Offset, SeekOrigin.Begin);
+                int read = ReadFully(fs, compressed, rec.CompressedSize);
+                if (read != rec.CompressedSize)
+                {
+                    throw new TreParseException(TreParseError.Truncated,
+                        "Record " + index + " raw-compressed read returned " + read + " bytes; expected " + rec.CompressedSize + ".");
+                }
+            }
+            return compressed;
+        }
+
+        /// <summary>
+        /// Phase 8 Plan 07 Task 1 (round-2 MEDIUM 6): returns the raw name-block slice
+        /// <c>[rec.NameOffset, rec.NameOffset + rec.NameByteLength)</c> from the
+        /// UNCOMPRESSED names block that <see cref="Parse"/> built — VERBATIM. The byte length
+        /// matches what <see cref="Parse"/> consumed when materializing <c>rec.Name</c>
+        /// (including the null terminator when the format wrote one). <see cref="TreWriter"/>
+        /// uses this to copy each untouched entry's name bytes into a rebuilt name block so the
+        /// repack preserves the name-block byte layout — making
+        /// <c>TreRecord.NameOffset</c> round-trip meaningful (the offsets in the rebuilt TOC
+        /// point at the same byte sequences they did in the original).
+        ///
+        /// <para><b>Implementation note (round-2 MEDIUM 6 option a):</b> the uncompressed
+        /// <see cref="_namesBytes"/> buffer is captured during <see cref="Parse"/> (when it
+        /// has to be in memory to materialize <c>rec.Name</c> anyway) and held on the
+        /// instance; this API copies a fresh slice out of it. The byte length is cached on
+        /// <see cref="TreRecord.NameByteLength"/> by Parse so re-derivation is unnecessary.</para>
+        ///
+        /// <para><b>Lazy contract (mirrors <see cref="GetRecordData"/>):</b> a stream-backed
+        /// instance throws <see cref="InvalidOperationException"/> — the names block IS in
+        /// memory for stream-backed instances too, but the API surface stays uniform with
+        /// <see cref="GetRecordData"/> / <see cref="GetRecordCompressedBytes"/> so callers
+        /// (notably TreWriter) only need to handle one lazy-contract failure mode.</para>
+        ///
+        /// <para><b>Empty name:</b> returns <c>new byte[0]</c> when the recorded
+        /// <see cref="TreRecord.NameByteLength"/> is 0.</para>
+        ///
+        /// <para><b>WR-01:</b> every call returns a fresh byte[] callers may mutate freely.</para>
+        /// </summary>
+        public byte[] GetRecordNameBytes(int index)
+        {
+            if (index < 0 || index >= Records.Count)
+            {
+                throw new ArgumentOutOfRangeException("index", "Record index " + index + " is out of range [0, " + Records.Count + ").");
+            }
+
+            if (_sourcePath == null)
+            {
+                throw new InvalidOperationException(
+                    "This TreFile was opened from a Stream and has no stored source path, so it cannot "
+                    + "perform lazy on-demand name-slice reads. Open the archive via TreFile.Open(string path) "
+                    + "for name-slice access (enumeration via Open(Stream) is metadata-only).");
+            }
+
+            var rec = Records[index];
+            int len = rec.NameByteLength;
+            if (len <= 0)
+            {
+                return new byte[0];
+            }
+
+            // Defensive bounds — Parse should have guaranteed (rec.NameOffset + len) <= namesBytes.Length,
+            // but a future writer-of-records bug could violate this; surface as Truncated rather than
+            // tripping an IndexOutOfRangeException at Buffer.BlockCopy.
+            if (_namesBytes == null
+                || rec.NameOffset < 0
+                || rec.NameOffset > _namesBytes.Length
+                || rec.NameOffset + len > _namesBytes.Length)
+            {
+                throw new TreParseException(TreParseError.Truncated,
+                    "Record " + index + " name slice [" + rec.NameOffset + ", " + (rec.NameOffset + len)
+                    + ") exceeds names block length " + (_namesBytes == null ? 0 : _namesBytes.Length) + ".");
+            }
+
+            byte[] slice = new byte[len];
+            Buffer.BlockCopy(_namesBytes, rec.NameOffset, slice, 0, len);
+            return slice;
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -577,8 +722,24 @@ namespace UtinniCoreDotNet.Formats.Tre
         /// <summary>Reads a null-terminated ASCII string from <paramref name="namesBlock"/> at the given offset.</summary>
         private static string ReadNullTerminatedAscii(byte[] namesBlock, int offset)
         {
-            if (offset < 0 || offset >= namesBlock.Length)
+            int unused;
+            return ReadNullTerminatedAsciiWithLength(namesBlock, offset, out unused);
+        }
+
+        /// <summary>
+        /// Reads a null-terminated ASCII string from <paramref name="namesBlock"/> at the given
+        /// <paramref name="offset"/>, and returns via <paramref name="byteLength"/> the number of
+        /// bytes consumed from the block AS STORED — including the null terminator when present
+        /// (round-2 MEDIUM 6: the writer's name-block reconstruction needs this length so it can
+        /// copy the verbatim slice for untouched entries). When the string runs to the end of the
+        /// block without a terminator, the returned length is the string's byte count (no
+        /// terminator counted).
+        /// </summary>
+        private static string ReadNullTerminatedAsciiWithLength(byte[] namesBlock, int offset, out int byteLength)
+        {
+            if (namesBlock == null || offset < 0 || offset >= namesBlock.Length)
             {
+                byteLength = 0;
                 return string.Empty;
             }
 
@@ -588,7 +749,14 @@ namespace UtinniCoreDotNet.Formats.Tre
                 end++;
             }
 
-            return Encoding.ASCII.GetString(namesBlock, offset, end - offset);
+            string value = Encoding.ASCII.GetString(namesBlock, offset, end - offset);
+            // Count the null terminator when it's actually present (i.e. we stopped at a 0 byte
+            // before the end of the block). If the name runs to the very end of the block with
+            // no terminator, we report only the string's byte count — that mirrors what Parse
+            // actually consumed from the block at that offset.
+            bool hasTerminator = end < namesBlock.Length && namesBlock[end] == 0;
+            byteLength = (end - offset) + (hasTerminator ? 1 : 0);
+            return value;
         }
 
         /// <summary>
