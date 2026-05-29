@@ -53,6 +53,16 @@
          above; Props.cs is dependency-free (System.IO + System.Xml.Linq only).
          -->
     <Compile Include="..\sdk\UtinniPluginTemplates\Vsix\Utility\Props.cs" Link="Vsix\Props.cs" />
+    <!-- Phase 8 Plan 07 Task 2 PART C: link TreFixtureBuilder.cs from
+         Utinni.Cli.Tests/Infrastructure/ so this test project (and the new
+         TreWriterTests in particular) can synthesize deterministic .tre
+         fixtures without taking a ProjectReference to Utinni.Cli.Tests
+         (which would couple two test assemblies). TreFixtureBuilder.cs is
+         dependency-free (System.IO + System.IO.Compression + System.Text only)
+         — same constraint that lets Props.cs link cleanly. Closes the
+         round-2 HIGH-A csproj coverage requirement for the linked-source
+         pattern documented in 08-07-PLAN.md PART C. -->
+    <Compile Include="..\Utinni.Cli.Tests\Infrastructure\TreFixtureBuilder.cs" Link="Infrastructure\TreFixtureBuilder.cs" />
   </ItemGroup>
   <ItemGroup>
     <!-- HotkeyTests.cs uses Keys enum and key chord syntax from System.Windows.Forms,
