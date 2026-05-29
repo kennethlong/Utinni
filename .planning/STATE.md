@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 8 Plan 6 — COMPLETE (Task 5 approved on automation alone; smoke=automation-only); plan 07 (TRE repack) next
-last_updated: "2026-05-28T23:59:00Z"
-last_activity: 2026-05-28
+stopped_at: Phase 8 Plan 7 — auto tasks 1-3 complete; Task 4 live-SWG repack smoke checkpoint awaiting
+last_updated: "2026-05-29T00:30:00Z"
+last_activity: 2026-05-29
 progress:
   total_phases: 12
   completed_phases: 8
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 08 (tjt-subpanel-iff-editor-read-write) — EXECUTING
-Plan: 7 of 7 (plans 01-06 complete; plan 07 TRE repack pending)
-Status: 08-06 COMPLETE — Task 5 approved by maintainer on automation alone (option 3); smoke=automation-only; the 5 LivePatchValidator [Fact]s (round-2 HIGH-B) carry the verification burden; Open Q4 (full functional live-patch smoke) deferred to later observation/doc pass
-Last activity: 2026-05-28
-Next action: Plan 08-07 — `.tre` repack (D-05.4) TreWriter + repack save target + live smoke + Phase 8 criteria sign-off.
+Plan: 7 of 7 (auto tasks 1-3 complete; Task 4 live-SWG repack smoke + Phase 8 criteria sign-off awaiting)
+Status: 08-07 auto-tasks COMPLETE — TreFile.GetRecordCompressedBytes + GetRecordNameBytes (Task 1 RED+GREEN, 13 [Fact]s) + TreWriter full-rebuild repack (Task 2 RED+GREEN, 3 [Fact]s with nine-invariant TOC check + name-byte-identity) + TreRepackSaveTarget + Save▾ ▸ Repack into source .tre wiring + timestamped backup + locked-archive fallback (Task 3); 304/304 Utinni tests pass; both Debug|x86 + Release|x86 builds clean. Task 4 live-SWG smoke + Phase 8 sign-off blocked on maintainer Tier-4 verification.
+Last activity: 2026-05-29
+Next action: Plan 08-07 Task 4 — live-SWG repack smoke (D-05.4) + edited-entry CRC live-resolution check (cursor N-H1 ACK) + locked-archive fallback verification + consolidated Phase 8 success criteria sign-off (1-5 with tiered Criterion 2).
 
 Progress: [██████████] 100%
 
