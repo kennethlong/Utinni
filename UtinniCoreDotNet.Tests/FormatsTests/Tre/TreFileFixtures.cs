@@ -98,6 +98,31 @@ namespace UtinniCoreDotNet.Tests.FormatsTests.Tre
             });
         }
 
+        /// <summary>
+        /// Builds an empty (0-record) V6000 TRE header — used by 08-REVIEW WR-06's
+        /// TreWriter.Repack EnumerateOnly guard test. V6000 is the only version where
+        /// IsEnumerateOnly() returns true (encrypted payloads). A 0-record archive is
+        /// sufficient because the writer's EnumerateOnly guard fires before the record loop;
+        /// no actual record bytes are needed for the test.
+        /// </summary>
+        public static byte[] BuildEmptyV6000()
+        {
+            using (var ms = new MemoryStream())
+            using (var bw = new BinaryWriter(ms, Encoding.ASCII, leaveOpen: true))
+            {
+                WriteAscii4(bw, "EERT");
+                WriteAscii4(bw, "6000");
+                bw.Write(0);  // RecordCount = 0
+                bw.Write(36); // InfoOffset (right after the 36-byte header)
+                bw.Write(0);  // InfoCompression  (raw, 0 bytes)
+                bw.Write(0);  // InfoCompressedSize
+                bw.Write(0);  // NameCompression
+                bw.Write(0);  // NameCompressedSize
+                bw.Write(0);  // NameSize
+                return ms.ToArray();
+            }
+        }
+
         // ─────────────────────────────────────────────────────────────────────
         // Negative case builders
         // ─────────────────────────────────────────────────────────────────────

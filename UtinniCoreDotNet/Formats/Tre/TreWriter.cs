@@ -112,6 +112,20 @@ namespace UtinniCoreDotNet.Formats.Tre
         public static byte[] Repack(TreFile original, IDictionary<int, byte[]> edits)
         {
             if (original == null) throw new ArgumentNullException("original");
+            // 08-REVIEW WR-06: Reject EnumerateOnly archives (V6000 — encrypted payloads). The
+            // untouched-entry copy path is byte-for-byte safe (raw compressed slices round-trip),
+            // but any EDITED entry would be recompressed as raw deflate WITHOUT the encryption
+            // framing the V6000 reader expects, producing a TOC-valid but payload-unreadable
+            // archive. Fail fast BEFORE allocating temp buffers or touching the filesystem so the
+            // FormIffEditor caller's status banner can surface a clear "not supported" message
+            // (project_tre_version_support_gap: v6000+ payloads are encrypted; enumerate-only).
+            if (original.Header.EnumerateOnly)
+            {
+                throw new NotSupportedException(
+                    "TRE repack is not supported for enumerate-only archives (version '"
+                    + original.Header.VersionTag + "' carries encrypted payloads). "
+                    + "Save as a loose override instead.");
+            }
             if (edits == null) edits = new Dictionary<int, byte[]>();
 
             int n = original.Records.Count;

@@ -240,6 +240,50 @@ namespace UtinniCoreDotNet.Tests.FormatsTests.Tre
         }
 
         // ─────────────────────────────────────────────────────────────────────
+        // 08-REVIEW WR-06: Repack refuses EnumerateOnly (V6000) archives
+        // ─────────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Regression for 08-REVIEW WR-06. V6000 archives have EnumerateOnly = true (encrypted
+        /// payloads). Without the guard, TreWriter.Repack happily accepted them and would have
+        /// recompressed an edited entry as raw deflate without the encryption framing — producing a
+        /// TOC-valid but payload-unreadable archive. The fix throws NotSupportedException BEFORE
+        /// touching the filesystem or allocating temp buffers so the FormIffEditor caller's
+        /// catch-all status banner can surface a "not supported" message verbatim.
+        /// </summary>
+        [Fact]
+        public void Repack_EnumerateOnlyV6000Archive_ThrowsNotSupportedBeforeAnyWrite()
+        {
+            byte[] originalBytes = TreFileFixtures.BuildEmptyV6000();
+            string originalPath = WriteTemp(originalBytes);
+            try
+            {
+                TreFile original = TreFile.Open(originalPath);
+                // Sanity: the fixture is genuinely EnumerateOnly (so we're exercising the guard,
+                // not a different failure mode).
+                Assert.True(original.Header.EnumerateOnly,
+                    "Fixture precondition: BuildEmptyV6000 must produce an EnumerateOnly archive.");
+                Assert.Equal("6000", original.Header.VersionTag);
+
+                // Both call shapes must throw — with and without edits.
+                var noEdits = new Dictionary<int, byte[]>();
+                var ex1 = Assert.Throws<NotSupportedException>(
+                    () => TreWriter.Repack(original, noEdits));
+                Assert.Contains("enumerate-only", ex1.Message);
+                Assert.Contains("6000", ex1.Message);
+
+                var withEdits = new Dictionary<int, byte[]> { { 0, new byte[] { 0xAA, 0xBB } } };
+                var ex2 = Assert.Throws<NotSupportedException>(
+                    () => TreWriter.Repack(original, withEdits));
+                Assert.Contains("enumerate-only", ex2.Message);
+            }
+            finally
+            {
+                TryDelete(originalPath);
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
         // Helpers (same temp-file pattern as the rest of FormatsTests/Tre)
         // ─────────────────────────────────────────────────────────────────────
 
