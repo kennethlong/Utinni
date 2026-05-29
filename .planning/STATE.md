@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
+status: ready_to_plan
 stopped_at: Phase 8 Plan 7 — COMPLETE (smoke=automation-augmented per maintainer direction; Open Q1 + Q5 deferred)
 last_updated: "2026-05-29T01:00:00Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 12
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 37
   completed_plans: 37
-  percent: 100
+  percent: 75
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 
 ## Current Position
 
-Phase: 08 (tjt-subpanel-iff-editor-read-write) — Plans 7/7 COMPLETE (Phase 8 consolidated sign-off pending)
-Plan: 7 of 7 COMPLETE — 08-07 auto-tasks 1-3 + continuation Tasks 5/5a-5e (framework refactor + 5 new test classes augmenting Task 4's live-SWG smoke per maintainer direction); Open Q1 (cursor N-H1 ACK live-client path-CRC resolution) + Open Q5 (UI end-to-end live smoke) deferred to deferred-items.md.
-Status: 08-07 COMPLETE — TreFile.GetRecordCompressedBytes + GetRecordNameBytes (Task 1 RED+GREEN, 13 [Fact]s) + TreWriter full-rebuild repack (Task 2 RED+GREEN, 3 [Fact]s with nine-invariant TOC check + name-byte-identity) + TreRepackSaveTarget + Save▾ ▸ Repack into source .tre wiring + timestamped backup + locked-archive fallback (Task 3) + framework refactor (Task 5: extracted TreBackupPath + TreRepackLock to UtinniCoreDotNet/Saving/ per checker-B-1 pattern; plugin delegates to framework) + 5 new test classes (Tasks 5a-5e, 15 outcomes: TreRepackRoundTripTests + TreRepackLogicalPathTests + TreRepackLockedArchiveTests + TreRepackBackupTests + TreRepackByteDiffTests). 319/319 Utinni tests pass (304 baseline + 15 new); both Debug|x86 + Release|x86 builds clean for both UtinniCoreDotNet and TheJawaToolboxDotNet. Task 4 outcome: automation-augmented per maintainer direction; live-SWG residual (Open Q1 + Q5) deferred-but-acceptable for V1.
-Last activity: 2026-05-28
+Phase: 9
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-29
 Next action: Phase 8 consolidated criteria 1-5 sign-off (PROD-W1-IFF) — criterion 4 (edits survive save→reload round trip without corrupting unedited chunks) is now automation-covered for all 4 enabled save modes (in-place + loose override + Save As + repack) by the 08-07 continuation-work test suite + 08-05/06 file-save round-trip tests. Live-SWG residuals from 08-05 (Open Q2/Q3) + 08-06 (Open Q4) + 08-07 (Open Q1/Q5) all deferred-but-acceptable. Phase 8 marker can flip to COMPLETE.
 
 Progress: [██████████] 100%
@@ -75,7 +75,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 
 **Velocity:**
 
-- Total plans completed: 15
+- Total plans completed: 22
 - Average duration: —
 - Total execution time: —
 
@@ -88,6 +88,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | 04 | 4 | - | - |
 | 05 | 2 | - | - |
 | 06 | 7 | - | - |
+| 08 | 7 | - | - |
 
 **Recent Trend:**
 
