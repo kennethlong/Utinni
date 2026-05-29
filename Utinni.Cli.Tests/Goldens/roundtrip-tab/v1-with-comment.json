@@ -1,0 +1,14 @@
+{
+  "command": "roundtrip-tab",
+  "result": {
+    "bytesEqualUntouched": true,
+    "comparisonGranularity": "whole-file",
+    "cols": 3,
+    "firstMismatch": null,
+    "mutationApplied": "none",
+    "rows": 2,
+    "source": "<fixture-path>",
+    "version": "0001"
+  },
+  "schemaVersion": 1
+}

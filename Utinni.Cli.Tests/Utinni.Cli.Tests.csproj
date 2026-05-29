@@ -29,6 +29,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Goldens\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <!-- TASK 4.3 (Plan 04-04): Copy Utinni.CrtMatchPlugin.dll to valid-plugin/ fixture dir.
        This is the Phase 3 R-B "real plugin" fixture that validate-plugin should classify as kind=native pass. -->

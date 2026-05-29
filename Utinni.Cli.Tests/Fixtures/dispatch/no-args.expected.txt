@@ -17,6 +17,9 @@ ERROR(S):
   roundtrip-iff      Parse -> [optional mutate-leaf | remove-leaf] -> serialize
                      -> re-parse an IFF; assert byte-exact untouched chunks.
 
+  roundtrip-tab      Parse -> optional mutate -> serialize -> re-parse a .tab;
+                     assert byte-exact identity on untouched cells.
+
   validate-plugin    Reflect on a plugin directory and report compliance.
                      WARNING: Loads each .dll under the given directory; only
                      run against trusted plugin directories. PluginLoader
