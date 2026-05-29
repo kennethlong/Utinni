@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 8 Plan 5 — complete (smoke approved 'approved, dig in'); plan 08-06 next
-last_updated: "2026-05-28T23:30:00Z"
+stopped_at: Phase 8 Plan 6 — auto tasks 1-4 complete (947aeff/1904eae/8e329e5/463c1d3/9686596); Task 5 live-SWG smoke checkpoint awaiting
+last_updated: "2026-05-28T23:55:00Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 12
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 08 — tjt-subpanel-iff-editor-read-write (plan 5/7 done; plan 6 next)
+**Current focus:** Phase 08 — tjt-subpanel-iff-editor-read-write (plan 6/7 auto tasks done; Task 5 smoke awaiting)
 
 ## Current Position
 
 Phase: 08 (tjt-subpanel-iff-editor-read-write) — EXECUTING
-Plan: 6 of 7 (plans 01-05 complete; plan 06 next — in-memory live patch via CON-N-04 bracket)
-Status: 08-05 smoke approved ("approved, dig in"); ready for plan 06 dispatch
+Plan: 6 of 7 (plans 01-05 complete; plan 06 auto tasks 1-4 done — checkpoint awaiting)
+Status: 08-06 auto tasks shipped (FormSaveConfirmDialog + LivePatchValidator + 5 [Fact]s + LivePatchSaveTarget + FormIffEditor Save▾ wiring); Task 5 live-SWG smoke checkpoint awaiting maintainer
 Last activity: 2026-05-28
-Next action: Orchestrator dispatches plan 08-06 (in-memory live patch via CON-N-04 VirtualProtect bracket; ships disabled-by-default pending ClientMemory provenance discovery in a follow-up phase).
+Next action: Maintainer runs the 08-06 Task 5 live-SWG smoke per the plan's `<how-to-verify>` (disabled-state check + reduced functional check via maintainer-only ClientMemory debug construction). Type "approved" with verification mode + stability observation + same-length refusal observation.
 
 Progress: [██████████] 97%
 
