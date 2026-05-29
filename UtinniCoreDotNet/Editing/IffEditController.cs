@@ -334,11 +334,7 @@ namespace UtinniCoreDotNet.Editing
         {
             private readonly MutableIffNode node;
             private readonly MutableIffNode parent;
-            // Snapshot of the removed subtree so we can rebuild it on undo. We capture the
-            // node's serialized representation as a small set of structural fields and bytes.
-            private NodeSnapshot snapshot;
             private int originalIndex;
-            private MutableIffNode reinserted;
 
             public RemoveCommand(MutableIffNode node)
             {
@@ -347,18 +343,20 @@ namespace UtinniCoreDotNet.Editing
             }
             public void Do(MutableIffDocument doc)
             {
-                // Re-find the index inside parent for Undo restoration. On Redo (when snapshot
-                // already populated) we re-find from the reinserted node.
-                MutableIffNode target = reinserted != null ? reinserted : node;
-                originalIndex = IndexOfChild(parent, target);
-                if (snapshot == null) snapshot = NodeSnapshot.Capture(target);
-                parent.Remove(target);
-                reinserted = null;
+                // Re-find the original index from the SAME node reference (post-undo it is once
+                // again a child of parent at the same slot). Removing detaches the node but
+                // preserves its subtree + payload + dirty bits in place on the node object, so
+                // UndoOp can re-attach the same instance verbatim — see CR-01 fix.
+                originalIndex = IndexOfChild(parent, node);
+                parent.Remove(node);
             }
             public void UndoOp(MutableIffDocument doc)
             {
-                reinserted = snapshot.Materialize();
-                InsertChildAt(parent, originalIndex, reinserted);
+                // Re-attach the original node BY REFERENCE so a subsequent Do() finds it in
+                // parent.Children and removes it cleanly. This replaces the prior snapshot +
+                // Materialize() path that built a fresh detached subtree the next Do() could not
+                // find (08-REVIEW CR-01: Redo-after-Undo no-op + netAppliedCount desync).
+                parent.InsertChildAtInternal(originalIndex, node);
             }
         }
 

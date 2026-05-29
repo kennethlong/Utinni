@@ -467,6 +467,91 @@ namespace UtinniCoreDotNet.Tests.FormatsTests.Iff
         }
 
         // ─────────────────────────────────────────────────────────────────────
+        // CR-01 regression: Remove → Undo → Redo round-trip
+        // ─────────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Regression for 08-REVIEW CR-01. The original RemoveCommand.UndoOp materialized a fresh
+        /// detached subtree from a snapshot but never attached it; the next Do() then searched for
+        /// that detached reference, found nothing, silently no-opped, AND still incremented
+        /// netAppliedCount — desyncing IsDirty from the tree state. This test exercises the full
+        /// Remove → Undo → Redo cycle on a leaf and asserts every gate flips correctly.
+        /// </summary>
+        [Fact]
+        public void Remove_Undo_Redo_LeafRoundTrip_TreeAndDirtyStaySynced()
+        {
+            byte[] baseline;
+            var ctrl = NewControllerOverHappyPath(out baseline);
+            byte[] before = Serialize(ctrl.Document);
+            var leaf = FindLeaf(ctrl.Document, "DATA");
+            var parent = leaf.Parent;
+            int initialChildCount = parent.Children.Count;
+
+            // Do: leaf removed; document differs from baseline; IsDirty true.
+            ctrl.Apply(IffEditCommands.Remove(leaf));
+            byte[] afterRemove = Serialize(ctrl.Document);
+            Assert.NotEqual(before, afterRemove);
+            Assert.Equal(initialChildCount - 1, parent.Children.Count);
+            Assert.True(ctrl.IsDirty);
+            Assert.True(ctrl.CanUndo);
+            Assert.False(ctrl.CanRedo);
+
+            // Undo: leaf restored at its original index; bytes match baseline; IsDirty false.
+            ctrl.Undo();
+            Assert.Equal(before, Serialize(ctrl.Document));
+            Assert.Equal(initialChildCount, parent.Children.Count);
+            // The SAME leaf instance must be reachable from the parent (re-attach by reference).
+            Assert.Contains(leaf, parent.Children);
+            Assert.False(ctrl.IsDirty);
+            Assert.False(ctrl.CanUndo);
+            Assert.True(ctrl.CanRedo);
+
+            // Redo: must produce the SAME bytes as the first Do() AND drop the leaf again. The
+            // pre-CR-01 bug was that Redo silently no-opped (parent.Remove(stale ref) returned
+            // false) so this assertion failed — afterRedo equaled `before` instead of afterRemove.
+            ctrl.Redo();
+            byte[] afterRedo = Serialize(ctrl.Document);
+            Assert.Equal(afterRemove, afterRedo);
+            Assert.Equal(initialChildCount - 1, parent.Children.Count);
+            Assert.DoesNotContain(leaf, parent.Children);
+            Assert.True(ctrl.IsDirty);
+            Assert.True(ctrl.CanUndo);
+            Assert.False(ctrl.CanRedo);
+        }
+
+        /// <summary>
+        /// Same Remove → Undo → Redo regression but on a container node (FORM/OBJS) to verify the
+        /// subtree (with its own children) is preserved across the round trip — children must
+        /// re-attach to the parent under the same container reference.
+        /// </summary>
+        [Fact]
+        public void Remove_Undo_Redo_ContainerRoundTrip_PreservesSubtree()
+        {
+            byte[] baseline;
+            var ctrl = NewControllerOverHappyPath(out baseline);
+            byte[] before = Serialize(ctrl.Document);
+            var inner = ctrl.Document.Root.Children.First(n => n.Kind == MutableIffNodeKind.Container);
+            int innerChildCount = inner.Children.Count;
+            var grandRoot = inner.Parent;
+
+            ctrl.Apply(IffEditCommands.Remove(inner));
+            byte[] afterRemove = Serialize(ctrl.Document);
+            Assert.True(ctrl.IsDirty);
+
+            ctrl.Undo();
+            Assert.Equal(before, Serialize(ctrl.Document));
+            Assert.False(ctrl.IsDirty);
+            // Container re-attached BY REFERENCE; its own children list is intact.
+            Assert.Contains(inner, grandRoot.Children);
+            Assert.Equal(innerChildCount, inner.Children.Count);
+
+            ctrl.Redo();
+            Assert.Equal(afterRemove, Serialize(ctrl.Document));
+            Assert.True(ctrl.IsDirty);
+            Assert.DoesNotContain(inner, grandRoot.Children);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
         // Helpers
         // ─────────────────────────────────────────────────────────────────────
 

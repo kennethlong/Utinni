@@ -495,6 +495,27 @@ namespace UtinniCoreDotNet.Formats.Iff
             child.SetParent(this);
         }
 
+        /// <summary>
+        /// Re-attaches an existing (detached) child at the specified index. Used by the editor
+        /// undo path (08-REVIEW CR-01) to restore a previously-removed node by REFERENCE — the
+        /// original subtree, payload, and dirty bits are preserved verbatim. The child must be
+        /// detached (Parent == null) before the call; this is an editor-internal API and is not
+        /// part of the public structural-op surface. Marks this container dirty and propagates
+        /// ancestor invalidation.
+        /// </summary>
+        internal void InsertChildAtInternal(int index, MutableIffNode child)
+        {
+            RequireContainer("InsertChildAtInternal");
+            if (child == null) throw new ArgumentNullException("child");
+            if (child.Parent != null)
+                throw new InvalidOperationException("InsertChildAtInternal requires a detached child (Parent == null).");
+            if (index < 0 || index > children.Count)
+                throw new ArgumentOutOfRangeException("index", "Insert index out of range.");
+            children.Insert(index, child);
+            child.SetParent(this);
+            MarkDirtyAndInvalidateAncestors();
+        }
+
         // Dirty-propagation contract: this node's IsDirty is set; every ancestor's IsDirty is set
         // AND every ancestor's captured slice is cleared (so a clean ancestor cannot re-emit a stale
         // verbatim slice over the now-dirty subtree). This node's captured slice is also cleared so
