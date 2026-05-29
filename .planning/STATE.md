@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 8 Plan 6 — auto tasks 1-4 complete (947aeff/1904eae/8e329e5/463c1d3/9686596); Task 5 live-SWG smoke checkpoint awaiting
-last_updated: "2026-05-28T23:55:00Z"
+stopped_at: Phase 8 Plan 6 — COMPLETE (Task 5 approved on automation alone; smoke=automation-only); plan 07 (TRE repack) next
+last_updated: "2026-05-28T23:59:00Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 12
   completed_phases: 8
   total_plans: 37
-  completed_plans: 36
-  percent: 97
+  completed_plans: 37
+  percent: 100
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 08 — tjt-subpanel-iff-editor-read-write (plan 6/7 auto tasks done; Task 5 smoke awaiting)
+**Current focus:** Phase 08 — tjt-subpanel-iff-editor-read-write (plan 6/7 COMPLETE; plan 07 .tre repack next)
 
 ## Current Position
 
 Phase: 08 (tjt-subpanel-iff-editor-read-write) — EXECUTING
-Plan: 6 of 7 (plans 01-05 complete; plan 06 auto tasks 1-4 done — checkpoint awaiting)
-Status: 08-06 auto tasks shipped (FormSaveConfirmDialog + LivePatchValidator + 5 [Fact]s + LivePatchSaveTarget + FormIffEditor Save▾ wiring); Task 5 live-SWG smoke checkpoint awaiting maintainer
+Plan: 7 of 7 (plans 01-06 complete; plan 07 TRE repack pending)
+Status: 08-06 COMPLETE — Task 5 approved by maintainer on automation alone (option 3); smoke=automation-only; the 5 LivePatchValidator [Fact]s (round-2 HIGH-B) carry the verification burden; Open Q4 (full functional live-patch smoke) deferred to later observation/doc pass
 Last activity: 2026-05-28
-Next action: Maintainer runs the 08-06 Task 5 live-SWG smoke per the plan's `<how-to-verify>` (disabled-state check + reduced functional check via maintainer-only ClientMemory debug construction). Type "approved" with verification mode + stability observation + same-length refusal observation.
+Next action: Plan 08-07 — `.tre` repack (D-05.4) TreWriter + repack save target + live smoke + Phase 8 criteria sign-off.
 
-Progress: [██████████] 97%
+Progress: [██████████] 100%
 
 ## Wave 2 Summary
 
@@ -106,6 +106,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 08 P03 | ~8 min | 2 tasks | 1 new + 2 modified |
 | Phase 08 P04 | 15 | 4 tasks | 9 files |
 | Phase 08 P05 | ~240 min | 5 tasks (4 auto + 1 smoke) | 8 new + 5 modified |
+| Phase 08 P06 | ~30 min | 5 tasks (4 auto + 1 smoke-automation-only) | 5 new + 4 modified |
 
 ## Accumulated Context
 
@@ -121,6 +122,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: Phase 08 P04: FormIffEditor editable host + IffEditController editor-local undo/redo (D-08) + 8 D-03 structural ops + D-04 leaf editing in hex/text/replace-from-file modes; cross-repo (Utinni controller + tests, UtinniPlugins forms); round-2 HIGH-A csproj coverage closed across both old-style projects.
 - [Phase 8]: Phase 08 P05 auto tasks: framework-side LooseOverridePath (root-containment, 14 tests) + ReloadAssetClassifier (4-tier routing table, 22 tests) + TreRecordIndexResolver (W-3 degraded fallback, 4 tests); plugin-side IffSaveTargets (SaveLooseOverride / SaveToPath / SaveInPlace with Flush(true) MEDIUM-9 barrier) + ClientReloadDispatcher (game-thread tiered reload with GroundScene.Get().ReloadTerrain() INSTANCE call); FormIffEditor Save▾ menu (Save in place / Save as loose override / Save As… / Patch live client / Repack — Source-gated per W-3 + round-2 MEDIUM 5) + Reload-in-client (4 outcomes) + Open… + TRE Browser hand-off via OpenFromTreEntry; FormTreBrowser context-menu Open-in-IFF-Editor; Plugin.cs registration in try/catch (SPI unchanged). 143/143 IFF + Saving tests pass.
 - [Phase 8]: Phase 08 P05 Task 5 smoke approved 2026-05-28 ("approved, dig in"). Singleton-form hide-not-dispose pattern emerged as canonical fix for all MEF-registered editor forms (Phases 9-11 must apply from start): on `CloseReason.UserClosing` cancel close + Hide() instead of disposing; editor-host shutdown reasons fall through normally. Smoke-discovered defects b899504 (FormIffEditor AV closure) + ce2a0a4 (FormTreBrowser defensive) landed mid-smoke in UtinniPlugins. Open Q2 (loose-override subdir) + Open Q3 (per-asset reload matrix) deferred for follow-on observation pass; dirty-discard UX gap on TRE-Browser hand-off path deferred as polish.
+- [Phase 8]: Phase 08 P06 (in-memory live patch, D-05.3) COMPLETE 2026-05-28. Framework-side `LivePatchValidator` pure-function bounds gate (BCL-only; no WinForms / UtinniCore.Memory / GameCallbacks / TJT — checker B-1) closes round-2 HIGH-B / CONTEXT D-05.3 "unit-tested" claim with 5 [Fact]s (NoClient / ZeroTarget / Growth / Shrink / SameLengthHappyPath). Plugin-side `LivePatchSaveTarget` (game-thread CON-N-04 mapped-memory write via `GameCallbacks.AddMainLoopCall` + `UtinniCore.Memory.memory.Copy`; pin/unpin in finally on same thread) consumes the validator before AddMainLoopCall. `FormSaveConfirmDialog` (risk-proportional per-call modal with Color.Red emphasis + explicit-verb buttons; reusable by 08-07 repack). `FormIffEditor` Save▾ ▸ Patch live client menu wire: provenance-gated on `Source is OpenSource.ClientMemory cm` AND `Game.IsRunning`; honest-disabled tooltip otherwise (round-2 MEDIUM 11, 3 hits). Round-2 HIGH-A: 4 new csproj entries (1 in Utinni + 3 in UtinniPlugins). Task 5 approved by maintainer on automation alone (option 3 — smoke=automation-only); Open Q4 (full functional live-patch smoke with maintainer-only ClientMemory debug construction) deferred to later observation/doc pass. Singleton-form pattern note: FormSaveConfirmDialog is per-call modal (`using (var dlg = ...)`) — default WinForms dispose-on-close is CORRECT; the 08-05 hide-not-dispose pattern applies only to plugin-registered GetForms() instances.
 
 ### Pending Todos
 
@@ -185,9 +187,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-05-28T23:30:00Z
-Stopped at: Phase 8 Plan 5 — COMPLETE (Task 5 smoke approved "approved, dig in"); plan 06 next
-Resume file: .planning/phases/08-tjt-subpanel-iff-editor-read-write/08-06-PLAN.md
+Last session: 2026-05-28T23:59:00Z
+Stopped at: Phase 8 Plan 6 — COMPLETE (Task 5 approved on automation alone; smoke=automation-only); plan 07 (TRE repack) next
+Resume file: .planning/phases/08-tjt-subpanel-iff-editor-read-write/08-07-PLAN.md
 
 ## Ingest Provenance
 
