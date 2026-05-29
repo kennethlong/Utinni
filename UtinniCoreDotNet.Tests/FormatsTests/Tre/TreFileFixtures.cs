@@ -57,6 +57,33 @@ namespace UtinniCoreDotNet.Tests.FormatsTests.Tre
         }
 
         /// <summary>
+        /// Builds a 5-record TRE (version 0005) used by the 08-07 repack contract tests
+        /// (round-trip byte-identity, edit→repack→reopen logical-path resolution, locked
+        /// archive refusal, backup uniqueness, byte-diff per untouched record):
+        ///   Record 0: uncompressed "RECORD ZERO content"             → name "datatable/foo/zero.iff"
+        ///   Record 1: deflate-compressed "RECORD ONE content"         → name "datatable/foo/one.iff"
+        ///   Record 2: uncompressed "RECORD TWO content (target)"      → name "datatable/foo/bar.iff" (the EDITED entry)
+        ///   Record 3: deflate-compressed "RECORD THREE content"       → name "datatable/foo/three.iff"
+        ///   Record 4: uncompressed "RECORD FOUR content"              → name "datatable/foo/four.iff"
+        /// Five records lets the new repack tests edit index 2 and assert byte-identity
+        /// for all four untouched records (0, 1, 3, 4) — explicitly mixing compressed
+        /// and uncompressed neighbours to exercise the raw-slice copy path for both.
+        /// The "datatable/foo/" logical-path prefix gives Test 2 a stable
+        /// edit→repack→reopen path-CRC self-consistency target.
+        /// </summary>
+        public static byte[] BuildValidV0005FiveRecord()
+        {
+            return BuildMultiRecordTre("0005", new[]
+            {
+                new RecordSpec { Name = "datatable/foo/zero.iff",  Payload = Encoding.ASCII.GetBytes("RECORD ZERO content"),         Compress = false },
+                new RecordSpec { Name = "datatable/foo/one.iff",   Payload = Encoding.ASCII.GetBytes("RECORD ONE content"),          Compress = true  },
+                new RecordSpec { Name = "datatable/foo/bar.iff",   Payload = Encoding.ASCII.GetBytes("RECORD TWO content (target)"),  Compress = false },
+                new RecordSpec { Name = "datatable/foo/three.iff", Payload = Encoding.ASCII.GetBytes("RECORD THREE content"),        Compress = true  },
+                new RecordSpec { Name = "datatable/foo/four.iff",  Payload = Encoding.ASCII.GetBytes("RECORD FOUR content"),         Compress = false }
+            });
+        }
+
+        /// <summary>
         /// Builds a 2-record TRE (version 0006):
         ///   Record 0: uncompressed "v0006 marker" → name "marker.txt"
         ///   Record 1: deflate-compressed "Phase 4 v0006 coverage" → name "v6.txt"
