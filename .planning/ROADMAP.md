@@ -205,7 +205,7 @@ Plans:
 **UI hint**: yes
 **Plans**:
 - [x] 09-01-PLAN.md — Typed DTII format primitives (CF-01 framework-side): DataTableColumnType + MangleValue + DataTableHashCrc port + DataTableDocument.FromIff + MutableDataTable* hybrid DOM (CF-04 per-cell originalSlice) + DataTableWriter composing IffWriter; UI-SPEC Assumption A1 enum-syntax typo correction (Task 0)
-- [ ] 09-02-PLAN.md — `utinni-cli roundtrip-tab` verb + golden suite + DataTableFixtureBuilder; SC4 byte-exact-on-untouched-cells CLI gate (CF-02)
+- [x] 09-02-PLAN.md — `utinni-cli roundtrip-tab` verb + golden suite + DataTableFixtureBuilder; SC4 byte-exact-on-untouched-cells CLI gate (CF-02)
 - [ ] 09-03-PLAN.md — FormDatatableEditor host + ThemedDataGridView + per-type cell widgets + Plugin.cs registration + singleton hide-not-dispose pattern from commit 1 + DataGridView bind-latency probe (gates Plan 09-06 VirtualMode decision)
 - [ ] 09-04-PLAN.md — DatatableEditController (CF-06) + 11 T4 commands + D-04 cascade + FormAddColumnDialog + FormTypeChangeCascadeDialog + R-04 save-block on every Save▾ item + D-02 safety-net via reused FormSaveConfirmDialog
 - [ ] 09-05-PLAN.md — DatatableSaveTargets composition shim + FormDatatableEditor Save▾ wire (4 modes; mode 3 disabled per CF-03) + TRE Browser D-10.2 hand-off + IFF Editor D-10.3 hand-off + ClientReloadDispatcher tier-(b) wire (CF-05 locked UI)
