@@ -1,15 +1,42 @@
 ---
 phase: 9
 slug: tjt-subpanel-datatable-editor-tab
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-05-28
+reviewed_at: 2026-05-28
 platform: winforms-desktop
 inherits:
   - 07-UI-SPEC.md
   - 08-UI-SPEC.md
+checker_verdict: APPROVED (6/6 PASS, 4 non-blocking recommendations)
 ---
+
+<!--
+gsd-ui-checker non-blocking recommendations (2026-05-28) — planner SHOULD address:
+
+  R-01 (Dimension 1) — Toolbar `Save ▾` button face is the single-word "Save" (generic CTA).
+       Disambiguated by `▾` drop-down marker exposing specific verb+noun menu items;
+       inherited verbatim from approved Phase 8 baseline. Optional sharpening: rename
+       trigger to `Save ▾ (choose target)` or similar.
+
+  R-02 (Dimension 2) — Find-pane glyph buttons (btnFindPrev "◀" / btnFindNext "▶" /
+       btnClose "✕") have no explicit ToolTipText. Add tooltips
+       `Find previous (Shift+F3)` / `Find next (F3)` / `Close (Esc)` for accessibility
+       parity.
+
+  R-03 (Per-type widget coverage) — Cell-widget contract covers 9 of 10 DT_* types;
+       `DT_Unknown` is not addressed. Suggest planner spec:
+         `DT_Unknown → read-only TextBoxColumn rendering raw bytes as hex; header
+          tooltip "Unknown column type — read-only" (no edit affordance, no validation)`.
+       Defends SC4 (no silent schema corruption) and matches CF-04 byte preservation.
+
+  R-04 (D-04 Save-BLOCKED scope) — States row says ALL Save▾ menu items disabled while
+       "needs review" cells exist; cell-state overlay row says only "Save is BLOCKED".
+       Planner MUST ensure (a) the entire Save▾ menu is disabled (not just the top-level
+       button), and (b) the disabled-tooltip surfaces on the menu items too.
+-->
 
 # Phase 9 — UI Design Contract: TJT Datatable Editor (`.tab`)
 
