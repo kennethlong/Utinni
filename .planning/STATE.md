@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 9 UI-SPEC approved
-last_updated: "2026-05-29T17:31:07.332Z"
-last_activity: 2026-05-29 -- Phase 9 planning complete
+last_updated: "2026-05-29T22:35:49.641Z"
+last_activity: 2026-05-29
 progress:
   total_phases: 12
   completed_phases: 9
   total_plans: 44
-  completed_plans: 38
-  percent: 86
+  completed_plans: 39
+  percent: 89
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 08 — tjt-subpanel-iff-editor-read-write COMPLETE (7/7 plans; consolidated Phase 8 sign-off pending)
+**Current focus:** Phase 09 — tjt-subpanel-datatable-editor-tab
 
 ## Current Position
 
-Phase: 9
-Plan: Not started
+Phase: 09 (tjt-subpanel-datatable-editor-tab) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-05-29 -- Phase 9 planning complete
-Next action: Phase 8 consolidated criteria 1-5 sign-off (PROD-W1-IFF) — criterion 4 (edits survive save→reload round trip without corrupting unedited chunks) is now automation-covered for all 4 enabled save modes (in-place + loose override + Save As + repack) by the 08-07 continuation-work test suite + 08-05/06 file-save round-trip tests. Live-SWG residuals from 08-05 (Open Q2/Q3) + 08-06 (Open Q4) + 08-07 (Open Q1/Q5) all deferred-but-acceptable. Phase 8 marker can flip to COMPLETE.
+Last activity: 2026-05-29 -- Phase 09 Plan 01 complete (typed DTII format primitives)
+Next action: Execute Phase 09 Plan 02 (CLI roundtrip-tab golden gate) against DataTableDocument.FromIff / DataTableWriter.Serialize.
 
-Progress: [██████████] 100%
+Progress: [█████████░] 89%
 
 ## Wave 2 Summary
 
@@ -109,6 +109,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 08 P05 | ~240 min | 5 tasks (4 auto + 1 smoke) | 8 new + 5 modified |
 | Phase 08 P06 | ~30 min | 5 tasks (4 auto + 1 smoke-automation-only) | 5 new + 4 modified |
 | Phase 08 P07 | ~360 min | 4 tasks (3 auto + 1 smoke-automation-augmented via continuation Tasks 5/5a-5e) | 10 new + 6 modified across both repos |
+| Phase 09 P01 | ~50 min | 3 tasks (Task 0 docs + 2 TDD) | 15 new + 3 modified |
 
 ## Accumulated Context
 
@@ -125,6 +126,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase 8]: Phase 08 P05 auto tasks: framework-side LooseOverridePath (root-containment, 14 tests) + ReloadAssetClassifier (4-tier routing table, 22 tests) + TreRecordIndexResolver (W-3 degraded fallback, 4 tests); plugin-side IffSaveTargets (SaveLooseOverride / SaveToPath / SaveInPlace with Flush(true) MEDIUM-9 barrier) + ClientReloadDispatcher (game-thread tiered reload with GroundScene.Get().ReloadTerrain() INSTANCE call); FormIffEditor Save▾ menu (Save in place / Save as loose override / Save As… / Patch live client / Repack — Source-gated per W-3 + round-2 MEDIUM 5) + Reload-in-client (4 outcomes) + Open… + TRE Browser hand-off via OpenFromTreEntry; FormTreBrowser context-menu Open-in-IFF-Editor; Plugin.cs registration in try/catch (SPI unchanged). 143/143 IFF + Saving tests pass.
 - [Phase 8]: Phase 08 P05 Task 5 smoke approved 2026-05-28 ("approved, dig in"). Singleton-form hide-not-dispose pattern emerged as canonical fix for all MEF-registered editor forms (Phases 9-11 must apply from start): on `CloseReason.UserClosing` cancel close + Hide() instead of disposing; editor-host shutdown reasons fall through normally. Smoke-discovered defects b899504 (FormIffEditor AV closure) + ce2a0a4 (FormTreBrowser defensive) landed mid-smoke in UtinniPlugins. Open Q2 (loose-override subdir) + Open Q3 (per-asset reload matrix) deferred for follow-on observation pass; dirty-discard UX gap on TRE-Browser hand-off path deferred as polish.
 - [Phase 8]: Phase 08 P07 (.tre repack, D-05.4) COMPLETE 2026-05-28. Auto Tasks 1-3 shipped TreFile.GetRecordCompressedBytes + GetRecordNameBytes APIs (Task 1: 13 [Fact]s, 08-REVIEWS HIGH-1 + round-2 MEDIUM 6), TreWriter full-rebuild repack (Task 2: 3 [Fact]s with nine-invariant TOC + name-byte-identity helper), and TreRepackSaveTarget + Save▾ ▸ Repack wire (Task 3, cross-repo). Task 4 outcome rewritten from "live-SWG smoke" to "smoke=automation-augmented" per maintainer direction ("automate this against test assets, this should be automated if possible"). Continuation Tasks 5/5a-5e: extracted TreBackupPath + TreRepackLock to UtinniCoreDotNet/Saving/ (checker B-1 pattern, mirrors 08-05 LooseOverridePath + 08-06 LivePatchValidator); refactored plugin TreRepackSaveTarget to delegate to framework helpers; shipped 5 new test classes (TreRepackRoundTripTests + TreRepackLogicalPathTests + TreRepackLockedArchiveTests + TreRepackBackupTests + TreRepackByteDiffTests, 15 outcomes covering on-disk repack contract). 319/319 Utinni tests pass (Debug + Release configs); both repos build clean Debug+Release|x86. Open Q1 (cursor N-H1 ACK = SWG client path-CRC resolution under live injection) + Open Q5 (UI end-to-end + tiered reload after scene change) deferred-but-acceptable for V1 per the precedent set by 08-05 Task 5 maintainer smoke approval on automation-augmented verification.
+- [Phase 9]: Phase 09 P01 (typed DTII format primitives) COMPLETE 2026-05-29. Ten pure-managed `UtinniCoreDotNet/Formats/Datatable/*.cs` files compose on Phase 8 IFF primitives: DataTableColumnType (type-spec parser + MangleValue port, corrected `e(a=0,b=1,c=2)[default]` enum grammar per Assumption A1), DataTableCellValue (sealed Int/Float/String union), DataTableHashCrc (Crc::normalizeAndCalculate port), DataTableDocument.FromIff (V0000/V0001 typed reader + per-cell CF-04 slice capture + 16M-cell DoS cap), MutableDataTableCell (hybrid DOM + CaptureState/RestoreState undo primitive — item 3), MutableDataTableDocument.BuildMutableIff (FORM DTII tree; comment columns preserved in COLS+TYPE with zero-byte ROWS — item 13), DataTableWriter (composes IffWriter.Write). DEVIATION (Rule 1): CRC empty/null = SOE crcNull = 0, NOT the plan's speculative 0xFFFFFFFF (Crc.cpp:19,73-76). 73 Datatable xUnit facts incl SC4 EditCell→RestoreState-Undo→byte-exact invariant + negative Value-set-back case; full UtinniCoreDotNet.Tests 404/404 green; Debug+Release|x86 clean. PROD-W1-DT requirement remains Pending (needs full end-to-end editor demo across plans 09-01..09-07). CaptureState/RestoreState ready for 09-04 EditCellValue + 09-06 ApplyCsvImport.
 - [Phase 8]: Phase 08 P06 (in-memory live patch, D-05.3) COMPLETE 2026-05-28. Framework-side `LivePatchValidator` pure-function bounds gate (BCL-only; no WinForms / UtinniCore.Memory / GameCallbacks / TJT — checker B-1) closes round-2 HIGH-B / CONTEXT D-05.3 "unit-tested" claim with 5 [Fact]s (NoClient / ZeroTarget / Growth / Shrink / SameLengthHappyPath). Plugin-side `LivePatchSaveTarget` (game-thread CON-N-04 mapped-memory write via `GameCallbacks.AddMainLoopCall` + `UtinniCore.Memory.memory.Copy`; pin/unpin in finally on same thread) consumes the validator before AddMainLoopCall. `FormSaveConfirmDialog` (risk-proportional per-call modal with Color.Red emphasis + explicit-verb buttons; reusable by 08-07 repack). `FormIffEditor` Save▾ ▸ Patch live client menu wire: provenance-gated on `Source is OpenSource.ClientMemory cm` AND `Game.IsRunning`; honest-disabled tooltip otherwise (round-2 MEDIUM 11, 3 hits). Round-2 HIGH-A: 4 new csproj entries (1 in Utinni + 3 in UtinniPlugins). Task 5 approved by maintainer on automation alone (option 3 — smoke=automation-only); Open Q4 (full functional live-patch smoke with maintainer-only ClientMemory debug construction) deferred to later observation/doc pass. Singleton-form pattern note: FormSaveConfirmDialog is per-call modal (`using (var dlg = ...)`) — default WinForms dispose-on-close is CORRECT; the 08-05 hide-not-dispose pattern applies only to plugin-registered GetForms() instances.
 
 ### Pending Todos
@@ -190,9 +192,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-05-29T03:36:41.654Z
+Last session: 2026-05-29T22:35:49.618Z
 Stopped at: Phase 9 UI-SPEC approved
-Resume file: .planning/phases/09-tjt-subpanel-datatable-editor-tab/09-UI-SPEC.md
+Resume file: None
 
 ## Ingest Provenance
 

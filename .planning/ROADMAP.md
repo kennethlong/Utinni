@@ -204,7 +204,7 @@ Plans:
 **Plans**: 7 plans (5 waves; 09-04 + 09-05 parallel in Wave 3)
 **UI hint**: yes
 **Plans**:
-- [ ] 09-01-PLAN.md — Typed DTII format primitives (CF-01 framework-side): DataTableColumnType + MangleValue + DataTableHashCrc port + DataTableDocument.FromIff + MutableDataTable* hybrid DOM (CF-04 per-cell originalSlice) + DataTableWriter composing IffWriter; UI-SPEC Assumption A1 enum-syntax typo correction (Task 0)
+- [x] 09-01-PLAN.md — Typed DTII format primitives (CF-01 framework-side): DataTableColumnType + MangleValue + DataTableHashCrc port + DataTableDocument.FromIff + MutableDataTable* hybrid DOM (CF-04 per-cell originalSlice) + DataTableWriter composing IffWriter; UI-SPEC Assumption A1 enum-syntax typo correction (Task 0)
 - [ ] 09-02-PLAN.md — `utinni-cli roundtrip-tab` verb + golden suite + DataTableFixtureBuilder; SC4 byte-exact-on-untouched-cells CLI gate (CF-02)
 - [ ] 09-03-PLAN.md — FormDatatableEditor host + ThemedDataGridView + per-type cell widgets + Plugin.cs registration + singleton hide-not-dispose pattern from commit 1 + DataGridView bind-latency probe (gates Plan 09-06 VirtualMode decision)
 - [ ] 09-04-PLAN.md — DatatableEditController (CF-06) + 11 T4 commands + D-04 cascade + FormAddColumnDialog + FormTypeChangeCascadeDialog + R-04 save-block on every Save▾ item + D-02 safety-net via reused FormSaveConfirmDialog
@@ -291,6 +291,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Cleanups, dep bumps, open questions, Tier 4 doc, 1.0 cut | 5/6 | In Progress|  |
 | 7. Wave-1 plugin — TRE Browser | 0/6 | Planned | - |
 | 8. Wave-1 plugin — IFF Editor | 6/7 | In Progress|  |
-| 9. Wave-1 plugin — Datatable Editor | 0/TBD | Not started | - |
+| 9. Wave-1 plugin — Datatable Editor | 1/7 | In Progress|  |
 | 10. Wave-1 plugin — String-table Editor | 0/TBD | Not started | - |
 | 11. Wave-1 plugin — Object Template Editor | 0/TBD | Not started | - |
