@@ -23,6 +23,7 @@
 **/
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -104,6 +105,56 @@ namespace UtinniCoreDotNet.Tests.FormatsTests.Tre
             finally
             {
                 File.Delete(path);
+            }
+        }
+
+        [Fact]
+        public void GetRecordCompressedBytes_UncompressedRecordWithZeroCompressedSize_ReturnsFullOnDiskSlice()
+        {
+            string path = WriteTempTre(out string _);
+            try
+            {
+                TreFile tf = TreFile.Open(path);
+                // The raw-slice copy path (used by TreWriter repack) must return the real on-disk bytes,
+                // NOT empty — otherwise a repack drops the record's content.
+                byte[] slice = tf.GetRecordCompressedBytes(0);
+                Assert.Equal(Payload, slice);
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        [Fact]
+        public void Repack_PreservesUntouchedZeroCompressedSizeRecord_ByteForByte()
+        {
+            byte[] payload0 = Encoding.ASCII.GetBytes("FORM....SMAT untouched zero-compressed-size patch record");
+            byte[] payload1 = Encoding.ASCII.GetBytes("RECORD ONE original content (will be edited)");
+            byte[] tre = TreFileFixtures.BuildTwoRecord_FirstUncompressedZeroCompressedSize(
+                "appearance/abyssin_m.sat", payload0, "datatable/foo/bar.iff", payload1);
+
+            string src = Path.Combine(Path.GetTempPath(), "utinni_repacksrc_" + Guid.NewGuid().ToString("N") + ".tre");
+            string dst = Path.Combine(Path.GetTempPath(), "utinni_repackdst_" + Guid.NewGuid().ToString("N") + ".tre");
+            File.WriteAllBytes(src, tre);
+            try
+            {
+                byte[] newPayload1 = Encoding.ASCII.GetBytes("RECORD ONE EDITED content");
+                TreFile original = TreFile.Open(src);
+                byte[] rebuilt = TreWriter.Repack(original, new Dictionary<int, byte[]> { { 1, newPayload1 } });
+                File.WriteAllBytes(dst, rebuilt);
+
+                TreFile reopened = TreFile.Open(dst);
+                Assert.Equal(2, reopened.Records.Count);
+                // The UNTOUCHED zero-compressed-size record survives byte-for-byte (NOT dropped to empty).
+                Assert.Equal(payload0, reopened.GetRecordData(0));
+                // The edited record carries the new content.
+                Assert.Equal(newPayload1, reopened.GetRecordData(1));
+            }
+            finally
+            {
+                File.Delete(src);
+                File.Delete(dst);
             }
         }
 

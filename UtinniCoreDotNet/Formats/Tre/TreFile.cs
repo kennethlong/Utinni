@@ -462,9 +462,11 @@ namespace UtinniCoreDotNet.Formats.Tre
         /// payload access. The PayloadReadCount counter is NOT touched by this method (it
         /// counts only decompressed reads via <see cref="GetRecordData"/>).</para>
         ///
-        /// <para><b>Empty / zero-length records:</b> returns <c>new byte[0]</c> when
-        /// <c>rec.CompressedSize == 0</c> (consistent with <see cref="GetRecordData"/>'s
-        /// empty-payload behavior).</para>
+        /// <para><b>On-disk slice length:</b> the slice is <c>UncompressedSize</c> bytes for an
+        /// uncompressed record (Compressor==0) and <c>CompressedSize</c> bytes for a compressed one —
+        /// mirroring <see cref="GetRecordData"/>. An uncompressed record may declare
+        /// <c>CompressedSize=0</c> (the patch-archive "not compressed" marker) while carrying real bytes;
+        /// returns <c>new byte[0]</c> only when the resolved on-disk length is genuinely 0.</para>
         ///
         /// <para><b>WR-01:</b> every call returns a fresh byte[] callers may mutate freely.</para>
         ///
@@ -491,23 +493,30 @@ namespace UtinniCoreDotNet.Formats.Tre
 
             var rec = Records[index];
 
-            if (rec.CompressedSize == 0)
+            // On-disk slice length — see GetRecordData: an UNCOMPRESSED record's bytes live at its
+            // UncompressedSize; CompressedSize is the on-disk byte count ONLY when the record is actually
+            // compressed (patch archives write CompressedSize=0 for uncompressed records). Without this the
+            // repack copies ZERO bytes for such a record — TreWriter advances the payload cursor by this
+            // slice's length — corrupting the rebuilt archive (the next record's bytes shift over it).
+            int onDiskSize = rec.Compressor == 0 ? rec.UncompressedSize : rec.CompressedSize;
+
+            if (onDiskSize == 0)
             {
                 return new byte[0];
             }
 
-            byte[] compressed = new byte[rec.CompressedSize];
+            byte[] slice = new byte[onDiskSize];
             using (var fs = new FileStream(_sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 fs.Seek(rec.Offset, SeekOrigin.Begin);
-                int read = ReadFully(fs, compressed, rec.CompressedSize);
-                if (read != rec.CompressedSize)
+                int read = ReadFully(fs, slice, onDiskSize);
+                if (read != onDiskSize)
                 {
                     throw new TreParseException(TreParseError.Truncated,
-                        "Record " + index + " raw-compressed read returned " + read + " bytes; expected " + rec.CompressedSize + ".");
+                        "Record " + index + " raw-slice read returned " + read + " bytes; expected " + onDiskSize + ".");
                 }
             }
-            return compressed;
+            return slice;
         }
 
         /// <summary>

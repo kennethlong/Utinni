@@ -357,6 +357,56 @@ namespace UtinniCoreDotNet.Tests.FormatsTests.Tre
             }
         }
 
+        /// <summary>
+        /// Builds a 2-record TRE (version 0005) where record 0 is an UNCOMPRESSED record with
+        /// <c>dataCompressedSize = 0</c> (the patch convention — carries real bytes) and record 1 is a
+        /// normal uncompressed record. Used by the repack regression: edit record 1, repack, and assert
+        /// the untouched zero-compressed-size record 0 survives byte-for-byte (it must NOT be copied as
+        /// zero bytes).
+        /// </summary>
+        public static byte[] BuildTwoRecord_FirstUncompressedZeroCompressedSize(
+            string name0, byte[] payload0, string name1, byte[] payload1)
+        {
+            byte[] name0Block = Encoding.ASCII.GetBytes(name0 + "\0");
+            byte[] name1Block = Encoding.ASCII.GetBytes(name1 + "\0");
+            const int headerSize = 36;
+            const int infoBlockSize = 2 * 24;
+            int namesOffset = headerSize + infoBlockSize;
+            int name0Offset = 0;
+            int name1Offset = name0Block.Length;
+            int namesSize = name0Block.Length + name1Block.Length;
+            int dataBase = namesOffset + namesSize;
+            int data0Offset = dataBase;
+            int data1Offset = dataBase + payload0.Length;
+
+            using (var ms = new MemoryStream())
+            using (var bw = new BinaryWriter(ms, Encoding.ASCII, leaveOpen: true))
+            {
+                WriteAscii4(bw, "EERT");
+                WriteAscii4(bw, "0005");
+                bw.Write(2);              // RecordCount
+                bw.Write(headerSize);     // InfoOffset
+                bw.Write(0);              // InfoCompression
+                bw.Write(infoBlockSize);  // InfoCompressedSize
+                bw.Write(0);              // NameCompression
+                bw.Write(namesSize);      // NameCompressedSize
+                bw.Write(namesSize);      // NameSize
+
+                // Record 0: uncompressed, dataCompressedSize = 0 (the patch convention).
+                WriteRecordInfo(bw, dataSize: payload0.Length, dataOffset: data0Offset,
+                    dataCompression: 0, dataCompressedSize: 0, checksum: 0xABCD, nameOffset: name0Offset);
+                // Record 1: normal uncompressed (dataCompressedSize == dataSize).
+                WriteRecordInfo(bw, dataSize: payload1.Length, dataOffset: data1Offset,
+                    dataCompression: 0, dataCompressedSize: payload1.Length, checksum: 0x1234, nameOffset: name1Offset);
+
+                ms.Write(name0Block, 0, name0Block.Length);
+                ms.Write(name1Block, 0, name1Block.Length);
+                ms.Write(payload0, 0, payload0.Length);
+                ms.Write(payload1, 0, payload1.Length);
+                return ms.ToArray();
+            }
+        }
+
         // ─────────────────────────────────────────────────────────────────────
         // Private helpers
         // ─────────────────────────────────────────────────────────────────────
