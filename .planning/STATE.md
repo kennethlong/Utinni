@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 9 Plan 05 — COMPLETE (save targets + entry points); ready for 09-06
-last_updated: "2026-05-29T23:59:00.000Z"
-last_activity: 2026-05-29
+stopped_at: Phase 9 Plan 05 — COMPLETE (save targets + entry points)
+last_updated: "2026-05-30T00:09:36.964Z"
+last_activity: 2026-05-30
 progress:
   total_phases: 12
   completed_phases: 9
   total_plans: 44
-  completed_plans: 43
-  percent: 95
+  completed_plans: 44
+  percent: 100
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 09 (tjt-subpanel-datatable-editor-tab) — EXECUTING
-Plan: 05 of 7 — COMPLETE (entry points + save targets: DatatableSaveTargets shim + Save▾ wire + MarkSaved-on-success + D-10.2/D-10.3 hand-offs)
-Status: Ready to execute 09-06 (Wave 5 — CSV import + Find/Replace + sort; SHOULD include a VirtualMode bind-latency fallback per 09-03)
-Last activity: 2026-05-29
+Plan: 6 of 7 — COMPLETE (entry points + save targets: DatatableSaveTargets shim + Save▾ wire + MarkSaved-on-success + D-10.2/D-10.3 hand-offs)
+Status: Ready to execute
+Last activity: 2026-05-30
 Next action: Execute Plan 09-06. It can ship CSV import + Find/Replace + sort without touching any save-target or entry-point code (clean separation — 09-05 closed PROD-W1-DT's save + entry-point surface). Plan 09-06 SHOULD add a DataGridView VirtualMode fallback (09-03 bind-latency straddles 100 ms). 09-03 Task 4 live-host checkpoint still pending maintainer sanity check (non-blocking).
 
-Progress: [██████████] 95%
+Progress: [██████████] 100%
 
 ## Wave 2 Summary
 
@@ -114,6 +114,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 09 P03 | ~95 min | 3 auto tasks (+ 1 live-host checkpoint pending) | 9 new + 3 modified across both repos |
 | Phase 09 P04 | 75 min | 2 tasks | 13 files |
 | Phase 09 P05 | ~70 min | 2 tasks | 7 files across both repos |
+| Phase 09 P06 | 75 min | 4 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -136,6 +137,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: Phase 09 P02: roundtrip-tab CLI verb is the SC4 byte-exact-untouched-cells gate via a per-cell ROWS-slice comparison (re-parse both byte arrays, pair untouched cells by stable (row,col) with explicit remove-row/remove-column index-shift maps). Added public framework primitives RemoveRowAt/RemoveColumnAt/ResolveColumnIndex/TryCoerceCellValue/GetOriginalSliceForCompare (reusable by 09-04/09-06). 16 facts, 8 committed goldens; Utinni.Cli.Tests 139 pass, UtinniCoreDotNet.Tests 404/404.
 - [Phase 9]: Phase 09 P05 (entry points + save targets) COMPLETE 2026-05-29. `TJT.Saving.DatatableSaveTargets` < 100-line (87-line body) composition shim forwards verbatim to Phase 8's IffSaveTargets (modes 1/2/3) + TreRepackSaveTarget (mode 4) — zero new save plumbing/path-defense/repack orchestration. FormDatatableEditor: 5 Save▾ click handlers + `controller.MarkSaved()` on each save-success (iter-2 item 8) + `RefreshSaveMenuEnabledState` rewritten to compose the provenance gate ON TOP of 09-04's NeedsReview gate (Save-As escape hatch on Unknown per round-2 MEDIUM 5) + public `OpenFromTreEntry`/`OpenFromMutableIff` + `saveInFlight` MEDIUM-9 barrier + reload-dispatch audit trail keeping CF-05 locked copy. FormTreBrowser D-10.2 (Open-in-Datatable-Editor, extension-only `.tab` visibility) + FormIffEditor D-10.3 (Switch-to-typed-datatable-view, visible iff root TypeId==DTII) — both additive, no public-signature change. DEVIATION (Rule 3): DatatableSaveTargetsTests target the FRAMEWORK composition legs (the WinForms/native TJT assembly is not project-referenceable from the x86 test project — Phase 8 precedent); 10 new facts (7 save + 3 reload-routing). DEVIATION (Rule 1 doc): no `RefusedV6000Encrypted` enum — V6000 refusal = `TreRepackResult.Failed` (TreWriter.Repack throws NotSupportedException). Namespace is `TJT.Saving` (matches SHIPPED Phase 8), not the plan's `TheJawaToolboxDotNet.Saving`. 121/121 Datatable subsuite; 458/458 UtinniCoreDotNet.Tests; TJT MSBuild Debug|x86 green. PROD-W1-DT save + entry-point surface CLOSED. Commits: Utinni 3b02999; UtinniPlugins 149904c/b3dd75d.
 - [Phase ?]: Phase 09 P04 (T4 schema-mutation engine) COMPLETE 2026-05-29. DatatableEditController (verbatim IffEditController port + NeedsReviewCount/PendingCascadeContext/MarkSaved seams) + 11 D-01 T4 commands (EditCellValue via CaptureState/RestoreState byte-exact undo; RemoveRow/RemoveColumn insert-by-reference CR-01 port; ChangeColumnType D-04 mangle cascade) + ApplyCsvImport stub for 09-06. Cascade state on controller, ZERO form-local lastCascadeContext. MarkSaved rebaseline = per-cell (RebaselineAfterSave). TJT FormAddColumnDialog + FormTypeChangeCascadeDialog per-call modals; FormDatatableEditor controller wire + R-04 NeedsReview save-block on every Save menu item + D-02 safety-net (reused FormSaveConfirmDialog). DEVIATION (Rule 3): added MutableDataTableRow.InsertCellInternal + MutableDataTableCell.RebaselineAfterSave. 37 controller Facts; 111/111 Datatable subsuite; both repos Debug+Release|x86 clean. Commits Utinni 997716a / UtinniPlugins 0868c88.
+- [Phase ?]: Phase 09 P06 (CSV + Find/Replace + sort + VirtualMode) COMPLETE 2026-05-29. Framework CsvCellCoercion.PlanImport (checker B-1; per-cell diff + DoS caps) + DataTableCellValue.ToCsvString + ApplyCsvImportCommand single-transaction reverse-order undo (replaces 09-04 stub). TJT DatatableCsvSerializer (UTF-8 BOM export + <100-line RFC-4180 parser) + FormCsvImportPreviewDialog (locked D-08 copy). FormDatatableEditor: Find/Replace (Ctrl+F/H, F3/Shift+F3, Esc, 200ms debounce, regex 2s matchTimeout, per-column-type-validated Replace) + CSV Import/Export + column-click view-only sort (D-09) + DT_Comment frozen-row toggle. D-09 dual defense: writer grep 0:0:0 + Sort_DoesNotMutateModelOrder STA fact. Task 4 VirtualMode EXECUTED (09-03 measured 265.63ms cold > 100ms): row-threshold(150) fallback, CellValueNeeded/Pushed->controller. 475/475 tests; both repos Debug+Release|x86 green. Commits Utinni a090726/c84c655; UtinniPlugins 3ff92e3/2c60048/f1bb651.
 
 ### Pending Todos
 
@@ -200,7 +202,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-05-29
+Last session: 2026-05-30T00:08:58.159Z
 Stopped at: Phase 9 Plan 05 — COMPLETE (save targets + entry points)
 Resume file: None
 
