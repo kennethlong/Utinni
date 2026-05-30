@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
+status: ready_to_plan
 stopped_at: Phase 9 Plan 07 — LIVE-SMOKE CHECKPOINT (automation pre-checks GREEN; awaiting maintainer live session)
 last_updated: "2026-05-30T00:09:36.964Z"
 last_activity: 2026-05-30
 progress:
   total_phases: 12
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 44
   completed_plans: 44
-  percent: 100
+  percent: 83
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 
 ## Current Position
 
-Phase: 09 (tjt-subpanel-datatable-editor-tab) — EXECUTING (Plan 07 live-smoke checkpoint)
-Plan: 7 of 7 — LIVE-SMOKE CHECKPOINT (automation-augmented pre-checks GREEN; awaiting maintainer live session)
-Status: Awaiting maintainer live-SWG smoke (deferred-but-acceptable for V1 per Phase 8 P05/P06/P07 precedent)
+Phase: 10
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-05-30
 Next action: Maintainer runs the consolidated live smoke in `.planning/phases/09-tjt-subpanel-datatable-editor-tab/09-07-SMOKE-LOG.md` — Part A (09-03 editor-host, no live SWG; deferred + batched here) + Part B (09-07 Tier-4 live-SWG, choose Option A/B/C). All automation pre-checks (both repos Debug+Release|x86; 475/475 UtinniCoreDotNet.Tests; 139+1-skip Utinni.Cli.Tests; 23/23 PreservationAudit; TJT plugin assembly deployed) are GREEN. ROADMAP Plan-07 progress left PENDING the live ACK — orchestrator owns the deferred-but-acceptable completion decision. Resume signal: type "approved" with the disposition one-liner, or describe any blocking defect.
 
@@ -75,7 +75,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 
 **Velocity:**
 
-- Total plans completed: 22
+- Total plans completed: 29
 - Average duration: —
 - Total execution time: —
 
@@ -89,6 +89,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | 05 | 2 | - | - |
 | 06 | 7 | - | - |
 | 08 | 7 | - | - |
+| 09 | 7 | - | - |
 
 **Recent Trend:**
 

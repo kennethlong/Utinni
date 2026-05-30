@@ -210,7 +210,7 @@ Plans:
 - [x] 09-04-PLAN.md — DatatableEditController (CF-06) + 11 T4 commands + D-04 cascade + FormAddColumnDialog + FormTypeChangeCascadeDialog + R-04 save-block on every Save▾ item + D-02 safety-net via reused FormSaveConfirmDialog
 - [x] 09-05-PLAN.md — DatatableSaveTargets composition shim + FormDatatableEditor Save▾ wire (4 modes; mode 3 disabled per CF-03) + TRE Browser D-10.2 hand-off + IFF Editor D-10.3 hand-off + ClientReloadDispatcher tier-(b) wire (CF-05 locked UI)
 - [x] 09-06-PLAN.md — CSV/TSV delta-import + Find/Replace + column-click view-only sort (D-09 grep gate + Sort_DoesNotMutateModelOrder xUnit fact) + DT_Comment frozen-row toggle + framework CsvCellCoercion (checker B-1 extraction) + conditional VirtualMode fallback (gated on 09-03 measurement)
-- [ ] 09-07-PLAN.md — Tier-4 maintainer live-SWG smoke (Phase 8 precedent: smoke=automation-augmented; live ACK deferred-but-acceptable for V1)
+- [x] 09-07-PLAN.md — Tier-4 maintainer live-SWG smoke (Phase 8 precedent: smoke=automation-augmented; live ACK deferred-but-acceptable for V1)
 
 ### Phase 10: TJT subpanel — String-table Editor (`.stf`)
 **Architecture (DEC-C4):** Ships as an `IEditorPlugin` subpanel inside TJT. Reuses Phase 8 IFF primitives.
