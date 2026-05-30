@@ -37,7 +37,12 @@ findings:
   warning: 7
   info: 5
   total: 14
-status: issues_found
+critical_resolved: 2
+status: criticals_resolved
+resolution:
+  CR-01: "FIXED — UtinniPlugins 555e003 (visual->model row-Tag translation) + Utinni e2ac2ca (edit-after-sort regression fact). Full suite 476/476, both solutions build Debug|x86."
+  CR-02: "FALSE POSITIVE — FormSaveConfirmDialog defaults Outcome=Cancelled + private-set, so X/Esc already blocked. Hardened to != Accepted anyway (UtinniPlugins 555e003)."
+  warnings: "DEFERRED — 7 Warnings + 5 Info tracked as follow-ups (not phase-blocking; see WR-01..07 below)."
 ---
 
 # Phase 9: Code Review Report
@@ -45,7 +50,12 @@ status: issues_found
 **Reviewed:** 2026-05-29
 **Depth:** standard (per-file + cross-repo seam analysis)
 **Files Reviewed:** 27
-**Status:** issues_found
+**Status:** criticals_resolved (2 Critical fixed/cleared; 7 Warning + 5 Info deferred as tracked follow-ups)
+
+> **Resolution (2026-05-29):** Both Criticals addressed before phase completion.
+> - **CR-01** (real, silent sort+edit corruption) — FIXED. `ThemedDataGridView.BindMutable` now stamps each grid row's model index into `Tag`; `ToModelRowIndex`/`ToVisualRowIndex` translate, and every model↔visual crossing (CommitCell, RemoveSelectedRow, MoveSelectedRow, Find-jump, FocusCell, ApplyCommentRowFreeze, CellFormatting) routes through them. Regression fact `EditAfterSort_TranslatesVisualToModel_PreservesOtherRows` locks the invariant. Commits: UtinniPlugins `555e003`, Utinni `e2ac2ca`.
+> - **CR-02** (safety-net X/Esc bypass) — FALSE POSITIVE on re-inspection: `FormSaveConfirmDialog` has a 2-value enum, defaults `Outcome = Cancelled`, and is private-set, so the existing `== Cancelled` guard already blocked an X/Esc close. Hardened to `!= Accepted` to match the sibling repack guard and future-proof against a third enum value.
+> - **7 Warnings + 5 Info** remain open as tracked, non-blocking follow-ups.
 
 ## Summary
 
