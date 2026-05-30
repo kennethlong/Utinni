@@ -89,16 +89,23 @@ namespace UtinniCoreDotNet.Formats.Tre
                 return false;
             }
 
-            if (d.CompressedLength < 0 || d.ArchiveLocalOffset < 0)
+            if (d.CompressedLength < 0 || d.Length < 0 || d.ArchiveLocalOffset < 0)
             {
                 throw new TreParseException(TreParseError.NegativeLength,
                     "Descriptor for '" + d.Path + "' has a negative offset/length.");
             }
 
-            byte[] raw = new byte[d.CompressedLength];
+            // On-disk payload length: an UNCOMPRESSED record's bytes live at its (uncompressed) Length;
+            // CompressedLength is the on-disk byte count only when the record is actually compressed (some
+            // archives — e.g. patch_*.tre — write CompressedLength=0 for an uncompressed record). Mirrors the
+            // TreFile.GetRecordData fix; without it an uncompressed record with CompressedLength=0 resolves to
+            // empty bytes and the IFF/STF reader fails with "unexpected end of stream".
+            int onDiskLength = d.Compressor == 0 ? d.Length : d.CompressedLength;
+
+            byte[] raw = new byte[onDiskLength];
             using (var fs = new FileStream(d.ResolvedArchivePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
-                if (d.ArchiveLocalOffset > fs.Length - d.CompressedLength)
+                if (d.ArchiveLocalOffset > fs.Length - onDiskLength)
                 {
                     throw new TreParseException(TreParseError.Truncated,
                         "Descriptor for '" + d.Path + "' points past the end of '" + d.ResolvedArchivePath + "'.");

@@ -313,6 +313,50 @@ namespace UtinniCoreDotNet.Tests.FormatsTests.Tre
             }
         }
 
+        /// <summary>
+        /// Builds a 1-record TRE (version 0005) whose single UNCOMPRESSED record declares
+        /// <c>dataCompressedSize = 0</c> while <c>dataSize = payload.Length</c> and the full payload sits
+        /// on disk at the data offset. This reproduces the real SWG <c>patch_*.tre</c> convention where an
+        /// uncompressed record uses CompressedSize purely as the "not compressed" marker (0) rather than the
+        /// on-disk byte count. A correct reader must read <c>dataSize</c> bytes; a reader that keys off
+        /// CompressedSize returns an empty payload (the abyssin_m.sat "unexpected end of stream" bug).
+        /// </summary>
+        public static byte[] BuildUncompressedRecordWithZeroCompressedSize(string name, byte[] payload)
+        {
+            byte[] nameBlock = Encoding.ASCII.GetBytes(name + "\0");
+            const int headerSize = 36;
+            const int infoBlockSize = 24; // one record info struct
+            int namesOffset = headerSize + infoBlockSize;
+            int dataOffset = namesOffset + nameBlock.Length;
+
+            using (var ms = new MemoryStream())
+            using (var bw = new BinaryWriter(ms, Encoding.ASCII, leaveOpen: true))
+            {
+                WriteAscii4(bw, "EERT");
+                WriteAscii4(bw, "0005");
+                bw.Write(1);              // RecordCount
+                bw.Write(headerSize);     // InfoOffset
+                bw.Write(0);              // InfoCompression
+                bw.Write(infoBlockSize);  // InfoCompressedSize
+                bw.Write(0);              // NameCompression
+                bw.Write(nameBlock.Length); // NameCompressedSize
+                bw.Write(nameBlock.Length); // NameSize
+
+                // Record info: uncompressed, dataCompressedSize = 0 (the patch convention).
+                WriteRecordInfo(bw,
+                    dataSize:           payload.Length,
+                    dataOffset:         dataOffset,
+                    dataCompression:    0,
+                    dataCompressedSize: 0,   // <-- the bug trigger
+                    checksum:           0,
+                    nameOffset:         0);
+
+                ms.Write(nameBlock, 0, nameBlock.Length);
+                ms.Write(payload, 0, payload.Length);
+                return ms.ToArray();
+            }
+        }
+
         // ─────────────────────────────────────────────────────────────────────
         // Private helpers
         // ─────────────────────────────────────────────────────────────────────

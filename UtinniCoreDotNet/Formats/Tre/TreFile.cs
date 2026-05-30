@@ -392,21 +392,30 @@ namespace UtinniCoreDotNet.Formats.Tre
 
             var rec = Records[index];
 
-            if (rec.CompressedSize == 0)
+            // On-disk payload length. SWG stores an UNCOMPRESSED record's bytes at its UncompressedSize;
+            // some archives (e.g. patch_*.tre) write CompressedSize=0 for an uncompressed record, using it
+            // purely as the "not compressed" marker rather than the on-disk byte count. So CompressedSize is
+            // the on-disk length ONLY when the record is actually compressed — otherwise the on-disk length
+            // is UncompressedSize (mirrors SWG TreeFile, which reads dataSize for an uncompressed record).
+            // Without this, an uncompressed record with CompressedSize=0 reads as empty and any consumer
+            // (e.g. IffReader) fails with "unexpected end of stream at position 0".
+            int onDiskSize = rec.Compressor == 0 ? rec.UncompressedSize : rec.CompressedSize;
+
+            if (onDiskSize == 0)
             {
                 PayloadReadCount++;
                 return new byte[0];
             }
 
-            byte[] compressed = new byte[rec.CompressedSize];
+            byte[] onDisk = new byte[onDiskSize];
             using (var fs = new FileStream(_sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 fs.Seek(rec.Offset, SeekOrigin.Begin);
-                int read = ReadFully(fs, compressed, rec.CompressedSize);
-                if (read != rec.CompressedSize)
+                int read = ReadFully(fs, onDisk, onDiskSize);
+                if (read != onDiskSize)
                 {
                     throw new TreParseException(TreParseError.Truncated,
-                        "Record " + index + " payload read returned " + read + " bytes; expected " + rec.CompressedSize + ".");
+                        "Record " + index + " payload read returned " + read + " bytes; expected " + onDiskSize + ".");
                 }
             }
             PayloadReadCount++;
@@ -414,8 +423,8 @@ namespace UtinniCoreDotNet.Formats.Tre
             if (rec.Compressor == 0)
             {
                 // WR-01: fresh copy so the caller can mutate freely.
-                var copy = new byte[compressed.Length];
-                Buffer.BlockCopy(compressed, 0, copy, 0, compressed.Length);
+                var copy = new byte[onDisk.Length];
+                Buffer.BlockCopy(onDisk, 0, copy, 0, onDisk.Length);
                 return copy;
             }
 
@@ -427,7 +436,7 @@ namespace UtinniCoreDotNet.Formats.Tre
             }
 
             int cap = Math.Min(MaxBlockSize, rec.UncompressedSize);
-            byte[] result = Inflate(compressed, rec.Compressor, cap, TreParseError.DeflateExpansionExceedsCap, "record " + index);
+            byte[] result = Inflate(onDisk, rec.Compressor, cap, TreParseError.DeflateExpansionExceedsCap, "record " + index);
 
             // Tamper check: declared vs actual inflate length.
             if (result.Length != rec.UncompressedSize)
