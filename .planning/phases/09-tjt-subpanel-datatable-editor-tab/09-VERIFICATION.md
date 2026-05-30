@@ -1,8 +1,9 @@
 ---
 phase: 09-tjt-subpanel-datatable-editor-tab
 verified: 2026-05-29T00:00:00Z
-status: human_needed
-score: 4/4 roadmap success criteria structurally verified (code + automation complete; SC1/SC3 live-ACK pending)
+status: passed
+human_acked: 2026-05-29
+score: 4/4 roadmap success criteria verified (code + automation complete; SC1/SC3 live-ACK received from maintainer 2026-05-29 — see 09-HUMAN-UAT.md)
 overrides_applied: 0
 human_verification:
   - test: "Plan 09-03 editor-host open-from-disk smoke (Part A, A1–A7) — NO live SWG required"

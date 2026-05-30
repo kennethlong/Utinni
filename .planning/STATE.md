@@ -29,7 +29,7 @@ Phase: 10
 Plan: Not started
 Status: Ready to plan
 Last activity: 2026-05-30
-Next action: Maintainer runs the consolidated live smoke in `.planning/phases/09-tjt-subpanel-datatable-editor-tab/09-07-SMOKE-LOG.md` — Part A (09-03 editor-host, no live SWG; deferred + batched here) + Part B (09-07 Tier-4 live-SWG, choose Option A/B/C). All automation pre-checks (both repos Debug+Release|x86; 475/475 UtinniCoreDotNet.Tests; 139+1-skip Utinni.Cli.Tests; 23/23 PreservationAudit; TJT plugin assembly deployed) are GREEN. ROADMAP Plan-07 progress left PENDING the live ACK — orchestrator owns the deferred-but-acceptable completion decision. Resume signal: type "approved" with the disposition one-liner, or describe any blocking defect.
+Next action: Phase 9 FULLY COMPLETE — maintainer approved the batched live smoke 2026-05-29 (09-HUMAN-UAT.md status=passed; 09-VERIFICATION.md status=passed). Post-completion follow-up also shipped: the TRE Browser "Open in Datatable Editor" hand-off was corrected to offer datatables/*.iff (not just .tab) via the new framework DatatableHandoffPolicy (Utinni f87e04c / UtinniPlugins 1fddc55), confirmed working in-host after redeploy. Phase 9 code-review residual: 7 Warnings + 5 Info tracked in .planning/todos/pending/phase09-datatable-editor-review-warnings.md. Next: `/gsd-discuss-phase 10` (String-table Editor) — no 10-CONTEXT.md yet.
 
 Progress: [██████████] 100%
 
