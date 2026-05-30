@@ -166,6 +166,7 @@
     <Compile Include="UI\GameDragDropEventHandlers.cs" />
     <Compile Include="UI\SingletonFormClosePolicy.cs" />
     <Compile Include="UI\DatatableHandoffPolicy.cs" />
+    <Compile Include="UI\StringTableHandoffPolicy.cs" />
     <Compile Include="Callbacks\CallbackHelpers.cs" />
     <Compile Include="Callbacks\GameCallbacks.cs" />
     <Compile Include="Callbacks\GroundSceneCallbacks.cs" />
