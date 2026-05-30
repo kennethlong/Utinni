@@ -532,3 +532,23 @@ using var sw = new StreamWriter(path, append: false,
 
 **Research date:** 2026-05-30
 **Valid until:** 2026-06-29 (stable in-repo domain; the only volatility is confirming A1–A8 against source, which the planner should do immediately in Wave-0 regardless of this date).
+
+---
+
+## VERIFIED Addendum — `StringTableDecoder.cs` read directly (2026-05-30)
+
+> After the initial draft, I read the actual Phase 7 decoder source (`UtinniCoreDotNet/Formats/Decoders/StringTableDecoder.cs`, lines 76–167) in full. This resolves the format-layout assumptions A1/A2/A3 to **VERIFIED** and surfaces three model-design findings (A1b/A1c/A1d) the planner must act on. Where this addendum and the earlier "On-Disk Layout" section differ, **this addendum is authoritative.**
+
+### Resolved (was assumed → now VERIFIED)
+- **`magic` is a 4-byte LE u32**, not an 8-byte `long`. Decoder reads `cursor.ReadUInt32Le()`; `LooksLikeStf` checks the byte sequence `CD AB 00 00`. The C# constant is `const long StfMagic = 0xABCD` but the on-disk field is 32-bit. **Writer emits 4 bytes.** (Resolves A2.)
+- **UTF-16 text has NO on-disk NUL terminator.** Decoder reads exactly `charCount * 2` bytes. (Resolves A3.) `charCount` is code units; text encoding is `Encoding.Unicode` (UTF-16LE).
+- **Header is exactly:** `magic(u32) · version(byte) · nextUniqueId(u32) · count(u32)`. Version 0 and 1 accepted; any other rejected with `DecoderException(UnsupportedVersion)`. (Resolves A1.)
+- **Decoder forged-count guards:** min string entry = 12 bytes (id+crc+charCount); rejects `count > Remaining/12`, rejects `charCount > Remaining/2`, rejects `nameLen > Remaining`. The writer/round-trip golden inherit this discipline; reuse `IffPayloadCursor` + `DecoderException`.
+
+### NEW findings the planner MUST act on
+- **A1b — the existing read model is LOSSY.** `StfEntry` exposes only `(Id, Name, Text)`; `StfTable` exposes `(Version, Entries)`. The decoder **reads but DISCARDS `nextUniqueId` and every entry's `sourceCrc`**, and decodes text with U+FFFD replacement (lossy for malformed input). Therefore the Phase 10 mutable model **cannot wrap `StfTable`** — it must do a **fuller parse pass** that retains `nextUniqueId`, per-entry `sourceCrc`, and (per A1d) per-entry original text bytes. CF-01's "reuse the proven parse path" means **reuse the `IffPayloadCursor` LE-read + bounds-check discipline**, not the lossy result type. (This is the single most important structural correction vs. the naive "wrap the decoder" reading.)
+- **A1c — null/absent names and short/missing name blocks are real.** The decoder tolerates a string-only table (`if (cursor.Remaining < 8) break;`) and entries with no matching name (name = null via `TryGetValue`). A naive "every entry has a name" writer would NOT round-trip such files byte-exactly. The writer must emit only the names that exist (the name block can have fewer entries than the string block) and the round-trip golden needs a no-name-block fixture and a partial-names fixture.
+- **A1d — malformed-text byte-faithfulness requires original text bytes.** Because the decoder replaces malformed UTF-16 with U+FFFD on read, re-encoding the decoded string yields **different bytes** than a file that originally contained malformed code units. This collides with STAB-03 (`Jo�o` must NOT be silently "repaired"). **The safest design: the mutable model holds each untouched entry's ORIGINAL text bytes and only re-encodes EDITED entries** (the D-02 per-entry-original-byte mechanism, scoped to the text field). The planner must choose this explicitly — it is the difference between SC4/STAB-03 passing and a subtle round-trip regression on malformed-text fixtures.
+
+### Net effect on the model shape (recommendation, strengthened)
+`StringTableEntry` should carry: `uint Id` (machine-managed), `string Name` (nullable key), `string Text` (decoded, for display/edit), `uint SourceCrc`, `byte[] OriginalTextBytes` (for untouched re-emit / STAB-03), and a per-entry dirty flag. `MutableStringTableDocument` carries `byte Version`, `uint NextUniqueId`, and the entry list. The writer: header → string block `OrderBy(Id)` (emit OriginalTextBytes for untouched entries, `Encoding.Unicode.GetBytes(Text)` for edited) → name block `OrderBy(Name, StringComparer.Ordinal)` over entries that HAVE a name. The `roundtrip-stf` golden fixtures must include: a canonical file, a `João` file, a malformed-text (U+FFFD) file, a no-name-block file, and a partial-names file.
