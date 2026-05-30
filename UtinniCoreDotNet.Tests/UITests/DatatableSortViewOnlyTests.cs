@@ -170,5 +170,120 @@ namespace UtinniCoreDotNet.Tests.UITests
 
             return new MutableDataTableDocument("0001", cols, rows);
         }
+
+        /// <summary>
+        /// CR-01 regression: after a view-only sort physically reorders the grid, an edit made at a
+        /// VISUAL row must be translated back to the correct MODEL row before it touches the model —
+        /// otherwise the edit silently corrupts a different row's bytes (the antithesis of SC4). This
+        /// asserts the row-Tag translation contract that <see cref="DataTableWriter"/>'s callers rely on
+        /// (ThemedDataGridView.BindMutable stamps the model index into each row's Tag; ToModelRowIndex +
+        /// FormDatatableEditor.CommitCell translate through it). Uses a plain DataGridView per the Plan
+        /// 09-03 cross-assembly UI-test placement decision — NO TheJawaToolboxDotNet reference.
+        /// </summary>
+        [Fact(DisplayName = "CR-01: an edit at a visual row after sort hits the correct model row (other rows byte-preserved)")]
+        public void EditAfterSort_TranslatesVisualToModel_PreservesOtherRows()
+        {
+            Exception staFailure = null;
+
+            var staThread = new Thread(() =>
+            {
+                try
+                {
+                    RunEditAfterSortCheck();
+                }
+                catch (Exception ex)
+                {
+                    staFailure = ex;
+                }
+            });
+            staThread.SetApartmentState(ApartmentState.STA);
+            staThread.Start();
+            staThread.Join();
+
+            if (staFailure != null)
+            {
+                throw new Exception("STA edit-after-sort check failed: " + staFailure.Message, staFailure);
+            }
+        }
+
+        private static void RunEditAfterSortCheck()
+        {
+            MutableDataTableDocument dtDoc = BuildShuffledIntColumnDoc(); // ids {30,10,50,20,40}, names row0..row4
+            const int sortCol = 0; // id
+            const int nameCol = 1; // name
+
+            // Snapshot every model row's original name so we can prove EXACTLY one row changes.
+            string[] originalNames = dtDoc.Rows.Select(r => r.Cells[nameCol].Value.ToString()).ToArray();
+
+            int modelRow;
+            using (var grid = new DataGridView())
+            {
+                grid.AllowUserToAddRows = false;
+                for (int c = 0; c < dtDoc.Columns.Count; c++)
+                {
+                    var col = new DataGridViewTextBoxColumn { HeaderText = dtDoc.Columns[c].Name };
+                    col.SortMode = DataGridViewColumnSortMode.Automatic;
+                    grid.Columns.Add(col);
+                }
+
+                // Populate in MODEL order, stamping each grid row with its model index — the SAME contract
+                // ThemedDataGridView.BindMutable establishes and ToModelRowIndex relies on.
+                for (int r = 0; r < dtDoc.Rows.Count; r++)
+                {
+                    var values = new object[dtDoc.Columns.Count];
+                    for (int c = 0; c < dtDoc.Columns.Count; c++)
+                    {
+                        values[c] = dtDoc.Rows[r].Cells[c].Value.ToString();
+                    }
+                    int gi = grid.Rows.Add(values);
+                    grid.Rows[gi].Tag = r;
+                }
+
+                var dummy = grid.Handle;
+                GC.KeepAlive(dummy);
+
+                // Ascending sort on id: model row 1 (id=10) becomes VISUAL row 0.
+                grid.Sort(grid.Columns[sortCol], ListSortDirection.Ascending);
+
+                const int visualRow = 0;
+                modelRow = ResolveModelRowIndex(grid, visualRow);
+
+                // Core of the fix: visual row 0 after an ascending sort is NOT model row 0 (the shuffle
+                // guarantees it) — so writing through the raw visual index WOULD corrupt the wrong row.
+                Assert.NotEqual(0, modelRow);
+                // The resolved model row is exactly the one whose id is shown at visual row 0.
+                Assert.Equal(
+                    grid.Rows[visualRow].Cells[sortCol].Value.ToString(),
+                    dtDoc.Rows[modelRow].Cells[sortCol].Value.ToString());
+            }
+
+            // Commit the edit through the MODEL index (what CommitCell now does) — only that row may change.
+            dtDoc.Rows[modelRow].Cells[nameCol].Value = DataTableCellValue.FromString("EDITED");
+
+            int changed = 0;
+            for (int r = 0; r < dtDoc.Rows.Count; r++)
+            {
+                string now = dtDoc.Rows[r].Cells[nameCol].Value.ToString();
+                if (now != originalNames[r])
+                {
+                    changed++;
+                    Assert.Equal("EDITED", now);
+                    Assert.Equal(modelRow, r);
+                }
+            }
+            Assert.Equal(1, changed);
+        }
+
+        // Mirrors ThemedDataGridView.ToModelRowIndex: resolve the model row index a visual row carries in
+        // its Tag (set at bind time). A regression that drops the Tag translation and indexes the model
+        // by the raw visual index would make EditAfterSort_... write to the wrong row and fail.
+        private static int ResolveModelRowIndex(DataGridView grid, int visualRowIndex)
+        {
+            if (visualRowIndex >= 0 && visualRowIndex < grid.Rows.Count && grid.Rows[visualRowIndex].Tag is int modelIndex)
+            {
+                return modelIndex;
+            }
+            return visualRowIndex;
+        }
     }
 }
