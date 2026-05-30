@@ -81,6 +81,12 @@
     <Compile Include="Formats\Datatable\MutableDataTableColumn.cs" />
     <Compile Include="Formats\Datatable\MutableDataTableDocument.cs" />
     <Compile Include="Formats\Datatable\MutableDataTableRow.cs" />
+    <Compile Include="Formats\StringTable\StringTableParseException.cs" />
+    <Compile Include="Formats\StringTable\StringTableEntry.cs" />
+    <Compile Include="Formats\StringTable\StringTableDocument.cs" />
+    <Compile Include="Formats\StringTable\MutableStringTableEntry.cs" />
+    <Compile Include="Formats\StringTable\MutableStringTableDocument.cs" />
+    <Compile Include="Formats\StringTable\StringTableWriter.cs" />
     <Compile Include="Formats\Tre\TreFile.cs" />
     <Compile Include="Formats\Tre\TreVersion.cs" />
     <Compile Include="Formats\Tre\CotMasterIndex.cs" />
@@ -226,6 +232,9 @@
     <Compile Include="UI\Theme\ThemeUtility.cs" />
     <Compile Include="UndoRedo\IUndoCommand.cs" />
     <Compile Include="UndoRedo\UndoRedoManager.cs" />
+    <Compile Include="Editing\StringTableEditController.cs" />
+    <Compile Include="Editing\IStringTableEditCommand.cs" />
+    <Compile Include="Editing\StringTableEditCommands.cs" />
     <Compile Include="Editing\DatatableEditCommands.cs" />
     <Compile Include="Editing\DatatableEditController.cs" />
     <Compile Include="Editing\IDatatableEditCommand.cs" />
