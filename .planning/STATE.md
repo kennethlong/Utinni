@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 9 Plan 05 — COMPLETE (save targets + entry points)
+stopped_at: Phase 9 Plan 07 — LIVE-SMOKE CHECKPOINT (automation pre-checks GREEN; awaiting maintainer live session)
 last_updated: "2026-05-30T00:09:36.964Z"
 last_activity: 2026-05-30
 progress:
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 
 ## Current Position
 
-Phase: 09 (tjt-subpanel-datatable-editor-tab) — EXECUTING
-Plan: 6 of 7 — COMPLETE (entry points + save targets: DatatableSaveTargets shim + Save▾ wire + MarkSaved-on-success + D-10.2/D-10.3 hand-offs)
-Status: Ready to execute
+Phase: 09 (tjt-subpanel-datatable-editor-tab) — EXECUTING (Plan 07 live-smoke checkpoint)
+Plan: 7 of 7 — LIVE-SMOKE CHECKPOINT (automation-augmented pre-checks GREEN; awaiting maintainer live session)
+Status: Awaiting maintainer live-SWG smoke (deferred-but-acceptable for V1 per Phase 8 P05/P06/P07 precedent)
 Last activity: 2026-05-30
-Next action: Execute Plan 09-06. It can ship CSV import + Find/Replace + sort without touching any save-target or entry-point code (clean separation — 09-05 closed PROD-W1-DT's save + entry-point surface). Plan 09-06 SHOULD add a DataGridView VirtualMode fallback (09-03 bind-latency straddles 100 ms). 09-03 Task 4 live-host checkpoint still pending maintainer sanity check (non-blocking).
+Next action: Maintainer runs the consolidated live smoke in `.planning/phases/09-tjt-subpanel-datatable-editor-tab/09-07-SMOKE-LOG.md` — Part A (09-03 editor-host, no live SWG; deferred + batched here) + Part B (09-07 Tier-4 live-SWG, choose Option A/B/C). All automation pre-checks (both repos Debug+Release|x86; 475/475 UtinniCoreDotNet.Tests; 139+1-skip Utinni.Cli.Tests; 23/23 PreservationAudit; TJT plugin assembly deployed) are GREEN. ROADMAP Plan-07 progress left PENDING the live ACK — orchestrator owns the deferred-but-acceptable completion decision. Resume signal: type "approved" with the disposition one-liner, or describe any blocking defect.
 
 Progress: [██████████] 100%
 
@@ -115,6 +115,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 09 P04 | 75 min | 2 tasks | 13 files |
 | Phase 09 P05 | ~70 min | 2 tasks | 7 files across both repos |
 | Phase 09 P06 | 75 min | 4 tasks | 14 files |
+| Phase 09 P07 | ~20 min | 1 checkpoint task (automation pre-checks + smoke artifact; live ACK pending) | 3 files |
 
 ## Accumulated Context
 
@@ -203,8 +204,8 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 ## Session Continuity
 
 Last session: 2026-05-30T00:08:58.159Z
-Stopped at: Phase 9 Plan 05 — COMPLETE (save targets + entry points)
-Resume file: None
+Stopped at: Phase 9 Plan 07 — LIVE-SMOKE CHECKPOINT (automation pre-checks GREEN; awaiting maintainer live session)
+Resume file: .planning/phases/09-tjt-subpanel-datatable-editor-tab/09-07-SMOKE-LOG.md
 
 ## Ingest Provenance
 
