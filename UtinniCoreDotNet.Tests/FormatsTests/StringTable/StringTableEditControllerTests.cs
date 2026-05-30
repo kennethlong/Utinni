@@ -22,6 +22,8 @@
  * SOFTWARE.
 **/
 
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using UtinniCoreDotNet.Editing;
 using UtinniCoreDotNet.Formats.StringTable;
@@ -234,6 +236,101 @@ namespace UtinniCoreDotNet.Tests.FormatsTests.StringTable
             // Undo after a save returns the POST-save bytes (rebaselined), NOT the pre-first-edit bytes.
             Assert.Equal(postSave, StringTableWriter.Serialize(doc.Mutable));
             Assert.NotEqual(original, postSave);
+        }
+
+        // ── ApplyCsvImport: single-transaction undo (Plan 10-04 D-03b) ──
+
+        private static List<KeyValuePair<string, string>> Rows(params (string key, string text)[] rows)
+        {
+            var list = new List<KeyValuePair<string, string>>();
+            foreach (var r in rows) list.Add(new KeyValuePair<string, string>(r.key, r.text));
+            return list;
+        }
+
+        [Fact]
+        public void ApplyCsvImport_MixedChangeAndAdd_OneUndoReversesAll()
+        {
+            StringTableDocument doc = Load(StringTableFixtures.BuildV1MultiEntry()); // alpha/beta/gamma, nextId 4
+            var controller = new StringTableEditController(doc.Mutable);
+
+            StringTableCsvImportPlan plan = StringTableCsvCoercion.PlanImport(
+                doc.Mutable, Rows(("alpha", "CHANGED"), ("delta", "fourth")));
+            Assert.Single(plan.Changes);
+            Assert.Single(plan.Added);
+            Assert.False(plan.HasBlockingErrors);
+
+            controller.Apply(StringTableEditCommands.ApplyCsvImport(doc.Mutable, plan));
+            Assert.Equal("CHANGED", ById(doc, 1).Text);
+            Assert.Equal(4, doc.Mutable.Entries.Count);                 // delta added
+            Assert.Equal("delta", ById(doc, 4).Name);
+            Assert.True(controller.IsDirty);
+
+            // ONE undo entry reverses BOTH the text change and the add.
+            controller.Undo();
+            Assert.Equal("first", ById(doc, 1).Text);
+            Assert.Equal(3, doc.Mutable.Entries.Count);
+            Assert.Equal(4u, doc.Mutable.NextUniqueId);
+            Assert.False(controller.IsDirty);
+        }
+
+        [Fact]
+        public void ApplyCsvImport_Redo_ReappliesWholeTransaction()
+        {
+            StringTableDocument doc = Load(StringTableFixtures.BuildV1MultiEntry());
+            var controller = new StringTableEditController(doc.Mutable);
+
+            StringTableCsvImportPlan plan = StringTableCsvCoercion.PlanImport(
+                doc.Mutable, Rows(("beta", "B2"), ("delta", "fourth")));
+
+            controller.Apply(StringTableEditCommands.ApplyCsvImport(doc.Mutable, plan));
+            controller.Undo();
+            controller.Redo();
+
+            Assert.Equal("B2", ById(doc, 2).Text);
+            Assert.Equal(4, doc.Mutable.Entries.Count);
+            Assert.Equal("delta", ById(doc, 4).Name);
+        }
+
+        [Fact]
+        public void ApplyCsvImport_ImportedEqualsCurrent_IsByteExact()
+        {
+            byte[] original = StringTableFixtures.BuildV1MultiEntry();
+            StringTableDocument doc = Load(original);
+            var controller = new StringTableEditController(doc.Mutable);
+
+            // Re-import the CURRENT (name, text) of every entry → zero changes, zero adds (SC4).
+            var rows = new List<KeyValuePair<string, string>>();
+            foreach (MutableStringTableEntry e in doc.Mutable.Entries)
+            {
+                rows.Add(new KeyValuePair<string, string>(e.Name, e.Text));
+            }
+
+            StringTableCsvImportPlan plan = StringTableCsvCoercion.PlanImport(doc.Mutable, rows);
+            Assert.Empty(plan.Changes);
+            Assert.Empty(plan.Added);
+            Assert.Equal(3, plan.Unchanged.Count);
+
+            controller.Apply(StringTableEditCommands.ApplyCsvImport(doc.Mutable, plan));
+
+            // The no-op transaction leaves the table byte-identical (F2a zero-dirty short-circuit holds).
+            Assert.Equal(original, StringTableWriter.Serialize(doc.Mutable));
+        }
+
+        [Fact]
+        public void ApplyCsvImport_RefusesPlanWithBlockingErrors()
+        {
+            StringTableDocument doc = Load(StringTableFixtures.BuildV1MultiEntry());
+            var controller = new StringTableEditController(doc.Mutable);
+
+            StringTableCsvImportPlan plan = StringTableCsvCoercion.PlanImport(
+                doc.Mutable, Rows(("9bad", "x")));   // leading digit → invalid
+            Assert.True(plan.HasBlockingErrors);
+
+            Assert.Throws<InvalidOperationException>(
+                () => controller.Apply(StringTableEditCommands.ApplyCsvImport(doc.Mutable, plan)));
+            // Nothing was applied — the refusal happens inside Do before any mutation.
+            Assert.Equal(3, doc.Mutable.Entries.Count);
+            Assert.False(controller.IsDirty);
         }
     }
 }

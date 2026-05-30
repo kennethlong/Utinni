@@ -87,6 +87,8 @@
     <Compile Include="Formats\StringTable\MutableStringTableEntry.cs" />
     <Compile Include="Formats\StringTable\MutableStringTableDocument.cs" />
     <Compile Include="Formats\StringTable\StringTableWriter.cs" />
+    <Compile Include="Formats\StringTable\StringTableCsvCoercion.cs" />
+    <Compile Include="Formats\StringTable\StringTablePoExport.cs" />
     <Compile Include="Formats\Tre\TreFile.cs" />
     <Compile Include="Formats\Tre\TreVersion.cs" />
     <Compile Include="Formats\Tre\CotMasterIndex.cs" />

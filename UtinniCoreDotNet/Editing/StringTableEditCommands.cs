@@ -28,6 +28,7 @@
 // (no UI dependency); xUnit-testable from CI.
 
 using System;
+using System.Collections.Generic;
 using UtinniCoreDotNet.Formats.StringTable;
 
 namespace UtinniCoreDotNet.Editing
@@ -77,6 +78,24 @@ namespace UtinniCoreDotNet.Editing
         {
             if (entry == null) throw new ArgumentNullException("entry");
             return new RenameKeyCommand(entry, newName);
+        }
+
+        /// <summary>
+        /// Apply a whole CSV import as ONE undoable transaction (Phase 10 D-03b): every
+        /// <see cref="StringTableCsvImportPlan.Changes"/> patch is an EditText and every
+        /// <see cref="StringTableCsvImportPlan.Added"/> row is an AddEntry, all collapsed into a single
+        /// undo entry (UndoOp reverses every change + removes every added entry).
+        ///
+        /// <para><b>Precondition (F8):</b> the plan MUST have <see cref="StringTableCsvImportPlan.HasBlockingErrors"/>
+        /// false — the preview modal blocks Import upstream, so a plan with invalid rows never reaches
+        /// here; <see cref="ApplyCsvImportCommand.Do"/> throws defensively if one does (entries are never
+        /// created-then-found-invalid inside the transaction).</para>
+        /// </summary>
+        public static IStringTableEditCommand ApplyCsvImport(MutableStringTableDocument doc, StringTableCsvImportPlan plan)
+        {
+            if (doc == null) throw new ArgumentNullException("doc");
+            if (plan == null) throw new ArgumentNullException("plan");
+            return new ApplyCsvImportCommand(plan);
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -198,6 +217,92 @@ namespace UtinniCoreDotNet.Editing
                 if (originalIndex >= 0)
                 {
                     doc.Entries.Insert(originalIndex, entry);
+                }
+            }
+        }
+
+        private sealed class ApplyCsvImportCommand : IStringTableEditCommand
+        {
+            private readonly StringTableCsvImportPlan plan;
+
+            // Captured pre-change state for each applied EditText patch (re-captured each Do so a Redo
+            // undoes back to the state that immediately preceded THIS application).
+            private List<MutableStringTableEntry.EntryState> changedCaptured;
+
+            // The entries created for the Added rows — held by reference so Redo re-inserts the SAME
+            // instances (stable ids) and Undo removes them and restores the NextUniqueId high-water mark.
+            private List<MutableStringTableEntry> createdEntries;
+            private uint priorNextUniqueId;
+            private uint postNextUniqueId;
+            private bool created;
+
+            public ApplyCsvImportCommand(StringTableCsvImportPlan plan)
+            {
+                this.plan = plan;
+            }
+
+            public void Do(MutableStringTableDocument doc)
+            {
+                // F8 defensive guard — a plan with invalid rows must be blocked by the preview modal and
+                // never reach the transaction. Refuse rather than create-then-discover-invalid.
+                if (plan.HasBlockingErrors)
+                {
+                    throw new InvalidOperationException(
+                        "Refusing to apply a CSV import plan with " + plan.Invalid.Count + " invalid row(s).");
+                }
+
+                // Re-capture each Do (Apply + Redo) so UndoOp restores the immediately-preceding state.
+                changedCaptured = new List<MutableStringTableEntry.EntryState>(plan.Changes.Count);
+                for (int i = 0; i < plan.Changes.Count; i++)
+                {
+                    StringTableEditPatch p = plan.Changes[i];
+                    changedCaptured.Add(p.Entry.CaptureState());
+                    p.Entry.Text = p.NewText;
+                }
+
+                if (!created)
+                {
+                    priorNextUniqueId = doc.NextUniqueId;
+                    createdEntries = new List<MutableStringTableEntry>(plan.Added.Count);
+                    for (int i = 0; i < plan.Added.Count; i++)
+                    {
+                        MutableStringTableEntry e = doc.AddEntry();
+                        e.Name = plan.Added[i].Key; // already ValidateName-passed in PlanImport.
+                        e.Text = plan.Added[i].Text;
+                        createdEntries.Add(e);
+                    }
+                    postNextUniqueId = doc.NextUniqueId;
+                    created = true;
+                }
+                else
+                {
+                    // Redo: re-insert the SAME instances by reference + restore the post-add high-water.
+                    for (int i = 0; i < createdEntries.Count; i++)
+                    {
+                        doc.Entries.Add(createdEntries[i]);
+                    }
+                    doc.SetNextUniqueId(postNextUniqueId);
+                }
+            }
+
+            public void UndoOp(MutableStringTableDocument doc)
+            {
+                // Remove the added entries first, then restore each changed entry's captured state.
+                if (createdEntries != null)
+                {
+                    for (int i = 0; i < createdEntries.Count; i++)
+                    {
+                        doc.Entries.Remove(createdEntries[i]);
+                    }
+                    doc.SetNextUniqueId(priorNextUniqueId);
+                }
+
+                if (changedCaptured != null)
+                {
+                    for (int i = plan.Changes.Count - 1; i >= 0; i--)
+                    {
+                        plan.Changes[i].Entry.RestoreState(changedCaptured[i]);
+                    }
                 }
             }
         }
