@@ -1,0 +1,15 @@
+{
+  "command": "roundtrip-stf",
+  "result": {
+    "bytesEqualUntouched": true,
+    "comparisonGranularity": "per-entry-slice",
+    "entries": 3,
+    "firstMismatch": null,
+    "mutationApplied": "edit-text(beta)",
+    "nextUniqueId": 4,
+    "source": "<fixture-path>",
+    "sourceCrcPreserved": true,
+    "version": 1
+  },
+  "schemaVersion": 1
+}

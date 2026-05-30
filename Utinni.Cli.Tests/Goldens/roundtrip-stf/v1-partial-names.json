@@ -1,0 +1,14 @@
+{
+  "command": "roundtrip-stf",
+  "result": {
+    "bytesEqualUntouched": true,
+    "comparisonGranularity": "whole-file",
+    "entries": 3,
+    "firstMismatch": null,
+    "mutationApplied": "none",
+    "nextUniqueId": 4,
+    "source": "<fixture-path>",
+    "version": 1
+  },
+  "schemaVersion": 1
+}

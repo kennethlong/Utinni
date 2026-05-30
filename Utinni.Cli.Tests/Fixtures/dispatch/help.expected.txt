@@ -17,6 +17,9 @@ Copyright (c) 2005 - 2020 Giacomo Stelluti Scala & Contributors
   roundtrip-tab      Parse -> optional mutate -> serialize -> re-parse a .tab;
                      assert byte-exact identity on untouched cells.
 
+  roundtrip-stf      Parse -> optional edit -> serialize -> re-parse a .stf;
+                     assert byte-exact identity on untouched entries.
+
   validate-plugin    Reflect on a plugin directory and report compliance.
                      WARNING: Loads each .dll under the given directory; only
                      run against trusted plugin directories. PluginLoader

@@ -150,6 +150,21 @@ namespace UtinniCoreDotNet.Formats.StringTable
             isAdded = false;
         }
 
+        /// <summary>
+        /// Returns a COPY of this entry's current string-block bytes (id + sourceCrc + charCount +
+        /// UTF-16LE text). For an UNTOUCHED entry this is the captured original slice verbatim
+        /// (malformed UTF-16 survives, F2b); for a dirty/added entry it is a fresh re-serialize. Public
+        /// so the CLI <c>roundtrip-stf</c> per-entry byte-exact-on-untouched comparison can read it
+        /// without internal access (mirrors Phase 9 <c>MutableDataTableCell.GetOriginalSliceForCompare</c>).
+        /// </summary>
+        public byte[] GetOriginalStringBytesForCompare()
+        {
+            byte[] src = (!isDirty && originalStringBytes != null) ? originalStringBytes : SerializeStringBlock();
+            byte[] copy = new byte[src.Length];
+            Array.Copy(src, copy, src.Length);
+            return copy;
+        }
+
         /// <summary>Serializes this entry's string-block record (id + sourceCrc + charCount + UTF-16LE text).</summary>
         internal byte[] SerializeStringBlock()
         {
