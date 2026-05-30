@@ -227,7 +227,7 @@ Plans:
 **Plans**: 6 plans
 **UI hint**: yes
 **Plans**:
-- [ ] 10-01-PLAN.md — Format core: flat-binary StringTableDocument.FromBytes reader (greenfield) + mutable model + explicit byte-exact StringTableWriter (canonical order, nextUniqueId/sourceCrc preserved, UTF-16LE verbatim) + StringTableEditController + 4 T4 commands
+- [x] 10-01-PLAN.md — Format core: flat-binary StringTableDocument.FromBytes reader (greenfield) + mutable model + explicit byte-exact StringTableWriter (canonical order, nextUniqueId/sourceCrc preserved, UTF-16LE verbatim) + StringTableEditController + 4 T4 commands
 - [ ] 10-02-PLAN.md — utinni-cli roundtrip-stf SC4 byte-exact golden gate (CF-02) + StringTableFixtureBuilder + named João + sourceCrc-preserve goldens
 - [ ] 10-03-PLAN.md — FormStringTableEditor host + two-column (Key/Text) ThemedDataGridView + name validation + T4 mutation via controller + Plugin.cs registration
 - [ ] 10-04-PLAN.md — Bulk/translation: Find/Replace (key+text) + CSV/TSV delta-import + export + view-only sort + live filter (Ctrl+L) + PO/gettext export
@@ -297,5 +297,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Wave-1 plugin — TRE Browser | 0/6 | Planned | - |
 | 8. Wave-1 plugin — IFF Editor | 6/7 | In Progress|  |
 | 9. Wave-1 plugin — Datatable Editor | 1/7 | In Progress|  |
-| 10. Wave-1 plugin — String-table Editor | 0/6 | Planned | - |
+| 10. Wave-1 plugin — String-table Editor | 1/6 | In Progress|  |
 | 11. Wave-1 plugin — Object Template Editor | 0/TBD | Not started | - |
