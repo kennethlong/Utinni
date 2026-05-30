@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Phase 10 PAUSED after Wave 1 (10-01 + 10-02 complete). Waves 2-5 (10-03 editor, 10-04 bulk, 10-05 save/handoff, 10-06 smoke) remain. UtinniPlugins chassis confirmed present at D:/Code/UtinniPlugins master 1fddc55 (clean) — no real blocker; pause is user-elected. Resume: /gsd-execute-phase 10 (next plan 10-03)."
-last_updated: "2026-05-30T15:58:40.295Z"
+stopped_at: "Phase 10 COMPLETE — all 6 plans shipped CI-green across both repos; V1 sign-off recorded 2026-05-30 as APPROVED-WITH-DEFERRED-RESIDUAL (Option C, automation-only) by Kenneth Long. SC1/SC2/SC4 signed off (SC4 João via the automated roundtrip-stf golden); SC3 (live reload) is a tracked OPEN RESIDUAL needing the live Step-7 scene-change/relog observation + stale-crc check (todos/pending/phase10-stringtable-sc3-live-reload-residual.md); CF-05 badge copy KEPT pending it. Next: Phase 11 (Object Template Editor) — /gsd-discuss-phase 11 (no 11-CONTEXT.md yet)."
+last_updated: "2026-05-30T18:30:00.000Z"
 last_activity: 2026-05-30
 progress:
   total_phases: 12
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 
 ## Current Position
 
-Phase: 10 (tjt-subpanel-string-table-editor-stf) — EXECUTING
-Plan: 3 of 6
-Status: Ready to execute
+Phase: 10 (tjt-subpanel-string-table-editor-stf) — COMPLETE (V1 signed off 2026-05-30; SC3 deferred residual)
+Plan: 6 of 6 (all shipped)
+Status: Phase complete — ready for Phase 11
 Last activity: 2026-05-30
-Next action: Phase 9 FULLY COMPLETE — maintainer approved the batched live smoke 2026-05-29 (09-HUMAN-UAT.md status=passed; 09-VERIFICATION.md status=passed). Post-completion follow-up also shipped: the TRE Browser "Open in Datatable Editor" hand-off was corrected to offer datatables/*.iff (not just .tab) via the new framework DatatableHandoffPolicy (Utinni f87e04c / UtinniPlugins 1fddc55), confirmed working in-host after redeploy. Phase 9 code-review residual: 7 Warnings + 5 Info tracked in .planning/todos/pending/phase09-datatable-editor-review-warnings.md. Next: `/gsd-discuss-phase 10` (String-table Editor) — no 10-CONTEXT.md yet.
+Next action: **Phase 10 FULLY SHIPPED.** All 6 plans CI-green across both repos: 10-01 format core (reader/model/byte-exact writer/controller), 10-02 roundtrip-stf SC4 golden gate, 10-03 FormStringTableEditor host + two-column grid + T4, 10-04 Find/Replace + filter + sort + CSV/PO, 10-05 Save▾ modes 1/2/4 + reload + TRE Browser hand-off, 10-06 live-smoke checkpoint. V1 sign-off = APPROVED-WITH-DEFERRED-RESIDUAL (Option C, automation-only). SC1/SC2/SC4 signed off; SC3 live-reload + CF-05 scene-change-vs-relog = tracked OPEN RESIDUAL (todos/pending/phase10-stringtable-sc3-live-reload-residual.md). Commits — Utinni: c845894 (10-02), 0c6634d (10-03), 9f5887c (10-04), d7d0076 (10-05), 2351469 (10-06); UtinniPlugins: 2d65fa3 (10-03), 32da98a (10-04), 9be5ec2 (10-05). Next: `/gsd-discuss-phase 11` (Object Template Editor) — no 11-CONTEXT.md yet.
 
 Progress: [█████████░] 94%
 

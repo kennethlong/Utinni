@@ -22,12 +22,12 @@ key-decisions:
   - "P0.6 Debug-run anomaly: UtinniCoreDotNet.Tests Debug showed 587/588 with the 1 failure being NativeCallbacksHandleTests.Subscribe_DuringDispatch_... — a pre-existing non-deterministic concurrency flake in the native-callbacks dispatch suite, UNRELATED to Phase 10 (passes 7/7 in isolation; the Release full run was clean 588/588). Documented honestly in the smoke log rather than masked."
   - "Native Utinni.sln (C++) build is the self-hosted CI / maintainer host's job (v145/VS2026 Insiders-only + CppSharp block per project_self_hosted_ci / project_vs2026_cppsharp_block); the executor built + tested the managed projects + TJT plugin (both configs) that Phase 10 touches. The maintainer confirms the native host builds/launches as Step 1."
   - "SC3 (live client renders edited strings on reload) CANNOT be signed off by automation alone (F5b). Its status is recorded explicitly in the smoke log as an open residual until the Step 7 live observation (scene-change reload vs LocalizationManager relog-only) + the explicit stale-crc check are run, OR the honest relog-badge amendment is recorded. SC1/SC2/SC4 MAY follow the Phase 8/9 automation-only precedent; SC3 specifically cannot."
-requirements-completed: []
+requirements-completed: [PROD-W1-STF]
 deviations:
-  - "Phase 10 is NOT yet at full V1 sign-off: the live smoke is PENDING the maintainer session. This SUMMARY returns the checkpoint (automation pre-checks complete) per the Phase 8/9 precedent; the consolidated phase sign-off + the CF-05 finding land when the maintainer signs the smoke log."
-duration: ~1 session (pre-checks only)
+  - "V1 sign-off recorded as APPROVED-WITH-DEFERRED-RESIDUAL (Option C — automation-only) by Kenneth Long on 2026-05-30. SC1/SC2/SC4 signed off on the automation surface (Phase 8 P06 / Phase 9 09-07 precedent); SC4 João via the automated roundtrip-stf golden. SC3 (live reload) is an EXPLICIT OPEN RESIDUAL — not closed by automation (F5b); needs the live Step-7 scene-change/relog observation + stale-crc check, or the honest relog-badge amendment. The CF-05 badge copy is KEPT pending that observation. PROD-W1-STF is marked complete for the Wave-1 aggregate with SC3 carried as a tracked residual (Phase 8/9 deferred-but-acceptable precedent)."
+duration: ~1 session (pre-checks + maintainer sign-off)
 completed: 2026-05-30
-status: AWAITING-MAINTAINER-LIVE-SESSION
+status: SIGNED-OFF (APPROVED-WITH-DEFERRED-RESIDUAL; SC3 open residual)
 ---
 
 # Phase 10 Plan 06: Tier-4 Live-SWG Smoke — Checkpoint Return
@@ -59,10 +59,15 @@ outcome + signature in `10-06-SMOKE-LOG.md`:
 
 ## Phase 10 disposition
 
-**AUTOMATION PRE-CHECKS COMPLETE — awaiting maintainer live session.** Per the Phase 8 P05/P06/P07 +
-Phase 9 09-07 precedent, the live ACK is deferred-but-acceptable for V1 on SC1/SC2/SC4; **SC3 stays an
-explicit open residual** until Step 7 (or the relog amendment). The consolidated Phase 10 V1 sign-off
-(and the project's advance to Phase 11 — Object Template Editor) lands when the maintainer signs the
-smoke log.
+**SIGNED OFF 2026-05-30 — APPROVED-WITH-DEFERRED-RESIDUAL (Option C, automation-only).** Kenneth Long
+approved V1 on the automation surface per the Phase 8 P06 / Phase 9 09-07 precedent. SC1 (loads), SC2
+(open/edit/save), and SC4 (non-ASCII round-trips — João, via the automated `roundtrip-stf` golden) are
+signed off. **SC3 (live client renders edited strings on reload) is an explicit OPEN RESIDUAL** — per F5b
+it cannot be closed by automation; it needs the live Step-7 scene-change/relog observation + the stale-crc
+check (or the honest relog-badge amendment). The CF-05 badge copy is KEPT pending that observation.
 
-## Self-Check: PASSED (checkpoint returned; live ACK pending by design)
+**Tracked residual:** SC3 live-reload + CF-05 scene-change-vs-relog confirmation → `.planning/todos/pending/`.
+Phase 10 is COMPLETE for the Wave-1 (PROD-W1-STF) aggregate with SC3 carried as a deferred-but-acceptable
+residual; the project advances to **Phase 11 (Object Template Editor)**.
+
+## Self-Check: PASSED (V1 sign-off recorded; SC3 carried as a named residual by design)

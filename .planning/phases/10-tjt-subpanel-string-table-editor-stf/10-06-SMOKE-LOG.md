@@ -60,7 +60,12 @@ flake, not a Phase 10 regression). The automation surface `must_haves.truths[0]`
   sign-off (Phase 8 P06 / Phase 9 09-07 precedent); **SC3 stays an explicit open residual** until Step 7
   (or the relog amendment) is recorded.
 
-**Chosen option:** ☐ _____  **Rationale:** _________________________________________________
+**Chosen option:** ☑ **Option C (automation-only)** — maintainer accepted the Section-0 automation
+surface (744 facts across both suites + both-config builds green) for the V1 sign-off of SC1/SC2/SC4,
+citing the Phase 8 P06 ("approved, dig in" on automation alone) + Phase 9 09-07 precedent.
+**Rationale:** the full Phase 10 testable surface is automated and green; the live-SWG residual (MEF +
+injection + scene-change UX) is deferred-but-acceptable for V1. **SC3 (Step 7) is NOT closed by this
+sign-off** — it remains an explicit open residual (see below) per F5b.
 
 ---
 
@@ -100,22 +105,35 @@ flake, not a Phase 10 regression). The automation surface `must_haves.truths[0]`
 
 ## CF-05 reload-semantics finding (the one open RESEARCH confirmation)
 
-**Observed (Step 7):** ☐ scene-change reload works → badge copy KEPT  ☐ relog-only → badge copy AMENDED (10-07) + ROADMAP SC3 read as relog  ☐ not yet run (SC3 = open residual)
+**Observed (Step 7):** ☐ scene-change reload works → badge copy KEPT  ☐ relog-only → badge copy AMENDED (10-07) + ROADMAP SC3 read as relog  ☑ **not yet run (SC3 = open residual)**
 
-**Stale-crc result (Step 7):** ☐ edited text rendered with the stale (preserved) sourceCrc → confirms 10-01 F5a  ☐ required crc flip to render (preserve-crc policy amended)  ☐ not yet run
+**Stale-crc result (Step 7):** ☐ edited text rendered with the stale (preserved) sourceCrc → confirms 10-01 F5a  ☐ required crc flip to render (preserve-crc policy amended)  ☑ **not yet run**
 
-**Notes:** _________________________________________________________________________
+**Notes:** Step 7 deferred under the Option-C automation-only sign-off. The CF-05 badge copy is KEPT
+as-shipped (`Reloads on next scene change.`) PENDING the live observation — it is not yet confirmed nor
+amended. The automated `roundtrip-stf` João golden (10-02) + the `StringTableReloadRoutingTests`
+(`Classify(".stf", null) == PendingNextSceneChange`) are the standing proxies; the live scene-change-vs-relog
+confirmation + the explicit stale-crc check are the named residual. The 10-01 F5a source finding predicts
+the stale (preserved) sourceCrc is harmless (lookup does not consult it), so the expected Step-7 result is
+"edit renders" — but this is NOT yet live-confirmed.
 
 ---
 
 ## V1 Sign-Off
 
 **Automation pre-check status:** GREEN (Section 0 — P0.1–P0.10; the P0.6 Debug-run flake is the documented pre-existing native-callbacks test, not a Phase 10 regression).
-**Live smoke status:** ☐ pending maintainer session.
+**Live smoke status:** DEFERRED (Option C — automation-only sign-off; live Steps 1–11 not run).
 
-**V1 sign-off recommendation:** ☐ APPROVED / ☐ APPROVED-WITH-DEFERRED-RESIDUAL / ☐ REQUIRES-GAP-CLOSURE
+**V1 sign-off recommendation:** ☑ **APPROVED-WITH-DEFERRED-RESIDUAL**
+- SC1 (subpanel loads), SC2 (open/edit/save), SC4 (non-ASCII round-trips, João) — **signed off** on the
+  automation surface (744 facts; the SC4 `roundtrip-stf` João golden is the load-bearing proof) per the
+  Phase 8 P06 / Phase 9 09-07 precedent.
+- **SC3 (live client renders edited strings on reload) — OPEN RESIDUAL.** Per F5b it cannot be closed by
+  automation; it needs the live Step-7 observation (scene-change reload vs LocalizationManager relog-only)
+  + the explicit stale-crc check, OR the honest relog-badge amendment. The CF-05 badge copy is KEPT
+  pending that observation.
 
-**Maintainer signature:** `Smoke approved by: ____________ on ____________; outcome: ____________`
+**Maintainer signature:** `Smoke approved by: Kenneth Long on 2026-05-30; outcome: smoke=automation-augmented; live ACK deferred-but-acceptable for V1 (Option C); SC1/SC2/SC4 signed off (SC4 João via the automated roundtrip-stf golden); SC3 = OPEN RESIDUAL pending live Step-7 scene-change/relog observation + stale-crc check; CF-05 badge copy KEPT pending that observation.`
 
 **Resume signal (from the plan):** Type `approved` if the smoke passes per Options A/B/C; describe any
 blocking defect(s). Include a one-line disposition citing the option + the CF-05 finding + the F5b
