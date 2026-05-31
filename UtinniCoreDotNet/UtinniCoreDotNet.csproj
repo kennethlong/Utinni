@@ -247,6 +247,9 @@
     <Compile Include="Editing\DatatableEditCommands.cs" />
     <Compile Include="Editing\DatatableEditController.cs" />
     <Compile Include="Editing\IDatatableEditCommand.cs" />
+    <Compile Include="Editing\ObjectTemplateEditCommands.cs" />
+    <Compile Include="Editing\ObjectTemplateEditController.cs" />
+    <Compile Include="Editing\IObjectTemplateEditCommand.cs" />
     <Compile Include="Editing\IffEditController.cs" />
     <Compile Include="Editing\LivePatchValidator.cs" />
     <Compile Include="Utility\Log.cs" />
