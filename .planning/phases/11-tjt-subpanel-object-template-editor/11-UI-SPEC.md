@@ -1,7 +1,8 @@
 ---
 phase: 11
 slug: tjt-subpanel-object-template-editor
-status: draft
+status: approved
+reviewed_at: 2026-05-30
 shadcn_initialized: false
 preset: none
 created: 2026-05-30
@@ -658,11 +659,11 @@ These do not change locked decisions; flag any disagreement at planning time.
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending (status: draft — checker upgrades to approved)
+**Approval:** approved 2026-05-30 — all six dimensions PASS, no blockers (gsd-ui-checker). Non-blocking notes: bare `Save` split-button face is the inherited Phase 8 idiom (drop-down items are specific); 22px DataGridView row height is a framework-fixed control metric consistent across all five Wave-1 subpanels.
