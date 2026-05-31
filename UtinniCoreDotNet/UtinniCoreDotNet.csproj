@@ -83,6 +83,8 @@
     <Compile Include="Formats\Datatable\MutableDataTableRow.cs" />
     <Compile Include="Formats\ObjectTemplate\ObjectTemplateParamValue.cs" />
     <Compile Include="Formats\ObjectTemplate\ObjectTemplateParamCodec.cs" />
+    <Compile Include="Formats\ObjectTemplate\MutableObjectTemplate.cs" />
+    <Compile Include="Formats\ObjectTemplate\ObjectTemplateWriter.cs" />
     <Compile Include="Formats\StringTable\StringTableParseException.cs" />
     <Compile Include="Formats\StringTable\StringTableEntry.cs" />
     <Compile Include="Formats\StringTable\StringTableDocument.cs" />
