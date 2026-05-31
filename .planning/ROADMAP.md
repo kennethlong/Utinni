@@ -251,7 +251,7 @@ Plans:
 **Plans**:
 - [x] 11-01-PLAN.md — Framework format core: ReadInt8 cursor helper + self-describing param value codec (typed scalars + delta + hex fallback) + MutableObjectTemplate over MutableIffDocument + byte-exact ObjectTemplateWriter (Wave 1)
 - [x] 11-02-PLAN.md — DERV-chain effective-merge resolver (origin markers + graceful degradation + depth/cycle guard) + editor-local ObjectTemplateEditController (override/revert/edit + undo) + roundtrip-ot CLI golden gate (Wave 2)
-- [ ] 11-03-PLAN.md — FormObjectTemplateEditor host (toolbar + breadcrumb + Field/Value/Origin/Type grid + undo/redo + singleton policy) + 5th SubPanel registration + TRE Browser and IFF Editor hand-offs (Wave 3)
+- [x] 11-03-PLAN.md — FormObjectTemplateEditor host (toolbar + breadcrumb + Field/Value/Origin/Type grid + undo/redo + singleton policy) + 5th SubPanel registration + TRE Browser and IFF Editor hand-offs (Wave 3)
 - [ ] 11-04-PLAN.md — Per-type value widgets + hex-fallback sub-editor + override/revert/edit mutations + Save modes 1/2/4 shim + locked CF-05 reload badge + classifier verify-test (Wave 4)
 - [ ] 11-05-PLAN.md — Full automated regression + V1 release-gate evidence doc + live-SWG smoke (SC1/SC2/SC3) + V1 sign-off and tag (Wave 5)
 
@@ -302,4 +302,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 8. Wave-1 plugin — IFF Editor | 6/7 | In Progress|  |
 | 9. Wave-1 plugin — Datatable Editor | 1/7 | In Progress|  |
 | 10. Wave-1 plugin — String-table Editor | 2/6 | In Progress|  |
-| 11. Wave-1 plugin — Object Template Editor | 2/5 | In Progress|  |
+| 11. Wave-1 plugin — Object Template Editor | 3/5 | In Progress|  |
