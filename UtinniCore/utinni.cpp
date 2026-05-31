@@ -25,6 +25,8 @@
 #include "utinni.h"
 #include "clr.h"
 
+#include <atomic>
+
 #include "plugin_framework/plugin_manager.h"
 #include "swg/appearance/skeleton.h"
 #include "swg/camera/debug_camera.h"
@@ -64,6 +66,12 @@ utinni::PluginManager pluginManager;
 // WaitForSingleObject so it can restore the PE entry bytes (originally patched
 // to EB FE to stall the main thread during injection).
 static std::string g_readyEventName;
+
+// 2026-05-31 (Phase 11 / V1 smoke): module handles used by utinniBreakpointVEH
+// to filter fatal-exception logging to the SWG client + our own DLL. Set in
+// utinni_init before AddVectoredExceptionHandler.
+static HMODULE g_utinniModule = nullptr;
+static HMODULE g_swgModule = nullptr;
 
 void createDetours()
 {
@@ -151,7 +159,88 @@ static LONG WINAPI utinniBreakpointVEH(PEXCEPTION_POINTERS pInfo)
                  pInfo->ContextRecord->Eip, hexDump,
                  pInfo->ContextRecord->Esp);
         utinni::log::info(msg);
+        return EXCEPTION_CONTINUE_SEARCH;
     }
+
+    // 2026-05-31 (Phase 11 / V1 smoke): the intro-skip scene-transition crash
+    // left NO SWG stage dump and NO WER event -- SWG's own SEH was bypassed.
+    // Capture fatal-class exceptions here so the faulting site is recorded.
+    // Filter to EIP inside SWGEmu.exe / UtinniCore.dll (or an unmapped EIP --
+    // a wild jump from corruption); this skips the CLR's frequent first-chance
+    // managed AVs so the real native crash is not buried. The logged rva
+    // (EIP - module base) is directly matchable against SWG's hardcoded RVAs
+    // and our hook addresses. flush_on(info) (log.cpp) guarantees the line
+    // hits disk before the process dies. Still returns CONTINUE_SEARCH -- pure
+    // observation, normal crash handling proceeds unchanged.
+    const DWORD code = pInfo->ExceptionRecord->ExceptionCode;
+    switch (code)
+    {
+    case EXCEPTION_ACCESS_VIOLATION:
+    case EXCEPTION_IN_PAGE_ERROR:
+    case EXCEPTION_ILLEGAL_INSTRUCTION:
+    case EXCEPTION_PRIV_INSTRUCTION:
+    case EXCEPTION_STACK_OVERFLOW:
+    case EXCEPTION_DATATYPE_MISALIGNMENT:
+    case 0xC0000409: // STATUS_STACK_BUFFER_OVERRUN / __fastfail
+    case 0x4000001F: // STATUS_WX86_BREAKPOINT (WOW64 fatal assert/int3)
+        break;
+    default:
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
+    // Cap total fatal lines so a first-chance storm can't fill the log; the
+    // real crash is among the last entries before the process dies.
+    static std::atomic<int> s_fatalLogCount{0};
+    if (s_fatalLogCount.load(std::memory_order_relaxed) >= 64)
+    {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
+    const DWORD eip = pInfo->ContextRecord->Eip;
+    HMODULE mod = nullptr;
+    const bool resolved =
+        GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                           (LPCSTR)eip, &mod) != 0;
+
+    // Skip exceptions originating in the CLR / system modules (noise).
+    if (resolved && mod != g_swgModule && mod != g_utinniModule)
+    {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
+    s_fatalLogCount.fetch_add(1, std::memory_order_relaxed);
+
+    char modName[64] = "<unmapped-EIP>";
+    DWORD modBase = 0;
+    if (resolved && mod != nullptr)
+    {
+        char full[MAX_PATH];
+        if (GetModuleFileNameA(mod, full, sizeof(full)) != 0)
+        {
+            const char* leaf = strrchr(full, '\\');
+            strcpy_s(modName, sizeof(modName), leaf != nullptr ? leaf + 1 : full);
+        }
+        modBase = (DWORD)(uintptr_t)mod;
+    }
+
+    // For AV / in-page error, ExceptionInformation[0] = 0 read / 1 write / 8 DEP,
+    // ExceptionInformation[1] = the target address that faulted.
+    char avDetail[64] = "";
+    if ((code == EXCEPTION_ACCESS_VIOLATION || code == EXCEPTION_IN_PAGE_ERROR) &&
+        pInfo->ExceptionRecord->NumberParameters >= 2)
+    {
+        const ULONG_PTR op = pInfo->ExceptionRecord->ExceptionInformation[0];
+        const ULONG_PTR tgt = pInfo->ExceptionRecord->ExceptionInformation[1];
+        snprintf(avDetail, sizeof(avDetail), " %s target=0x%08X",
+                 op == 1 ? "WRITE" : (op == 8 ? "EXEC" : "READ"), (DWORD)tgt);
+    }
+
+    char fmsg[320];
+    snprintf(fmsg, sizeof(fmsg),
+             "VEH FATAL: code=0x%08X EIP=0x%08X module=%s base=0x%08X rva=0x%08X ESP=0x%08X%s",
+             code, eip, modName, modBase, resolved ? (eip - modBase) : eip,
+             pInfo->ContextRecord->Esp, avDetail);
+    utinni::log::warning(fmsg);
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
@@ -195,6 +284,10 @@ extern "C" __declspec(dllexport) DWORD WINAPI utinni_init(LPVOID lpThreadParam)
     // DIAG 2026-05-19: register VEH BEFORE anything else so int 3 events
     // from any source (CRT init, SWG fatal, library asserts) get logged.
     // FirstHandler=1 → our handler runs before other VEHs.
+    // 2026-05-31: capture the SWG exe + our DLL module handles first so the
+    // VEH can filter fatal-exception logging to those two modules.
+    g_utinniModule = handle;                 // UtinniCore.dll (from &createDetours)
+    g_swgModule = GetModuleHandleA(nullptr); // the injected SWG client exe
     AddVectoredExceptionHandler(1, utinniBreakpointVEH);
 
     ini.createUtinniSettings();
