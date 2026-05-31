@@ -26,6 +26,7 @@
 #include "command_parser.h"
 #include "utinni_command_parser.h"
 #include "swg/misc/swg_memory.h"
+#include "swg/scene/ground_scene.h"
 #include "utility/log.h"
 
 #include <atomic>
@@ -507,7 +508,19 @@ __declspec(naked) void midCtor()
 // normally.
 void __fastcall hkChatEnter(swgptr pThis, swgptr EDX)
 {
-    if (!s_chatInputActive.load(std::memory_order_relaxed))
+    // 2026-05-30 (V1 smoke): the display-mode override below drives
+    // enableTextInput(..., setKeyboardInput=true), which walks SWG's CUI
+    // keyboard-focus path. That path is only initialized once a ground scene
+    // is live. Pressing Enter at the intro/login screen -- or during the
+    // intro->login hkCleanupScene transition -- hard-AVs SWG (no crash log;
+    // SWG's own dumper never runs). Phase H was only ever validated in-world
+    // (Issue #11, Tatooine). Gate the override on an active ground scene;
+    // when not in-world, fall through to SWG's own chatEnter handler, which
+    // is exactly the code that would run without our detour (so it is at
+    // least as safe as stock SWG). GroundScene::get() reads a static global
+    // SWG pointer (0 pre-world) -- the same null-guard pattern as
+    // debug_camera.cpp::processIoEvent.
+    if (!s_chatInputActive.load(std::memory_order_relaxed) && GroundScene::get() != nullptr)
     {
         utinni::log::info("hkChatEnter: chat is in display mode -- overriding to open chat input (was: submit+close)");
         // enableTextInput pointer is the post-detour trampoline; it goes
@@ -517,7 +530,9 @@ void __fastcall hkChatEnter(swgptr pThis, swgptr EDX)
         s_chatInputActive.store(true, std::memory_order_relaxed);
         return;
     }
-    // Input mode: pass through to original chatEnter (submit + close).
+    // Input mode (legitimate submit+close), or not in a world scene
+    // (login/intro/teardown -- override is unsafe there): pass through to the
+    // original chatEnter handler.
     swg::cuiChatWindow::chatEnterHandler(pThis);
 }
 
