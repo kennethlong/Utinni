@@ -190,7 +190,28 @@ namespace UtinniCoreDotNet.Formats.ObjectTemplate
             for (int i = 0; i < paramCount; i++)
             {
                 MutableIffNode leaf = leaves[i + 1];
-                ObjectTemplateParamEntry entry = ObjectTemplateParamCodec.Decode(leaf.GetPayloadCopy());
+                byte[] payload = leaf.GetPayloadCopy();
+                ObjectTemplateParamEntry entry;
+                try
+                {
+                    entry = ObjectTemplateParamCodec.Decode(payload);
+                }
+                catch (DecoderException)
+                {
+                    // Real SWG templates store list/array params (e.g. draft-schematic "slots" /
+                    // "attributes", hair tint lists) as a header chunk followed by nameless element
+                    // chunks that carry no leading CString name — so the single-chunk <name>\0<value>
+                    // codec's ReadCString throws on an element chunk. Rather than abort the whole
+                    // template, capture the chunk verbatim as a raw hex-fallback param. The template
+                    // still opens, and round-trip stays byte-exact: Serialize re-emits the full
+                    // captured IFF tree (ObjectTemplateWriter -> IffWriter.Write(SourceIff)), so the
+                    // bytes are preserved regardless of how this chunk is interpreted here. Fully typed
+                    // list/struct decode (StructParamOT etc.) is tracked follow-up work.
+                    string rawName = "‹raw chunk " + i + "›"; // stable + unique per index.
+                    entry = new ObjectTemplateParamEntry(
+                        rawName,
+                        ObjectTemplateParamValue.FromRawBytes(payload, ObjectTemplateDataTypeTag.None));
+                }
                 paramList.Add(new MutableObjectTemplateParam(entry.FieldName, entry.Value, leaf));
             }
 

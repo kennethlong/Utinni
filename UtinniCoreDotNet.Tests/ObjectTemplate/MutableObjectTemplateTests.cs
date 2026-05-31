@@ -127,6 +127,58 @@ namespace UtinniCoreDotNet.Tests.ObjectTemplate
             }
         }
 
+        // Mirrors the real draft-schematic / hair multi-chunk list encoding (verified against the live
+        // SWGEmu corpus during the Phase 11 V1 smoke): a named "slots" list-header chunk followed by a
+        // NAMELESS element chunk (no leading CString name). The single-chunk <name>\0<value> codec's
+        // ReadCString threw on the element chunk, aborting the parse of 17% of all object templates.
+        private static byte[] BuildMultiChunkListTemplate()
+        {
+            MutableIffNode root = MutableIffNode.NewContainer("FORM", "SCOT");
+            MutableIffNode derv = root.AddContainer("FORM", "DERV");
+            using (var ms = new MemoryStream())
+            {
+                byte[] n = Encoding.ASCII.GetBytes("object/base.iff");
+                ms.Write(n, 0, n.Length);
+                ms.WriteByte(0);
+                derv.AddLeaf("XXXX", ms.ToArray());
+            }
+
+            MutableIffNode versionForm = root.AddContainer("FORM", "0000");
+            versionForm.AddLeaf("PCNT", Int32Le(2)); // 2 logical params; the 2nd read lands on a nameless element
+
+            using (var ms = new MemoryStream())
+            {
+                byte[] n = Encoding.ASCII.GetBytes("slots");
+                ms.Write(n, 0, n.Length);
+                ms.WriteByte(0);                               // name NUL
+                ms.WriteByte(0);                               // append = false
+                byte[] c = Int32Le(1);
+                ms.Write(c, 0, c.Length);                      // element count
+                ms.Write(new byte[] { 0x01, 0x53, 0x53, 0x49, 0x53 }, 0, 5); // inline element bytes
+                versionForm.AddLeaf("XXXX", ms.ToArray());
+            }
+            // Nameless list-element chunk (no NUL) — the case that threw before the fix.
+            versionForm.AddLeaf("XXXX", new byte[] { 0x01, 0x53, 0x53, 0x49, 0x53 });
+
+            return IffWriter.Write(new MutableIffDocument(root));
+        }
+
+        [Fact]
+        public void Parse_MultiChunkListParam_DegradesToRawWithoutThrowing()
+        {
+            byte[] bytes = BuildMultiChunkListTemplate();
+
+            // Pre-fix this threw DecoderException ("Unterminated string ... no NUL before end of chunk").
+            MutableObjectTemplate model = Load(bytes);
+
+            Assert.Equal(2, model.LocalParams.Count);
+            Assert.Equal("slots", model.LocalParams[0].FieldName);
+            // The nameless element chunk degrades to a raw hex-fallback param, not a parse abort.
+            Assert.Equal(ObjectTemplateParamKind.RawBytesHexFallback, model.LocalParams[1].Value.Kind);
+            // And the whole template still round-trips byte-exact (writer re-emits the full tree).
+            Assert.Equal(bytes, model.Serialize());
+        }
+
         // ── Parse fidelity ───────────────────────────────────────────────────
 
         [Fact]
