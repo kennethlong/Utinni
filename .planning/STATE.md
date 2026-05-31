@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 11 UI-SPEC approved
-last_updated: "2026-05-31T02:04:57.279Z"
+last_updated: "2026-05-31T02:21:58.858Z"
 last_activity: 2026-05-31
 progress:
   total_phases: 12
   completed_phases: 11
   total_plans: 55
-  completed_plans: 52
-  percent: 95
+  completed_plans: 53
+  percent: 96
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 11 (tjt-subpanel-object-template-editor) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-05-31
 Next action: **Phase 10 FULLY SHIPPED.** All 6 plans CI-green across both repos: 10-01 format core (reader/model/byte-exact writer/controller), 10-02 roundtrip-stf SC4 golden gate, 10-03 FormStringTableEditor host + two-column grid + T4, 10-04 Find/Replace + filter + sort + CSV/PO, 10-05 Save▾ modes 1/2/4 + reload + TRE Browser hand-off, 10-06 live-smoke checkpoint. V1 sign-off = APPROVED-WITH-DEFERRED-RESIDUAL (Option C, automation-only). SC1/SC2/SC4 signed off; SC3 live-reload + CF-05 scene-change-vs-relog = tracked OPEN RESIDUAL (todos/pending/phase10-stringtable-sc3-live-reload-residual.md). Commits — Utinni: c845894 (10-02), 0c6634d (10-03), 9f5887c (10-04), d7d0076 (10-05), 2351469 (10-06); UtinniPlugins: 2d65fa3 (10-03), 32da98a (10-04), 9be5ec2 (10-05). Next: `/gsd-discuss-phase 11` (Object Template Editor) — no 11-CONTEXT.md yet.
 
-Progress: [██████████] 95%
+Progress: [██████████] 96%
 
 ## Wave 2 Summary
 
@@ -118,6 +118,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 09 P06 | 75 min | 4 tasks | 14 files |
 | Phase 09 P07 | ~20 min | 1 checkpoint task (automation pre-checks + smoke artifact; live ACK pending) | 3 files |
 | Phase 11 P01 | 45 min | 2 tasks | 8 files |
+| Phase 11 P02 | ~12min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: Phase 09 P04 (T4 schema-mutation engine) COMPLETE 2026-05-29. DatatableEditController (verbatim IffEditController port + NeedsReviewCount/PendingCascadeContext/MarkSaved seams) + 11 D-01 T4 commands (EditCellValue via CaptureState/RestoreState byte-exact undo; RemoveRow/RemoveColumn insert-by-reference CR-01 port; ChangeColumnType D-04 mangle cascade) + ApplyCsvImport stub for 09-06. Cascade state on controller, ZERO form-local lastCascadeContext. MarkSaved rebaseline = per-cell (RebaselineAfterSave). TJT FormAddColumnDialog + FormTypeChangeCascadeDialog per-call modals; FormDatatableEditor controller wire + R-04 NeedsReview save-block on every Save menu item + D-02 safety-net (reused FormSaveConfirmDialog). DEVIATION (Rule 3): added MutableDataTableRow.InsertCellInternal + MutableDataTableCell.RebaselineAfterSave. 37 controller Facts; 111/111 Datatable subsuite; both repos Debug+Release|x86 clean. Commits Utinni 997716a / UtinniPlugins 0868c88.
 - [Phase ?]: Phase 09 P06 (CSV + Find/Replace + sort + VirtualMode) COMPLETE 2026-05-29. Framework CsvCellCoercion.PlanImport (checker B-1; per-cell diff + DoS caps) + DataTableCellValue.ToCsvString + ApplyCsvImportCommand single-transaction reverse-order undo (replaces 09-04 stub). TJT DatatableCsvSerializer (UTF-8 BOM export + <100-line RFC-4180 parser) + FormCsvImportPreviewDialog (locked D-08 copy). FormDatatableEditor: Find/Replace (Ctrl+F/H, F3/Shift+F3, Esc, 200ms debounce, regex 2s matchTimeout, per-column-type-validated Replace) + CSV Import/Export + column-click view-only sort (D-09) + DT_Comment frozen-row toggle. D-09 dual defense: writer grep 0:0:0 + Sort_DoesNotMutateModelOrder STA fact. Task 4 VirtualMode EXECUTED (09-03 measured 265.63ms cold > 100ms): row-threshold(150) fallback, CellValueNeeded/Pushed->controller. 475/475 tests; both repos Debug+Release|x86 green. Commits Utinni a090726/c84c655; UtinniPlugins 3ff92e3/2c60048/f1bb651.
 - [Phase ?]: Phase 11 P01 (object-template format core) COMPLETE 2026-05-31. New UtinniCoreDotNet/Formats/ObjectTemplate/ folder: ObjectTemplateParamValue (Bool/Int/Float/String/None/RawBytesHexFallback union + verbatim delta byte + UI-SPEC ParamTypeLabel), ObjectTemplateParamCodec (self-describing tag decode/encode with consume-exactly-or-hex defensive posture T-11-01 — WEIGHTED_LIST/RANGE/DIE_ROLL/short/long route to hex fallback), MutableObjectTemplate (mutable model over Phase 8 MutableIffDocument; EditOverride mutates captured leaf in place hybrid-DOM; Add/RemoveOverride re-derive machine-managed int32 paramCount D-04), ObjectTemplateWriter (composes IffWriter.Write). Added ReadInt8 to IffPayloadCursor. DECISION: int vs float SINGLE numeric is byte-indistinguishable to the generic schema-free decoder (D-03) — canonical decode is typed Int with delta preserved; byte-exactness holds either way; V2 typed schema disambiguates the widget label. 15 new facts (10 codec + 5 model); full suite 608/608 green Debug+Release x86. Zero scene-UndoRedoManager coupling (CON-M-05). Commits: 407d62b, d73a58c.
+- [Phase 11]: Phase 11 P02 (OT inheritance resolver + edit controller + roundtrip-ot) COMPLETE 2026-05-31. ObjectTemplateResolver.Resolve replicates the client `if(!isLoaded()) return base->getXxx()` as a nearest-supplier effective-merge with origin markers (LocalOverride/Inherited/UnresolvedBase) + ancestor breadcrumb; NEW depth/cycle guard (visited-set + MaxDepth=64, the single new defensive control T-11-04). ResolveViaArchive wires TrePayloadResolver.TryResolve (false-return = D-01 graceful degradation; never throws on the open path — unresolved base stops the walk + records a Resolved=false breadcrumb segment, locals stay editable). ObjectTemplateEditController clones DatatableEditController's core Apply/Undo/Redo/MarkSaved skeleton (Phase-9 cascade machinery dropped), with ZERO scene undo/redo-manager coupling (CON-M-05, extra-load-bearing); ObjectTemplateEditCommands EditValue/AddOverride/RemoveOverride capture byte-exact prior state for undo. roundtrip-ot CLI verb = param-LEVEL untouched byte-exact gate after a typed mutation (CF-02; the typed-OT analog of roundtrip-tab's per-cell slice), goldens incl. hex-fallback + unresolved-base degradation. 20 new facts (5 resolver + 6 controller + 9 CLI); full UtinniCoreDotNet.Tests 619/619 + Utinni.Cli.Tests 165/165 green Debug+Release|x86. DEVIATION (Rule 1): refreshed dispatch help/no-args goldens for the new verb. Commits: 36861d9, 81bacd1, 244c45a.
 
 ### Pending Todos
 
@@ -206,7 +208,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-05-31T02:02:01.023Z
+Last session: 2026-05-31T02:21:26.795Z
 Stopped at: Phase 11 UI-SPEC approved
 Resume file: None
 
