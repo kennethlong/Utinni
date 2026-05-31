@@ -86,6 +86,19 @@ namespace UtinniCoreDotNet.Formats.Decoders
             return v;
         }
 
+        /// <summary>
+        /// Reads a single byte, advancing 1. The 1-byte primitive the object-template self-describing
+        /// decode needs for the data-type tag and the numeric delta-type byte (Phase 11). Throws
+        /// <see cref="DecoderError.Truncated"/> at end-of-payload.
+        /// </summary>
+        public byte ReadInt8()
+        {
+            Need(1);
+            byte v = _data[_pos];
+            _pos += 1;
+            return v;
+        }
+
         /// <summary>Reads <paramref name="count"/> raw bytes, advancing past them.</summary>
         public byte[] ReadBytes(int count)
         {
