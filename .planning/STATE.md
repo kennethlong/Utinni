@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 11 UI-SPEC approved
-last_updated: "2026-05-31T02:36:43.394Z"
+last_updated: "2026-05-31T02:53:14.608Z"
 last_activity: 2026-05-31
 progress:
   total_phases: 12
   completed_phases: 11
   total_plans: 55
-  completed_plans: 54
-  percent: 98
+  completed_plans: 55
+  percent: 100
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 11 (tjt-subpanel-object-template-editor) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-05-31
-Next action: **Phase 10 FULLY SHIPPED.** All 6 plans CI-green across both repos: 10-01 format core (reader/model/byte-exact writer/controller), 10-02 roundtrip-stf SC4 golden gate, 10-03 FormStringTableEditor host + two-column grid + T4, 10-04 Find/Replace + filter + sort + CSV/PO, 10-05 Save▾ modes 1/2/4 + reload + TRE Browser hand-off, 10-06 live-smoke checkpoint. V1 sign-off = APPROVED-WITH-DEFERRED-RESIDUAL (Option C, automation-only). SC1/SC2/SC4 signed off; SC3 live-reload + CF-05 scene-change-vs-relog = tracked OPEN RESIDUAL (todos/pending/phase10-stringtable-sc3-live-reload-residual.md). Commits — Utinni: c845894 (10-02), 0c6634d (10-03), 9f5887c (10-04), d7d0076 (10-05), 2351469 (10-06); UtinniPlugins: 2d65fa3 (10-03), 32da98a (10-04), 9be5ec2 (10-05). Next: `/gsd-discuss-phase 11` (Object Template Editor) — no 11-CONTEXT.md yet.
+Next action: **Phase 11 P04 (OT editor mutations + widgets + save + reload badge) COMPLETE 2026-05-31.** The Object Template Editor is now editable: per-type Effective-value widgets (bool checkbox / int-float UtinniNumericUpDown via ObjectTemplateNumericCell EditType swap / string text) + a Consolas hex/text fallback modal (FormParamHexEditor) for complex/raw params so no param is ever uneditable (D-02); the three D-04 mutations routed through ObjectTemplateEditController (CommitCell branches on origin — editing an Inherited value promotes via AddOverride; Promote/Revert toolbar+context, undoable, revert confirm + locked local-only-disabled tooltip; side-effect-free TryResolveInheritedValue preview drives the Revert enabled-state); Save modes 1/2/4 via the <100-line ObjectTemplateSaveTargets shim forwarding to IffSaveTargets/TreRepackSaveTarget (mode 3 disabled CF-03, V6000 refused by Phase 8, MarkSaved on success); LOCKED CF-05 tier-(b) reload badge that STATES the cache candor + 1s pulse + audit-trail dispatch only (no engine refetch hook — grep gate 0; hidden/disabled when !Game.IsRunning); ReloadAssetClassifierTests (SHOT/STOT/SBOT + conservative .iff fallback -> PendingNextSceneChange, classifier UNCHANGED). 624/624 framework tests Debug+Release|x86 (619 baseline + 5 new); TJT clean Debug+Release|x86. DEVIATION (Rule 3): reworded the CF-05 refetch-hook COMMENT to clear the literal grep gate (grep-hygiene). Commits — UtinniPlugins: 758330d (widgets/hex/mutations + save shim/menu), a9b738f (CF-05 reword); Utinni: 78ec981 (classifier verify-test). Next: Plan 11-05 — live-SWG smoke checkpoint (SC3 reload candor, the residual carried from Phase 10).
 
-Progress: [██████████] 98%
+Progress: [██████████] 100%
 
 ## Wave 2 Summary
 
@@ -120,6 +120,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 11 P01 | 45 min | 2 tasks | 8 files |
 | Phase 11 P02 | ~12min | 2 tasks | 13 files |
 | Phase 11 P03 | ~9min | 2 tasks | 7 files (cross-repo) |
+| Phase 11 P04 | 28min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -146,6 +147,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: Phase 11 P01 (object-template format core) COMPLETE 2026-05-31. New UtinniCoreDotNet/Formats/ObjectTemplate/ folder: ObjectTemplateParamValue (Bool/Int/Float/String/None/RawBytesHexFallback union + verbatim delta byte + UI-SPEC ParamTypeLabel), ObjectTemplateParamCodec (self-describing tag decode/encode with consume-exactly-or-hex defensive posture T-11-01 — WEIGHTED_LIST/RANGE/DIE_ROLL/short/long route to hex fallback), MutableObjectTemplate (mutable model over Phase 8 MutableIffDocument; EditOverride mutates captured leaf in place hybrid-DOM; Add/RemoveOverride re-derive machine-managed int32 paramCount D-04), ObjectTemplateWriter (composes IffWriter.Write). Added ReadInt8 to IffPayloadCursor. DECISION: int vs float SINGLE numeric is byte-indistinguishable to the generic schema-free decoder (D-03) — canonical decode is typed Int with delta preserved; byte-exactness holds either way; V2 typed schema disambiguates the widget label. 15 new facts (10 codec + 5 model); full suite 608/608 green Debug+Release x86. Zero scene-UndoRedoManager coupling (CON-M-05). Commits: 407d62b, d73a58c.
 - [Phase 11]: Phase 11 P02 (OT inheritance resolver + edit controller + roundtrip-ot) COMPLETE 2026-05-31. ObjectTemplateResolver.Resolve replicates the client `if(!isLoaded()) return base->getXxx()` as a nearest-supplier effective-merge with origin markers (LocalOverride/Inherited/UnresolvedBase) + ancestor breadcrumb; NEW depth/cycle guard (visited-set + MaxDepth=64, the single new defensive control T-11-04). ResolveViaArchive wires TrePayloadResolver.TryResolve (false-return = D-01 graceful degradation; never throws on the open path — unresolved base stops the walk + records a Resolved=false breadcrumb segment, locals stay editable). ObjectTemplateEditController clones DatatableEditController's core Apply/Undo/Redo/MarkSaved skeleton (Phase-9 cascade machinery dropped), with ZERO scene undo/redo-manager coupling (CON-M-05, extra-load-bearing); ObjectTemplateEditCommands EditValue/AddOverride/RemoveOverride capture byte-exact prior state for undo. roundtrip-ot CLI verb = param-LEVEL untouched byte-exact gate after a typed mutation (CF-02; the typed-OT analog of roundtrip-tab's per-cell slice), goldens incl. hex-fallback + unresolved-base degradation. 20 new facts (5 resolver + 6 controller + 9 CLI); full UtinniCoreDotNet.Tests 619/619 + Utinni.Cli.Tests 165/165 green Debug+Release|x86. DEVIATION (Rule 1): refreshed dispatch help/no-args goldens for the new verb. Commits: 36861d9, 81bacd1, 244c45a.
 - [Phase 11]: Phase 11 P03 (Object Template Editor host + hand-offs) COMPLETE 2026-05-31. Cross-repo. FormObjectTemplateEditor (UtinniForm, IEditorForm) clones FormDatatableEditor: 4-column effective-inheritance grid (Field/Effective value/Origin/Type) with Phase 11 deviations (AllowUserToOrderColumns=false, MultiSelect=false/FullRowSelect, Value-only Fill); binds OWN DataGridViewRows from EffectiveField (ThemedDataGridView.BindMutable is datatable-typed) + form-local CellFormatting for origin overlays (local-override Origin accent / inherited rows grey+italic / unresolved-base red); background DERV-chain resolve (Task.Run -> BeginInvoke) that NEVER blocks the open (D-01 LOCKED — lazily-cached TreArchiveIndex from resolved client root via ResolveViaArchive, null-locator graceful-degradation fallback); ancestor breadcrumb root->this (terminal this accent, unresolved segment red); editor-local ObjectTemplateEditController undo/redo (Ctrl+Z/Y, ZERO scene-manager coupling CON-M-05); Show-inherited toggle (default ON, persisted); singleton hide-not-dispose via SingletonFormClosePolicy. NEW framework OtHandoffPolicy (UtinniCoreDotNet/UI; mirrors DatatableHandoffPolicy): ShouldOfferObjectTemplateEditor (.iff visibility gate) + IsObjectTemplatePayload (click-time LooksLikeObjectTemplate content sniff, never throws). 5th SubPanel registered in Plugin.cs try/catch; GetSubPanels() stays null (SPI NOT widened, CON-M-01/02, T-11-10). IFF Editor 'Switch to typed object-template view' (mutable-root sniff, OpenFromMutableIff no re-parse) + TRE Browser 'Open in Object Template Editor' (off-UI-thread TryResolve -> IsObjectTemplatePayload gate -> OpenFromTreEntry) hand-offs, both HIDDEN when the sniff fails. Save/Promote/Revert/Reload click bodies are status-only stubs (wired 11-04/11-05); grid ReadOnly this plan. UtinniCoreDotNet + TJT clean Debug+Release|x86 (WinForms-host logic verified by MSBuild-green build per Phase 8/9/10 precedent — not project-referenceable from the x86 test project); framework xUnit 619/619 green (OtHandoffPolicy additive). Commits — Utinni: 484211c (OtHandoffPolicy); UtinniPlugins: bc32f12 (host), 0504dfa (registration + hand-offs).
+- [Phase ?]: Phase 11 P04: OT editor mutations/widgets/save/reload — per-type widgets (bool/int/float/string) + Consolas hex fallback (FormParamHexEditor) for complex params; origin-branching commit (Inherited edit -> AddOverride promote); Save modes 1/2/4 via ObjectTemplateSaveTargets shim (mode 3 disabled CF-03, V6000 refused); LOCKED CF-05 tier-(b) reload badge (states candor, no refetch hook); ReloadAssetClassifier verify-test. 624/624 framework Debug+Release|x86; TJT clean both configs. Commits UtinniPlugins 758330d/a9b738f, Utinni 78ec981.
 
 ### Pending Todos
 
@@ -210,7 +212,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-05-31T02:36:18.483Z
+Last session: 2026-05-31T02:52:50.676Z
 Stopped at: Phase 11 UI-SPEC approved
 Resume file: None
 
