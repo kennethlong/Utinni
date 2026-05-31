@@ -63,6 +63,18 @@ Be explicit about the boundary so we do not over-promise:
 - GPU-driver-specific bugs.
 - WinForms UI smoke testing — FlaUI is *technically* possible but flaky enough we are deliberately skipping it for now.
 
+#### Tracked Wave-1 SC3 live-reload residuals
+
+Each Wave-1 editor's "live client reflects the edit on reload" criterion (SC3) is a bounded Tier-4 residual:
+automation closes byte-exactness + decode + edit + classification, but the live observation requires the
+maintainer + an injected client. Recorded here so the boundary is explicit (automation-augmented per the
+Phase 8/9/10 precedent).
+
+| Editor | Phase | SC3 live-reload residual | Honest reload path | Status |
+|--------|-------|--------------------------|--------------------|--------|
+| String-table Editor (`.stf`) | 10 | Live client renders edited strings on reload | `LocalizationManager` scene-change-vs-relog (CF-05 tier-(b)) | Deferred residual (10-06 APPROVED-WITH-DEFERRED-RESIDUAL 2026-05-30) |
+| Object Template Editor (`.iff`) | 11 | Live client reflects an edited object template when the object respawns/reloads | **Relog-reliable, scene-change-conditional, respawn-best-effort.** `ObjectTemplateList` is a CRC-keyed, refcount-evicted cache that NEVER re-reads a cached template from disk on `fetch` — respawn hits the cache (stale); a scene change re-resolves only if all the edited template's references drop (bases shared across scenes persist); a full relog rebuilds the cache from disk. The CF-05 tier-(b) badge STATES this and never triggers a reload (CON-M-05). | Deferred residual — closed at the 11-05 Task 2 live smoke; mirrors the Phase 10 SC3 residual |
+
 ## Suggested phase order
 
 When this becomes a GSD phase (or phases), the natural sequence is:
