@@ -459,22 +459,19 @@ ReloadTier tier = ReloadAssetClassifier.Classify(".iff", rootTypeId); // → Pen
 
 **No `[ASSUMED]` package or compliance claims exist** — there are no new dependencies and no security/retention/compliance surface in this phase.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does `IffPayloadCursor` already expose a little-endian float read?**
-   - What we know: it exposes `ReadCString`, `ReadInt32Le`, `ReadBytes`, `Remaining` (used by Phase 7).
-   - What's unclear: whether a `ReadSingleLe`/`ReadFloat` exists for FloatParam.
-   - Recommendation: planner has the model-author verify in `Formats/Iff/IffPayloadCursor.cs`; if absent, add a 1-line helper (additive, binary-compat safe).
+   - **RESOLVED (PATTERNS.md):** `ReadFloatLe()` already EXISTS on `IffPayloadCursor`. The only additive change is a 1-byte `ReadInt8` helper (binary-compat safe — the type is `internal sealed`). Planned in 11-01 Task 1.
+   - What we knew: it exposes `ReadCString`, `ReadInt32Le`, `ReadBytes`, `Remaining` (used by Phase 7).
 
 2. **Which demo fixtures for SC3?**
-   - What we know: SC3 needs a relog-reliable demo per the cache semantics.
-   - What's unclear: which concrete shipped object template the user will edit live (a simple tangible with an overrideable scalar is ideal — e.g. a flag/bool or a string param).
-   - Recommendation: pick a tangible template with a SINGLE bool/string local override for the cleanest live demo; confirm with the user at smoke time. (This is the SC3/UAT plan's concern, not the format work.)
+   - **RESOLVED (deferred to smoke):** a tangible template with a SINGLE bool/string local override gives the cleanest live demo; the concrete shipped template is confirmed with the user at smoke time. This is the SC3/UAT concern (11-05 Task 2), not format work.
+   - What we knew: SC3 needs a relog-reliable demo per the cache semantics.
 
 3. **V6000 / encrypted base in the chain.**
-   - What we know: `TrePayloadResolver.TryResolve` returns false for enumerate-only/V6000 → D-01 degradation renders "unresolved base".
-   - What's unclear: how common a V6000 base is in the user's Restoration archive set for the demo template.
-   - Recommendation: include an unresolved-base fixture in the golden set (Validation Architecture) so the degradation path is regression-tested regardless.
+   - **RESOLVED (regression-covered):** an unresolved-base fixture is included in the golden set so the D-01 degradation path is regression-tested regardless of how common a V6000 base is in the user's archive set. `TrePayloadResolver.TryResolve` returns false (never throws) for enumerate-only/V6000 → renders "unresolved base". Planned in 11-02 (resolver) + Wave-0 goldens.
+   - What we knew: degradation renders "unresolved base" via the `TryResolve == false` path.
 
 ## Environment Availability
 
@@ -611,10 +608,10 @@ The resolver's per-field result MUST equal "value from the nearest ancestor (inc
 | Architecture | HIGH | Derived from verified format + cache + Phase 8/9 precedent |
 | Pitfalls | HIGH | Each rooted in a verified source fact (cache, delta byte, list mis-typing, CON-M-05) |
 
-### Open Questions
-- Does `IffPayloadCursor` expose a LE float read (else add a 1-line helper)?
-- SC3 demo fixture choice (a tangible with one bool/string local override is cleanest) — confirm at smoke.
-- Add a DERV-chain depth/cycle guard in the new resolver (small, new — flagged for the planner).
+### Open Questions (RESOLVED)
+- RESOLVED: `IffPayloadCursor.ReadFloatLe()` already exists; only a 1-byte `ReadInt8` helper is added (11-01).
+- RESOLVED: SC3 demo fixture = a tangible with one bool/string local override; confirmed at smoke (11-05).
+- RESOLVED: DERV-chain depth/cycle guard is a planned task + grep-gated verification in 11-02.
 
 ### Ready for Planning
 Research complete. The CONTEXT.md decisions are all confirmed actionable against verified source; the planner can produce the 4–6 plans (model+writer, resolver+golden, host+entry-points+undo, mutations+widgets+hex-fallback, save+reload-badge, live-smoke + V1 release-gate).

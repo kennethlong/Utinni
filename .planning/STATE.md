@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 11 context gathered
-last_updated: "2026-05-30T23:42:27.157Z"
-last_activity: 2026-05-30
+status: executing
+stopped_at: Phase 11 UI-SPEC approved
+last_updated: "2026-05-31T01:46:52.086Z"
+last_activity: 2026-05-31 -- Phase 11 planning complete
 progress:
   total_phases: 12
   completed_phases: 11
-  total_plans: 50
+  total_plans: 55
   completed_plans: 51
-  percent: 100
+  percent: 93
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 
 Phase: 10 (tjt-subpanel-string-table-editor-stf) — COMPLETE (V1 signed off 2026-05-30; SC3 deferred residual)
 Plan: 6 of 6 (all shipped)
-Status: Phase complete — ready for Phase 11
-Last activity: 2026-05-30
+Status: Ready to execute
+Last activity: 2026-05-31 -- Phase 11 planning complete
 Next action: **Phase 10 FULLY SHIPPED.** All 6 plans CI-green across both repos: 10-01 format core (reader/model/byte-exact writer/controller), 10-02 roundtrip-stf SC4 golden gate, 10-03 FormStringTableEditor host + two-column grid + T4, 10-04 Find/Replace + filter + sort + CSV/PO, 10-05 Save▾ modes 1/2/4 + reload + TRE Browser hand-off, 10-06 live-smoke checkpoint. V1 sign-off = APPROVED-WITH-DEFERRED-RESIDUAL (Option C, automation-only). SC1/SC2/SC4 signed off; SC3 live-reload + CF-05 scene-change-vs-relog = tracked OPEN RESIDUAL (todos/pending/phase10-stringtable-sc3-live-reload-residual.md). Commits — Utinni: c845894 (10-02), 0c6634d (10-03), 9f5887c (10-04), d7d0076 (10-05), 2351469 (10-06); UtinniPlugins: 2d65fa3 (10-03), 32da98a (10-04), 9be5ec2 (10-05). Next: `/gsd-discuss-phase 11` (Object Template Editor) — no 11-CONTEXT.md yet.
 
 Progress: [█████████░] 94%
@@ -204,9 +204,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-05-30T23:42:27.136Z
-Stopped at: Phase 11 context gathered
-Resume file: .planning/phases/11-tjt-subpanel-object-template-editor/11-CONTEXT.md
+Last session: 2026-05-31T00:36:54.089Z
+Stopped at: Phase 11 UI-SPEC approved
+Resume file: .planning/phases/11-tjt-subpanel-object-template-editor/11-UI-SPEC.md
 
 ## Ingest Provenance
 
