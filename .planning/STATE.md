@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 11 UI-SPEC approved
-last_updated: "2026-05-31T01:46:52.086Z"
-last_activity: 2026-05-31 -- Phase 11 planning complete
+last_updated: "2026-05-31T02:04:57.279Z"
+last_activity: 2026-05-31
 progress:
   total_phases: 12
   completed_phases: 11
   total_plans: 55
-  completed_plans: 51
-  percent: 93
+  completed_plans: 52
+  percent: 95
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 10 — tjt-subpanel-string-table-editor-stf
+**Current focus:** Phase 11 — tjt-subpanel-object-template-editor
 
 ## Current Position
 
-Phase: 10 (tjt-subpanel-string-table-editor-stf) — COMPLETE (V1 signed off 2026-05-30; SC3 deferred residual)
-Plan: 6 of 6 (all shipped)
+Phase: 11 (tjt-subpanel-object-template-editor) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-05-31 -- Phase 11 planning complete
+Last activity: 2026-05-31
 Next action: **Phase 10 FULLY SHIPPED.** All 6 plans CI-green across both repos: 10-01 format core (reader/model/byte-exact writer/controller), 10-02 roundtrip-stf SC4 golden gate, 10-03 FormStringTableEditor host + two-column grid + T4, 10-04 Find/Replace + filter + sort + CSV/PO, 10-05 Save▾ modes 1/2/4 + reload + TRE Browser hand-off, 10-06 live-smoke checkpoint. V1 sign-off = APPROVED-WITH-DEFERRED-RESIDUAL (Option C, automation-only). SC1/SC2/SC4 signed off; SC3 live-reload + CF-05 scene-change-vs-relog = tracked OPEN RESIDUAL (todos/pending/phase10-stringtable-sc3-live-reload-residual.md). Commits — Utinni: c845894 (10-02), 0c6634d (10-03), 9f5887c (10-04), d7d0076 (10-05), 2351469 (10-06); UtinniPlugins: 2d65fa3 (10-03), 32da98a (10-04), 9be5ec2 (10-05). Next: `/gsd-discuss-phase 11` (Object Template Editor) — no 11-CONTEXT.md yet.
 
-Progress: [█████████░] 94%
+Progress: [██████████] 95%
 
 ## Wave 2 Summary
 
@@ -117,6 +117,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 09 P05 | ~70 min | 2 tasks | 7 files across both repos |
 | Phase 09 P06 | 75 min | 4 tasks | 14 files |
 | Phase 09 P07 | ~20 min | 1 checkpoint task (automation pre-checks + smoke artifact; live ACK pending) | 3 files |
+| Phase 11 P01 | 45 min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase 9]: Phase 09 P05 (entry points + save targets) COMPLETE 2026-05-29. `TJT.Saving.DatatableSaveTargets` < 100-line (87-line body) composition shim forwards verbatim to Phase 8's IffSaveTargets (modes 1/2/3) + TreRepackSaveTarget (mode 4) — zero new save plumbing/path-defense/repack orchestration. FormDatatableEditor: 5 Save▾ click handlers + `controller.MarkSaved()` on each save-success (iter-2 item 8) + `RefreshSaveMenuEnabledState` rewritten to compose the provenance gate ON TOP of 09-04's NeedsReview gate (Save-As escape hatch on Unknown per round-2 MEDIUM 5) + public `OpenFromTreEntry`/`OpenFromMutableIff` + `saveInFlight` MEDIUM-9 barrier + reload-dispatch audit trail keeping CF-05 locked copy. FormTreBrowser D-10.2 (Open-in-Datatable-Editor, extension-only `.tab` visibility) + FormIffEditor D-10.3 (Switch-to-typed-datatable-view, visible iff root TypeId==DTII) — both additive, no public-signature change. DEVIATION (Rule 3): DatatableSaveTargetsTests target the FRAMEWORK composition legs (the WinForms/native TJT assembly is not project-referenceable from the x86 test project — Phase 8 precedent); 10 new facts (7 save + 3 reload-routing). DEVIATION (Rule 1 doc): no `RefusedV6000Encrypted` enum — V6000 refusal = `TreRepackResult.Failed` (TreWriter.Repack throws NotSupportedException). Namespace is `TJT.Saving` (matches SHIPPED Phase 8), not the plan's `TheJawaToolboxDotNet.Saving`. 121/121 Datatable subsuite; 458/458 UtinniCoreDotNet.Tests; TJT MSBuild Debug|x86 green. PROD-W1-DT save + entry-point surface CLOSED. Commits: Utinni 3b02999; UtinniPlugins 149904c/b3dd75d.
 - [Phase ?]: Phase 09 P04 (T4 schema-mutation engine) COMPLETE 2026-05-29. DatatableEditController (verbatim IffEditController port + NeedsReviewCount/PendingCascadeContext/MarkSaved seams) + 11 D-01 T4 commands (EditCellValue via CaptureState/RestoreState byte-exact undo; RemoveRow/RemoveColumn insert-by-reference CR-01 port; ChangeColumnType D-04 mangle cascade) + ApplyCsvImport stub for 09-06. Cascade state on controller, ZERO form-local lastCascadeContext. MarkSaved rebaseline = per-cell (RebaselineAfterSave). TJT FormAddColumnDialog + FormTypeChangeCascadeDialog per-call modals; FormDatatableEditor controller wire + R-04 NeedsReview save-block on every Save menu item + D-02 safety-net (reused FormSaveConfirmDialog). DEVIATION (Rule 3): added MutableDataTableRow.InsertCellInternal + MutableDataTableCell.RebaselineAfterSave. 37 controller Facts; 111/111 Datatable subsuite; both repos Debug+Release|x86 clean. Commits Utinni 997716a / UtinniPlugins 0868c88.
 - [Phase ?]: Phase 09 P06 (CSV + Find/Replace + sort + VirtualMode) COMPLETE 2026-05-29. Framework CsvCellCoercion.PlanImport (checker B-1; per-cell diff + DoS caps) + DataTableCellValue.ToCsvString + ApplyCsvImportCommand single-transaction reverse-order undo (replaces 09-04 stub). TJT DatatableCsvSerializer (UTF-8 BOM export + <100-line RFC-4180 parser) + FormCsvImportPreviewDialog (locked D-08 copy). FormDatatableEditor: Find/Replace (Ctrl+F/H, F3/Shift+F3, Esc, 200ms debounce, regex 2s matchTimeout, per-column-type-validated Replace) + CSV Import/Export + column-click view-only sort (D-09) + DT_Comment frozen-row toggle. D-09 dual defense: writer grep 0:0:0 + Sort_DoesNotMutateModelOrder STA fact. Task 4 VirtualMode EXECUTED (09-03 measured 265.63ms cold > 100ms): row-threshold(150) fallback, CellValueNeeded/Pushed->controller. 475/475 tests; both repos Debug+Release|x86 green. Commits Utinni a090726/c84c655; UtinniPlugins 3ff92e3/2c60048/f1bb651.
+- [Phase ?]: Phase 11 P01 (object-template format core) COMPLETE 2026-05-31. New UtinniCoreDotNet/Formats/ObjectTemplate/ folder: ObjectTemplateParamValue (Bool/Int/Float/String/None/RawBytesHexFallback union + verbatim delta byte + UI-SPEC ParamTypeLabel), ObjectTemplateParamCodec (self-describing tag decode/encode with consume-exactly-or-hex defensive posture T-11-01 — WEIGHTED_LIST/RANGE/DIE_ROLL/short/long route to hex fallback), MutableObjectTemplate (mutable model over Phase 8 MutableIffDocument; EditOverride mutates captured leaf in place hybrid-DOM; Add/RemoveOverride re-derive machine-managed int32 paramCount D-04), ObjectTemplateWriter (composes IffWriter.Write). Added ReadInt8 to IffPayloadCursor. DECISION: int vs float SINGLE numeric is byte-indistinguishable to the generic schema-free decoder (D-03) — canonical decode is typed Int with delta preserved; byte-exactness holds either way; V2 typed schema disambiguates the widget label. 15 new facts (10 codec + 5 model); full suite 608/608 green Debug+Release x86. Zero scene-UndoRedoManager coupling (CON-M-05). Commits: 407d62b, d73a58c.
 
 ### Pending Todos
 
@@ -204,9 +206,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-05-31T00:36:54.089Z
+Last session: 2026-05-31T02:02:01.023Z
 Stopped at: Phase 11 UI-SPEC approved
-Resume file: .planning/phases/11-tjt-subpanel-object-template-editor/11-UI-SPEC.md
+Resume file: None
 
 ## Ingest Provenance
 
