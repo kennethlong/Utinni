@@ -3,8 +3,9 @@ phase: 11-tjt-subpanel-object-template-editor
 plan: 05
 artifact: V1-RELEASE-GATE
 maps_to: ROADMAP Phase 11 Success Criteria SC4
-status: EVIDENCE-COMPLETE — maintainer sign-off + V1 tag PENDING (Task 2 live smoke + Task 3 tag)
+status: SMOKE-APPROVED — Task 2 live smoke APPROVED 2026-05-31; V1 tag PENDING (Task 3) on CI-green HEAD
 created: 2026-05-31
+updated: 2026-05-31
 ---
 
 # V1 Release Gate — Object Template Editor / Wave-1 Closure
@@ -51,11 +52,25 @@ the **same-session live five-subpanel demo** is confirmed at the Task 2 smoke.
 | [x] | **IFF Editor** (read+write) | P8 | 08-01..08-07 complete; `docs(08-07)` `617cea0` | 08-05 Task 5 smoke **APPROVED** 2026-05-28 ("approved, dig in"); 08-06/08-07 automation-augmented |
 | [x] | **Datatable Editor** (`.tab`) | P9 | 09-01..09-07 complete; `docs(09-07)` `d364209` | 09-07 Tier-4 smoke artifact; automation-augmented, live ACK deferred-but-acceptable (Phase 8 precedent) |
 | [x] | **String-table Editor** (`.stf`) | P10 | 10-01..10-06 complete; `docs(10-06)` `3dbc3ad` | 10-06 **SIGNED-OFF 2026-05-30** APPROVED-WITH-DEFERRED-RESIDUAL (SC1/SC2/SC4; SC3 open residual) |
-| [x] | **Object Template Editor** | P11 | 11-01..11-04 complete; 5th SubPanel registered (11-03 `bc32f12`); mutations/widgets/save/badge (11-04 `758330d`) | **PENDING** — Task 2 live smoke (this plan) |
+| [x] | **Object Template Editor** | P11 | 11-01..11-04 complete; 5th SubPanel registered (11-03 `bc32f12`); mutations/widgets/save/badge (11-04 `758330d`) | **APPROVED 2026-05-31** — live smoke: loads in TJT, view inherited fields, edits work; see en-route fixes below |
 
-- [ ] **Live five-subpanel same-session demo confirmed (SC4 demo leg) — Task 2 smoke (BLOCKING HUMAN).**
-  All five subpanels open and demo inside TJT in the same live SWG session. UNCHECKED until the maintainer
-  records the Task 2 smoke outcome.
+- [x] **Live five-subpanel same-session demo confirmed (SC4 demo leg) — Task 2 smoke.**
+  Maintainer 2026-05-31: "approved, all five subpanels demo and edits work." All five subpanels
+  (TRE Browser, IFF Editor, Datatable, String-table, Object Template) open and demo inside TJT in the
+  same live SWG session.
+
+#### En-route fixes — surfaced + resolved during the Task 2 live smoke
+
+The OT editor smoke exposed defects that were fixed live and re-verified before sign-off (the kind of
+issue a real-file smoke catches that synthetic tests miss):
+
+| Fix | Commit | What |
+|-----|--------|------|
+| OT editor edit crash | UtinniPlugins `0b26bb5` | `BindEffectiveView` re-entrancy loop (programmatic cell-set → commit → AddOverride "already exists"); added a `suppressCommit` guard |
+| Multi-chunk param parse | Utinni `d68387f` | 2,756/15,853 templates (17% — draft schematics, hair) aborted parsing on nameless list-element chunks; now degrade to raw hex-fallback. **Verified: 15,850/15,850 parse + round-trip byte-exact** |
+| Dead Find/Replace pane | UtinniPlugins `9966304` | Removed the never-wired Find/Replace clone artifact (a single-template grid doesn't need it) |
+| In-game Enter pre-world AV | Utinni `2300e44` | Gate `hkChatEnter` override on an active ground scene (latent Phase H edge case) |
+| Crash-address logger | Utinni `d1096ac` | Extended the VEH to log fatal-class exceptions (the dump-less intro-skip scene-transition crash) — diagnostic, pending repro |
 
 ### Condition 2 — Tier 1 + Tier 2 CI green on `main`
 
@@ -114,10 +129,10 @@ the **same-session live five-subpanel demo** is confirmed at the Task 2 smoke.
 These lines are deliberately UNCHECKED. They are closed by the maintainer at the Task 2 live smoke and the
 Task 3 tag action, NOT by the executor.
 
-- [ ] **Task 2 — Live-SWG smoke APPROVED.** SC1 (OT Editor loads inside TJT), SC2 (view inherited fields +
-  edit/override/revert + save), SC3 (reflected on the honest CF-05 path — relog-reliable), and the
+- [x] **Task 2 — Live-SWG smoke APPROVED.** SC1 (OT Editor loads inside TJT), SC2 (view inherited fields +
+  edit/override/revert + save), SC3 (honest CF-05 path — relog-reliable, tracked residual), and the
   five-subpanel same-session demo confirmed against a live SWG client. Resume-signal recorded.
-  - **Disposition:** _______________________________  **Maintainer:** ______________  **Date:** __________
+  - **Disposition:** APPROVED ("approved, all five subpanels demo and edits work")  **Maintainer:** Kenneth Long  **Date:** 2026-05-31
 - [ ] **Task 3 — V1 release gate SIGNED OFF.** Every SC4 row above satisfied (SC3 residual acknowledged per
   the Phase 8/9/10 precedent).
   - **Maintainer signature:** ______________________  **Date:** __________
