@@ -303,3 +303,23 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 9. Wave-1 plugin — Datatable Editor | 1/7 | In Progress|  |
 | 10. Wave-1 plugin — String-table Editor | 2/6 | In Progress|  |
 | 11. Wave-1 plugin — Object Template Editor | 5/5 | Complete    | 2026-06-01 |
+
+## Backlog
+
+Unsequenced ideas parked for a future milestone (999.x). Promote with `/gsd:review-backlog`.
+
+### Phase 999.1: MCP server for Utinni (BACKLOG)
+
+**Goal:** Expose Utinni's asset pipeline as an MCP server so Claude/agents can drive the verified, byte-exact codecs programmatically — e.g. "find every creature template inheriting `shared_humanoid` and bump scale", "decode this datatable, edit rows, repack the .tre" — without hand-editing binaries.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+**Context (captured 2026-05-31, post-V1):**
+- **Foundation already exists:** `Utinni.Cli` emits structured JSON over `UtinniCoreDotNet` (`decode-iff`, `parse-tre`, `roundtrip-ot/tab/stf`, `list-objects`, …). The MCP server is largely a thin shim over those verbs / the library.
+- **Read tools:** `tre_list` / `tre_extract`, `iff_decode`, `datatable_read`, `stringtable_read`, `object_template_resolve` (the DERV effective-inheritance view).
+- **Write tools:** `object_template_edit` / `datatable_edit` / `stf_edit` → `save` (loose-override / repack), routed through the existing byte-exact writers + path-traversal defenses so an agent physically can't corrupt an archive.
+- **Honest limits carry over:** CF-05 reload candor, OT multi-chunk raw-fallback, V6000 enumerate-only.
+- **Scope fork:** headless file-pipeline MCP (no running client — ~90% of the value, easy V-next starting point) **vs.** live-injected tooling (scene load / live patch — needs the injection layer, bigger lift). Headless is the obvious first slice.
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
