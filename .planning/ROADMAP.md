@@ -24,7 +24,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 8: TJT subpanel — IFF Editor (read + write)** — Foundational read/write subpanel; ships IFF chunk read/write primitives in `TheJawaToolboxDotNet`/`TheJawaToolbox` so Phases 9-11 layer on the same shared code. Per DEC-C4, ships as a TJT subpanel.
 - [ ] **Phase 9: TJT subpanel — Datatable Editor (`.tab`)** — Tabular data editor on top of Phase 8's IFF foundation. Per DEC-C4, ships as a TJT subpanel.
 - [ ] **Phase 10: TJT subpanel — String-table Editor (`.stf`)** — Localised-text editor on top of Phase 8's IFF foundation. Per DEC-C4, ships as a TJT subpanel.
-- [ ] **Phase 11: TJT subpanel — Object Template Editor** — Object-template editor; the final V1 subpanel; "Demo + CI green" milestone closure. Per DEC-C4, ships as a TJT subpanel.
+- [x] **Phase 11: TJT subpanel — Object Template Editor** — Object-template editor; the final V1 subpanel; "Demo + CI green" milestone closure. Per DEC-C4, ships as a TJT subpanel. (completed 2026-06-01)
 
 ## Phase Details
 
@@ -253,7 +253,7 @@ Plans:
 - [x] 11-02-PLAN.md — DERV-chain effective-merge resolver (origin markers + graceful degradation + depth/cycle guard) + editor-local ObjectTemplateEditController (override/revert/edit + undo) + roundtrip-ot CLI golden gate (Wave 2)
 - [x] 11-03-PLAN.md — FormObjectTemplateEditor host (toolbar + breadcrumb + Field/Value/Origin/Type grid + undo/redo + singleton policy) + 5th SubPanel registration + TRE Browser and IFF Editor hand-offs (Wave 3)
 - [x] 11-04-PLAN.md — Per-type value widgets + hex-fallback sub-editor + override/revert/edit mutations + Save modes 1/2/4 shim + locked CF-05 reload badge + classifier verify-test (Wave 4)
-- [ ] 11-05-PLAN.md — Full automated regression + V1 release-gate evidence doc + live-SWG smoke (SC1/SC2/SC3) + V1 sign-off and tag (Wave 5)
+- [x] 11-05-PLAN.md — Full automated regression + V1 release-gate evidence doc + live-SWG smoke (SC1/SC2/SC3) + V1 sign-off and tag (Wave 5)
 
 ## V2 Scope Boundary
 
@@ -302,4 +302,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 8. Wave-1 plugin — IFF Editor | 6/7 | In Progress|  |
 | 9. Wave-1 plugin — Datatable Editor | 1/7 | In Progress|  |
 | 10. Wave-1 plugin — String-table Editor | 2/6 | In Progress|  |
-| 11. Wave-1 plugin — Object Template Editor | 4/5 | In Progress|  |
+| 11. Wave-1 plugin — Object Template Editor | 5/5 | Complete    | 2026-06-01 |

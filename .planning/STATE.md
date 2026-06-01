@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
+status: milestone_complete
 stopped_at: Phase 11 UI-SPEC approved
 last_updated: "2026-05-31T02:53:14.608Z"
 last_activity: 2026-05-31
 progress:
   total_phases: 12
-  completed_phases: 11
+  completed_phases: 12
   total_plans: 55
   completed_plans: 55
   percent: 100
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 
 ## Current Position
 
-Phase: 11 (tjt-subpanel-object-template-editor) — EXECUTING
-Plan: 5 of 5
-Status: Ready to execute
-Last activity: 2026-05-31
+Phase: 11
+Plan: Not started
+Status: Milestone complete
+Last activity: 2026-06-01
 Next action: **Phase 11 P04 (OT editor mutations + widgets + save + reload badge) COMPLETE 2026-05-31.** The Object Template Editor is now editable: per-type Effective-value widgets (bool checkbox / int-float UtinniNumericUpDown via ObjectTemplateNumericCell EditType swap / string text) + a Consolas hex/text fallback modal (FormParamHexEditor) for complex/raw params so no param is ever uneditable (D-02); the three D-04 mutations routed through ObjectTemplateEditController (CommitCell branches on origin — editing an Inherited value promotes via AddOverride; Promote/Revert toolbar+context, undoable, revert confirm + locked local-only-disabled tooltip; side-effect-free TryResolveInheritedValue preview drives the Revert enabled-state); Save modes 1/2/4 via the <100-line ObjectTemplateSaveTargets shim forwarding to IffSaveTargets/TreRepackSaveTarget (mode 3 disabled CF-03, V6000 refused by Phase 8, MarkSaved on success); LOCKED CF-05 tier-(b) reload badge that STATES the cache candor + 1s pulse + audit-trail dispatch only (no engine refetch hook — grep gate 0; hidden/disabled when !Game.IsRunning); ReloadAssetClassifierTests (SHOT/STOT/SBOT + conservative .iff fallback -> PendingNextSceneChange, classifier UNCHANGED). 624/624 framework tests Debug+Release|x86 (619 baseline + 5 new); TJT clean Debug+Release|x86. DEVIATION (Rule 3): reworded the CF-05 refetch-hook COMMENT to clear the literal grep gate (grep-hygiene). Commits — UtinniPlugins: 758330d (widgets/hex/mutations + save shim/menu), a9b738f (CF-05 reword); Utinni: 78ec981 (classifier verify-test). Next: Plan 11-05 — live-SWG smoke checkpoint (SC3 reload candor, the residual carried from Phase 10).
 
 Progress: [██████████] 100%
@@ -75,7 +75,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 
 **Velocity:**
 
-- Total plans completed: 29
+- Total plans completed: 34
 - Average duration: —
 - Total execution time: —
 
@@ -90,6 +90,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | 06 | 7 | - | - |
 | 08 | 7 | - | - |
 | 09 | 7 | - | - |
+| 11 | 5 | - | - |
 
 **Recent Trend:**
 

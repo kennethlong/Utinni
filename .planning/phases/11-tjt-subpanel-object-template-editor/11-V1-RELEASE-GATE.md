@@ -3,7 +3,7 @@ phase: 11-tjt-subpanel-object-template-editor
 plan: 05
 artifact: V1-RELEASE-GATE
 maps_to: ROADMAP Phase 11 Success Criteria SC4
-status: SMOKE-APPROVED — Task 2 live smoke APPROVED 2026-05-31; V1 tag PENDING (Task 3) on CI-green HEAD
+status: COMPLETE — V1 release gate met; v1.0.0 tagged 2026-05-31 on CI-green d68387f
 created: 2026-05-31
 updated: 2026-05-31
 ---
@@ -133,13 +133,16 @@ Task 3 tag action, NOT by the executor.
   edit/override/revert + save), SC3 (honest CF-05 path — relog-reliable, tracked residual), and the
   five-subpanel same-session demo confirmed against a live SWG client. Resume-signal recorded.
   - **Disposition:** APPROVED ("approved, all five subpanels demo and edits work")  **Maintainer:** Kenneth Long  **Date:** 2026-05-31
-- [ ] **Task 3 — V1 release gate SIGNED OFF.** Every SC4 row above satisfied (SC3 residual acknowledged per
-  the Phase 8/9/10 precedent).
-  - **Maintainer signature:** ______________________  **Date:** __________
-- [ ] **Task 3 — V1 TAG applied.** Tagged the agreed `master` commit (e.g. `v1.0.0`, following the Phase 6
-  `release.yml` / `v1.0.0-rc.1` precedent); GitHub release/artifact produced.
-  - **Tag name:** ______________  **Tagged commit:** ______________  **Date:** __________
+- [x] **Task 3 — V1 release gate SIGNED OFF.** Every SC4 row above satisfied (SC3 residual acknowledged per
+  the Phase 8/9/10 precedent). Post-smoke en-route fixes re-verified: 625/625 framework tests, 9/9
+  roundtrip-ot goldens, 15,850/15,850 templates parse + round-trip byte-exact, **CI green run `26730021837`
+  on the tagged commit `d68387f`**.
+  - **Maintainer signature:** Kenneth Long ("approved")  **Date:** 2026-05-31
+- [x] **Task 3 — V1 TAG applied.** Annotated tag on the CI-green `master` commit; `release.yml` triggered
+  (Phase 6 `v1.0.0-rc.1` precedent).
+  - **Tag name:** `v1.0.0`  **Tagged commit:** `d68387f`  **Date:** 2026-05-31
 
 ---
-*Created 2026-05-31 by Plan 11-05 Task 1. Evidence rows reflect automation + documentary proof as of HEAD
-`3d4227c`; the sign-off + tag lines are the human-gated Task 2/3 steps.*
+*Created 2026-05-31 by Plan 11-05 Task 1; closed 2026-05-31 by Tasks 2 (live smoke) + 3 (sign-off + tag).
+Final evidence reflects automation + documentary proof + the live five-subpanel smoke as of the tagged
+commit `d68387f` (CI-green run `26730021837`). **V1 shipped.***
