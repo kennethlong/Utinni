@@ -27,6 +27,8 @@ Both `Utinni` and `UtinniPlugins` are MIT forks of `ptklatt/Utinni` and `ptklatt
 
 **Lift-and-shift constraint (locked):** when reviving a tool, **copy its source + required shared libs into a Utinni-owned build location** — do NOT build in-place against the `swg-client-v2` tree or modify it. `swg-client-v2` has an **active D3D9→D3D11 migration** in progress; lift-and-shift keeps our build decoupled from that churn and stays out of their way. (The revive targets — `TemplateCompiler`, `TreeFileBuilder`, exporters — are mostly headless/console and don't need the renderer, which makes lift-and-shift clean.)
 
+**Toolchain bump (v145):** lift-and-shifted tools must build on Utinni's toolset (**VS2026 / v145**), while `swg-client-v2` builds them at **VS2022 / v143**. So we **borrow `swg-client-v2`'s SOE-source modernization** (the work that got 2003-era code compiling on modern MSVC) as the base, then port the **v143 → v145 delta** ourselves. Watch for the same modern-STL friction seen with CppSharp's clang-11 parser at v145 (see `project-vs2026-cppsharp-block`). This v143→v145 revive feasibility is a prime candidate for the milestone research pass.
+
 **Prior milestone — V1 "Demo + CI green" — SHIPPED 2026-06-01 (`v1.0.0`):** all 15 critical bugs closed; R-A..R-H landed; Tier 1+2 CI green; all five Wave-1 subpanels (TRE Browser, IFF Editor, Datatable, String-table, Object Template) demoed end-to-end against the live SWG client.
 
 ## Requirements

@@ -81,6 +81,12 @@ Interactive editors → rewrite into Utinni SubPanels, roughly by modder demand:
 > `swg-client-v2` has an **active D3D9→D3D11 migration**; lift-and-shift keeps our build decoupled from
 > that churn and out of their way. These revive targets are headless/console and don't need the
 > renderer, so the shift is clean (no D3D dependency to drag along).
+>
+> **Toolchain bump:** lift-and-shifted tools build on Utinni's **VS2026 / v145** toolset, whereas
+> `swg-client-v2` builds them at **VS2022 / v143**. **Borrow `swg-client-v2`'s SOE-source modernization**
+> (the work that got 2003-era code compiling on modern MSVC) as the base, then port the **v143 → v145
+> delta**. Watch for modern-STL friction at v145 (cf. the CppSharp clang-11 STL pin). Confirming this
+> revive feasibility is the first concrete milestone-research / spike task.
 
 Headless build-chain CLIs; reviving + wrapping fills authoring gaps fastest and feeds the MCP server (999.1):
 
