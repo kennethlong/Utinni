@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: AI-Assisted SWG Tools
 status: planning
-last_updated: "2026-06-02T02:28:04.469Z"
-last_activity: 2026-06-02
+last_updated: "2026-06-01T00:00:00.000Z"
+last_activity: 2026-06-01
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,33 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-16)
+See: .planning/PROJECT.md (updated 2026-06-01)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 11 — tjt-subpanel-object-template-editor
+**Current focus:** Phase 12 — Revive-feasibility spike (HARD GATE) + intro-skip crash
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
+Phase: 12 — Revive-feasibility spike (HARD GATE) + intro-skip crash (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-02 — Milestone v2.0 started
+Status: Roadmap created; ready to plan Phase 12
+Last activity: 2026-06-01 — v2.0 ROADMAP created (Phases 12–16; 16 reqs mapped, 100% coverage)
+
+## v2.0 Roadmap Summary (created 2026-06-01)
+
+V1 shipped `v1.0.0` 2026-06-01 (Phases 1–11; all five Wave-1 subpanels demoed live). Milestone v2.0 turns Utinni from a tool that *edits* assets into one that *authors* them and makes the pipeline AI-drivable. Five phases, research-recommended build order (revive-spike-as-hard-gate first; headless-MCP before live):
+
+| Phase | Goal | Requirements |
+|-------|------|--------------|
+| 12 | Revive-feasibility spike (HARD GATE) — lift-shift `TreeFileBuilder`/`TemplateCompiler`/`TemplateDefinitionCompiler` to a Utinni-owned `tools/` tree, verify standalone v145 build/link, strip dead deps, manifest + pinned SHA; fix intro-skip crash | AUTH-01, RESID-02 |
+| 13 | Wrap revived compilers as `utinni-cli` verbs (`compile-*`/`build-*`) + new SAVE verb + close OT Tier-2 typed display | AUTH-02, AUTH-03, AUTH-04, AUTH-05, AUTH-06, RESID-01 |
+| 14 | Headless `Utinni.Mcp` (net10, stdio) — read tools + write/SAVE tools w/ loose-override default, verify-before-commit, fail-closed root, MCP-SECURITY.md | MCP-01, MCP-02 |
+| 15 | Wave-2 editors (WorldSnapshot first, then Particle `.prt` codec) as TJT SubPanels + presentation residuals | PROD-W2-WS, PROD-W2-PRT, RESID-03, RESID-04 |
+| 16 | Live-injected MCP bridge (named-pipe IPC, optional/last) + formalize Blender file-format boundary | MCP-03, ECO-01 |
+
+**Coverage:** 16/16 v2.0 requirements mapped, no orphans, no duplicates.
+**Research flags:** Phase 12 (empirical build pass), Phase 15 (`.prt` codec depth), Phase 16 (live-IPC mechanism) — plan with `--research-phase`.
 
 ## Wave 2 Summary
 
@@ -124,10 +140,11 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 ### Roadmap Evolution
 
 - Phase 02.1 inserted after Phase 2: Phase 02 gap closure — critical correctness + harness quality from 02-REVIEW.md (URGENT)
+- 2026-06-01: V1 shipped (`v1.0.0`, Phases 1–11). Milestone v2.0 "AI-Assisted SWG Tools" roadmapped — Phases 12–16 appended (revive-spike HARD GATE → revive+wrap/OT-Tier-2 → headless MCP → Wave-2 editors → live-MCP+Blender). 16 v2.0 requirements mapped, 100% coverage. Backlog 999.1 (MCP server) is now realized by Phases 14 + 16; retained in Backlog pending `/gsd:review-backlog` close.
 
 ### Decisions
 
-Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four locked anti-goal decisions (DEC-A1..A4 — not a server-side manager, not a launcher, not a DCC, not a cheat enabler) and three non-locked candidate decisions (DEC-C1 product target, DEC-C2 anti-goals as scope filter, DEC-C3 tiered testing strategy).
+Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four locked anti-goal decisions (DEC-A1..A4 — not a server-side manager, not a launcher, not a DCC, not a cheat enabler) and three non-locked candidate decisions (DEC-C1 product target, DEC-C2 anti-goals as scope filter, DEC-C3 tiered testing strategy). v2.0 adds the LOCKED lift-and-shift constraint (revive build tools into a Utinni-owned `tools/` tree at shared v145; never build in `swg-client-v2`) and the separate-process headless-first MCP shape (net10 stdio shelling `utinni-cli`; never host the SDK in-proc in the x86 client).
 
 - [Phase ?]: Phase 08 P03: extracted Phase 7's IFF chunk-tree TreeView + BuildChunkNode into shared IffChunkTree UserControl (D-09); TreDetailPane delegates LoadIff to it with zero public-read-API change.
 - [Phase ?]: Phase 08 P04: FormIffEditor editable host + IffEditController editor-local undo/redo (D-08) + 8 D-03 structural ops + D-04 leaf editing in hex/text/replace-from-file modes; cross-repo (Utinni controller + tests, UtinniPlugins forms); round-2 HIGH-A csproj coverage closed across both old-style projects.
@@ -171,26 +188,17 @@ None yet.
 
 **NEW issues from 2026-05-19 night session (downstream of the resolved boot pipeline; all non-blocking):**
 
-7. **~~Lok scene-load second-cycle access violation at `0x00b3f620`~~ RESOLVED 2026-05-20 by Phase B fix (commit `2f02fad`)** — Original crash dump 2026-05-19 at `D:\SWGEmu-Client\SWGEmu\logs\SWGEmu.exe-stage.119798-20260520022742.{txt,mdmp}` showed access violation at fault-address `0x00b3f620` while constructing `shared_filler_building_corellia_style_02.iff` (cargo freighter, asset reused on Lok), terrain `lok.trn`, MainLoop=4208 (steady state, not startup), BytesAllocated=93M (not OOM — pointer deref of partially-released structure). **Hypothesis (confirmed):** before Phase B, `hkMainLoop` called SWG's mainLoop with `Client::getHwnd()` (PanelGame's HWND) and changing dimensions every frame (`PanelGame_Layout` rewrote `Client.SetHwnd(Handle)` on every layout). SWG's mainLoop seeing inconsistent HWND/size between frames triggered an internal scene re-init cycle. With `Client::getHwnd()` returning null post-Phase-B, `hkMainLoop`'s editor-mode branch auto-skips and SWG gets its own real HWND + dimensions stably. **Verification 2026-05-20 (live + log):** (a) user loaded Lok via TJT "Load Scene" panel (same path as the original crash) — Lok stayed loaded, fully playable. (b) `utinni.log` post-Phase-B shows the TJT load path produces single-cycle behavior: `hkMainLoop: loadNewScene -> Game::cleanupScene` → `hkSetScene(null)` → `hkMainLoop: setupScene via trampoline` → `hkSetScene(<new>)` → `firing 1 setSceneCallbacks`. **One** cleanup, **one** setup, **one** callback fire. No per-frame re-init churn. `Client::setHwnd` diag tripwire silent (never called → `Client::getHwnd()` stays null → editor-mode resize branches in `hkMainLoop` + `hkEndScene` auto-skip cleanly). `DirectInput::suspend` tripwire also silent throughout. The HWND/size oscillation hypothesis is confirmed dead in code. **Side observation worth a memory note:** initial Tatooine load fires `hkSetScene` **twice** with the same scene pointer (0x2297FCE0 → 0x2297FCE0 within 1 sec), meaning `setSceneCallbacks` runs twice for the initial scene at login. This is SWG-internal (intro→world transition), not Utinni regression — but TJT/plugin authors should know setScene callbacks may double-fire on initial login.
+7. **~~Lok scene-load second-cycle access violation at `0x00b3f620`~~ RESOLVED 2026-05-20 by Phase B fix (commit `2f02fad`)** — see prior detail (HWND/size oscillation hypothesis confirmed dead in code). Side observation: initial Tatooine load fires `hkSetScene` twice with the same scene pointer at login (SWG-internal intro→world transition, not a Utinni regression); TJT/plugin authors should know setScene callbacks may double-fire on initial login.
 
-8. **~~Naboo scene-load: SWG memory pool exhausts at ~300 MB~~ RESOLVED 2026-05-20 by Phase B fix (commit `2f02fad`)** — Original crash dump 2026-05-19 at `D:\SWGEmu-Client\SWGEmu\logs\SWGEmu.exe-stage.119798-20260520021056.{txt,mdmp}` showed `BytesAllocated: 196M → 300M`, fatal allocation attempt for 38KB while loading `shared_frn_all_bed_sm_s1.iff`. Original hypothesis was Utinni's CLR+WinForms mappings starving SWG's 750 MB pool. **Revised hypothesis (confirmed):** the apparent "OOM at 300MB" was pool fragmentation from SWG's internal re-init cycling (see Issue #7), not true address-space exhaustion. The HWND/size oscillation per frame caused SWG to repeatedly re-allocate render targets / texture buffers, fragmenting the pool. **Verification 2026-05-20 (live + log):** user loaded Naboo via TJT "Load Scene" panel — Naboo stayed loaded, fully playable, no OOM. Single-cycle log evidence from Issue #7 (same hkMainLoop loadNewScene code path) applies here too. **Re-open if:** Naboo crashes on longer playthrough or with more assets streamed. **Original LARGEADDRESSAWARE investigation still useful as fallback** if Issue #8 reproduces.
+8. **~~Naboo scene-load: SWG memory pool exhausts at ~300 MB~~ RESOLVED 2026-05-20 by Phase B fix (commit `2f02fad`)** — apparent OOM was pool fragmentation from SWG's internal re-init cycling (Issue #7), not true address-space exhaustion. Re-open if Naboo crashes on longer playthrough; LARGEADDRESSAWARE investigation kept as fallback.
 
-9. **~~Cursor doesn't display + special keys (delete/tab/return) don't work in game~~ RESOLVED 2026-05-20 (commits `f5fa073..2f02fad`)** — Two-phase fix. **Diagnosis (Phase A, commit `f5fa073`):** added entry/exit logs to `Client::suspendInput/resumeInput`, `DirectInput::suspend/resume`, and `Client::setHwnd`. Live capture revealed every PanelGame focus-loss + mouse-leave fired `Client::SuspendInput` twice (back-to-back), which called `DirectInput::suspend()` and `SetFocus(nullptr)` — unacquiring DirectInput the instant the user clicked into SWG's window. Special keys (Tab/Del/Return) dispatched via DirectInput were dead; regular chars survived via `WM_CHAR` through the OS message pump. **Fix (Phase B, commit `2f02fad`):** stripped the old-model editor meddling: (a) removed PanelGame's MouseEnter/MouseLeave/MouseMove/GotFocus/LostFocus handlers — they assumed SWG rendered inside PanelGame, no longer valid in the SWG-owns-its-own-window model; (b) removed `Client.SetHwnd(Handle)` from `PanelGame_Layout` — was shadowing SWG's real top-level HWND with PanelGame's handle; (c) dropped editor-mode cursor side-effects from `hkSetupInstall` (HCURSOR write + `useHardwareCursor(false)`) — these forced software-cursor mode that only renders inside SWG's framebuffer, which the new model doesn't need. **Verification 2026-05-20:** login → mouse/keyboard both work → character select → mouse click logged into Tatooine. End-to-end pipeline functional. Phase A diag logs kept in source — nearly silent during normal play, will flag any future regression. **Knock-on cleanup deferred:** `game.cpp` `hkMainLoop` and `graphics.cpp` `hkEndScene` editor-mode resize branches both gate on `GetWindowRect(Client::getHwnd(), &rect)`; with `getHwnd()` now returning null they auto-skip, but the dead branches should be cleaned up when Issue #10 (window reparenting) decides the correct behavior.
+9. **~~Cursor doesn't display + special keys (delete/tab/return) don't work in game~~ RESOLVED 2026-05-20 (commits `f5fa073..2f02fad`)** — old-model editor meddling (PanelGame focus/mouse handlers + `Client.SetHwnd` shadowing + editor-mode cursor side-effects) stripped; SWG owns its own window. Diag logs retained as regression detectors.
 
-10. **~~SWG window reparenting~~ FULLY RESOLVED 2026-05-21** — Phase A LANDED (`cbe1de7`); Phase B prereq + core LANDED (`18e79c3` + `2ce028c`); Phase B-bis LANDED 2026-05-21 morning.
-    - **Phase A (done, `cbe1de7`):** `Client::setSwgHwnd`/`getSwgHwnd` plumbing, captured from `imgui_impl::setup` first hkBeginScene.
-    - **Phase B prereq (done, `18e79c3`):** DirectInput SetCooperativeLevel vtable shim. Hook chain: `dinput8.dll!DirectInput8Create` function detour → IDirectInput8A vtbl[3] CreateDevice patch → IDirectInputDevice8A vtbl[13] SetCooperativeLevel patch. **Baseline captured:** `NONEXCLUSIVE | FOREGROUND (0x6)` for both keyboard and mouse, callers at SWG-internal RVAs `0x0041E5C5` (kbd) / `0x0041EC1A` (mouse). Durable instrumentation — left in source as a regression detector.
-    - **Phase B core (done, `2ce028c`):** owned-popup reparenting in `PanelGame.cs`. Strips `WS_CAPTION | WS_THICKFRAME | WS_MIN/MAX/SYSMENU | WS_BORDER | WS_DLGFRAME`, keeps `WS_POPUP`, sets FormMain as owner via `GWLP_HWNDPARENT`, positions over PanelGame screen-coord client origin. ReparentPollTimer (100ms) waits for `Native.GetSwgHwnd() != IntPtr.Zero` then fires once. `Resize` + `OwnerForm.LocationChanged` re-trigger reposition. **`getSwgHwndExport`** C-linkage export added (CppSharp drops pointer-return getters; pattern mirrors `getPresentBlockedEvent`).
-    - **Phase B-bis (done 2026-05-21):** drop `SWP_NOSIZE`, drop `SWP_NOZORDER`, use `HWND_TOP` (IntPtr.Zero) in `SetWindowPos`. SWG now sizes with PanelGame and renders correctly via D3D9 windowed COPY's own stretching. **Diagnostic discoveries:**
-        - The handoff sketch (`pDevice->Reset(&pp)` with new BackBufferWidth/Height) is **fundamentally unworkable for SWG.** SWG holds dozens of default-pool resources we can't enumerate, so Reset returns `D3DERR_INVALIDCALL`, leaves the device in DEVICELOST, next `SetVertexShaderConstantF` fails, SWG fatal-crashes. Live-verified crash on first attempt — never use this path.
-        - First-Present diag (added to `hkPresent`) captured ground truth: **`effect=COPY`, `bb=1280x1024`, `dst=NULL`.** D3D9 windowed COPY swapchain DOES handle backbuffer-vs-window dimension mismatch (contrary to the strict MSDN reading) — it stretches or clips as needed. So no Reset required at all.
-        - **Real Phase B-bis bug:** Z-order. After post-creation `GWLP_HWNDPARENT` set + SetWindowPos with `SWP_NOZORDER`, SWG window was rendering correctly at the right size and position but was **buried behind FormMain** in Z-order. The owned-popup relationship doesn't trigger Z-order recomputation automatically when set post-creation. Fix: drop `SWP_NOZORDER` + pass `HWND_TOP` as `hWndInsertAfter`. `SWP_NOACTIVATE` still set so SWG comes to top visually without stealing focus from FormMain.
-    - **Phase B-bis verification 2026-05-21 morning (live SWG):** SWG fills PanelGame at 735x460, drag tracks, login with WM_CHAR a/d/m/i/n + Tab + Enter all flow through, Naboo scene loads via `hkSetScene`, WASD camera movement via `hkHandleInputEvent type=3` (40+ events logged), `hkChatEnter` overrides on / + Enter, Esc maps to `untarget` action (CuiHud actionPerformAction), 3 scene transitions clean, final `hkCleanupScene -> cleanUpSceneCallbacks complete; EXIT` on close.
-    - **References:** Microsoft SetWindowPos / Z-order semantics, owned-popup Win32 ownership docs.
+10. **~~SWG window reparenting~~ FULLY RESOLVED 2026-05-21** — owned-popup reparenting in `PanelGame.cs` (strip caption/frame, keep WS_POPUP, FormMain owner via GWLP_HWNDPARENT, HWND_TOP + SWP_NOACTIVATE for Z-order). **Do NOT call `pDevice->Reset` on SWG's device** (owns untracked default-pool resources → D3DERR_INVALIDCALL → DEVICELOST → fatal crash; live-verified). D3D9 windowed COPY Present handles backbuffer-vs-window mismatch by stretching; just resize the window. **Directly relevant to v2.0 RESID-04 (window-resize/fullscreen edge cases, Phase 15).**
 
-11. **~~In-game Return dead~~ RESOLVED 2026-05-20 by Phase H (commit `6047416`)** — Eight-phase diagnostic + CODEX consult chain. **Diagnosis path:** Phase A WndProc tripwires proved WM_KEYDOWN reaches SWG cleanly. Phase B cui_io tripwires proved `CuiIo::processEvent` passes type-6/7 events through (no drop). Phase C/D `hkActionPerformAction` instrumentation showed Esc reaches `CuiHud::actionPerformAction` (action 0x12) but Enter doesn't — different dispatch chains for the two keys. Phase E `enableTextInput` detour proved chat mediator works perfectly via F11 force-call but normal in-game Enter fires `chatEnter` (caller `0x00F3E43D`) with `value=0` (close) when chat is already closed — no-op. Phase F runtime probe of the SwgCuiChatWindow::performAction dispatcher's `.bss` action-name slots resolved all 12 cases: in-game Enter dispatches the `chatEnter` action string (slot 11) to handler `0x00F3E420`, which unconditionally submits+closes — correct for input-mode submit, broken for display-mode "open". **CODEX consult** confirmed SWG has separate dispatch chains and that the SwgCuiChatWindow `chatEnter` handler has no state-check (assumes the upstream dispatcher already filtered for input-mode-only). Phase G attempt to consume VK_RETURN in WndProc failed because SWG uses DirectInput keyboard polling, not WM_KEYDOWN, for in-game Enter. **Phase H fix (commit `6047416`):** detour `swg::cuiChatWindow::chatEnterHandler` at `0x00F3E420` directly. In `hkChatEnter`: if our tracked `s_chatInputActive` is false (chat in display mode), override SWG's broken submit-empty-and-close with a direct `enableTextInput(true)` — translates "in-game Enter while chat closed" into "open chat input". If `s_chatInputActive` is true (chat in input mode), pass through to original trampoline (legitimate submit+close). State machine perfect. **Verification 2026-05-20:** user pressed Enter → chat opened. Typed `/test`, pressed Enter → submitted (empty) + closed. Pressed Enter again → opened. Typed `/quit`, pressed Enter → submitted + `hkCleanupScene` fired → game exited cleanly. End-to-end Enter functionality restored without F11. Diag tripwires retained (silent under normal play, flag regressions). **Root cause (deferred for V2):** under editor injection, SWG's input-map context selector routes in-game Enter to the chat-input-mode binding instead of the game-mode "openChat" binding. The standalone client likely uses a contextual keymap that we'd need SWG source or a CuiActionManager-layer hook to investigate properly. Phase H is a targeted intercept at the right semantic level (the broken handler itself), not a workaround in the wrong place.
+11. **~~In-game Return dead~~ RESOLVED 2026-05-20 by Phase H (commit `6047416`)** — detour `swg::cuiChatWindow::chatEnterHandler` at `0x00F3E420`; override broken submit-empty-and-close with `enableTextInput(true)` when chat is in display mode. **Root cause deferred:** under editor injection SWG's input-map context selector routes in-game Enter to the chat-input-mode binding instead of the game-mode openChat binding (see auto-memory `project_swg_context_routing`).
 
-12. **~~In-game Esc doesn't open system menu~~ NOT-A-BUG / WORKING AS DESIGNED (2026-05-20)** — Closed after two diagnostic phases (commits `e3f966d`, `66e28e8`) revealed the user's expectation was wrong, not the code. **Phase A (`hkSwgCuiGameMenuCtor` detour at `0x00C7D360`):** SwgCuiGameMenu mediator ctor never fires even after 16 in-game Esc presses — strong signal that no menu activation is being attempted. **Phase B (val1 string dump in `hkActionPerformAction`):** runtime read of the string pointers in val1 revealed `str_a = 'untarget'`, `str_b = ''` for every Esc press. **Action ID `0x12` is `untarget`, not `gameMenuActivate`.** SWG binds Esc to "clear current target" — when no target is selected, the action is an invisible no-op. The system menu (`SwgCuiGameMenu` / `gameMenuActivate` action) exists but is bound to a different key or HUD button. This is normal SWG behavior, not a Utinni regression. **Verification 2026-05-20:** user confirmed pressing Esc while having a target correctly clears the target reticle. **Workaround for menu access:** use Phase H's `/quit` chat path for exit; menu-equivalent UI actions accessible via slash commands or HUD buttons. **If menu access via key becomes a priority later:** add a Utinni hotkey that dispatches the gameMenuActivate action directly (same pattern as F11→forceOpenChat in Phase H). Mediator class strings, RVAs, and dispatcher analysis are in commit messages `e3f966d` and `66e28e8`.
+12. **~~In-game Esc doesn't open system menu~~ NOT-A-BUG / WORKING AS DESIGNED (2026-05-20)** — Action ID `0x12` is `untarget`, not `gameMenuActivate`; SWG binds Esc to clear-target (invisible no-op when no target). See auto-memory `project_swg_keymap_reality`.
 
 Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved constraints — see ROADMAP.md "Open-Question → Phase Mapping" section.
 
@@ -209,10 +217,10 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-05-31T02:52:50.676Z
-Stopped at: Phase 11 UI-SPEC approved
+Last session: 2026-06-01T00:00:00.000Z
+Stopped at: v2.0 ROADMAP created (Phases 12–16); ready to plan Phase 12
 Resume file: None
 
 ## Ingest Provenance
 
-Bootstrapped 2026-05-16 via `/gsd:ingest-docs` from `docs/ai/vision.md`, `docs/ai/assessment.md`, and `docs/ai/test-harness-plan.md`. Zero blockers, zero warnings, four INFO items auto-resolved (all three sources are DOC-precedence; reciprocal vision↔assessment cross-reference is benign narrative linkage). Codebase intel at `.planning/codebase/` (from prior `/gsd:map-codebase`) treated as read-only reference. Synthesis artefacts at `.planning/intel/` (SYNTHESIS.md, decisions.md, requirements.md, constraints.md, context.md) and conflict report at `.planning/INGEST-CONFLICTS.md`.
+Bootstrapped 2026-05-16 via `/gsd:ingest-docs` from `docs/ai/vision.md`, `docs/ai/assessment.md`, and `docs/ai/test-harness-plan.md`. Zero blockers, zero warnings, four INFO items auto-resolved (all three sources are DOC-precedence; reciprocal vision↔assessment cross-reference is benign narrative linkage). Codebase intel at `.planning/codebase/` (from prior `/gsd:map-codebase`) treated as read-only reference. Synthesis artefacts at `.planning/intel/` (SYNTHESIS.md, decisions.md, requirements.md, constraints.md, context.md) and conflict report at `.planning/INGEST-CONFLICTS.md`. v2.0 milestone research at `.planning/research/` (SUMMARY.md, STACK.md, FEATURES.md, ARCHITECTURE.md, PITFALLS.md), completed 2026-06-01.

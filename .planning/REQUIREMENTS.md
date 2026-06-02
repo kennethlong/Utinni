@@ -168,7 +168,9 @@ Permanent exclusions. Locked product-scope boundaries from vision.md anti-goals 
 
 ## Traceability
 
-Each V1 requirement maps to exactly one phase. Phase numbers refer to ROADMAP.md.
+Each requirement maps to exactly one phase. Phase numbers refer to ROADMAP.md.
+
+### V1 (Phases 1–11) — SHIPPED `v1.0.0` 2026-06-01
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
@@ -189,11 +191,32 @@ Each V1 requirement maps to exactly one phase. Phase numbers refer to ROADMAP.md
 | PROD-W1-OT (Object Template Editor) | Phase 11 | Pending |
 | PROD-02 (Edit major asset types — W1 subset) | Phases 8–11 (aggregate) | Pending |
 
+### v2.0 (Phases 12–16) — "AI-Assisted SWG Tools" (ACTIVE)
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| AUTH-01 (Revive-feasibility spike — HARD GATE) | Phase 12 | Pending |
+| RESID-02 (Intro-skip scene-transition crash) | Phase 12 | Pending |
+| AUTH-02 (TemplateDefinitionCompiler → param→type schema) | Phase 13 | Pending |
+| AUTH-03 (TemplateCompiler `.tpf` → `.iff` verb) | Phase 13 | Pending |
+| AUTH-04 (TreeFileBuilder build-`.tre` verb) | Phase 13 | Pending |
+| AUTH-05 (utinni-cli SAVE verb) | Phase 13 | Pending |
+| AUTH-06 (Datatable compile + item exporters) | Phase 13 | Pending |
+| RESID-01 (OT Tier-2 typed list-param display) | Phase 13 | Pending |
+| MCP-01 (Headless MCP READ tools) | Phase 14 | Pending |
+| MCP-02 (MCP write/SAVE + MCP-SECURITY.md threat register) | Phase 14 | Pending |
+| PROD-W2-WS (WorldSnapshot / object-placement editor) | Phase 15 | Pending |
+| PROD-W2-PRT (Particle / client-effect editor) | Phase 15 | Pending |
+| RESID-03 (SC3 live-reload candor) | Phase 15 | Pending |
+| RESID-04 (Window-resize / fullscreen edge cases) | Phase 15 | Pending |
+| MCP-03 (Live-injected MCP bridge) | Phase 16 | Pending |
+| ECO-01 (Blender file-format / `.rsp` boundary) | Phase 16 | Pending |
+
 **Coverage:**
-- v1 requirements: 15 total
-- Mapped to phases: 15
-- Unmapped: 0 ✓
+- v1 requirements: 15 total — mapped 15, unmapped 0 ✓
+- v2.0 requirements: 16 total (MCP-01..03, AUTH-01..06, PROD-W2-WS, PROD-W2-PRT, ECO-01, RESID-01..04) — mapped 16, unmapped 0 ✓
+- No requirement maps to more than one phase ✓
 
 ---
 *Requirements defined: 2026-05-16 via `/gsd:new-project` after `/gsd:ingest-docs` synthesis.*
-*Last updated: 2026-05-16 — initial creation.*
+*Last updated: 2026-06-01 — v2.0 "AI-Assisted SWG Tools" requirements traced to Phases 12–16 (16 reqs, 100% coverage). Previous: 2026-05-16 — initial creation.*

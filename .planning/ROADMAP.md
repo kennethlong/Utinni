@@ -4,7 +4,9 @@
 
 V1 ships in two halves, sequenced "foundations before features" per vision.md and assessment.md. **Half 1 (Phases 1–6)** stabilises the framework: a CI + Tier-1 C# scaffold lands first as the smallest unlock, then the 15 critical bugs burn down, then the 8 strategic reworks polish plugin-authoring ergonomics, then the Tier 2 CLI shim and Tier 1 C++ tests close the test-harness gap, then a cleanup + open-questions sweep produces the 1.0 framework cut. **Half 2 (Phases 7–11)** delivers the Wave-1 plugin set on top of that stabilised framework: TRE Browser, then IFF Editor (foundational, most-leveraged), then Datatable, then String-table, then Object Template. V1 ships when (a) Tier 1 + Tier 2 CI is green with all 15 critical bugs closed and (b) all five Wave-1 plugins demo end-to-end against a live SWG client — the user-supplied "Demo + CI green" metric.
 
-**Deferred to V2 (called out here so the boundary is explicit):** Tier 3 mock-D3D9 + recorded-fixtures harness; Wave-2 plugins (Conversation, Quest, Buildout, Particle, UI Page, Shader); Wave-3 plugins (Mod Manager, Packager, Community Hub, Asset Diff); broader live-preview reload paths beyond Wave-1 needs; mod packaging and community-hub publish/consume; Wave-4 maybe-someday plugins. Tier 4 manual residual is documented in V1 (TEST-04) but not automated.
+**V1 SHIPPED 2026-06-01 (`v1.0.0`).** Milestone **v2.0 "AI-Assisted SWG Tools" (Phases 12–16)** turns Utinni from a tool that *edits* assets into one that *authors* them, and makes the whole pipeline drivable by an AI agent. v2.0 strongly honors the research-recommended build order: a **hard-gate revive-feasibility spike first** (Phase 12), then cheap **revive+wrap** of the SOE build CLIs which also unblocks OT Tier-2 (Phase 13), then the **headless MCP server** centerpiece (Phase 14), then the meatier **Wave-2 editors** (Phase 15), with the **live-injected MCP bridge + Blender boundary** explicitly last (Phase 16). See `.planning/research/SUMMARY.md` + `ARCHITECTURE.md`.
+
+**Deferred to V1's V2 boundary (now partly in-scope for v2.0):** Tier 3 mock-D3D9 + recorded-fixtures harness (still deferred); the remaining Wave-2 plugins (Conversation, Quest, Buildout, UI Page, Shader) and Terrain editor (`PROD-W2-TRN`, deferred to v2.1); Wave-3 plugins; one-click packaging + community hub. Tier 4 manual residual is documented in V1 (TEST-04) but not automated.
 
 ## Phases
 
@@ -24,7 +26,17 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 8: TJT subpanel — IFF Editor (read + write)** — Foundational read/write subpanel; ships IFF chunk read/write primitives in `TheJawaToolboxDotNet`/`TheJawaToolbox` so Phases 9-11 layer on the same shared code. Per DEC-C4, ships as a TJT subpanel.
 - [ ] **Phase 9: TJT subpanel — Datatable Editor (`.tab`)** — Tabular data editor on top of Phase 8's IFF foundation. Per DEC-C4, ships as a TJT subpanel.
 - [ ] **Phase 10: TJT subpanel — String-table Editor (`.stf`)** — Localised-text editor on top of Phase 8's IFF foundation. Per DEC-C4, ships as a TJT subpanel.
-- [x] **Phase 11: TJT subpanel — Object Template Editor** — Object-template editor; the final V1 subpanel; "Demo + CI green" milestone closure. Per DEC-C4, ships as a TJT subpanel. (completed 2026-06-01)
+- [x] **Phase 11: TJT subpanel — Object Template Editor** — Object-template editor; the final V1 subpanel; "Demo + CI green" milestone closure. Per DEC-C4, ships as a TJT subpanel. (completed 2026-06-01)
+
+### Milestone v2.0 — "AI-Assisted SWG Tools" (Phases 12–16)
+
+**Phase Numbering (v2.0):** Continues from V1 — V1 ended at Phase 11, so v2.0 starts at **Phase 12**. Integer phases (12–16) are planned milestone work; decimal phases (e.g. 12.1) reserved for urgent insertions. Build order strongly honors the research-recommended sequence: **revive-feasibility spike as a hard gate first**, then cheap revive+wrap (which also unblocks OT Tier-2), then the headless MCP centerpiece, then the meatier Wave-2 editors, with live-injected MCP explicitly last.
+
+- [ ] **Phase 12: Revive-feasibility spike (HARD GATE) + intro-skip crash** — Verify `TreeFileBuilder` + `TemplateCompiler`/`TemplateDefinitionCompiler` build + link standalone at v145 in a Utinni-owned `tools/` tree (lift-and-shift), strip dead Perforce/transitive deps, produce a per-tool dependency manifest + pinned `swg-client-v2` SHA. Diagnose + fix the independent intro-skip scene-transition crash (RESID-02). Gates all of AUTH.
+- [ ] **Phase 13: Wrap compilers as CLI verbs + close OT Tier-2** — Wrap the revived compilers/builders as `utinni-cli` verbs (`compile-definition`, `compile-template`, `build-tre`, datatable compile + item exporters); add the net-new CLI SAVE verb; surface the param→type schema to close the Object Template Editor's Tier-2 typed display (RESID-01).
+- [ ] **Phase 14: Headless MCP server (`Utinni.Mcp`) — the centerpiece** — A separate net10 stdio MCP process shelling `utinni-cli`: read tools over the existing verbs + write/SAVE tools defaulting to loose-override with byte-exact verify-before-commit, fail-closed `resolvedRoot`, and a first-class `MCP-SECURITY.md` threat register.
+- [ ] **Phase 15: Wave-2 editors (WorldSnapshot, Particle) + presentation residuals** — Ship the WorldSnapshot/object-placement SubPanel (zero new deps) then the Particle/client-effect SubPanel (new `.prt` codec) as TJT MEF SubPanels; enumerate + fix the SWG window-resize/fullscreen edge cases (RESID-04) and confirm SC3 live-reload candor (RESID-03).
+- [ ] **Phase 16: Live-injected MCP bridge + Blender ecosystem boundary** — Add the optional named-pipe IPC live bridge so an agent can preview an edit in the injected client (MCP-03); formalize the Utinni ↔ `swg-blender-plugin` file-format / `.rsp` search-path contract (ECO-01).
 
 ## Phase Details
 
@@ -255,17 +267,91 @@ Plans:
 - [x] 11-04-PLAN.md — Per-type value widgets + hex-fallback sub-editor + override/revert/edit mutations + Save modes 1/2/4 shim + locked CF-05 reload badge + classifier verify-test (Wave 4)
 - [x] 11-05-PLAN.md — Full automated regression + V1 release-gate evidence doc + live-SWG smoke (SC1/SC2/SC3) + V1 sign-off and tag (Wave 5)
 
+### Phase 12: Revive-feasibility spike (HARD GATE) + intro-skip crash
+**Milestone**: v2.0 — "AI-Assisted SWG Tools"
+**Goal**: Prove the entire revive+wrap strategy is viable *before* anything depends on it. Lift-and-shift `TreeFileBuilder` + `TemplateCompiler` + `TemplateDefinitionCompiler` into a Utinni-owned `tools/` tree, verify each builds + links standalone at v145, strip the dead Perforce/Alienbrain/transitive dependency graph, and produce a per-tool dependency manifest plus a pinned `swg-client-v2` source SHA. In parallel, diagnose and fix the independent intro-skip scene-transition crash (RESID-02) — it is early-slottable because it blocks nothing else and is its own self-contained defect.
+**Depends on**: V1 (`v1.0.0`) — the stabilised framework, the shared v145 toolset, and the `Utinni.Cli`/`UtinniCoreDotNet` headless pipeline the later phases wrap.
+**Requirements**: AUTH-01, RESID-02
+**Hard-gate note**: AUTH-01 gates ALL of AUTH (Phase 13's compile/build verbs cannot wrap a tool that will not compile). Status is uneven and empirical, not uniform — `TemplateCompiler.vcxproj` has built v145 Debug objects on disk (likely-green); `TreeFileBuilder.vcxproj` is v145-configured with no build output (unverified). Treat "is v145 in the vcxproj" and "actually builds + links" as different facts; resolve by a build pass, not by reading. **Documented fallback:** if a tool refuses v145, build *that* tool at v143 in `tools/` and still wrap it — the subprocess seam is toolset-agnostic; the lift-and-shift constraint forbids building *in* `swg-client-v2`, not building at a given toolset in our own tree.
+**Constraint guard-rails**: Lift-and-shift LOCKED — copy source + required shared libs into repo-local `tools/`; never `#include`/ProjectReference across into the live `swg-client-v2` tree (it is mid-D3D9→D3D11 migration on `koogie-msvc-cpp20-base`). Record the exact lifted-from x86 SHA (pin a SHA, not a branch HEAD). Watch x64 vs Utinni's hard x86 constraint (CON-P-02) — the revive targets are `Win32`/x86 today; an upstream `x64bit-Upgrade` migration would diverge.
+**Success Criteria** (what must be TRUE):
+  1. `TemplateCompiler`, `TemplateDefinitionCompiler`, and `TreeFileBuilder` each build + link standalone at v145 (or the documented v143 fallback for any tool that refuses) from a Utinni-owned `tools/Utinni.Tools.sln`, with no reference into `swg-client-v2`.
+  2. A per-tool dependency manifest exists enumerating each tool's real `#include` closure and required shared libs (zlib, pcre/4.1), with the dead `perforce`/`alienbrain` include paths pruned.
+  3. The exact `swg-client-v2` source SHA the tools were lifted from is recorded in-repo (a SHA, not a branch).
+  4. Each built tool runs headless once against a sample input and produces a non-empty artifact (or a clear, captured failure mode if a tool is parked behind the v143 fallback).
+  5. The intro-skip scene-transition crash (RESID-02) is diagnosed to a faulting address/module via the deployed VEH logger and fixed; the intro-skip path no longer crashes on a live injected session.
+**Plans**: TBD
+**Research flag**: yes — the genuine unknown is empirical dependency closure + per-tool build status; budget a real build pass (`/gsd:plan-phase --research-phase 12`).
+
+### Phase 13: Wrap revived compilers as CLI verbs + close OT Tier-2
+**Milestone**: v2.0 — "AI-Assisted SWG Tools"
+**Goal**: Now that the tools compile (Phase 12), wrap them as golden-tested `utinni-cli` verbs (the DEC-C3 Tier-2 pattern) and add the net-new write surface the MCP server will need. `TemplateDefinitionCompiler`'s `.tdf`/`.tpd` → per-class param→type schema is the cheapest route to closing the Object Template Editor's carried Tier-2 residual, so this phase pays a centerpiece authoring feature *and* a V1 residual in one. Coexistence-by-verb-ownership is preserved: BUILD-from-source uses the revived compilers (`compile-*`/`build-*` verbs); EDIT-existing-binary continues to use the byte-exact `UtinniCoreDotNet` writers (`roundtrip-*`/the new SAVE verb).
+**Depends on**: Phase 12 (HARD GATE — cannot wrap a tool that will not compile); reuses the existing `Utinni.Cli` golden-fixture harness.
+**Requirements**: AUTH-02, AUTH-03, AUTH-04, AUTH-05, AUTH-06, RESID-01
+**Constraint guard-rails**: Every capability is a CLI verb FIRST (golden-tested), so the Phase-14 MCP layer stays a thin dispatcher with zero business logic. Name BUILD verbs `compile-*`/`build-*` (distinct from EDIT `roundtrip-*`/`save`) so the downstream LLM picks the right write path. The SAVE verb is the single biggest net-new code item — specify its shape per-format, loose-override-default, structured `{written, path, bytesWritten, backupPath, validated}` result.
+**Success Criteria** (what must be TRUE):
+  1. A modder can compile a `.tpf` object-template source to a byte-correct object-template `.iff` via a `utinni-cli` verb wrapping the revived `TemplateCompiler` (AUTH-03), with golden-fixture coverage.
+  2. A modder can build a `.tre` archive from a source tree via a `utinni-cli` verb wrapping the revived `TreeFileBuilder` (AUTH-04).
+  3. `TemplateDefinitionCompiler`'s `.tdf`/`.tpd` → per-class param→type schema is surfaced via a `utinni-cli` verb (AUTH-02), and the Object Template Editor displays list/struct params typed rather than raw (RESID-01 closed).
+  4. `utinni-cli` gains a SAVE verb that writes an edited asset (loose-override or repack) with a structured result envelope — the net-new write surface MCP-02 wraps (AUTH-05).
+  5. A modder can compile a datatable from CSV/XML source and run the `ArmorExporterTool`/`WeaponExporterTool` item exporters via `utinni-cli` verbs (AUTH-06), each with at least one golden fixture.
+**Plans**: TBD
+
+### Phase 14: Headless MCP server (`Utinni.Mcp`) — the centerpiece
+**Milestone**: v2.0 — "AI-Assisted SWG Tools"
+**Goal**: The centerpiece — a separate modern-.NET (net10) `Utinni.Mcp` console process speaking MCP over stdio, owning ZERO format/business logic and dispatching every tool call to a `Process.Start` of `utinni-cli.exe` (or a Phase-13 build verb). Read tools wrap the existing nine `utinni-cli` verbs; write tools wrap the new SAVE verb and default to the loose-override tier with the full 5-layer safety model. The MCP security contract is a first-class, design-time deliverable (an `MCP-SECURITY.md` threat register mirroring Phase-7's), NOT a later hardening pass — over-broad tool shapes are un-retrofittable once agents depend on them.
+**Depends on**: Phase 13 (read/edit/build/SAVE verbs must exist as CLI verbs before the dispatcher can wrap them).
+**Requirements**: MCP-01, MCP-02
+**Constraint guard-rails**: NEVER host the MCP SDK in-proc inside the net472/x86 injected client (Anti-Pattern 1) — the SDK targets net8/9/10, and an LLM transport loop must not live in SWG.exe's address space; the separate process is the honest seam. Pin `resolvedRoot` at server start, canonicalize once via `LooseOverridePath.Resolve`, NEVER accept an absolute path from the agent, fail closed if no root is configured. Write tools take typed structured args only (record index, column id, typed value) — never "apply the change you inferred". Gate `.tre` repack behind a distinct, off-by-default, `destructiveHint`+`dry_run`-annotated tool routed through `TreBackupPath`. stdio transport only (HTTP/SSE is out of scope and deprecated).
+**Success Criteria** (what must be TRUE):
+  1. An AI agent can READ any supported SWG asset (TRE/IFF/datatable/`.tab`/`.stf`/object-template) through the headless `Utinni.Mcp` server — a net10 process, stdio transport, wrapping the existing `utinni-cli` JSON verbs (MCP-01).
+  2. An AI agent can EDIT + SAVE assets via per-format MCP write tools that default to the loose-override tier, with byte-exact verify-before-commit and a `dry_run` gate on destructive repack (MCP-02).
+  3. The server pins `resolvedRoot` fail-closed at startup; no agent write can escape the resolved root or corrupt a source archive — demonstrated by a path-traversal/escape test.
+  4. An `MCP-SECURITY.md` threat register documents the 5-layer defense model (annotations → elicitation → loose-override-default → verify-before-commit → backup/recovery) and the advisory-not-enforcement caveat on tool hints.
+  5. A real MCP client completes the stdio handshake and round-trips at least one read tool and one edit→save tool against a sample asset.
+**Plans**: TBD
+
+### Phase 15: Wave-2 editors (WorldSnapshot, Particle) + presentation residuals
+**Milestone**: v2.0 — "AI-Assisted SWG Tools"
+**Goal**: Land the first Wave-2 DCC-style editors as TJT MEF `IEditorPlugin` SubPanels (the unchanged DEC-C4 Wave-1 seam). **WorldSnapshot first** — it grows the existing Snapshot panel, is injection-native already (Utinni's origin), and needs zero new format work. **Particle second** — the flashy AI-assist showcase, requiring a new `.prt` client-effect codec in `UtinniCoreDotNet`. Slot the two presentation residuals here: RESID-04 (window-resize / windowed↔fullscreen edge cases) pairs naturally with any D3D9-presentation editor work, and RESID-03 (SC3 live-reload candor) pairs with the editors' reload paths. (Terrain `PROD-W2-TRN` is explicitly deferred to v2.1 — heavier codec.)
+**Depends on**: Phase 14 (stable headless base; matching MCP edit/save tools layer on the Phase-13 verbs + Phase-14 dispatcher). Editors are *costlier*, not *blocked* — sequenced after the cheap headless base.
+**Requirements**: PROD-W2-WS, PROD-W2-PRT, RESID-03, RESID-04
+**Constraint guard-rails**: No new plugin mechanism — Terrain/Particle/WorldSnapshot follow the exact `IEditorPlugin.GetSubPanels()` seam shipped + demoed in V1; conform to CON-M-01/02 SPI + CON-T-05 `*Impl` separation; apply the canonical singleton hide-not-dispose pattern from Phase 8. Encode a one-sentence preview-vs-author test per editor to stay out of 3D mesh/skel/anim authoring (DEC-A3, the Blender lane). RESID-04 presentation work must not call `IDirect3DDevice9::Reset` on SWG's device (owns untracked default-pool resources → crash) — resize the window and let windowed COPY Present handle the mismatch.
+**Success Criteria** (what must be TRUE):
+  1. A modder can view + edit object placements in a world snapshot via a Utinni SubPanel that extends the existing Snapshot panel and reuses shipped codecs — zero new format work (PROD-W2-WS).
+  2. A modder can open + edit a particle / client-effect asset in a Utinni SubPanel, with live in-client preview when injected, backed by a new `.prt` codec in `UtinniCoreDotNet` (PROD-W2-PRT).
+  3. Both SubPanels load inside TJT against a live SWG client and follow the Wave-1 MEF SubPanel seam unchanged.
+  4. The SWG window-resize / windowed↔fullscreen edge cases are enumerated and fixed without a device Reset (RESID-04).
+  5. SC3 live-reload semantics for string-table + object-template reload are confirmed and honestly stated in the editor reload-candor UI (RESID-03).
+**Plans**: TBD
+**Research flag**: yes — `.prt` codec format depth is MEDIUM-confidence; `swg-client-v2` is the spec reference but no Utinni fixtures exist yet (`/gsd:plan-phase --research-phase 15`).
+**UI hint**: yes
+
+### Phase 16: Live-injected MCP bridge + Blender ecosystem boundary
+**Milestone**: v2.0 — "AI-Assisted SWG Tools"
+**Goal**: The ambitious, explicitly-last increment — let an AI agent drive the LIVE-injected client over an MCP bridge to preview an edit in-client, via a NEW named-pipe IPC hop into the x86 host (the biggest new-mechanism risk; never host the SDK in-proc). In parallel (it has no hard dependency and could run earlier as its own track), formalize the Utinni ↔ `swg-blender-plugin` boundary as a documented file-format / `.rsp` search-path contract — pure documentation plus reuse of existing readers, honoring DEC-A3 (no 3D authoring).
+**Depends on**: Phase 14 (reuse the headless MCP tool schema + ergonomics before adding the live hop). The Blender boundary (ECO-01) depends on nothing and may be pulled earlier into its own track if convenient.
+**Requirements**: MCP-03, ECO-01
+**Constraint guard-rails**: The live bridge crosses to the x86 in-proc client ONLY via a narrow named-pipe IPC — the modern-.NET MCP host stays out-of-proc (Anti-Pattern 1). The live-patch tier is gated/opt-in (infra-ready but user-disabled today). The Blender boundary is a file-format seam (a directory of files + an `.rsp` manifest), NOT a process/library coupling — Utinni reads, Blender writes, neither imports the other; `swg_pipeline/rsp_builder.py` is the reference.
+**Success Criteria** (what must be TRUE):
+  1. An AI agent can drive the live-injected client over the MCP bridge (named-pipe IPC into the x86 host) to preview an edit in-client (MCP-03).
+  2. The live bridge runs the MCP host out-of-proc and crosses to the injected client only via the named pipe — the SDK is never hosted inside SWG.exe.
+  3. The Utinni ↔ `swg-blender-plugin` boundary is formalized as a documented `.iff`/`.tre` format-version + `.rsp` search-path contract, with open/preview verbs for Blender exports and no runtime coupling in either direction (ECO-01).
+  4. `UtinniCoreDotNet` (C#) and the Blender side cross-validate against shared golden fixtures, confirming the file-format seam holds.
+**Plans**: TBD
+**Research flag**: yes — named-pipe-vs-socket IPC mechanism + reconciling the modern-.NET MCP host with the x86 in-proc client is deferred/open (`/gsd:plan-phase --research-phase 16`).
+
 ## V2 Scope Boundary
 
-Explicitly deferred to V2; called out here so the V1 boundary is clear:
+Explicitly deferred to V1's V2 boundary; called out here so the V1 boundary is clear. (Several of these are now in-scope for **v2.0** — see Phases 12–16 above; the items below remain deferred.)
 
-- **Tier 3 mock-D3D9 + recorded fixtures** (REQ-V2-tier-3-mock-d3d9) — V1 covers the D3D9 detour regression surface via the documented Tier 4 manual residual (TEST-04). Tier 3 is a separate V2 effort.
-- **Wave-2 plugins** (REQ-V2-wave-2-plugins) — Conversation, Quest, Buildout, Particle, UI Page, Shader. **MAY ship as standalone plugins (not TJT subpanels);** DEC-C4's "subpanel inside TJT" choice is V1-scoped. If a third-party plugin ecosystem develops, V2 re-opens the subpanel-vs-standalone call per plugin and likely moves IFF primitives from TJT into UtinniCore so cross-plugin code-sharing stops being a TJT internal concern.
+- **Tier 3 mock-D3D9 + recorded fixtures** (REQ-V2-tier-3-mock-d3d9) — V1 covers the D3D9 detour regression surface via the documented Tier 4 manual residual (TEST-04). Tier 3 is a separate effort, still deferred (revisit if MCP-03 / editor live-preview testing demands it).
+- **Remaining Wave-2 plugins** (REQ-V2-wave-2-plugins) — Conversation, Quest, Buildout, UI Page, Shader, and the Terrain editor (`PROD-W2-TRN`, v2.1). v2.0 ships only WorldSnapshot + Particle (Phase 15). **MAY ship as standalone plugins (not TJT subpanels);** DEC-C4's "subpanel inside TJT" choice is V1-scoped.
 - **Wave-3 plugins** (REQ-V2-wave-3-plugins) — Mod Manager, Packager, Community Hub, Asset Diff. **Same subpanel-vs-standalone re-open as Wave-2.**
-- **Broader live-preview reload paths** (REQ-V2-live-preview-edits) — V1 piggybacks on whatever reload paths Wave-1 subpanels need; broader live-preview is V2.
-- **Author-new-content workflow** (REQ-V2-author-new-content) — V2+.
-- **One-click packaging + community hub** (REQ-V2-one-click-package, REQ-V2-share-to-hub) — Wave-3 work, V2+.
-- **Promote IFF primitives from TJT to UtinniCore framework** (REQ-V2-iff-framework-promotion, derived from DEC-C4 V1 scope-fence) — Phase 8 ships IFF read/write inside `TheJawaToolboxDotNet`/`TheJawaToolbox`. If V2 introduces third-party plugins that need IFF parsing, promote those primitives up into UtinniCore so they're not buried inside TJT. Pure code-motion refactor at that point; the V1 subpanels just rebase their `using` directives.
+- **Broader live-preview reload paths** (REQ-V2-live-preview-edits) — V1 piggybacks on whatever reload paths Wave-1 subpanels need; broader live-preview beyond Phase 16's bridge is later.
+- **Author-new-content workflow** (REQ-V2-author-new-content) — beyond v2.0's compile/build slice.
+- **One-click packaging + community hub** (REQ-V2-one-click-package, REQ-V2-share-to-hub) — Wave-3 work, later.
+- **Promote IFF primitives from TJT to UtinniCore framework** (REQ-V2-iff-framework-promotion, derived from DEC-C4 V1 scope-fence) — Phase 8 ships IFF read/write inside `TheJawaToolboxDotNet`/`TheJawaToolbox`. If a third-party plugin ecosystem needs IFF parsing, promote those primitives up into UtinniCore. Pure code-motion refactor at that point; the V1 subpanels just rebase their `using` directives.
 
 ## Open-Question → Phase Mapping
 
@@ -288,7 +374,7 @@ Eight inherited open questions from assessment.md plus three test-harness opens.
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 (no decimal insertions yet).
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 (V1, no decimal insertions) → 12 → 13 → 14 → 15 → 16 (v2.0).
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -303,6 +389,11 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 9. Wave-1 plugin — Datatable Editor | 1/7 | In Progress|  |
 | 10. Wave-1 plugin — String-table Editor | 2/6 | In Progress|  |
 | 11. Wave-1 plugin — Object Template Editor | 5/5 | Complete    | 2026-06-01 |
+| 12. Revive-feasibility spike (HARD GATE) + intro-skip crash | 0/TBD | Not started | - |
+| 13. Wrap compilers as CLI verbs + OT Tier-2 | 0/TBD | Not started | - |
+| 14. Headless MCP server (`Utinni.Mcp`) | 0/TBD | Not started | - |
+| 15. Wave-2 editors (WorldSnapshot, Particle) + residuals | 0/TBD | Not started | - |
+| 16. Live-injected MCP bridge + Blender boundary | 0/TBD | Not started | - |
 
 ## Backlog
 
@@ -313,6 +404,8 @@ Unsequenced ideas parked for a future milestone (999.x). Promote with `/gsd:revi
 **Goal:** Expose Utinni's asset pipeline as an MCP server so Claude/agents can drive the verified, byte-exact codecs programmatically — e.g. "find every creature template inheriting `shared_humanoid` and bump scale", "decode this datatable, edit rows, repack the .tre" — without hand-editing binaries.
 **Requirements:** TBD
 **Plans:** 0 plans
+
+> **Note (2026-06-01):** This backlog idea is now the basis for v2.0 Phases 14 (headless MCP) + 16 (live-injected MCP). Retained here as the original capture; promote/close via `/gsd:review-backlog` once the v2.0 phases are planned.
 
 **Context (captured 2026-05-31, post-V1):**
 - **Foundation already exists:** `Utinni.Cli` emits structured JSON over `UtinniCoreDotNet` (`decode-iff`, `parse-tre`, `roundtrip-ot/tab/stf`, `list-objects`, …). The MCP server is largely a thin shim over those verbs / the library.
