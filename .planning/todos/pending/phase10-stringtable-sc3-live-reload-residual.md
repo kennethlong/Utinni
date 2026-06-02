@@ -1,3 +1,9 @@
+---
+resolves_phase: 15
+title: Phase 10 — SC3 live-reload + CF-05 reload-semantics residual
+area: live-reload
+---
+
 # Phase 10 — SC3 live-reload + CF-05 reload-semantics residual
 
 **Status:** OPEN (deferred-but-acceptable for V1; carried from the 10-06 smoke sign-off)

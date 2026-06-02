@@ -1,3 +1,9 @@
+---
+resolves_phase: 15
+title: SWG window resize / windowed↔fullscreen edge cases
+area: d3d9-presentation
+---
+
 # SWG window resize / windowed↔fullscreen edge cases
 
 **Status:** OPEN — captured for a future phase (window-management / D3D9 presentation pass)
