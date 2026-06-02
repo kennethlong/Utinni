@@ -76,6 +76,12 @@ Interactive editors → rewrite into Utinni SubPanels, roughly by modder demand:
 
 ### 🟢 Revive-as-is (compile + wrap — don't rewrite)
 
+> **Lift-and-shift (locked, v2.0).** Revive by **copying the tool's source + required shared libs into a
+> Utinni-owned build location** — do NOT build in-place against the `swg-client-v2` tree or modify it.
+> `swg-client-v2` has an **active D3D9→D3D11 migration**; lift-and-shift keeps our build decoupled from
+> that churn and out of their way. These revive targets are headless/console and don't need the
+> renderer, so the shift is clean (no D3D dependency to drag along).
+
 Headless build-chain CLIs; reviving + wrapping fills authoring gaps fastest and feeds the MCP server (999.1):
 
 - `TemplateCompiler` / `TemplateDefinitionCompiler` — `.tpf`/`.tpd` → `.iff`

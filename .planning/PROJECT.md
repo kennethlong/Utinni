@@ -12,13 +12,22 @@ A modder downloads Utinni, installs once, and from a single application can see,
 
 Both `Utinni` and `UtinniPlugins` are MIT forks of `ptklatt/Utinni` and `ptklatt/UtinniPlugins`. Upstream appears dormant. This fork advances independently; clean fixes may be offered upstream as PRs but the fork is not gated on upstream acceptance. Composes with SWG-Source conventions where server-side touch points exist (which V1 explicitly avoids — see anti-goals).
 
-## Current Milestone
+## Current Milestone: v2.0 AI-Assisted SWG Tools
 
-**V1 — "Demo + CI green."** Two-part scope:
-1. **Stability work:** all 15 critical bugs from `docs/ai/assessment.md` closed; 8 strategic reworks (R-A through R-H) landed; ~30 cleanups done; Tier 1 (C# + C++ units) and Tier 2 (CLI shim + golden fixtures) CI green.
-2. **Wave-1 plugin set:** TRE Browser, IFF Editor, Datatable Editor, String-table Editor, Object Template Editor — all demoing end-to-end against the live SWG client.
+**Goal:** *Utinni authors, not just edits* — close the compile/build gaps and ship an MCP server so AI agents can drive the full SWG asset pipeline, then land the first DCC-style editors.
 
-Stability work sequences before plugin work per vision.md's "What that means for prioritisation."
+**Target features:**
+- **AI / MCP integration** — an MCP server exposing Utinni's verified, byte-exact pipeline (read+edit+save TRE/IFF/datatable/string-table/object-template) as agent tools, built as a thin shim over the existing `Utinni.Cli` JSON verbs / `UtinniCoreDotNet`. *The centerpiece.*
+- **Authoring & compile pipeline (revive+wrap)** — get the original build-chain CLIs compiling and wrap them: `TemplateCompiler`/`TemplateDefinitionCompiler` (`.tpf`/`.tpd` → `.iff`, which also yields the per-class param→type map the Object Template Editor's Tier-2 typed display needs), `TreeFileBuilder` (build-from-source `.tre`; Utinni only repacks today), the `DataTableTool` compile path, item exporters.
+- **New asset editors (replace)** — first DCC-style Utinni SubPanels: Terrain, Particle/Effects; extend the Snapshot panel into a WorldSnapshot/object-placement editor; Animation live-in-client preview (coordinated with the Blender suite).
+- **Ecosystem integration** — formalize the Utinni ↔ `swg-blender-plugin` boundary (Utinni opens/previews what Blender exports; Utinni stays out of 3D mesh/skel/anim authoring).
+- **Carried residuals** — Object Template Tier-2 typed list-param display, the intro-skip scene-transition crash (VEH logger deployed), the SC3 live-reload residual, and the SWG window-resize/fullscreen edge cases.
+
+**Strategy:** revive+wrap (cheap, high-leverage) before replace (the meatier editors). The revived compilers double as MCP write tools and unblock OT Tier-2. See `docs/ai/toolchain-inventory.md` for the full tool cross-walk and revive/replace rationale.
+
+**Lift-and-shift constraint (locked):** when reviving a tool, **copy its source + required shared libs into a Utinni-owned build location** — do NOT build in-place against the `swg-client-v2` tree or modify it. `swg-client-v2` has an **active D3D9→D3D11 migration** in progress; lift-and-shift keeps our build decoupled from that churn and stays out of their way. (The revive targets — `TemplateCompiler`, `TreeFileBuilder`, exporters — are mostly headless/console and don't need the renderer, which makes lift-and-shift clean.)
+
+**Prior milestone — V1 "Demo + CI green" — SHIPPED 2026-06-01 (`v1.0.0`):** all 15 critical bugs closed; R-A..R-H landed; Tier 1+2 CI green; all five Wave-1 subpanels (TRE Browser, IFF Editor, Datatable, String-table, Object Template) demoed end-to-end against the live SWG client.
 
 ## Requirements
 
@@ -32,16 +41,17 @@ Stability work sequences before plugin work per vision.md's "What that means for
 
 ### Active
 
-<!-- V1 scope. See REQUIREMENTS.md for full requirement IDs and acceptance criteria. -->
+<!-- v2.0 "AI-Assisted SWG Tools" scope. REQ-IDs + acceptance defined in REQUIREMENTS.md (this milestone). -->
+<!-- All V1 Active items above SHIPPED in v1.0.0 (2026-06-01); they move to Validated as the v2.0 requirements are written. -->
 
-- [ ] Framework stability: fix C-01..C-15, land R-A..R-H, complete ~30 cleanups, preserve 24 foundations
-- [ ] Test harness: Tier 1 C++ unit tests (Tier 1 C# + Tier 2 CLI shim validated; see Validated above)
-- [ ] Wave-1 plugin: TRE Browser (read-only asset browse)
-- [ ] Wave-1 plugin: Datatable Editor (`.tab`)
-- [ ] Wave-1 plugin: String-table Editor (`.stf`)
-- [ ] Wave-1 plugin: Object Template Editor
-- [ ] Resolve 8 open questions from assessment.md (CON-O-01..CON-O-08) inline with their owning phases
-- [ ] Document Tier 4 manual residual and defer Tier 3 (mock D3D9) to V2
+- [ ] AI/MCP: MCP server exposing Utinni's read+edit+save pipeline as agent tools (thin shim over Utinni.Cli / UtinniCoreDotNet)
+- [ ] Authoring (revive+wrap): TemplateCompiler/TemplateDefinitionCompiler (`.tpf`/`.tpd` → `.iff` + param→type map)
+- [ ] Authoring (revive+wrap): TreeFileBuilder (build-from-source `.tre`); DataTableTool compile path; item exporters
+- [ ] New editor (replace): Terrain editor SubPanel
+- [ ] New editor (replace): Particle / client-effect editor SubPanel
+- [ ] New editor (extend): WorldSnapshot / object-placement editor (grow the Snapshot panel)
+- [ ] Ecosystem: formalize the Utinni ↔ swg-blender-plugin boundary (open/preview Blender exports)
+- [ ] Residuals: OT Tier-2 typed list-param display; intro-skip crash; SC3 live-reload; window-resize/fullscreen edge cases
 
 ### Out of Scope (V1)
 
@@ -124,4 +134,4 @@ Eight inherited open questions (CON-O-01..CON-O-08 from assessment.md) plus thre
 Additional non-locked candidate decisions (D-02 foundations-before-features, D-05 wave-1-plugin-set, D-07 CI-before-anything-else-strategic, D-09 ~6–8 person-week effort estimate) are encoded as **roadmap phase ordering** in ROADMAP.md rather than as ADRs. D-03 (sovereign fork) and D-06 (Jawa Toolbox `*Impl` separation as canonical) are captured here as the Sovereign-Fork Stance section above and as CON-T-05 respectively.
 
 ---
-*Last updated: 2026-05-29 — Phase 8 complete (TJT IFF Editor read+write with four-tier D-05 save matrix; PROD-W1-IFF validated). Previous updates: 2026-05-23 (Phase 4 complete + DEC-C3 LOCKED + CON-O-09/10/11 dispositioned); 2026-05-17 (Phase 2 complete + DEC-C4 locked); initial creation via `/gsd:new-project` after `/gsd:ingest-docs` synthesis of vision.md + assessment.md + test-harness-plan.md.*
+*Last updated: 2026-06-01 — V1 shipped (`v1.0.0`, all five Wave-1 subpanels); milestone v2.0 "AI-Assisted SWG Tools" started (MCP server + revive/replace authoring pipeline; lift-and-shift constraint locked). Previous updates: 2026-05-29 — Phase 8 complete (TJT IFF Editor read+write with four-tier D-05 save matrix; PROD-W1-IFF validated). Earlier: 2026-05-23 (Phase 4 complete + DEC-C3 LOCKED + CON-O-09/10/11 dispositioned); 2026-05-17 (Phase 2 complete + DEC-C4 locked); initial creation via `/gsd:new-project` after `/gsd:ingest-docs` synthesis of vision.md + assessment.md + test-harness-plan.md.*
