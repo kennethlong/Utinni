@@ -110,26 +110,48 @@ Requirements derived from the 2026-05-16 ingest of `docs/ai/vision.md`, `docs/ai
   - **Acceptance:** Plugin loads in editor host; user can open an object template, view inherited fields, edit overrideable fields, save back; live SWG client reflects the edit when the object respawns or reloads.
   - **Milestone:** V1
 
-## v2 Requirements
+## v2.0 Requirements — "AI-Assisted SWG Tools" (ACTIVE)
 
-Deferred from the V1 scope. Tracked but not in the current roadmap.
+Theme: *Utinni authors, not just edits.* Ship an MCP server so AI agents can drive the full SWG asset pipeline; revive+wrap the SOE build-chain compilers (lift-and-shift, shared v145 target); land the first Wave-2 editors. Sourced from `.planning/research/SUMMARY.md` + `docs/ai/toolchain-inventory.md`. Scope: **full slate** (maintainer 2026-06-01).
 
-### Product Capability — Beyond Wave 1
+### AI / MCP interface
 
-- **REQ-V2-one-stop-tool**: From vision.md "The goal" — full one-stop-tool experience (install once, do everything: see + edit + preview + author + package + share). V1 covers see + edit (Wave-1 subset); the rest is V2+.
-- **REQ-V2-live-preview-edits**: From vision.md — edits inside Utinni apply in-place to the running client via existing reload paths plus a small number of new ones. V1 piggybacks on whatever reload paths Wave-1 plugins need; broader live-preview is V2.
-- **REQ-V2-author-new-content**: From vision.md — introduce new meshes (via plugin exporters), new scripts, new quests, tagged as belonging to a named mod. V2+.
-- **REQ-V2-one-click-package**: From vision.md — one-button packaging to a shippable archive (e.g. one `.tre` plus manifest). Wave-3 plugin. V2+.
-- **REQ-V2-share-to-hub**: From vision.md — publish/consume from a community hub. Wave-3 plugin, optional. V2+.
+- [ ] **MCP-01**: An AI agent can READ any supported SWG asset (TRE/IFF/datatable/`.tab`/`.stf`/object-template) through a headless `Utinni.Mcp` server — a separate modern-.NET (net10) process, stdio transport, wrapping the existing `utinni-cli` JSON verbs.
+- [ ] **MCP-02**: An AI agent can EDIT + SAVE assets via MCP write tools that default to the loose-override tier, with byte-exact verify-before-commit, a `dry_run` gate on destructive repack, and a `resolvedRoot` pinned fail-closed at server start — documented in an `MCP-SECURITY.md` threat register. No agent write can corrupt a source archive or escape the resolved root.
+- [ ] **MCP-03**: An AI agent can drive the LIVE-injected client over an MCP bridge (named-pipe IPC into the x86 host) to preview an edit in-client. *(Ambitious; sequenced last.)*
 
-### Plugin Waves Beyond Wave 1
+### Authoring & compile pipeline (revive + wrap; lift-and-shift)
 
-- **REQ-V2-wave-2-plugins**: Conversation Tree Editor, Quest Editor, Buildout / World Editor, Particle Editor, UI Page Editor, Shader Inspector / Editor.
-- **REQ-V2-wave-3-plugins**: Mod Manager, Mod Packager / Builder, Community Hub Browser (optional), Asset Diff / Compare.
+- [ ] **AUTH-01**: A revive-feasibility spike confirms `TreeFileBuilder` and `TemplateCompiler` / `TemplateDefinitionCompiler` build + link STANDALONE at v145 (lift-shifted into a Utinni-owned `tools/` tree, dead Perforce/transitive deps stripped), producing a per-tool dependency manifest and a pinned `swg-client-v2` source SHA. *(Hard gate for the rest of AUTH.)*
+- [ ] **AUTH-02**: `TemplateDefinitionCompiler` is revived and its `.tdf`/`.tpd` → per-class param→type schema drives the Object Template Editor's typed list-param display (closes RESID-01).
+- [ ] **AUTH-03**: A modder can compile a `.tpf` object-template source to a byte-correct object-template `.iff` via a `utinni-cli` verb wrapping the revived `TemplateCompiler`.
+- [ ] **AUTH-04**: A modder can build a `.tre` archive from a source tree via a `utinni-cli` verb wrapping the revived `TreeFileBuilder`.
+- [ ] **AUTH-05**: `utinni-cli` gains a SAVE verb that writes an edited asset (loose-override or repack) — the net-new write surface MCP-02 wraps (today the CLI is read + roundtrip only).
+- [ ] **AUTH-06**: A modder can compile a datatable from CSV/XML source and run the item exporters (`ArmorExporterTool`/`WeaponExporterTool`) via `utinni-cli` verbs.
 
-### Test Infrastructure
+### Product Capability — Wave-2 editors
 
-- **REQ-V2-tier-3-mock-d3d9**: From test-harness-plan.md "Tier 3" — recorded fixtures + mock `IDirect3DDevice9` replay for regressing depth-buffer / post-process detours without the game running. Deferred from V1 per scope; V1 covers this surface via the documented Tier 4 manual residual (TEST-04).
+- [ ] **PROD-W2-WS**: A modder can view + edit object placements in a world snapshot via a Utinni SubPanel (extends the existing Snapshot panel; reuses shipped codecs — zero new format work).
+- [ ] **PROD-W2-PRT**: A modder can open + edit a particle / client-effect asset in a Utinni SubPanel, with live in-client preview when injected. *(The flashy AI-assist showcase; Terrain `PROD-W2-TRN` deferred to v2.1.)*
+
+### Ecosystem
+
+- [ ] **ECO-01**: The Utinni ↔ `swg-blender-plugin` boundary is formalized as a documented file-format / `.rsp` search-path contract — Utinni opens/previews what Blender exports; no runtime coupling (honors DEC-A3, the no-3D-authoring anti-goal).
+
+### Residuals (carried from V1)
+
+- [ ] **RESID-01**: The Object Template Editor displays list/struct params typed, not raw (closed via AUTH-02).
+- [ ] **RESID-02**: The intro-skip scene-transition crash is diagnosed (VEH faulting address/module) and fixed.
+- [ ] **RESID-03**: SC3 live-reload semantics are confirmed/honest for string-table + object-template reload candor.
+- [ ] **RESID-04**: The SWG window-resize / windowed↔fullscreen edge cases are enumerated and fixed.
+
+## Future Requirements (beyond v2.0)
+
+- **PROD-W2-TRN** (Terrain editor `.trn`) — the v2.1 editor lead (heavier codec than Particle).
+- **REQ-V2-one-click-package** / **REQ-V2-share-to-hub** — Wave-3 packaging + community hub.
+- **REQ-V2-wave-2-plugins** (remaining) — Conversation, Quest, Buildout/World, UI Page, Shader editors.
+- **REQ-V2-wave-3-plugins** — Mod Manager, Packager, Community Hub, Asset Diff.
+- **REQ-V2-tier-3-mock-d3d9** — Tier-3 mock `IDirect3DDevice9` replay (still deferred; revisit if MCP-03 / editor live-preview testing demands it).
 
 ## Out of Scope
 
