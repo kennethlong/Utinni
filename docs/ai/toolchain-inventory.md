@@ -136,6 +136,12 @@ Blender's job and is well underway. Utinni stays the **binary/format + live-inje
 (TRE/IFF/datatable/stf/object-template, live preview); the Blender suite owns DCC authoring. The two
 meet at the file formats (both build on the same `.iff`/`.tre` understanding).
 
+**Appearance-preview decision (locked):** do NOT build a standalone mesh/appearance renderer (the path
+Sytner's IFF Editor took — its own SWG-format renderer reused from his world editor). Utinni's visual
+preview = **live in-client via the real SWG engine** (uniquely enabled by the injection model — perfect
+fidelity, no format-chasing); offline 3D viewing stays Blender's lane. This is the differentiator a
+standalone editor structurally can't match. (From the 2026-06-02 SIE feature comparison.)
+
 ## Strategic next steps
 
 1. **Verify build status** of the top revive candidates — try compiling `TemplateCompiler` and
