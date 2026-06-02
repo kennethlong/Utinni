@@ -416,3 +416,33 @@ Unsequenced ideas parked for a future milestone (999.x). Promote with `/gsd:revi
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.2: User-definable IFF chunk templates (BACKLOG)
+
+**Goal:** Let a modder *describe the binary layout* of an arbitrary IFF chunk (a schema of primitives, colors, vectors, quaternions, matrices, arrays, structs) and have Utinni auto-decode/display/edit it — so modders can crack `.iff` formats Utinni doesn't natively support, without code changes.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+**Context (captured 2026-06-02, from the Sytner's IFF Editor (SIE) comparison):**
+- SIE's standout power feature: user-defined chunk templates auto-applied to matching chunks. Utinni today only decodes the formats it hardcodes (datatable/stf/object-template); generic/unknown `.iff` chunks fall back to hex.
+- **Why it's high-leverage:** turns Utinni from "the formats we coded" into "any format a modder can describe." Schema-driven decode is also **MCP-friendly** — an agent could be handed (or derive) a schema and read/edit an unknown chunk via a tool.
+- Composes on the existing `UtinniCoreDotNet/Formats/Iff` reader + `IffPayloadCursor`; the new piece is a schema model + a schema-driven decode/encode pass + a UI to define/manage templates.
+- Source: SIE feature comparison (Mod the Galaxy "About SIE"); see the v2.0 research / `docs/ai/toolchain-inventory.md` context.
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.3: TRE override / version history view (BACKLOG)
+
+**Goal:** Show, for any logical path, every version of that file across the whole `.tre`/`.toc` load order — and let the modder open/extract/diff any historical version — i.e. a "what overrode what" patch-stack view for debugging load order.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+**Context (captured 2026-06-02, from the SIE comparison):**
+- SIE works from a *repository* of `.tre`/`.toc` files (not one archive) and can show/extract/open any version of a file in the override history. Utinni's TRE Browser browses archives but does not surface the cross-archive override chain.
+- **Why it matters:** load-order/override debugging is a top modder pain point ("which `.tre` is actually winning for this path?"). A diff between the base and the override is the natural payoff.
+- Composes on `TreArchiveIndex` (already resolves logical paths across the load order) + `TrePayloadResolver`; the new piece is exposing the full per-path resolution chain (not just the winner) + a versions/diff UI.
+- Source: SIE feature comparison (Mod the Galaxy "About SIE").
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
