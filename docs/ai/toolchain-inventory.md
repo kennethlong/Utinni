@@ -82,11 +82,15 @@ Interactive editors → rewrite into Utinni SubPanels, roughly by modder demand:
 > that churn and out of their way. These revive targets are headless/console and don't need the
 > renderer, so the shift is clean (no D3D dependency to drag along).
 >
-> **Toolchain bump:** lift-and-shifted tools build on Utinni's **VS2026 / v145** toolset, whereas
-> `swg-client-v2` builds them at **VS2022 / v143**. **Borrow `swg-client-v2`'s SOE-source modernization**
-> (the work that got 2003-era code compiling on modern MSVC) as the base, then port the **v143 → v145
-> delta**. Watch for modern-STL friction at v145 (cf. the CppSharp clang-11 STL pin). Confirming this
-> revive feasibility is the first concrete milestone-research / spike task.
+> **Toolchain (shared target — CONFIRMED).** No v143→v145 port: `swg-client-v2` is **already on
+> VS2026 / v145 / stdcpp20** (`swg.sln` = `VisualStudioVersion 18.1`; revive targets' `.vcxproj` =
+> `PlatformToolset v145`; STLport453 gone) — Utinni's exact toolset. The revive spike is therefore
+> **verify standalone v145 build + link**, **strip dead deps** (`TemplateCompiler`/`sharedTemplate` carry
+> a dead `perforce/include` path never `#included`; ~25 transitive ProjectReferences to prune), and
+> **produce a per-tool dependency manifest**. Status is uneven — `TemplateCompiler` already has built
+> v145 objects; `TreeFileBuilder` is v145-configured but unbuilt (unverified). Pin the lifted-from
+> `swg-client-v2` SHA (it's actively churning on `koogie-msvc-cpp20-base` + a live `x64bit-Upgrade`
+> branch; watch x64 vs Utinni's x86). (Corrected from an earlier "port the delta" overstatement.)
 
 Headless build-chain CLIs; reviving + wrapping fills authoring gaps fastest and feeds the MCP server (999.1):
 
