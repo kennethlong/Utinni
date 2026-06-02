@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: AI-Assisted SWG Tools
-status: planning
+status: executing
 stopped_at: Phase 12 context gathered
-last_updated: "2026-06-02T21:11:06.737Z"
-last_activity: 2026-06-01 — v2.0 ROADMAP created (Phases 12–16; 16 reqs mapped, 100% coverage)
+last_updated: "2026-06-02T22:29:10.837Z"
+last_activity: 2026-06-02 -- Phase 12 planning complete
 progress:
   total_phases: 20
   completed_phases: 12
-  total_plans: 55
+  total_plans: 59
   completed_plans: 56
-  percent: 100
+  percent: 95
 ---
 
 # Project State
@@ -28,8 +28,8 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 12 — Revive-feasibility spike (HARD GATE) + intro-skip crash (not started)
 Plan: —
-Status: Roadmap created; ready to plan Phase 12
-Last activity: 2026-06-01 — v2.0 ROADMAP created (Phases 12–16; 16 reqs mapped, 100% coverage)
+Status: Ready to execute
+Last activity: 2026-06-02 -- Phase 12 planning complete
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 
