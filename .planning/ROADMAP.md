@@ -280,7 +280,12 @@ Plans:
   3. The exact `swg-client-v2` source SHA the tools were lifted from is recorded in-repo (a SHA, not a branch).
   4. Each built tool runs headless once against a sample input and produces a non-empty artifact (or a clear, captured failure mode if a tool is parked behind the v143 fallback).
   5. The intro-skip scene-transition crash (RESID-02) is diagnosed to a faulting address/module via the deployed VEH logger and fixed; the intro-skip path no longer crashes on a live injected session.
-**Plans**: TBD
+**Plans**: 4 plans (3 waves; AUTH-01 build track in waves 1-3, RESID-02 parallel in wave 1)
+**Plans**:
+- [ ] 12-01-PLAN.md — Lift tools/ tree + Utinni.Tools.sln + zlib 1.1.4 + PINNED-SHA.md; TreeFileBuilder first-green @ v145/Win32 (Wave 1)
+- [ ] 12-02-PLAN.md — Lift TemplateCompiler + TemplateDefinitionCompiler (pcre 4.1 + Perforce keep-or-stub); v145 build+link with D-10 stop-and-ask fallback gate (Wave 2)
+- [ ] 12-03-PLAN.md — Reference-pair availability checkpoint + per-tool byte-exact smokes (D-09, no fallback) + DEPENDENCY-MANIFEST.md + self-hosted v145 CI build lane (Wave 3)
+- [ ] 12-04-PLAN.md — RESID-02 intro-skip crash: live VEH capture + module/RVA root-cause analysis + Utinni-side fix or documented game-side RCA (Wave 1, parallel)
 **Research flag**: yes — the genuine unknown is empirical dependency closure + per-tool build status; budget a real build pass (`/gsd:plan-phase --research-phase 12`).
 
 ### Phase 13: Wrap revived compilers as CLI verbs + close OT Tier-2
