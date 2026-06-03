@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: AI-Assisted SWG Tools
 status: executing
-stopped_at: Phase 12 context gathered
-last_updated: "2026-06-02T22:29:10.837Z"
-last_activity: 2026-06-02 -- Phase 12 planning complete
+stopped_at: Phase 12 AUTH-01 build track complete (12-01/02/03); 12-04 (RESID-02) deferred to live session
+last_updated: "2026-06-03T04:12:19.670Z"
+last_activity: 2026-06-02 -- Phase 12 executed: all 3 SOE build CLIs green at v145 + CI gate; byte-exact = gate-findings; 12-04 deferred
 progress:
   total_phases: 20
   completed_phases: 12
   total_plans: 59
-  completed_plans: 56
-  percent: 95
+  completed_plans: 59
+  percent: 100
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-01)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 12 — Revive-feasibility spike (HARD GATE) + intro-skip crash
+**Current focus:** Phase 12 — AUTH-01 build hard gate PASSED; remaining work is 12-04 (RESID-02 live intro-skip crash)
 
 ## Current Position
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
-Phase: 12 — Revive-feasibility spike (HARD GATE) + intro-skip crash (not started)
-Plan: —
-Status: Ready to execute
-Last activity: 2026-06-02 -- Phase 12 planning complete
+Phase: 12 — Revive-feasibility spike (HARD GATE) + intro-skip crash
+Plan: 12-01 ✅ / 12-02 ✅ / 12-03 ✅ done · 12-04 ⏸ deferred (live SWGEmu session)
+Status: AUTH-01 build gate complete — all 3 SOE CLIs build+link green at v145/Win32 from tools/Utinni.Tools.sln, CI-enforced. Byte-exact parked behind documented gate-findings (no compatible reference assets; retail .tre corpus is v6000). HARD-GATE VERDICT: tools are revivable but need real porting (engine-API drift, C++20, SAFESEH, CRT-compat) — not clean lift-and-shift. AUTH unblocked for Phase 13.
+Last activity: 2026-06-02 -- Phase 12 AUTH-01 build track executed inline
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 
@@ -135,6 +135,9 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 11 P02 | ~12min | 2 tasks | 13 files |
 | Phase 11 P03 | ~9min | 2 tasks | 7 files (cross-repo) |
 | Phase 11 P04 | 28min | 2 tasks | 7 files |
+| Phase 12 P01 | ~3.5h | 2 tasks | 440 files |
+| Phase 12 P02 | ~2h | 4 tasks | 2700 files |
+| Phase 12 P03 | ~1h | 3 tasks | 4 files |
 
 ## Accumulated Context
 
