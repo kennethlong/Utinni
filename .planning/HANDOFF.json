@@ -1,0 +1,39 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-06-03T04:26:04.939Z",
+  "phase": "12",
+  "phase_name": "revive-feasibility-spike-hard-gate-intro-skip-crash",
+  "phase_dir": ".planning/phases/12-revive-feasibility-spike-hard-gate-intro-skip-crash",
+  "plan": 4,
+  "task": 1,
+  "total_tasks": 4,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": 1, "name": "12-01 TreeFileBuilder lift + v145 build", "status": "done", "commit": "54c18c2"},
+    {"id": 2, "name": "12-02 TemplateCompiler + TemplateDefinitionCompiler v145 build", "status": "done", "commit": "9493e3e"},
+    {"id": 3, "name": "12-03 DEPENDENCY-MANIFEST + CI build-lane + byte-exact harness", "status": "done", "commit": "ac2b229"}
+  ],
+  "remaining_tasks": [
+    {"id": 4, "name": "12-04 RESID-02 live intro-skip crash RCA", "status": "not_started"}
+  ],
+  "blockers": [
+    {"description": "12-04 requires a LIVE injected SWGEmu session driven by the user (TJT scene-change repro); no subagent/headless path", "type": "human_action", "workaround": "schedule a live session"},
+    {"description": "Byte-exact smokes have no compatible reference assets (retail .tre corpus is Restoration v6000/encrypted; no .tpf/.tdf; the one 0005 asset has no source/.rsp)", "type": "external", "workaround": "documented as per-tool D-09 gate-findings in tools/DEPENDENCY-MANIFEST.md; retire in Phase 13 over real utinni-cli assets"}
+  ],
+  "human_actions_pending": [
+    {"action": "Run + inject SWGEmu live and trigger the TJT scene-change intro-skip repro for 12-04", "context": "RESID-02 crash only reproduces in a live injected session; VEH logger (d1096ac) already deployed to capture the VEH FATAL line", "blocking": true},
+    {"action": "Heads-up: wire WinApp MCP (Playwright-style Windows driver) when 12-04 starts", "context": "user asked for a heads-up at 12-04 execute-time (reference_winapp_mcp_testing memory)", "blocking": false},
+    {"action": "(Optional) supply byte-exact reference pairs to activate the smokes", "context": "0005/0006 source+.rsp, a .tpf+.iff, and/or a .tdf+generated-C++ from a real client/dsrc corpus", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "Build track run INLINE by the orchestrator (not subagents)", "rationale": "gsd-executor has no PowerShell tool for MSBuild; worktrees off for this repo", "phase": "12"},
+    {"decision": "12-04 deferred to a dedicated live session; build hard gate done first", "rationale": "AUTH-01 gates all of v2.0; 12-04 needs live hardware", "phase": "12"},
+    {"decision": "Full verbatim closure lifted incl. zlib-1.2.3 + 8 omitted externals", "rationale": "sharedCompression #includes zlib-1.2.3 zlib.h to compile; plan guard was wrong; linked 1.1.4 lib is the byte determinant", "phase": "12"},
+    {"decision": "sharedLog crash-handler tail-log flush DECOUPLED (UTINNI_TOOLS_NO_SHAREDLOG) rather than full-engine lift", "rationale": "the flush call would drag sharedLog->sharedNetworkMessages->archive(game registry) into a file-packer; user chose surgical decouple", "phase": "12"},
+    {"decision": "Perforce = KEEP-LINK for both template tools (no stub)", "rationale": "P4 libs link at v145 with only SAFESEH + 2 CRT-compat symbols; -compile path is P4-free at runtime", "phase": "12"},
+    {"decision": "Byte-exact = per-tool GATE-FINDINGS (D-09 branch)", "rationale": "no compatible reference pair exists; harness staged for when one is supplied", "phase": "12"}
+  ],
+  "uncommitted_files": [],
+  "next_action": "When the user is ready for a LIVE SWGEmu session: execute 12-04 (12-04-PLAN.md). Reproduce the intro-skip crash via the TJT scene-change path, capture the 'VEH FATAL' line from utinni.log (logger d1096ac already deployed), then disposition per D-11 (Utinni-side fix if it lands in injection/detour/callback surface; documented RCA if it lands in SWG.exe game code). Land-naked-after-scene-change is the expected baseline, NOT a crash.",
+  "context_notes": "Phase 12 AUTH-01 BUILD HARD GATE IS COMPLETE + PUSHED (master e028299; CI run 26863269443 validating). All 3 SOE build CLIs build+link green at v145/Win32 from tools/Utinni.Tools.sln. The spike's verdict: these tools revive via REAL porting (engine-API drift borrowCompressor->ZlibCompressor, C++20 char16_t/wchar_t ports in sharedTemplateDefinition, /SAFESEH:NO, Perforce CRT-compat shims, and a load-bearing tools/Directory.Build.props include shim) -- NOT clean lift-and-shift. See the 3 SUMMARYs + DEPENDENCY-MANIFEST.md + the project_auth01_revive_build_track memory. Only 12-04 (RESID-02 live crash) remains; it is the sole reason Phase 12 is not fully closed."
+}
