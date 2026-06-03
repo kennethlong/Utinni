@@ -171,6 +171,17 @@ jobs:
         run: msbuild Utinni.sln /m /restore /p:Configuration=Release /p:Platform=x86 /p:RestorePackagesConfig=true
         # Fires CON-T-01 PostBuildEvent on UtinniCore (xcopy data/ + UtinniCoreDotNetGen.exe). STAB-04 preservation: invoke the chain; do not refactor.
 
+      - name: Build tools solution (Debug|Win32) — AUTH-01 hard gate
+        shell: powershell
+        run: msbuild tools\Utinni.Tools.sln /m /p:Configuration=Debug /p:Platform=Win32
+        # Phase 12 (AUTH-01 / D-07): standalone lift-and-shift build of the revived SOE build CLIs
+        # (TreeFileBuilder + TemplateCompiler + TemplateDefinitionCompiler). Kept SEPARATE from the
+        # Utinni.sln steps above (D-07: tools/ is its own solution). x86/Win32 only (CON-P-02). A
+        # non-zero MSBuild exit fails the job, so the revive hard gate is enforced continuously from
+        # day one. Byte-exact smoke steps (D-09) are added per tool once maintainer-provided
+        # reference pairs land (12-03 Task 1/2); tools parked behind a gate-finding build here but
+        # have no smoke step (the finding lives in tools/DEPENDENCY-MANIFEST.md).
+
       - name: Run tests (net472 / x86)
         run: dotnet test UtinniCoreDotNet.Tests/UtinniCoreDotNet.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal" --logger "trx;LogFileName=test-results.trx"
         # Project-targeted (not `dotnet test Utinni.sln`) per RESEARCH §Pitfall 2 — dotnet/sdk#9007 + microsoft/vstest#1129 confirm the solution form fails on mixed C++/C# solutions.
