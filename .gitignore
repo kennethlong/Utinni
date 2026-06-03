@@ -56,3 +56,11 @@ scripts/rva-audit.csv
 # Populated by `vcpkg install --triplet x86-windows` against vcpkg.json at the
 # repo root; cached by CI keyed on hashFiles('vcpkg.json'). Never committed.
 /vcpkg_installed/
+# Phase 12 (12-01): the lifted SOE build-tools tree under tools/ uses an OutDir of
+# tools/compile/win32/<Tool>/<Config>/ (per the lifted vcxproj OutDir macros). The
+# Debug/ and Release/ rules above only match those leaf dir NAMES, not the compile/
+# parent, and lifted static-lib build outputs (*.lib) are NOT covered by the global
+# rules. Ignore the whole compiled-output root so no built TreeFileBuilder_d.exe /
+# *.lib / intermediates are ever committed. The lifted *input* zlib.lib under
+# tools/src/external/.../zlib/lib/ is NOT under compile/ and remains tracked.
+/tools/compile/
