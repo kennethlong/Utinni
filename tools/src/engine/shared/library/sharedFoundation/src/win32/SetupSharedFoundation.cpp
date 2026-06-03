@@ -27,7 +27,16 @@
 #include "sharedFoundation/StaticCallbackEntry.h"
 #include "sharedFoundation/MemoryBlockManager.h"
 #include "sharedFoundation/Watcher.h"
+// Utinni 12-01: sharedLog decoupled from the standalone tools build. sharedLog's
+// TailFileLogObserver transitively pulls sharedNetworkMessages -> Archive -> the
+// whole game serialization registry (archive's FirstArchive.h PCH), which the
+// headless SOE build CLIs (TreeFileBuilder et al.) have no need for. The only use
+// was a crash-handler tail-log flush (see UTINNI_TOOLS_NO_SHAREDLOG below). The
+// minidump path is preserved; only the tail-file-log flush is dropped. Define
+// UTINNI_TOOLS_NO_SHAREDLOG (set globally in tools/Directory.Build.props) to engage.
+#ifndef UTINNI_TOOLS_NO_SHAREDLOG
 #include "sharedLog/TailFileLogObserver.h"
+#endif
 
 #include <eh.h>
 #include <cstdio>
@@ -145,8 +154,10 @@ LONG __stdcall SetupSharedFoundationNamespace::MyUnhandledExceptionFilter(LPEXCE
 		OutputDebugString("\n");
 		DebugHelp::writeMiniDump(fileName, exceptionPointers);
 
+#ifndef UTINNI_TOOLS_NO_SHAREDLOG
 		sprintf(fileName, "%s-%s-%I64d.log", Os::getShortProgramName(), ApplicationVersion::getInternalVersion(), timestamp);
 		TailFileLogObserver::flushAllTailFileLogObservers(fileName);
+#endif // Utinni 12-01: tail-log flush dropped for the headless tools build (see include note above)
 	}
 
 	// tell the Os not to abort so we can rethrow the exception

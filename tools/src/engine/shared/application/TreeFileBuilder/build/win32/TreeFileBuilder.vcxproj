@@ -103,6 +103,11 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)$(ProjectName)_d.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
+      <!-- Utinni 12-01: the lifted prebuilt zlib.lib (1.1.4, ~2002) predates Safe-SEH,
+           so v145's default /SAFESEH trips LNK2026. Disable SAFESEH on this EXE rather
+           than rebuild zlib.lib (which is the byte-exact .tre-output determinant per
+           Pitfall 3 and must not change). x86 image metadata only; no output-byte impact. -->
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -145,6 +150,11 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)$(ProjectName)_o.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
+      <!-- Utinni 12-01: the lifted prebuilt zlib.lib (1.1.4, ~2002) predates Safe-SEH,
+           so v145's default /SAFESEH trips LNK2026. Disable SAFESEH on this EXE rather
+           than rebuild zlib.lib (which is the byte-exact .tre-output determinant per
+           Pitfall 3 and must not change). x86 image metadata only; no output-byte impact. -->
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -187,6 +197,11 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)$(ProjectName)_r.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
+      <!-- Utinni 12-01: the lifted prebuilt zlib.lib (1.1.4, ~2002) predates Safe-SEH,
+           so v145's default /SAFESEH trips LNK2026. Disable SAFESEH on this EXE rather
+           than rebuild zlib.lib (which is the byte-exact .tre-output determinant per
+           Pitfall 3 and must not change). x86 image metadata only; no output-byte impact. -->
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>

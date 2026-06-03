@@ -13,6 +13,7 @@
 
 #include "sharedCompression/SetupSharedCompression.h"
 #include "sharedCompression/Compressor.h"
+#include "sharedCompression/ZlibCompressor.h"  // Utinni 12-01 port: concrete compressor (SearchTree factory removed)
 #include "sharedCompression/Lz77.h"
 #include "sharedFile/TreeFile_SearchNode.h"
 #include "sharedFoundation/CommandLine.h"
@@ -697,10 +698,13 @@ void TreeFileBuilder::compressAndWrite(const byte *uncompressed, int &sizeOfData
 			byte *newBuffer = new byte[newBufferLength];
 
 			// try the compressor on this data
-			Compressor *compressor = TreeFile::SearchTree::borrowCompressor(compressorType);
-			int size = compressor->compress(uncompressed, uncompressedSize, newBuffer, newBufferLength);
-			TreeFile::SearchTree::returnCompressor(compressorType, compressor);
-			compressor = NULL;
+			// Utinni 12-01 port: TreeFile::SearchTree::borrow/returnCompressor was removed
+			// from sharedFile on the koogie-msvc-cpp20-base branch (the compressor factory
+			// no longer lives on SearchTree). CT_zlib is the only CompressorType this loop
+			// ever uses, so construct the concrete ZlibCompressor directly. Its memory pool
+			// is initialized by SetupSharedCompression::install() (called in run() above).
+			ZlibCompressor compressor;
+			int size = compressor.compress(uncompressed, uncompressedSize, newBuffer, newBufferLength);
 
 			if (size < smallestSize)
 			{
