@@ -8,6 +8,12 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TemplateDefinitionCompiler"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TreeFileBuilder", "src\engine\shared\application\TreeFileBuilder\build\win32\TreeFileBuilder.vcxproj", "{63F95846-C17B-4977-BEDD-D49852137A3D}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DataTableTool", "src\engine\shared\application\DataTableTool\build\win32\DataTableTool.vcxproj", "{9262C7EE-E593-46B1-AC7E-F12E5055EB57}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ArmorExporterTool", "src\engine\shared\application\ArmorExporterTool\build\win32\ArmorExporterTool.vcxproj", "{86D00284-6EAE-4D6C-989F-585AB5B44A14}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CoreWeaponExporterTool", "src\engine\shared\application\CoreWeaponExporterTool\build\win32\CoreWeaponExporterTool.vcxproj", "{5322A6D8-E2FE-420C-B719-3D061EAB4593}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "archive", "src\external\ours\library\archive\build\win32\archive.vcxproj", "{52153865-1ABF-4FBB-84C4-0FC439716F1E}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fileInterface", "src\external\ours\library\fileInterface\build\win32\fileInterface.vcxproj", "{DE93996C-CB51-4D61-85A0-A9DFC677445F}"
@@ -160,6 +166,18 @@ Global
 		{51E2988C-CE2D-42D7-A27C-06A322B4AAC2}.Debug|Win32.Build.0 = Debug|Win32
 		{51E2988C-CE2D-42D7-A27C-06A322B4AAC2}.Release|Win32.ActiveCfg = Release|Win32
 		{51E2988C-CE2D-42D7-A27C-06A322B4AAC2}.Release|Win32.Build.0 = Release|Win32
+		{9262C7EE-E593-46B1-AC7E-F12E5055EB57}.Debug|Win32.ActiveCfg = Debug|Win32
+		{9262C7EE-E593-46B1-AC7E-F12E5055EB57}.Debug|Win32.Build.0 = Debug|Win32
+		{9262C7EE-E593-46B1-AC7E-F12E5055EB57}.Release|Win32.ActiveCfg = Release|Win32
+		{9262C7EE-E593-46B1-AC7E-F12E5055EB57}.Release|Win32.Build.0 = Release|Win32
+		{86D00284-6EAE-4D6C-989F-585AB5B44A14}.Debug|Win32.ActiveCfg = Debug|Win32
+		{86D00284-6EAE-4D6C-989F-585AB5B44A14}.Debug|Win32.Build.0 = Debug|Win32
+		{86D00284-6EAE-4D6C-989F-585AB5B44A14}.Release|Win32.ActiveCfg = Release|Win32
+		{86D00284-6EAE-4D6C-989F-585AB5B44A14}.Release|Win32.Build.0 = Release|Win32
+		{5322A6D8-E2FE-420C-B719-3D061EAB4593}.Debug|Win32.ActiveCfg = Debug|Win32
+		{5322A6D8-E2FE-420C-B719-3D061EAB4593}.Debug|Win32.Build.0 = Debug|Win32
+		{5322A6D8-E2FE-420C-B719-3D061EAB4593}.Release|Win32.ActiveCfg = Release|Win32
+		{5322A6D8-E2FE-420C-B719-3D061EAB4593}.Release|Win32.Build.0 = Release|Win32
 		{1D87A2E7-F0CF-42E9-BC38-846C53622C40}.Debug|Win32.ActiveCfg = Debug|Win32
 		{1D87A2E7-F0CF-42E9-BC38-846C53622C40}.Debug|Win32.Build.0 = Debug|Win32
 		{1D87A2E7-F0CF-42E9-BC38-846C53622C40}.Release|Win32.ActiveCfg = Release|Win32
