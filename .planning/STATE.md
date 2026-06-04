@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: AI-Assisted SWG Tools
 status: executing
-stopped_at: Phase 12 AUTH-01 build track complete (12-01/02/03); 12-04 (RESID-02) deferred to live session
-last_updated: "2026-06-03T04:12:19.670Z"
-last_activity: 2026-06-02 -- Phase 12 executed: all 3 SOE build CLIs green at v145 + CI gate; byte-exact = gate-findings; 12-04 deferred
+stopped_at: Phase 12 COMPLETE (12-01/02/03 AUTH-01 build gate + 12-04 RESID-02 resolved-by-prior-fix)
+last_updated: "2026-06-03T00:00:00.000Z"
+last_activity: 2026-06-03 -- Phase 12 closed: 12-04 RESID-02 no-repro (A5) -> resolved by Phase-3 R-H heap-free migration; RCA documented; VEH logger stays deployed; window-overlay finding routed to RESID-04/Phase-15
 progress:
   total_phases: 20
   completed_phases: 12
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-01)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 12 — AUTH-01 build hard gate PASSED; remaining work is 12-04 (RESID-02 live intro-skip crash)
+**Current focus:** Phase 12 COMPLETE — AUTH-01 build hard gate PASSED + RESID-02 resolved. Next: Phase 13 (revive+wrap compilers as `utinni-cli` verbs).
 
 ## Current Position
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
-Phase: 12 — Revive-feasibility spike (HARD GATE) + intro-skip crash
-Plan: 12-01 ✅ / 12-02 ✅ / 12-03 ✅ done · 12-04 ⏸ deferred (live SWGEmu session)
-Status: AUTH-01 build gate complete — all 3 SOE CLIs build+link green at v145/Win32 from tools/Utinni.Tools.sln, CI-enforced. Byte-exact parked behind documented gate-findings (no compatible reference assets; retail .tre corpus is v6000). HARD-GATE VERDICT: tools are revivable but need real porting (engine-API drift, C++20, SAFESEH, CRT-compat) — not clean lift-and-shift. AUTH unblocked for Phase 13.
-Last activity: 2026-06-02 -- Phase 12 AUTH-01 build track executed inline
+Phase: 12 — Revive-feasibility spike (HARD GATE) + intro-skip crash — **COMPLETE**
+Plan: 12-01 ✅ / 12-02 ✅ / 12-03 ✅ / 12-04 ✅ done
+Status: Phase 12 done. AUTH-01 build gate complete — all 3 SOE CLIs build+link green at v145/Win32 from tools/Utinni.Tools.sln, CI-enforced (byte-exact parked behind documented gate-findings; retail .tre corpus is v6000). HARD-GATE VERDICT: tools revivable but need real porting (engine-API drift, C++20, SAFESEH, CRT-compat) — not clean lift-and-shift. RESID-02 intro-skip crash **no longer reproduces** (A5) — resolved by the Phase-3 R-A/R-H heap-free `dispatchSnapshot` migration; documented in `12-RESID-02-RCA.md`; VEH logger stays deployed. Window-overlay/stuck-cursor/minimize symptoms observed in the re-run = RESID-04 (Phase 15), captured + deferred (low priority). AUTH unblocked for Phase 13.
+Last activity: 2026-06-03 -- Phase 12 closed (12-04 RESID-02 RCA + windows-mcp infra)
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 
@@ -138,6 +138,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 12 P01 | ~3.5h | 2 tasks | 440 files |
 | Phase 12 P02 | ~2h | 4 tasks | 2700 files |
 | Phase 12 P03 | ~1h | 3 tasks | 4 files |
+| Phase 12 P04 | ~1h | 4 tasks (2 checkpoints) | 2 new + 1 modified |
 
 ## Accumulated Context
 
@@ -169,7 +170,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 
 ### Pending Todos
 
-None yet.
+- **RESID-04 — SWG window resize / windowed↔fullscreen edge cases** (`.planning/todos/pending/swg-window-resize-fullscreen-edge-cases.md`, `resolves_phase:15`). Live-confirmed 2026-06-03 during the 12-04 re-run: on login→fullscreen the embedded SWG window detaches + overlays the WinForms editor, cursor/movement input dies (non-recoverable in-session), and minimize takes both windows down. **New trigger data point:** fires on the login→load-into-world path, not just chat-open Enter. **Workaround:** drop SWG resolution off fullscreen. Maintainer triage: low priority, likely not a hard find.
 
 ### Blockers/Concerns
 
@@ -221,9 +222,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-02T21:11:06.714Z
-Stopped at: Phase 12 context gathered
-Resume file: .planning/phases/12-revive-feasibility-spike-hard-gate-intro-skip-crash/12-CONTEXT.md
+Last session: 2026-06-03 (Phase 12 closeout)
+Stopped at: Phase 12 COMPLETE — ready for Phase 13 (revive+wrap compilers as utinni-cli verbs)
+Resume file: .planning/phases/12-revive-feasibility-spike-hard-gate-intro-skip-crash/12-04-SUMMARY.md
 
 ## Ingest Provenance
 

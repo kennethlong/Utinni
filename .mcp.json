@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "C:\\Users\\kenne\\.local\\bin\\uvx.exe",
+      "args": ["windows-mcp", "serve"],
+      "env": {
+        "ANONYMIZED_TELEMETRY": "false"
+      }
+    }
+  }
+}

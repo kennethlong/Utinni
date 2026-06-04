@@ -31,6 +31,30 @@ mouse map correctly (RT-space)? is the cursor clip correct? does it recover on t
 - [ ] alt-tab away/back in each mode
 - [ ] monitor / DPI change while embedded (if reproducible)
 
+## Observed live (2026-06-03 — maintainer, injected SWGEmu session)
+
+Surfaced while exercising the RESID-02 intro-skip repro (which did **not** crash — see
+`.planning/phases/12-revive-feasibility-spike-hard-gate-intro-skip-crash/12-RESID-02-RCA.md`).
+Concrete per-transition results to seed the matrix:
+
+- **NEW trigger data point:** the switch to fullscreen fired on the **login → load-into-world** path,
+  not only the chat-open Enter path (#1 below). Widens the prime-suspect trigger surface — the
+  exclusive-fullscreen mode change is reachable from normal login, not just `enableTextInput`.
+- **windowed → fullscreen (on login):** embed detaches; **SWG window overlays the WinForms editor
+  window** (z-order/parent coupling). ✗
+- **alt-tab away/back + resize:** SWG window is **never returned** to its embed rect. ✗ (matches #1)
+- **cursor / input:** clicking the window does **not** establish the SWG cursor; **character cannot
+  move** — input never routes to the game. Non-recoverable in-session (relaunch required). ✗
+  (cursor-clip + input-routing fallout, #2)
+- **minimize → restore:** minimizing takes **both** windows down together (they disappear as a unit) —
+  confirms the SWG child and WinForms parent are z-order/parent-coupled. ✗ (fills the
+  `windowed → minimize → restore` row)
+- **Recovery workaround (maintainer):** reduce SWG's resolution from fullscreen down to the default —
+  the resulting mode change drops SWG back out of exclusive fullscreen and re-establishes the
+  windowed/embed path. Useful interim recovery; also a strong hint the fix is to **intercept/suppress
+  the exclusive-fullscreen mode switch** (matches proposed scope #3 → keep it windowed-embedded).
+- **Maintainer triage (2026-06-03):** low priority for now, likely not a hard find.
+
 ## Known-adjacent issues (link, don't re-investigate from scratch)
 
 This is the same family as several already-recorded items — start here:
