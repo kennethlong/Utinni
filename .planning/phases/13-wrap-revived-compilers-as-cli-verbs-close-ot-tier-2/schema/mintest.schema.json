@@ -1,0 +1,33 @@
+{
+  "classes": {
+    "mintest": {
+      "params": [
+        {
+          "listType": "LIST_NONE",
+          "name": "hitPoints",
+          "type": "TYPE_INTEGER"
+        },
+        {
+          "listType": "LIST_NONE",
+          "name": "scale",
+          "type": "TYPE_FLOAT"
+        },
+        {
+          "listType": "LIST_NONE",
+          "name": "wantSawDust",
+          "type": "TYPE_BOOL"
+        },
+        {
+          "listType": "LIST_NONE",
+          "name": "objectName",
+          "type": "TYPE_STRING"
+        },
+        {
+          "listType": "LIST_LIST",
+          "name": "slots",
+          "type": "TYPE_INTEGER"
+        }
+      ]
+    }
+  }
+}

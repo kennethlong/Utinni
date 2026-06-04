@@ -1,0 +1,11 @@
+// Minimal authored .tdf fixture (Plan 13-05, AUTH-02). NOT a canonical SOE definition ?
+// it exercises the compile-definition verb + the ParamType/ListType schema vocabulary.
+clientpath foo
+compilerpath bar
+id TEST
+version 0
+	int hitPoints
+	float scale
+	bool wantSawDust
+	string objectName
+	list int slots
