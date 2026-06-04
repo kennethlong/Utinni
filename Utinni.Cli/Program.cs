@@ -51,7 +51,9 @@ namespace Utinni.Cli
                         Commands.RoundtripOtOptions,
                         Commands.ValidatePluginOptions,
                         Commands.SaveOptions,
-                        Commands.RepackTreOptions>(args)
+                        Commands.RepackTreOptions,
+                        Commands.CompileTemplateOptions,
+                        Commands.BuildTreOptions>(args)
                     .MapResult(
                         (Commands.ParseTreOptions o)       => Commands.ParseTreCommand.Run(o),
                         (Commands.ListObjectsOptions o)    => Commands.ListObjectsCommand.Run(o),
@@ -64,6 +66,8 @@ namespace Utinni.Cli
                         (Commands.ValidatePluginOptions o) => Commands.ValidatePluginCommand.Run(o),
                         (Commands.SaveOptions o)           => Commands.SaveCommand.Run(o),
                         (Commands.RepackTreOptions o)      => Commands.RepackTreCommand.Run(o),
+                        (Commands.CompileTemplateOptions o) => Commands.CompileTemplateCommand.Run(o),
+                        (Commands.BuildTreOptions o)       => Commands.BuildTreCommand.Run(o),
                         errs => 1);  // exit 1 on usage error per D-02
             }
         }
