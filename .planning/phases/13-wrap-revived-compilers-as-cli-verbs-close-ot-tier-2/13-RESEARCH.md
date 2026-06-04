@@ -372,19 +372,20 @@ using (var p = Process.Start(psi)) {
 | A4 | Synthesized-`.rsp` byte-exact holds for uncompressed files; compressed may need structural fallback | AUTH-04 | If even uncompressed mismatches, a deeper TOC/name-block layout difference exists — structural compare still satisfies D-06's fallback. `[ASSUMED]` pending a build. |
 | A5 | The 4 managed save-target framework legs are net472-project-referenceable from the CLI | AUTH-05 | If a format's only save leg is WinForms-coupled, `save` for that format needs a framework extraction first (small). `[ASSUMED]` — per-format split not exhaustively verified. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does `TemplateDefinitionCompiler` carry built-in object-template definitions, or does it strictly require a `.tdf` input?**
-   - Known: no `.tdf` source assets in either repo; the compiler's model (`TemplateData`) is the schema source.
-   - Unclear: whether the canonical SOE `.tdf` set must be supplied/authored, or the compiler self-describes.
-   - Recommendation: read `TemplateGlobals.cpp`/`TemplateDefinitionFile.cpp` in Wave 0; if a `.tdf` is required, treat sourcing/authoring the object-template `.tdf` as an explicit AUTH-02 task.
+   - **RESOLVED (2026-06-03, orchestrator source-read):** It **strictly requires a `.tdf` input** — `TemplateDefinitionCompiler.cpp:438 parseTemplateDefinitionFile(File &fp)` reads a `TemplateDefinitionFile` from a file path, then `writeTemplate(tdfFile, path)` generates C++ header/source + the param→type schema. **No built-in defs.** And **zero `.tdf` assets exist** in swg-client-v2 or `tools/` (`find -iname '*.tdf'` = 0) — same gate-finding class as Phase-12's byte-exact (no source assets).
+   - **DISPOSITION (bounds scope — no wholesale `.tdf` authoring):**
+     - **AUTH-02 `compile-definition`:** ships and is golden-tested against a **small authored minimal `.tdf` fixture** (representative — proves `.tdf → schema-artifact`); the absence of the canonical SOE `.tdf` set is a **documented gate-finding** (mirrors Phase-12; real `.tdf` becomes flowable later). Do NOT author the full SOE `.tdf` set in this phase.
+     - **RESID-01 typed display:** sources the common slot/attribute/hair **struct layouts from the already-present generated `Shared*ObjectTemplate` classes** — the compiler's historical OUTPUT, verified present at `tools/src/engine/shared/library/sharedGame/.../objectTemplate/Shared{Tangible,Weapon,DraftSchematic,...}ObjectTemplate.{h,cpp}` — NOT from re-running the compiler on absent `.tdf`. The schema-artifact for the editor (D-08) is produced from these for the common classes; the rare tail stays labeled-hex.
+   - **Consequence for plans:** 13-05 `compile-definition` does NOT carry a `.tdf`-sourcing unknown into execution; 13-06 RESID-01 reads the generated `Shared*ObjectTemplate` classes for struct layouts. **No `.tdf` authoring task — 13-05 does NOT need splitting** (checker WARNING-2 dispositioned: the heavy-authoring trigger does not fire).
 
 2. **Which save-target legs per format are framework (net472-referenceable) vs WinForms-plugin?**
-   - Known: framework primitives (`LooseOverridePath`, `TreBackupPath`, `ReloadAssetClassifier`) are in `UtinniCoreDotNet`; some wiring is in TJT.
-   - Recommendation: per-format audit at plan time; `save` calls framework legs only.
+   - **RESOLVED (PATTERNS finding):** all 4 `*SaveTargets` live in the WinForms plugin `TJT.Saving` (NOT net472-referenceable). `save` reimplements the thin write over framework primitives directly (`LooseOverridePath.Resolve` + framework serializers + atomic `Flush(true)`) — Option 1, no framework extraction (13-03 implements this).
 
 3. **zlib 1.1.4 default compression level vs the original `.tre` corpus's level.**
-   - Recommendation: uncompressed-first test ladder isolates this; structural fallback if compressed identity is unreachable.
+   - **RESOLVED (dispositioned):** uncompressed-first test ladder isolates this; structural-compare fallback if compressed byte-identity is unreachable (D-06). No blocker.
 
 ## Environment Availability
 
