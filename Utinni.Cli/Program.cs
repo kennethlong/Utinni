@@ -49,7 +49,9 @@ namespace Utinni.Cli
                         Commands.RoundtripTabOptions,
                         Commands.RoundtripStfOptions,
                         Commands.RoundtripOtOptions,
-                        Commands.ValidatePluginOptions>(args)
+                        Commands.ValidatePluginOptions,
+                        Commands.SaveOptions,
+                        Commands.RepackTreOptions>(args)
                     .MapResult(
                         (Commands.ParseTreOptions o)       => Commands.ParseTreCommand.Run(o),
                         (Commands.ListObjectsOptions o)    => Commands.ListObjectsCommand.Run(o),
@@ -60,6 +62,8 @@ namespace Utinni.Cli
                         (Commands.RoundtripStfOptions o)   => Commands.RoundtripStfCommand.Run(o),
                         (Commands.RoundtripOtOptions o)    => Commands.RoundtripOtCommand.Run(o),
                         (Commands.ValidatePluginOptions o) => Commands.ValidatePluginCommand.Run(o),
+                        (Commands.SaveOptions o)           => Commands.SaveCommand.Run(o),
+                        (Commands.RepackTreOptions o)      => Commands.RepackTreCommand.Run(o),
                         errs => 1);  // exit 1 on usage error per D-02
             }
         }
