@@ -304,7 +304,7 @@ Plans:
 **Plans**:
 - [x] 13-01-PLAN.md — Lift the 3 AUTH-06 natives (DataTableTool/ArmorExporterTool/CoreWeaponExporterTool) + sharedXml/libxml2 into tools/; Perforce-stub; build green @ v145 (Wave 1) [AUTH-06]
 - [x] 13-02-PLAN.md — NativeToolRunner subprocess seam + banner-normalize + RspSynthesizer (.rsp recipe from a real .tre) (Wave 1) [AUTH-04]
-- [ ] 13-03-PLAN.md — SAVE verb (4-format, loose-override default, locked envelope) + separate repack-tre verb (D-10) over framework primitives (Wave 1) [AUTH-05]
+- [x] 13-03-PLAN.md — SAVE verb (4-format, loose-override default, locked envelope) + separate repack-tre verb (D-10) over framework primitives (Wave 1) [AUTH-05]
 - [ ] 13-04-PLAN.md — compile-template (.tpf->.iff, cross-checked) + build-tre (synth-.rsp byte-exact ladder) (Wave 2) [AUTH-03, AUTH-04]
 - [ ] 13-05-PLAN.md — compile-definition (schema artifact, D-08) + compile-datatable (managed-oracle cross-check) + export-armor/export-weapon (Wave 3) [AUTH-02, AUTH-06]
 - [ ] 13-06-PLAN.md — OT editor typed list/struct display over the committed schema (RESID-01 close) + Tier-4 visual checkpoint (Wave 4) [RESID-01]
@@ -402,7 +402,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 10. Wave-1 plugin — String-table Editor | 2/6 | In Progress|  |
 | 11. Wave-1 plugin — Object Template Editor | 5/5 | Complete    | 2026-06-01 |
 | 12. Revive-feasibility spike (HARD GATE) + intro-skip crash | 0/TBD | Not started | - |
-| 13. Wrap compilers as CLI verbs + OT Tier-2 | 2/6 | In Progress|  |
+| 13. Wrap compilers as CLI verbs + OT Tier-2 | 3/6 | In Progress|  |
 | 14. Headless MCP server (`Utinni.Mcp`) | 0/TBD | Not started | - |
 | 15. Wave-2 editors (WorldSnapshot, Particle) + residuals | 0/TBD | Not started | - |
 | 16. Live-injected MCP bridge + Blender boundary | 0/TBD | Not started | - |

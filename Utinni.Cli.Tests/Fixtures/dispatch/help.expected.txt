@@ -30,6 +30,12 @@ Copyright (c) 2005 - 2020 Giacomo Stelluti Scala & Contributors
                      composition + managed-DLL inspection execute static
                      initialisers as a side effect.
 
+  save               Re-serialize an IFF/datatable/stf/OT asset and write it
+                     (loose-override by --root, or explicit --path).
+
+  repack-tre         Destructively repack a .tre archive (full rebuild), taking
+                     a timestamped backup first. SEPARATE from save (D-10).
+
   help               Display more information on a specific command.
 
   version            Display version information.
