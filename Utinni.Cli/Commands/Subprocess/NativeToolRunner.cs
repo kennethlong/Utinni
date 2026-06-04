@@ -52,6 +52,16 @@ namespace Utinni.Cli.Commands.Subprocess
     /// the success envelope; native non-zero → CLI exit 2 ("ToolError") with normalized stderr;
     /// the exe missing → CLI exit 3 ("FileNotFound") WITHOUT throwing.</para>
     /// </summary>
+    /// <summary>Captured outcome of a native-tool spawn (see <see cref="NativeToolRunner.RunCaptured"/>).</summary>
+    public sealed class NativeToolResult
+    {
+        public bool ExeFound { get; set; }
+        public bool TimedOut { get; set; }
+        public int ExitCode { get; set; }
+        public string Stdout { get; set; }
+        public string Stderr { get; set; }
+    }
+
     public static class NativeToolRunner
     {
         // Wall-clock backstop for a single native-tool invocation. Generous for any real build
@@ -74,15 +84,52 @@ namespace Utinni.Cli.Commands.Subprocess
         /// reports whether it exists post-run. May be null (then produced=false).</param>
         public static int Run(string toolExe, string[] args, string workingDir, string verb, string toolName, string expectedOutputPath)
         {
-            if (toolExe == null) throw new ArgumentNullException("toolExe");
-            if (args == null) throw new ArgumentNullException("args");
             if (verb == null) throw new ArgumentNullException("verb");
 
-            // Missing exe → exit 3 FileNotFound, never throw (mirror RoundtripTabCommand:106-110).
-            if (!File.Exists(toolExe))
+            NativeToolResult r = RunCaptured(toolExe, args, workingDir);
+
+            if (!r.ExeFound)
             {
                 return JsonOutput.EmitError(verb, "FileNotFound",
                     toolName + " executable not found: " + toolExe, exitCode: 3);
+            }
+            if (r.TimedOut)
+            {
+                return JsonOutput.EmitError(verb, "ToolTimeout",
+                    toolName + " did not exit within " + (ToolTimeoutMs / 1000) + "s (killed).", exitCode: 2);
+            }
+
+            string normalizedStderr = NormalizeBanner(r.Stderr);
+            if (r.ExitCode != 0)
+            {
+                return JsonOutput.EmitError(verb, "ToolError", normalizedStderr, exitCode: 2);
+            }
+
+            bool produced = !string.IsNullOrEmpty(expectedOutputPath) && File.Exists(expectedOutputPath);
+            var result = new JObject
+            {
+                ["exitCode"] = r.ExitCode,
+                ["outputPath"] = expectedOutputPath,
+                ["produced"] = produced,
+                ["stderr"] = normalizedStderr,
+                ["tool"] = toolName
+            };
+            return JsonOutput.EmitSuccess(verb, result);
+        }
+
+        /// <summary>
+        /// Spawns the tool and CAPTURES the outcome without emitting any envelope — for callers (e.g.
+        /// compile-definition) that run the native best-effort alongside another deliverable. Mirrors
+        /// the same hang-proofing (stdin-close + timeout) as <see cref="Run"/>.
+        /// </summary>
+        public static NativeToolResult RunCaptured(string toolExe, string[] args, string workingDir)
+        {
+            if (toolExe == null) throw new ArgumentNullException("toolExe");
+            if (args == null) throw new ArgumentNullException("args");
+
+            if (!File.Exists(toolExe))
+            {
+                return new NativeToolResult { ExeFound = false };
             }
 
             var psi = new ProcessStartInfo
@@ -100,56 +147,30 @@ namespace Utinni.Cli.Commands.Subprocess
                 psi.WorkingDirectory = workingDir;
             }
 
-            string stdout;
-            string stderr;
-            int exitCode;
             using (var process = new Process())
             {
                 process.StartInfo = psi;
                 process.Start();
-
-                // Close the child's stdin immediately: a native tool that getchar()s on a usage/error
-                // path (the SOE tools do — RESEARCH stdout-pollution note) then reads EOF and proceeds
-                // instead of blocking forever on a "press any key" prompt.
                 process.StandardInput.Close();
 
-                // Read both streams asynchronously to end to avoid a full-pipe deadlock when the
-                // child writes more than the buffer to one stream.
                 System.Threading.Tasks.Task<string> outTask = process.StandardOutput.ReadToEndAsync();
                 System.Threading.Tasks.Task<string> errTask = process.StandardError.ReadToEndAsync();
 
-                // Timeout backstop: the SOE tools can wedge on an error/exit path (e.g. the linked
-                // Perforce ClientUser or a FATAL handler waiting on console input). Kill + report a
-                // ToolError rather than hang the verb (and, downstream, the Phase-14 MCP server).
                 if (!process.WaitForExit(ToolTimeoutMs))
                 {
                     try { process.Kill(); } catch { /* already exiting */ }
                     process.WaitForExit(5000);
-                    return JsonOutput.EmitError(verb, "ToolTimeout",
-                        toolName + " did not exit within " + (ToolTimeoutMs / 1000) + "s (killed).", exitCode: 2);
+                    return new NativeToolResult { ExeFound = true, TimedOut = true };
                 }
-                stdout = outTask.Result;
-                stderr = errTask.Result;
-                exitCode = process.ExitCode;
+
+                return new NativeToolResult
+                {
+                    ExeFound = true,
+                    ExitCode = process.ExitCode,
+                    Stdout = outTask.Result,
+                    Stderr = errTask.Result
+                };
             }
-
-            string normalizedStderr = NormalizeBanner(stderr);
-
-            if (exitCode != 0)
-            {
-                return JsonOutput.EmitError(verb, "ToolError", normalizedStderr, exitCode: 2);
-            }
-
-            bool produced = !string.IsNullOrEmpty(expectedOutputPath) && File.Exists(expectedOutputPath);
-            var result = new JObject
-            {
-                ["exitCode"] = exitCode,
-                ["outputPath"] = expectedOutputPath,
-                ["produced"] = produced,
-                ["stderr"] = normalizedStderr,
-                ["tool"] = toolName
-            };
-            return JsonOutput.EmitSuccess(verb, result);
         }
 
         // ─────────────────────────────────────────────────────────────────────

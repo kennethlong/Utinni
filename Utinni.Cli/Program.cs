@@ -40,35 +40,57 @@ namespace Utinni.Cli
                 settings.CaseSensitive = false;
             }))
             {
-                return parser.ParseArguments<
-                        Commands.ParseTreOptions,
-                        Commands.ListObjectsOptions,
-                        Commands.InspectIffOptions,
-                        Commands.DecodeIffOptions,
-                        Commands.RoundtripIffOptions,
-                        Commands.RoundtripTabOptions,
-                        Commands.RoundtripStfOptions,
-                        Commands.RoundtripOtOptions,
-                        Commands.ValidatePluginOptions,
-                        Commands.SaveOptions,
-                        Commands.RepackTreOptions,
-                        Commands.CompileTemplateOptions,
-                        Commands.BuildTreOptions>(args)
+                // NOTE: ParseArguments<T..> tops out at 16 type args; with 17 verbs we use the
+                // Type[] overload (no arity cap). MapResult still dispatches by concrete option type.
+                // Both ParseArguments<T..> and MapResult(lambdas) top out at 16 verbs. With 17 verbs
+                // we use the Type[] ParseArguments overload + a single object-typed MapResult that
+                // dispatches on the concrete parsed option type (see Dispatch).
+                return parser.ParseArguments(args,
+                        typeof(Commands.ParseTreOptions),
+                        typeof(Commands.ListObjectsOptions),
+                        typeof(Commands.InspectIffOptions),
+                        typeof(Commands.DecodeIffOptions),
+                        typeof(Commands.RoundtripIffOptions),
+                        typeof(Commands.RoundtripTabOptions),
+                        typeof(Commands.RoundtripStfOptions),
+                        typeof(Commands.RoundtripOtOptions),
+                        typeof(Commands.ValidatePluginOptions),
+                        typeof(Commands.SaveOptions),
+                        typeof(Commands.RepackTreOptions),
+                        typeof(Commands.CompileTemplateOptions),
+                        typeof(Commands.BuildTreOptions),
+                        typeof(Commands.CompileDefinitionOptions),
+                        typeof(Commands.CompileDatatableOptions),
+                        typeof(Commands.ExportArmorOptions),
+                        typeof(Commands.ExportWeaponOptions))
                     .MapResult(
-                        (Commands.ParseTreOptions o)       => Commands.ParseTreCommand.Run(o),
-                        (Commands.ListObjectsOptions o)    => Commands.ListObjectsCommand.Run(o),
-                        (Commands.InspectIffOptions o)     => Commands.InspectIffCommand.Run(o),
-                        (Commands.DecodeIffOptions o)      => Commands.DecodeIffCommand.Run(o),
-                        (Commands.RoundtripIffOptions o)   => Commands.RoundtripIffCommand.Run(o),
-                        (Commands.RoundtripTabOptions o)   => Commands.RoundtripTabCommand.Run(o),
-                        (Commands.RoundtripStfOptions o)   => Commands.RoundtripStfCommand.Run(o),
-                        (Commands.RoundtripOtOptions o)    => Commands.RoundtripOtCommand.Run(o),
-                        (Commands.ValidatePluginOptions o) => Commands.ValidatePluginCommand.Run(o),
-                        (Commands.SaveOptions o)           => Commands.SaveCommand.Run(o),
-                        (Commands.RepackTreOptions o)      => Commands.RepackTreCommand.Run(o),
-                        (Commands.CompileTemplateOptions o) => Commands.CompileTemplateCommand.Run(o),
-                        (Commands.BuildTreOptions o)       => Commands.BuildTreCommand.Run(o),
+                        (object opts) => Dispatch(opts),
                         errs => 1);  // exit 1 on usage error per D-02
+            }
+        }
+
+        private static int Dispatch(object opts)
+        {
+            switch (opts)
+            {
+                case Commands.ParseTreOptions o:          return Commands.ParseTreCommand.Run(o);
+                case Commands.ListObjectsOptions o:       return Commands.ListObjectsCommand.Run(o);
+                case Commands.InspectIffOptions o:        return Commands.InspectIffCommand.Run(o);
+                case Commands.DecodeIffOptions o:         return Commands.DecodeIffCommand.Run(o);
+                case Commands.RoundtripIffOptions o:      return Commands.RoundtripIffCommand.Run(o);
+                case Commands.RoundtripTabOptions o:      return Commands.RoundtripTabCommand.Run(o);
+                case Commands.RoundtripStfOptions o:      return Commands.RoundtripStfCommand.Run(o);
+                case Commands.RoundtripOtOptions o:       return Commands.RoundtripOtCommand.Run(o);
+                case Commands.ValidatePluginOptions o:    return Commands.ValidatePluginCommand.Run(o);
+                case Commands.SaveOptions o:              return Commands.SaveCommand.Run(o);
+                case Commands.RepackTreOptions o:         return Commands.RepackTreCommand.Run(o);
+                case Commands.CompileTemplateOptions o:   return Commands.CompileTemplateCommand.Run(o);
+                case Commands.BuildTreOptions o:          return Commands.BuildTreCommand.Run(o);
+                case Commands.CompileDefinitionOptions o: return Commands.CompileDefinitionCommand.Run(o);
+                case Commands.CompileDatatableOptions o:  return Commands.CompileDatatableCommand.Run(o);
+                case Commands.ExportArmorOptions o:       return Commands.ExportArmorCommand.Run(o);
+                case Commands.ExportWeaponOptions o:      return Commands.ExportWeaponCommand.Run(o);
+                default:                                  return 1;
             }
         }
     }
