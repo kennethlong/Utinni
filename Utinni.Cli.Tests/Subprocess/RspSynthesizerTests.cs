@@ -72,12 +72,13 @@ namespace Utinni.Cli.Tests.Subprocess
 
             Assert.Equal(2, lines.Length);
             // Line order == record order (no pre-sort): texture/alpha.dds first.
-            Assert.EndsWith("texture/alpha.dds", lines[0]);
-            Assert.EndsWith("appearance/beta.msh", lines[1]);
+            // Tree-first format: the tree path is the FIRST token on each line.
+            Assert.StartsWith("texture/alpha.dds ", lines[0]);
+            Assert.StartsWith("appearance/beta.msh ", lines[1]);
         }
 
         [Fact]
-        public void Synthesize_UncompressedRecord_EmitsAtUMarker_DiskFirst()
+        public void Synthesize_UncompressedRecord_EmitsAtUMarker_TreeFirst()
         {
             string tre = Path.Combine(_work, "five.tre");
             TreFixtureBuilder.WriteSynthetic5000(tre); // both records compressor=0 → "none"
@@ -87,20 +88,21 @@ namespace Utinni.Cli.Tests.Subprocess
 
             foreach (string line in lines)
             {
-                // Disk-first builder format: "<diskPath> @u <treePath>".
+                // Tree-first builder format: "<treePath> @u <diskPath>".
                 string[] parts = line.Split(new[] { ' ' }, 3);
                 Assert.Equal(3, parts.Length);
-                string diskPath = parts[0];
+                string treePath = parts[0];
                 string marker = parts[1];
-                string treePath = parts[2];
+                string diskPath = parts[2];
 
                 Assert.Equal("@u", marker); // uncompressed → @u
-                // Disk-first: the FIRST token is the on-disk extract path (absolute, under extract dir).
+                // Tree-first: the FIRST token is the logical name (contains a forward-slash).
+                Assert.Contains("/", treePath);
+                Assert.False(Path.IsPathRooted(treePath));
+                // The disk path (last token) is the absolute on-disk extract path.
                 Assert.True(Path.IsPathRooted(diskPath));
                 Assert.StartsWith(Path.GetFullPath(extract), diskPath, StringComparison.OrdinalIgnoreCase);
                 Assert.True(File.Exists(diskPath), "record payload was extracted to disk: " + diskPath);
-                // The tree-path (last token) is the logical name, NOT the disk path.
-                Assert.Contains("/", treePath);
             }
         }
 

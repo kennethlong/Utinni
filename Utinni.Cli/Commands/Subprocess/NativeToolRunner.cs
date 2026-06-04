@@ -54,6 +54,11 @@ namespace Utinni.Cli.Commands.Subprocess
     /// </summary>
     public static class NativeToolRunner
     {
+        // Wall-clock backstop for a single native-tool invocation. Generous for any real build
+        // (these tools compile a single .tpf/.tab in well under a second) while bounding a wedged
+        // error/exit path to a finite wait.
+        private const int ToolTimeoutMs = 60000;
+
         /// <summary>
         /// Spawns <paramref name="toolExe"/> with the explicit <paramref name="args"/> array, captures
         /// stdout/stderr/exit-code, and emits the locked envelope
@@ -85,6 +90,7 @@ namespace Utinni.Cli.Commands.Subprocess
                 FileName = toolExe,
                 Arguments = BuildArguments(args),
                 UseShellExecute = false,
+                RedirectStandardInput = true,   // close stdin so a native getchar() (usage/error paths) gets EOF, never hangs
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 CreateNoWindow = true
@@ -102,11 +108,28 @@ namespace Utinni.Cli.Commands.Subprocess
                 process.StartInfo = psi;
                 process.Start();
 
-                // Read both streams to end before WaitForExit to avoid a full-pipe deadlock
-                // when the child writes more than the buffer to one stream.
-                stdout = process.StandardOutput.ReadToEnd();
-                stderr = process.StandardError.ReadToEnd();
-                process.WaitForExit();
+                // Close the child's stdin immediately: a native tool that getchar()s on a usage/error
+                // path (the SOE tools do — RESEARCH stdout-pollution note) then reads EOF and proceeds
+                // instead of blocking forever on a "press any key" prompt.
+                process.StandardInput.Close();
+
+                // Read both streams asynchronously to end to avoid a full-pipe deadlock when the
+                // child writes more than the buffer to one stream.
+                System.Threading.Tasks.Task<string> outTask = process.StandardOutput.ReadToEndAsync();
+                System.Threading.Tasks.Task<string> errTask = process.StandardError.ReadToEndAsync();
+
+                // Timeout backstop: the SOE tools can wedge on an error/exit path (e.g. the linked
+                // Perforce ClientUser or a FATAL handler waiting on console input). Kill + report a
+                // ToolError rather than hang the verb (and, downstream, the Phase-14 MCP server).
+                if (!process.WaitForExit(ToolTimeoutMs))
+                {
+                    try { process.Kill(); } catch { /* already exiting */ }
+                    process.WaitForExit(5000);
+                    return JsonOutput.EmitError(verb, "ToolTimeout",
+                        toolName + " did not exit within " + (ToolTimeoutMs / 1000) + "s (killed).", exitCode: 2);
+                }
+                stdout = outTask.Result;
+                stderr = errTask.Result;
                 exitCode = process.ExitCode;
             }
 

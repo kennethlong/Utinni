@@ -35,8 +35,10 @@ namespace Utinni.Cli.Commands.Subprocess
     /// Plan 13-02: synthesizes a TreeFileBuilder <c>.rsp</c> response file from a real <c>.tre</c>
     /// via the Phase-7 reader — the engine that makes AUTH-04 <c>build-tre</c> byte-exact a TESTABLE
     /// hypothesis (D-06). The builder's <c>-r &lt;rsp&gt;</c> consumes <b>builder-format</b> lines
-    /// <c>&lt;diskPath&gt; @ &lt;treePath&gt;</c> (disk-first), with <c>@u</c> marking an uncompressed
-    /// file.
+    /// <c>&lt;treePath&gt; @ &lt;diskPath&gt;</c> (TREE-first: the token before <c>@</c> is the name
+    /// stored in the tree, the token after is the on-disk file to read), with <c>@u</c> marking an
+    /// uncompressed file. (VERIFIED against TreeFileBuilder.cpp addResponseFile — the chars before the
+    /// space-before-<c>@</c> become the in-tree name; the RESEARCH "disk-first" claim was inverted.)
     ///
     /// <para><b>Determinism (D-06, RESEARCH):</b> the builder CRC-sorts the TOC itself
     /// (LessFileEntryCrcNameCompare), so synthesis MUST NOT pre-sort — it emits one line per record
@@ -78,10 +80,11 @@ namespace Utinni.Cli.Commands.Subprocess
                 Directory.CreateDirectory(Path.GetDirectoryName(diskPath));
                 File.WriteAllBytes(diskPath, treFile.GetRecordData(i));
 
-                // Builder-format, disk-first: "<diskPath> @ <treePath>" (or "@u" uncompressed).
-                // The tree-path is emitted VERBATIM (forward-slash logical path the archive stored).
+                // Builder-format, TREE-first: "<treePath> @ <diskPath>" (or "@u" uncompressed).
+                // The tree-path (the name stored in the archive) is emitted VERBATIM; the disk path
+                // is where the builder reads the extracted payload from.
                 string marker = string.Equals(rec.CompressionKind, "none", StringComparison.Ordinal) ? "@u" : "@";
-                sb.Append(diskPath).Append(' ').Append(marker).Append(' ').Append(rec.Name).Append('\n');
+                sb.Append(rec.Name).Append(' ').Append(marker).Append(' ').Append(diskPath).Append('\n');
             }
 
             return sb.ToString();
