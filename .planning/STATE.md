@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: AI-Assisted SWG Tools
-status: completed
+status: executing
 stopped_at: Phase 13 context gathered
-last_updated: "2026-06-04T03:14:50.071Z"
-last_activity: 2026-06-03 -- Phase 12 closed (12-04 RESID-02 RCA + windows-mcp infra)
+last_updated: "2026-06-04T04:13:07.978Z"
+last_activity: 2026-06-04 -- Phase 13 planning complete
 progress:
   total_phases: 20
   completed_phases: 13
-  total_plans: 59
+  total_plans: 65
   completed_plans: 60
-  percent: 100
+  percent: 92
 ---
 
 # Project State
@@ -28,8 +28,8 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 12 — Revive-feasibility spike (HARD GATE) + intro-skip crash — **COMPLETE**
 Plan: 12-01 ✅ / 12-02 ✅ / 12-03 ✅ / 12-04 ✅ done
-Status: Phase 12 done. AUTH-01 build gate complete — all 3 SOE CLIs build+link green at v145/Win32 from tools/Utinni.Tools.sln, CI-enforced (byte-exact parked behind documented gate-findings; retail .tre corpus is v6000). HARD-GATE VERDICT: tools revivable but need real porting (engine-API drift, C++20, SAFESEH, CRT-compat) — not clean lift-and-shift. RESID-02 intro-skip crash **no longer reproduces** (A5) — resolved by the Phase-3 R-A/R-H heap-free `dispatchSnapshot` migration; documented in `12-RESID-02-RCA.md`; VEH logger stays deployed. Window-overlay/stuck-cursor/minimize symptoms observed in the re-run = RESID-04 (Phase 15), captured + deferred (low priority). AUTH unblocked for Phase 13.
-Last activity: 2026-06-03 -- Phase 12 closed (12-04 RESID-02 RCA + windows-mcp infra)
+Status: Ready to execute
+Last activity: 2026-06-04 -- Phase 13 planning complete
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 
