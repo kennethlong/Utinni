@@ -4,14 +4,14 @@ milestone: v2.0
 milestone_name: AI-Assisted SWG Tools
 status: executing
 stopped_at: Phase 13 context gathered
-last_updated: "2026-06-04T04:13:07.978Z"
-last_activity: 2026-06-04 -- Phase 13 planning complete
+last_updated: "2026-06-04T05:08:24.413Z"
+last_activity: 2026-06-04
 progress:
   total_phases: 20
   completed_phases: 13
   total_plans: 65
-  completed_plans: 60
-  percent: 92
+  completed_plans: 61
+  percent: 94
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-01)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 12 COMPLETE — AUTH-01 build hard gate PASSED + RESID-02 resolved. Next: Phase 13 (revive+wrap compilers as `utinni-cli` verbs).
+**Current focus:** Phase 13 — Wrap revived compilers as CLI verbs + close OT Tier-2
 
 ## Current Position
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
-Phase: 12 — Revive-feasibility spike (HARD GATE) + intro-skip crash — **COMPLETE**
-Plan: 12-01 ✅ / 12-02 ✅ / 12-03 ✅ / 12-04 ✅ done
+Phase: 13 (Wrap revived compilers as CLI verbs + close OT Tier-2) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-06-04 -- Phase 13 planning complete
+Last activity: 2026-06-04
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 
