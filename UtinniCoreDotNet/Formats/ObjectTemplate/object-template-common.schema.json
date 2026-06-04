@@ -1,0 +1,26 @@
+{
+  "_provenance": "Plan 13-06 (RESID-01, D-08). Per-class param->type schema for the COMMON multi-chunk list/struct params (the codec's RawBytesHexFallback residual). Param names + classes derived from the generated Shared*ObjectTemplate classes (the SOE TemplateDefinitionCompiler's historical output) under tools/src/.../sharedGame/.../objectTemplate/ — NOT from re-running the compiler on absent .tdf (Open Q1 disposition). The exotic/rare tail not listed here degrades to a typed-label + hex (D-07 80/20).",
+  "classes": {
+    "SharedDraftSchematicObjectTemplate": {
+      "params": [
+        { "name": "slots", "type": "TYPE_STRUCT", "listType": "LIST_LIST" },
+        { "name": "attributes", "type": "TYPE_STRUCT", "listType": "LIST_LIST" },
+        { "name": "experiment", "type": "TYPE_STRUCT", "listType": "LIST_LIST" }
+      ]
+    },
+    "SharedTangibleObjectTemplate": {
+      "params": [
+        { "name": "paletteColorCustomizationVariables", "type": "TYPE_STRUCT", "listType": "LIST_LIST" },
+        { "name": "rangedIntCustomizationVariables", "type": "TYPE_STRUCT", "listType": "LIST_LIST" },
+        { "name": "constStringCustomizationVariables", "type": "TYPE_STRUCT", "listType": "LIST_LIST" },
+        { "name": "customizationVariableMapping", "type": "TYPE_STRUCT", "listType": "LIST_LIST" },
+        { "name": "socketDestinations", "type": "TYPE_ENUM", "listType": "LIST_ENUM_ARRAY" }
+      ]
+    },
+    "SharedWeaponObjectTemplate": {
+      "params": [
+        { "name": "weaponEffectIndex", "type": "TYPE_INTEGER", "listType": "LIST_NONE" }
+      ]
+    }
+  }
+}

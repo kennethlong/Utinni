@@ -57,6 +57,7 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
+    <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
@@ -85,8 +86,11 @@
     <Compile Include="Formats\ObjectTemplate\ObjectTemplateParamCodec.cs" />
     <Compile Include="Formats\ObjectTemplate\MutableObjectTemplate.cs" />
     <Compile Include="Formats\ObjectTemplate\ObjectTemplateWriter.cs" />
+    <Compile Include="Formats\ObjectTemplate\ObjectTemplateSchema.cs" />
+    <Compile Include="Formats\ObjectTemplate\ObjectTemplateSchemaLoader.cs" />
     <Compile Include="Formats\ObjectTemplate\EffectiveField.cs" />
     <Compile Include="Formats\ObjectTemplate\ObjectTemplateResolver.cs" />
+    <EmbeddedResource Include="Formats\ObjectTemplate\object-template-common.schema.json" />
     <Compile Include="Formats\StringTable\StringTableParseException.cs" />
     <Compile Include="Formats\StringTable\StringTableEntry.cs" />
     <Compile Include="Formats\StringTable\StringTableDocument.cs" />
