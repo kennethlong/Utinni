@@ -25,12 +25,43 @@
 using System;
 using System.IO;
 using Newtonsoft.Json.Linq;
+using Utinni.Cli.Commands.Subprocess;
 using Xunit.Sdk;
 
 namespace Utinni.Cli.Tests.Infrastructure
 {
     public static class GoldenTestRunner
     {
+        /// <summary>
+        /// Plan 13-02: banner normalization for native-tool output goldens. Delegates to the
+        /// production <see cref="NativeToolRunner.NormalizeBanner"/> so the golden harness strips
+        /// <c>__DATE__</c>/<c>__TIME__</c>/abs-path exactly as the runner does before emitting
+        /// (one source of truth — Pitfall 3 / T-13-06).
+        /// </summary>
+        public static string NormalizeBanner(string text)
+        {
+            return NativeToolRunner.NormalizeBanner(text);
+        }
+
+        /// <summary>
+        /// Compares <paramref name="actualText"/> to the expected text golden after applying
+        /// <see cref="NormalizeBanner"/> to BOTH sides (so native build-date/path leakage never
+        /// fails the compare). Used by the BUILD-verb goldens (compile-template/build-tre/etc.).
+        /// </summary>
+        public static void MatchesNormalizedText(string fixtureKey, string actualText)
+        {
+            var fixturePath = FixturePath.Resolve(fixtureKey + ".expected.txt");
+            var expectedText = NormalizeBanner(
+                File.ReadAllText(fixturePath).Replace("\r\n", "\n").Replace("\r", "\n"));
+            var normalizedActual = NormalizeBanner(
+                (actualText ?? string.Empty).Replace("\r\n", "\n").Replace("\r", "\n"));
+
+            if (!string.Equals(expectedText, normalizedActual, StringComparison.Ordinal))
+            {
+                DumpMismatch(fixtureKey, expectedText, normalizedActual, ".txt");
+            }
+        }
+
         /// <summary>
         /// Compares actualJson to the expected JSON golden fixture at
         /// &lt;BaseDirectory&gt;/Fixtures/&lt;fixtureKey&gt;.expected.json using JToken.DeepEquals.
