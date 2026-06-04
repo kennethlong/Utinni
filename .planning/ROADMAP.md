@@ -300,7 +300,14 @@ Plans:
   3. `TemplateDefinitionCompiler`'s `.tdf`/`.tpd` → per-class param→type schema is surfaced via a `utinni-cli` verb (AUTH-02), and the Object Template Editor displays list/struct params typed rather than raw (RESID-01 closed).
   4. `utinni-cli` gains a SAVE verb that writes an edited asset (loose-override or repack) with a structured result envelope — the net-new write surface MCP-02 wraps (AUTH-05).
   5. A modder can compile a datatable from CSV/XML source and run the `ArmorExporterTool`/`WeaponExporterTool` item exporters via `utinni-cli` verbs (AUTH-06), each with at least one golden fixture.
-**Plans**: TBD
+**Plans**: 6 plans (4 waves; AUTH-06 native lift + subprocess/.rsp primitives + SAVE in wave 1, build verbs in waves 2-3, RESID-01 typed display in wave 4)
+**Plans**:
+- [ ] 13-01-PLAN.md — Lift the 3 AUTH-06 natives (DataTableTool/ArmorExporterTool/CoreWeaponExporterTool) + sharedXml/libxml2 into tools/; Perforce-stub; build green @ v145 (Wave 1) [AUTH-06]
+- [ ] 13-02-PLAN.md — NativeToolRunner subprocess seam + banner-normalize + RspSynthesizer (.rsp recipe from a real .tre) (Wave 1) [AUTH-04]
+- [ ] 13-03-PLAN.md — SAVE verb (4-format, loose-override default, locked envelope) + separate repack-tre verb (D-10) over framework primitives (Wave 1) [AUTH-05]
+- [ ] 13-04-PLAN.md — compile-template (.tpf->.iff, cross-checked) + build-tre (synth-.rsp byte-exact ladder) (Wave 2) [AUTH-03, AUTH-04]
+- [ ] 13-05-PLAN.md — compile-definition (schema artifact, D-08) + compile-datatable (managed-oracle cross-check) + export-armor/export-weapon (Wave 3) [AUTH-02, AUTH-06]
+- [ ] 13-06-PLAN.md — OT editor typed list/struct display over the committed schema (RESID-01 close) + Tier-4 visual checkpoint (Wave 4) [RESID-01]
 
 ### Phase 14: Headless MCP server (`Utinni.Mcp`) — the centerpiece
 **Milestone**: v2.0 — "AI-Assisted SWG Tools"
