@@ -7,6 +7,13 @@ Debug/
 # with high archival value, accidentally caught by the global Debug/
 # rule meant for Visual Studio build outputs.
 !/.planning/debug/
+# Negate the Debug/ rule for lifted SOE source dirs named 'debug/' (lowercase) —
+# caught case-insensitively on Windows (core.ignorecase=true) by the global Debug/
+# build-output rule, but these are real lifted source files (e.g. sharedMath's
+# DebugShapeRenderer.{cpp,h}) the CI tools-build AUTH-01 gate must compile. Actual
+# build outputs live under tools/src/compile/win32/*/Debug/ and stay ignored.
+!tools/src/**/src/shared/debug/
+!tools/src/**/src/shared/debug/**
 RelWithDbgInfo/
 tmp/
 bin/
