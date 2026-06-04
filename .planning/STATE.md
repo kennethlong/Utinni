@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: AI-Assisted SWG Tools
-status: executing
-stopped_at: Phase 12 COMPLETE (12-01/02/03 AUTH-01 build gate + 12-04 RESID-02 resolved-by-prior-fix)
-last_updated: "2026-06-03T00:00:00.000Z"
-last_activity: 2026-06-03 -- Phase 12 closed: 12-04 RESID-02 no-repro (A5) -> resolved by Phase-3 R-H heap-free migration; RCA documented; VEH logger stays deployed; window-overlay finding routed to RESID-04/Phase-15
+status: completed
+stopped_at: Phase 13 context gathered
+last_updated: "2026-06-04T03:14:50.071Z"
+last_activity: 2026-06-03 -- Phase 12 closed (12-04 RESID-02 RCA + windows-mcp infra)
 progress:
   total_phases: 20
-  completed_phases: 12
+  completed_phases: 13
   total_plans: 59
-  completed_plans: 59
+  completed_plans: 60
   percent: 100
 ---
 
@@ -222,9 +222,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-03 (Phase 12 closeout)
-Stopped at: Phase 12 COMPLETE — ready for Phase 13 (revive+wrap compilers as utinni-cli verbs)
-Resume file: .planning/phases/12-revive-feasibility-spike-hard-gate-intro-skip-crash/12-04-SUMMARY.md
+Last session: 2026-06-04T03:14:50.040Z
+Stopped at: Phase 13 context gathered
+Resume file: .planning/phases/13-wrap-revived-compilers-as-cli-verbs-close-ot-tier-2/13-CONTEXT.md
 
 ## Ingest Provenance
 
