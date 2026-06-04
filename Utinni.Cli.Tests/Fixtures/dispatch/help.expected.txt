@@ -1,49 +1,63 @@
 CommandLine <version>
 Copyright (c) 2005 - 2020 Giacomo Stelluti Scala & Contributors
 
-  parse-tre           Parse a .tre archive and emit sorted-key JSON to stdout.
+  parse-tre             Parse a .tre archive and emit sorted-key JSON to stdout.
 
-  list-objects        List world-snapshot objects from a ws.iff via the TRE
-                      reader.
+  list-objects          List world-snapshot objects from a ws.iff via the TRE
+                        reader.
 
-  inspect-iff         Emit the chunk tree of an IFF file as JSON.
+  inspect-iff           Emit the chunk tree of an IFF file as JSON.
 
-  decode-iff          Decode a typed IFF asset (datatable / string-table /
-                      object-template) to JSON.
+  decode-iff            Decode a typed IFF asset (datatable / string-table /
+                        object-template) to JSON.
 
-  roundtrip-iff       Parse -> [optional mutate-leaf | remove-leaf] -> serialize
-                      -> re-parse an IFF; assert byte-exact untouched chunks.
+  roundtrip-iff         Parse -> [optional mutate-leaf | remove-leaf] ->
+                        serialize -> re-parse an IFF; assert byte-exact
+                        untouched chunks.
 
-  roundtrip-tab       Parse -> optional mutate -> serialize -> re-parse a .tab;
-                      assert byte-exact identity on untouched cells.
+  roundtrip-tab         Parse -> optional mutate -> serialize -> re-parse a
+                        .tab; assert byte-exact identity on untouched cells.
 
-  roundtrip-stf       Parse -> optional edit -> serialize -> re-parse a .stf;
-                      assert byte-exact identity on untouched entries.
+  roundtrip-stf         Parse -> optional edit -> serialize -> re-parse a .stf;
+                        assert byte-exact identity on untouched entries.
 
-  roundtrip-ot        Parse -> optional add/remove/edit override -> serialize ->
-                      re-parse an object-template .iff; assert byte-exact
-                      identity on untouched params.
+  roundtrip-ot          Parse -> optional add/remove/edit override -> serialize
+                        -> re-parse an object-template .iff; assert byte-exact
+                        identity on untouched params.
 
-  validate-plugin     Reflect on a plugin directory and report compliance.
-                      WARNING: Loads each .dll under the given directory; only
-                      run against trusted plugin directories. PluginLoader
-                      composition + managed-DLL inspection execute static
-                      initialisers as a side effect.
+  validate-plugin       Reflect on a plugin directory and report compliance.
+                        WARNING: Loads each .dll under the given directory; only
+                        run against trusted plugin directories. PluginLoader
+                        composition + managed-DLL inspection execute static
+                        initialisers as a side effect.
 
-  save                Re-serialize an IFF/datatable/stf/OT asset and write it
-                      (loose-override by --root, or explicit --path).
+  save                  Re-serialize an IFF/datatable/stf/OT asset and write it
+                        (loose-override by --root, or explicit --path).
 
-  repack-tre          Destructively repack a .tre archive (full rebuild), taking
-                      a timestamped backup first. SEPARATE from save (D-10).
+  repack-tre            Destructively repack a .tre archive (full rebuild),
+                        taking a timestamped backup first. SEPARATE from save
+                        (D-10).
 
-  compile-template    Compile a .tpf object-template source to a byte-correct
-                      .iff via the revived TemplateCompiler (AUTH-03).
+  compile-template      Compile a .tpf object-template source to a byte-correct
+                        .iff via the revived TemplateCompiler (AUTH-03).
 
-  build-tre           Build a .tre archive via the revived TreeFileBuilder from
-                      an explicit --rsp recipe, or synthesize one from
-                      --from-tre (AUTH-04).
+  build-tre             Build a .tre archive via the revived TreeFileBuilder
+                        from an explicit --rsp recipe, or synthesize one from
+                        --from-tre (AUTH-04).
 
-  help                Display more information on a specific command.
+  compile-definition    Run TemplateDefinitionCompiler over a .tdf and emit the
+                        per-class param->type schema JSON (AUTH-02, D-08).
 
-  version             Display version information.
+  compile-datatable     Compile a tab-delimited spreadsheet (or .xml) to a
+                        datatable .iff via the revived DataTableTool (AUTH-06).
+
+  export-armor          Run the revived ArmorExporterTool over a datatable .iff
+                        (emits .tpf + chained .iff) (AUTH-06).
+
+  export-weapon         Run the revived CoreWeaponExporterTool over a datatable
+                        .iff (emits .tpf + chained .iff) (AUTH-06).
+
+  help                  Display more information on a specific command.
+
+  version               Display version information.
 
