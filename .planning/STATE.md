@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: AI-Assisted SWG Tools
-status: verifying
+milestone_name: — "AI-Assisted SWG Tools"
+status: completed
 stopped_at: Phase 13 context gathered
-last_updated: "2026-06-05T02:26:11.828Z"
-last_activity: 2026-06-05
+last_updated: "2026-06-05T02:34:06.832Z"
+last_activity: 2026-06-05 -- Phase 13 marked complete
 progress:
   total_phases: 20
   completed_phases: 14
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 ## Current Position
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
-Phase: 13 (Wrap revived compilers as CLI verbs + close OT Tier-2) — EXECUTING
+Phase: 13 — COMPLETE
 Plan: 6 of 6
-Status: Phase complete — ready for verification
-Last activity: 2026-06-05
+Status: Phase 13 complete
+Last activity: 2026-06-05 -- Phase 13 marked complete
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 
