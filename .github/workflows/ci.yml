@@ -98,6 +98,17 @@ jobs:
           if (-not (Test-Path "$vcpkgDir\.git")) {
             git clone --depth 1 https://github.com/microsoft/vcpkg "$vcpkgDir"
           }
+          # CI-FLAKE FIX (06-flake): vcpkg's default downloads dir is $VCPKG_ROOT/downloads, and
+          # VCPKG_ROOT lives under the per-job RUNNER_TEMP — so every cold-cache run re-downloads
+          # vcpkg's build tools (cmake, powershell-core) from GitHub releases. That download is the
+          # SOLE flake source (observed: curl error 35 SSL-connect on the powershell-core zip, which
+          # vcpkg mis-classifies as non-transient and refuses to retry). Pin VCPKG_DOWNLOADS to a
+          # PERSISTENT path on this self-hosted runner so the tool zips are fetched ONCE and reused
+          # forever after — no per-run download means the flake cannot recur once warmed.
+          $vcpkgDownloads = Join-Path $env:LOCALAPPDATA "vcpkg\downloads"
+          New-Item -ItemType Directory -Force $vcpkgDownloads | Out-Null
+          "VCPKG_DOWNLOADS=$vcpkgDownloads" | Out-File -FilePath $env:GITHUB_ENV -Append
+          $env:VCPKG_DOWNLOADS = $vcpkgDownloads
           & "$vcpkgDir\bootstrap-vcpkg.bat" -disableMetrics
           if ($LASTEXITCODE -ne 0) { throw "vcpkg bootstrap failed (exit $LASTEXITCODE)" }
           "VCPKG_ROOT=$vcpkgDir" | Out-File -FilePath $env:GITHUB_ENV -Append
@@ -108,8 +119,19 @@ jobs:
         run: |
           # T-06-02-04 mitigation: actions/cache@v4 above keyed on vcpkg.json hash makes warm-cache runs fast.
           # T-06-02-01 mitigation: vcpkg-configuration.json default-registry.baseline pin produces reproducible installs.
-          vcpkg install --triplet x86-windows --x-manifest-root="${{ github.workspace }}" --x-install-root="${{ github.workspace }}\vcpkg_installed"
-          if ($LASTEXITCODE -ne 0) { throw "vcpkg install failed (exit $LASTEXITCODE)" }
+          # CI-FLAKE FIX (06-flake): retry the install so a transient download flake on the FIRST cold
+          # population of the (now-persistent) VCPKG_DOWNLOADS self-heals instead of failing the build.
+          # vcpkg itself refuses to retry some download errors (e.g. curl SSL-connect 35); re-running the
+          # install re-attempts the download. After the first success the tool zips persist (see Bootstrap),
+          # so subsequent runs do no download at all.
+          $attempts = 3
+          for ($i = 1; $i -le $attempts; $i++) {
+            vcpkg install --triplet x86-windows --x-manifest-root="${{ github.workspace }}" --x-install-root="${{ github.workspace }}\vcpkg_installed"
+            if ($LASTEXITCODE -eq 0) { break }
+            if ($i -eq $attempts) { throw "vcpkg install failed after $attempts attempts (exit $LASTEXITCODE)" }
+            Write-Host "::warning::vcpkg install attempt $i/$attempts failed (exit $LASTEXITCODE) — retrying in 20s (likely a transient tool-download flake)."
+            Start-Sleep -Seconds 20
+          }
 
       # Phase 6 D-09 + 06-02 Task 3: PlatformToolset is v145 (VS 2026 / Dev18) across every .vcxproj.
       # SELF-HOSTED: this runner has VS 2026 (MSVC 14.51 + 14.52) installed, so this is
