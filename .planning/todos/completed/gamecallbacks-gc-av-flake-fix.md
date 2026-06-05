@@ -77,3 +77,22 @@ Recommended composite: **A + C** (deterministic delegate pinning + on-failure di
 - `.planning/phases/02-critical-bug-burn-down-c-01-c-15/02-03-PLAN.md` — C-04 origin
 - Run `26336088047` (the SHA-stable repeat-failure case)
 - 05-VERIFICATION.md — verifier surfaced this finding 2026-05-23
+
+## RESOLVED 2026-06-04 (commit f2f63a9)
+
+The 06-04 OPT-A fix removed GameCallbacksTests' OWN native trigger probe (replaced
+with a side-effect-free sentinel), but the flake EVOLVED rather than closed: the AV
+moved to `NativeCallbacksHandleTests.Subscribe_DuringDispatch_...` (DispatchInstall).
+
+Real root cause (this resolution): GameCallbacksTests still MUTATES the shared static
+native install-callback registry (GameCallbacks.AddInstallCallback) and forces
+GC.Collect(), but it lacked `[Collection("StaticCallbackState")]` — so it ran in
+PARALLEL with the dispatch tests. DispatchInstall snapshots the registry's raw
+void(*)() pointers under the lock then invokes them OUTSIDE the lock; the parallel
+registry churn + GC under a live snapshot intermittently invoked a stale thunk -> AV.
+Not a missing GCHandle (the dispatch test already pins its delegates) — a cross-test
+race on the shared static registry.
+
+Fix: add GameCallbacksTests to the StaticCallbackState collection (the 7 other
+registry-touching classes already had it) so xUnit serializes all shared-registry
+tests. CI-side only; native dispatch hot path untouched (per [[project_loader_lock_harness_ci_flake]]).
