@@ -47,7 +47,18 @@ namespace UtinniCoreDotNet.Tests
     /// that flaked CI (D-17). It is replaced by a deterministic, side-effect-free sentinel
     /// export (utinni_testHarnessProbe) that proves the native boundary is loaded + callable
     /// without crashing. See 06-04-FLAKE-INVESTIGATION.md.
+    ///
+    /// 13-flake: this class still MUTATES the shared static native install-callback registry
+    /// (GameCallbacks.AddInstallCallback) and forces GC.Collect(), but escaped the
+    /// StaticCallbackState collection — so it ran in PARALLEL with NativeCallbacksHandleTests'
+    /// DispatchInstall, which iterates a snapshot of raw void(*)() pointers OUTSIDE the registry
+    /// lock. The parallel registry churn + GC under a live snapshot intermittently invoked a stale
+    /// thunk -> AccessViolationException (1/637, ASLR/timing dependent). Joining the collection
+    /// serializes it with every other test that touches the shared registry (the 7 classes that
+    /// already do), eliminating the cross-test race. CI-side fix; the native dispatch hot path is
+    /// untouched (per the de-flake-in-CI-covered-code discipline).
     /// </summary>
+    [Collection("StaticCallbackState")]
     public class GameCallbacksTests
     {
         private static class NativeBridge
