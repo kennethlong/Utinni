@@ -61,6 +61,25 @@ namespace UtinniCoreDotNet.Tests
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate void NativeCallback();
 
+        // 13-flake: the legacy AddInstall path leaves a registry entry for the PROCESS LIFETIME
+        // (it returns void — no handle to Unsubscribe with). The delegate behind that entry must
+        // therefore ALSO live for the process lifetime; otherwise it is GC-collected after the test
+        // while its raw void(*)() thunk stays in the static registry, leaving a dangling pointer.
+        // That dangling thunk was the leak source behind the intermittent AV (when invoked during a
+        // parallel dispatch) AND the residual "fired twice" count flake (when its freed thunk address
+        // is reused for a later test's delegate, aliasing it in the registry). Rooting the delegate
+        // here for the process lifetime matches the registry entry's lifetime and closes both.
+        private static readonly System.Collections.Generic.List<object> s_processLifetimeRoots =
+            new System.Collections.Generic.List<object>();
+
+        private static void RootForProcessLifetime(NativeCallback cb)
+        {
+            lock (s_processLifetimeRoots)
+            {
+                s_processLifetimeRoots.Add(cb);
+            }
+        }
+
         private static class NativeBridge
         {
             [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
@@ -235,23 +254,20 @@ namespace UtinniCoreDotNet.Tests
 
             int callCount = 0;
             NativeCallback cb = () => callCount++;
-            var pin = GCHandle.Alloc(cb);
-            try
-            {
-                int beforeCount = NativeBridge.InstallSubscriberCount();
-                NativeBridge.AddInstall(cb);
-                int afterCount = NativeBridge.InstallSubscriberCount();
-                Assert.Equal(beforeCount + 1, afterCount);
+            // AddInstall leaves a process-lifetime registry entry (no handle to Unsubscribe), so cb
+            // must be rooted for the process lifetime too — NOT freed in a finally, which would leave
+            // a dangling thunk in the registry (the AV + count-flake leak source). See the field above.
+            RootForProcessLifetime(cb);
 
-                NativeBridge.DispatchInstall();
-                // The test-local cb fired exactly once during this dispatch
-                // (other stale entries fire their own captures, not ours).
-                Assert.Equal(1, callCount);
-            }
-            finally
-            {
-                pin.Free();
-            }
+            int beforeCount = NativeBridge.InstallSubscriberCount();
+            NativeBridge.AddInstall(cb);
+            int afterCount = NativeBridge.InstallSubscriberCount();
+            Assert.Equal(beforeCount + 1, afterCount);
+
+            NativeBridge.DispatchInstall();
+            // The test-local cb fired exactly once during this dispatch
+            // (other stale entries fire their own captures, not ours).
+            Assert.Equal(1, callCount);
         }
 
         [Fact]
