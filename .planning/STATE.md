@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: — "AI-Assisted SWG Tools"
+milestone_name: — "AI-Assisted SWG Tools
 status: completed
-stopped_at: Phase 13 context gathered
-last_updated: "2026-06-05T02:34:06.832Z"
+stopped_at: Phase 14 context gathered
+last_updated: "2026-06-06T03:37:43.716Z"
 last_activity: 2026-06-05 -- Phase 13 marked complete
 progress:
   total_phases: 20
@@ -222,9 +222,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-04T03:14:50.040Z
-Stopped at: Phase 13 context gathered
-Resume file: .planning/phases/13-wrap-revived-compilers-as-cli-verbs-close-ot-tier-2/13-CONTEXT.md
+Last session: 2026-06-06T03:37:43.691Z
+Stopped at: Phase 14 context gathered
+Resume file: .planning/phases/14-headless-mcp-server-utinni-mcp-the-centerpiece/14-CONTEXT.md
 
 ## Ingest Provenance
 
