@@ -321,7 +321,12 @@ Plans:
   3. The server pins `resolvedRoot` fail-closed at startup; no agent write can escape the resolved root or corrupt a source archive — demonstrated by a path-traversal/escape test.
   4. An `MCP-SECURITY.md` threat register documents the 5-layer defense model (annotations → elicitation → loose-override-default → verify-before-commit → backup/recovery) and the advisory-not-enforcement caveat on tool hints.
   5. A real MCP client completes the stdio handshake and round-trips at least one read tool and one edit→save tool against a sample asset.
-**Plans**: TBD
+**Plans**: 4 plans (4 waves; net10 scaffold+ResolvedRoot/CliDispatcher foundation wave 1, read tools wave 2, write/repack tools wave 3, MCP-SECURITY.md + round-trip integration close-out wave 4)
+**Plans**:
+- [ ] 14-01-PLAN.md — net10 Utinni.Mcp scaffold + fail-closed ResolvedRoot + CliDispatcher (60s) + netstandard2.0 LooseOverridePath extract + Wave-0 tests + net10 CI lane + NuGet legitimacy gate (Wave 1) [MCP-01, MCP-02]
+- [ ] 14-02-PLAN.md — read tools (read_tre/inspect_iff/decode_iff/list_world_objects + get_template_schema) + CliResultMapper envelope pass-through (Wave 2) [MCP-01]
+- [ ] 14-03-PLAN.md — write tools (save_* typed-edit two-step roundtrip then save) + repack_tre (Destructive, host-side dry_run gate) + roundtrip_check (Wave 3) [MCP-02]
+- [ ] 14-04-PLAN.md — MCP-SECURITY.md threat register + real-McpClient RoundTripTests handshake/read/edit-save/repack-dry-run (Wave 4) [MCP-01, MCP-02]
 
 ### Phase 15: Wave-2 editors (WorldSnapshot, Particle) + presentation residuals
 **Milestone**: v2.0 — "AI-Assisted SWG Tools"
