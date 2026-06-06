@@ -321,12 +321,14 @@ Plans:
   3. The server pins `resolvedRoot` fail-closed at startup; no agent write can escape the resolved root or corrupt a source archive — demonstrated by a path-traversal/escape test.
   4. An `MCP-SECURITY.md` threat register documents the 5-layer defense model (annotations → elicitation → loose-override-default → verify-before-commit → backup/recovery) and the advisory-not-enforcement caveat on tool hints.
   5. A real MCP client completes the stdio handshake and round-trips at least one read tool and one edit→save tool against a sample asset.
-**Plans**: 4 plans (4 waves; net10 scaffold+ResolvedRoot/CliDispatcher foundation wave 1, read tools wave 2, write/repack tools wave 3, MCP-SECURITY.md + round-trip integration close-out wave 4)
+**Plans**: 5 plans (4 waves; revised post cross-AI `--reviews` 2026-06-06 - both reviewers flagged the old 14-03 `roundtrip->save` two-step as a NO-OP that never persists the edit. Fix: a NEW golden-tested CLI verb family `apply-save-*` (apply-typed-edit + verify-untouched + WriteAtomic-to-loose-override in ONE atomic verb, failed-verify = exit 2), split out as Plan 14-03a. The MCP `save_*` tools wrap that single verb OPAQUELY. This is a scoped, documented exception to the "Phase 14 adds ZERO verbs" guard-rail - named, not silent.)
+**Wave plan:** Wave 1 = net10 scaffold+ResolvedRoot/CliDispatcher foundation (14-01) IN PARALLEL WITH the net-new `apply-save-*` CLI verbs (14-03a; zero deps, touches only `Utinni.Cli`/`Utinni.Cli.Tests` — no overlap with 14-01). Wave 2 = read tools (14-02; `Utinni.Mcp`). Wave 3 = MCP write/repack tools (14-03; wraps the apply-save-* verbs + the 14-01 seam + the 14-02 mapper). Wave 4 = MCP-SECURITY.md + real-client integration close-out (14-04).
 **Plans**:
-- [ ] 14-01-PLAN.md — net10 Utinni.Mcp scaffold + fail-closed ResolvedRoot + CliDispatcher (60s) + netstandard2.0 LooseOverridePath extract + Wave-0 tests + net10 CI lane + NuGet legitimacy gate (Wave 1) [MCP-01, MCP-02]
-- [ ] 14-02-PLAN.md — read tools (read_tre/inspect_iff/decode_iff/list_world_objects + get_template_schema) + CliResultMapper envelope pass-through (Wave 2) [MCP-01]
-- [ ] 14-03-PLAN.md — write tools (save_* typed-edit two-step roundtrip then save) + repack_tre (Destructive, host-side dry_run gate) + roundtrip_check (Wave 3) [MCP-02]
-- [ ] 14-04-PLAN.md — MCP-SECURITY.md threat register + real-McpClient RoundTripTests handshake/read/edit-save/repack-dry-run (Wave 4) [MCP-01, MCP-02]
+- [ ] 14-01-PLAN.md - net10 Utinni.Mcp scaffold + fail-closed ResolvedRoot + CliDispatcher (injectable timeout, default 60s) + netstandard2.0 LooseOverridePath extract via [TypeForwardedTo] + LooseOverridePathTests regression gate + Wave-0 tests + net10 CI lane + NuGet legitimacy gate (Wave 1) [MCP-01, MCP-02]
+- [ ] 14-02-PLAN.md - read tools (read_tre/inspect_iff/decode_iff/list_world_objects + get_template_schema) + CliResultMapper envelope-SHAPE validation + exit-code taxonomy + temp-boundary doc for get_template_schema (Wave 2) [MCP-01]
+- [ ] 14-03a-PLAN.md - NEW golden-tested CLI verbs apply-save-tab/iff/stf/ot (apply ONE typed edit -> verify byte-identity on untouched -> WriteAtomic loose-override; failed-verify = exit 2, no write) - the persist path the reviewers proved was missing (Wave 1; Utinni.Cli only) [MCP-02, AUTH-05]
+- [ ] 14-03-PLAN.md - MCP write tools (save_* wrap the SINGLE apply-save-* verb opaquely) + repack_tre (Destructive, host-side dry_run gate) + roundtrip_check (verify-only) + MCP-boundary path-escape integration test (Wave 3) [MCP-02]
+- [ ] 14-04-PLAN.md - MCP-SECURITY.md threat register (each row cites its proving test) + real-McpClient RoundTripTests with read-back-after-save assertion + committed binary Fixtures/ + isolated-copy repack + exact tool-count (Wave 4) [MCP-01, MCP-02]
 
 ### Phase 15: Wave-2 editors (WorldSnapshot, Particle) + presentation residuals
 **Milestone**: v2.0 — "AI-Assisted SWG Tools"
