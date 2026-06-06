@@ -1,8 +1,8 @@
 ---
 phase: 14
 slug: headless-mcp-server-utinni-mcp-the-centerpiece
-status: draft
-nyquist_compliant: false
+status: approved
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-06-05
 ---
@@ -38,14 +38,16 @@ created: 2026-06-05
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 14-XX-XX | TBD | TBD | MCP-02 (SC3) | T-14-01 | Relative path with `..`/rooted/escape rejected by resolved-root pin | unit | `dotnet test --filter ResolvedRootTests` | ❌ W0 | ⬜ pending |
-| 14-XX-XX | TBD | TBD | MCP-01 (SC5) | — | Real `McpClient` completes stdio handshake; `ListToolsAsync` returns expected tools | integration | `dotnet test --filter RoundTripTests.Handshake` | ❌ W0 | ⬜ pending |
-| 14-XX-XX | TBD | TBD | MCP-01 (SC5) | — | `read_tre`/`decode_iff` returns CLI envelope as structured content | integration | `dotnet test --filter RoundTripTests.ReadRoundTrip` | ❌ W0 | ⬜ pending |
-| 14-XX-XX | TBD | TBD | MCP-02 (SC5) | — | edit→save writes loose-override file + returns `{written,path,bytesWritten,validated}` | integration | `dotnet test --filter RoundTripTests.EditSaveRoundTrip` | ❌ W0 | ⬜ pending |
-| 14-XX-XX | TBD | TBD | MCP-02 (SC2) | T-14-03 | `repack_tre` dry_run=true does NOT write; dry_run=false writes + backs up | integration | `dotnet test --filter RoundTripTests.RepackDryRun` | ❌ W0 | ⬜ pending |
-| 14-XX-XX | TBD | TBD | MCP-02 | T-14-05 | Wedged/missing CLI → hard MCP error after 60s timeout | integration | `dotnet test --filter DispatcherTests.Timeout` | ❌ W0 | ⬜ pending |
+| 14-01-02 | 14-01 | 1 | MCP-02 (SC3) | T-14-01 | Relative path with `..`/rooted/escape rejected by resolved-root pin | unit | `dotnet test Utinni.Mcp.Tests/Utinni.Mcp.Tests.csproj --filter ResolvedRootTests` | ❌ W0 | ⬜ pending |
+| 14-01-02 | 14-01 | 1 | MCP-02 | T-14-05 | Wedged/missing CLI → hard MCP error after 60s timeout | unit | `dotnet test Utinni.Mcp.Tests/Utinni.Mcp.Tests.csproj --filter DispatcherTests` | ❌ W0 | ⬜ pending |
+| 14-02-01 | 14-02 | 2 | MCP-01 (SC1) | — | CLI envelope passed through as structuredContent + text; exit 1/2/3 → isError, transport/timeout → hard error | unit | `dotnet test Utinni.Mcp.Tests/Utinni.Mcp.Tests.csproj --filter CliResultMapperTests` | ❌ W0 | ⬜ pending |
+| 14-03-01 | 14-03 | 3 | MCP-02 (SC2) | T-14-02 | save_* two-step (roundtrip typed edit + verify-byte-exact → save persist) returns `{written,path,bytesWritten,validated}` | unit | `dotnet test Utinni.Mcp.Tests/Utinni.Mcp.Tests.csproj --filter SaveCompositionTests` | ❌ W0 | ⬜ pending |
+| 14-04-01 | 14-04 | 4 | MCP-01 (SC5) | — | Real `McpClient` completes stdio handshake; `ListToolsAsync` returns expected tools (`RoundTripTests.Handshake`) | integration | `dotnet test Utinni.Mcp.Tests/Utinni.Mcp.Tests.csproj --filter RoundTripTests` | ❌ W0 | ⬜ pending |
+| 14-04-01 | 14-04 | 4 | MCP-01 (SC5) | — | `read_tre`/`decode_iff` returns CLI envelope as structured content (`RoundTripTests.ReadRoundTrip`) | integration | `dotnet test Utinni.Mcp.Tests/Utinni.Mcp.Tests.csproj --filter RoundTripTests` | ❌ W0 | ⬜ pending |
+| 14-04-01 | 14-04 | 4 | MCP-02 (SC5) | — | edit→save writes loose-override file + returns `{written,path,bytesWritten,validated}` (`RoundTripTests.EditSaveRoundTrip`) | integration | `dotnet test Utinni.Mcp.Tests/Utinni.Mcp.Tests.csproj --filter RoundTripTests` | ❌ W0 | ⬜ pending |
+| 14-04-01 | 14-04 | 4 | MCP-02 (SC2) | T-14-03 | `repack_tre` dry_run=true does NOT write; dry_run=false writes + backs up (`RoundTripTests.RepackDryRun`) | integration | `dotnet test Utinni.Mcp.Tests/Utinni.Mcp.Tests.csproj --filter RoundTripTests` | ❌ W0 | ⬜ pending |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky · plan/wave/task IDs finalized by the planner*
+*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky · Task IDs bound to finalized plans; per-behavior `RoundTripTests.*` filters (Handshake/ReadRoundTrip/EditSaveRoundTrip/RepackDryRun) are individually-named methods within the single 14-04-01 test class so per-SC status is reportable.*
 
 ---
 
@@ -72,11 +74,11 @@ created: 2026-06-05
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (14-01 Task 2 creates the net10 `Utinni.Mcp.Tests` project + `ResolvedRootTests`/`DispatcherTests`; later waves add `CliResultMapperTests`/`SaveCompositionTests`/`RoundTripTests`)
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s (the only 60s case is the timeout backstop test itself, which IS the requirement)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-06-05 (post plan-checker; Task IDs bound to finalized 4-plan structure)

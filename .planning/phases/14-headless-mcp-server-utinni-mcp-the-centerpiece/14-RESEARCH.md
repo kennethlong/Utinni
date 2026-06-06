@@ -460,17 +460,21 @@ public sealed class CliDispatcher
 | A4 | `decode_iff` alone (auto-dispatching) is sufficient for typed reads; no per-format read tools needed. | D-01 | Low: `decode-iff` source confirms auto-dispatch on root form; if an agent needs format-specific read ergonomics, add later (non-breaking). |
 | A5 | The CLI `repack-tre` verb has no `--dry-run`, so the `dry_run` gate is host-side (don't-invoke-when-true). | D-04 / Pattern 3 | Low: confirmed by reading `RepackTreCommand.cs` (no dry-run flag). A true byte-validating dry-run would be a CLI change (out of scope). |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+Both forks were ruled by the gsd-planner during planning (2026-06-05); recorded inline here so no open decision blocks execution.
 
 1. **Save-tool typed-edit shape (the one genuine design fork).**
    - What we know: locked constraints demand "typed structured args only" + "byte-exact verify-before-commit"; the current `save` verb is re-serialize-in-place (no edit args); the `roundtrip-*` verbs DO take typed mutations + assert untouched-byte identity.
    - What's unclear: whether to (2a) compose `roundtrip-*`(edit+verify) + `save`(persist) two-step in the host, (2b) ship re-serialize-only save tools + a separate `apply_edit` tool, or (2c) add a net-new CLI verb (out of scope).
    - Recommendation: **2a** — it satisfies both locked constraints with zero new CLI work and stays logic-free (orchestration only). Planner to confirm A1.
+   - **RESOLVED → 2a.** Host-side two-step composition (`roundtrip-*` applies ONE typed edit + verifies byte-identity, then `save` persists to loose-override) adopted as logic-free orchestration that does not cross the zero-business-logic seam. Ruling lives in **Plan 14-03, Task 1** (`save_* tools — typed-edit two-step composition`). No net-new CLI verb planned.
 
 2. **Solution placement / CI lane for the net10 project.**
    - What we know: net10 SDK is installed; worktrees off; existing CI is x86 MSBuild + native v145.
    - What's unclear: exact `Utinni.sln` config mapping and CI step ordering (Claude's Discretion).
    - Recommendation: build `Utinni.Mcp` + `Utinni.Mcp.Tests` via a dedicated `dotnet build`/`dotnet test` CI step against net10; keep them out of the `Release|x86` MSBuild pass (A3).
+   - **RESOLVED → dedicated net10 `dotnet test` lane.** The `Utinni.Mcp` + `Utinni.Mcp.Tests` net10 projects build/test via a dedicated `dotnet` CI step, kept OUT of the `Release|x86` MSBuild solution pass (a net10 project cannot target x86-only). Ruling lives in **Plan 14-01, Task 1** (scaffold) + **Task 3** (net10 dotnet-test CI lane).
 
 ## Environment Availability
 
