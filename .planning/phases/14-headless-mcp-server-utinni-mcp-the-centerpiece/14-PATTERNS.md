@@ -23,7 +23,7 @@
 | `Utinni.Mcp/Server/CliDispatcher.cs` | service (subprocess seam) | request-response (spawn + capture) | `Utinni.Cli/Commands/Subprocess/NativeToolRunner.cs` | exact |
 | (CLI exe locator, inside `CliDispatcher` or sibling) | utility (path probe) | transform | `Utinni.Cli/Commands/Subprocess/NativeToolResolver.cs` | exact |
 | `Utinni.Mcp/Tools/ReadTools.cs` | controller (MCP tool surface) | request-response | `Utinni.Cli/Commands/*Command.cs` verb wrappers (e.g. `ParseTreCommand`) | role-match (SDK attributes vs CommandLineParser verbs) |
-| `Utinni.Mcp/Tools/SaveTools.cs` | controller (write tools) | CRUD (typed edit → persist) | `Utinni.Cli/Commands/SaveCommand.cs` + `RoundtripTabCommand.cs` (typed-mutation args) | role-match + composition (see Save-tool fork) |
+| `Utinni.Mcp/Tools/SaveTools.cs` | controller (write tools) | request-response (typed edit → single verb) | `Utinni.Cli/Commands/ApplySaveTabCommand.cs` (the atomic `apply-save-*` verb, Plan 14-03a) — thin 1:1 wrapper, no host-side composition | role-match (SDK attrs vs verb; persist+verify owned by the CLI verb) |
 | `Utinni.Mcp/Tools/RepackTool.cs` | controller (destructive tool) | CRUD (destructive, dry_run-gated) | `Utinni.Cli/Commands/RepackTreCommand.cs` | exact (the verb it wraps) |
 | `Utinni.Mcp/Tools/CliResultMapper.cs` (envelope mapper) | utility (pass-through mapper) | transform (JSON → MCP content) | `Utinni.Cli/Output/JsonOutput.cs` (the envelope contract it passes through) | role-match (consumer of the same contract) |
 | `Utinni.Mcp/Utinni.Mcp.csproj` | config | — | (net-new SDK-style; no net472 csproj analog) | no analog (new TFM) |
@@ -217,17 +217,21 @@ public static class ReadTools
 loose-override default + the `.tre`→`repack-tre` redirect) **AND** `Utinni.Cli/Commands/RoundtripTabCommand.cs`
 (the **typed-mutation arg shape** the locked "typed args only" constraint demands).
 
-**THE ONE GENUINE FORK (Research D-01 / Open Q1 / A1 — planner MUST rule):**
-- The `save` verb is **re-serialize-in-place** — it does NOT take typed edit args
-  (`SaveCommand.cs:75-143`: load → `DetectFormat` → `Serialize` → `WriteAtomic` → envelope).
-- The `roundtrip-*` verbs DO take typed mutations + assert byte-exact-on-untouched. Confirmed in
-  `RoundtripTabCommand.cs:44-53`: `--mutate-cell row,col` + `--mutate-value`, `--remove-row`,
-  `--remove-column`. (Sibling shapes: `roundtrip-iff` `--mutate-leaf`/`--remove-leaf`; `roundtrip-ot`
-  add/remove/edit override; `roundtrip-stf` entry edit.)
-- **Research recommendation (interpretation 2 / A1):** the host composes a **two-step**:
-  wrap `roundtrip-*` to apply ONE typed edit + verify byte-exact, then `save` to persist to
-  loose-override. This satisfies BOTH locked constraints ("typed args only" + "verify-before-commit")
-  with zero new CLI work, and is **logic-free orchestration** (arguably allowed). Planner confirms A1.
+**THE ONE GENUINE FORK — RESOLVED post cross-AI review (2026-06-06), two-step OVERTURNED:**
+- The `save` verb is **re-serialize-in-place** — it does NOT take typed edit args, and in
+  loose-override mode it re-serializes the UNCHANGED on-disk file (`SaveCommand.cs:110`,
+  `sourcePath = destPath`).
+- The `roundtrip-*` verbs apply a typed mutation **in memory** and assert byte-exact-on-untouched,
+  but **never write** the mutated bytes (`RoundtripTabCommand.cs:137` — serialize, compare, `EmitSuccess`,
+  no `WriteAtomic`). So the originally-recommended host **two-step** (`roundtrip-*` verify → `save` persist)
+  **verifies an edit it never persists** — both cross-AI reviewers returned HIGH/phase-blocking on this
+  (`14-REVIEWS.md` consensus #1). The two-step is rejected.
+- **Final shape (LOCKED):** new atomic CLI verb family **`apply-save-{tab,iff,stf,ot}`** (Plan **14-03a**)
+  — apply ONE typed edit → verify untouched-byte identity → `WriteAtomic`-commit the MUTATED bytes, in one
+  op (failed verify = exit 2, no write). `SaveTools.cs` is a **thin 1:1 wrapper** over the single verb and
+  branches on exit code only (never parses `bytesEqualUntouched`). Scoped, documented exception to the
+  "Phase 14 adds ZERO verbs" guard-rail; golden-tested in `Utinni.Cli.Tests` first. The `roundtrip-*` verbs
+  remain available as the optional read-only `roundtrip_check` verify tool.
 
 **Locked envelope the save tools pass through (DO NOT reshape)** (`SaveCommand.cs:135-142`):
 ```csharp
@@ -251,7 +255,8 @@ catch (ArgumentException ex) { return JsonOutput.EmitError("save", "PathContainm
 ```
 
 **Save tools (4, Research D-01):** `save_iff`, `save_datatable`, `save_stringtable`,
-`save_object_template` — each wraps the relevant `roundtrip-*`(edit+verify)+`save`(persist) pair.
+`save_object_template` — each is a thin wrapper over its single atomic `apply-save-*` verb
+(14-03a; `apply-save-iff`/`apply-save-tab`/`apply-save-stf`/`apply-save-ot`).
 
 ---
 
@@ -446,7 +451,9 @@ error `{command,error:{kind,message},schemaVersion}`.
 **Files scanned:** 11 read in full + 2 grep sweeps (verb names, roundtrip mutation args).
 **Key cross-cutting finding:** the entire Phase-14 surface is a **thin projection** of net472 analogs
 one process-layer up; the ONLY net-new shapes are the MCP SDK host bootstrap, the `McpClient` round-trip
-transport, and the `ResolvedRoot.PinOrThrow` startup half. The single genuine *design* fork is the
-save-tool typed-edit composition (compose `roundtrip-*`+`save` — A1, planner to confirm).
+transport, the `ResolvedRoot.PinOrThrow` startup half, **and the net-new atomic `apply-save-*` CLI verb
+family (14-03a)** added to close the save-persistence gap the cross-AI review surfaced. The save-tool
+typed-edit fork is resolved: a single atomic verb (apply+verify+commit), NOT a host-side
+`roundtrip-*`+`save` composition (that two-step was overturned — it never persisted the edit).
 **Pattern extraction date:** 2026-06-05
 ```

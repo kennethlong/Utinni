@@ -271,21 +271,23 @@ Adopt fine-grained, one-tool-per-meaningful-capability naming (the recommended l
 | `inspect_iff` | `inspect-iff` | ReadOnly, Idempotent | relativePath |
 | `decode_iff` | `decode-iff` | ReadOnly, Idempotent | relativePath (auto-dispatches datatable/stf/OT/appearance/structure by root form) |
 | `list_world_objects` | `list-objects` | ReadOnly, Idempotent | relativePath (ws.iff) |
-| `save_iff` | `save` | (write) | relativePath, **typed edit args** (see note) |
-| `save_datatable` | `save` | (write) | relativePath, typed cell edits |
-| `save_stringtable` | `save` | (write) | relativePath, typed entry edits |
-| `save_object_template` | `save` | (write) | relativePath, typed field edits |
+| `save_iff` | `apply-save-iff` | (write) | relativePath, **typed edit args** (see note) |
+| `save_datatable` | `apply-save-tab` | (write) | relativePath, typed cell edits |
+| `save_stringtable` | `apply-save-stf` | (write) | relativePath, typed entry edits |
+| `save_object_template` | `apply-save-ot` | (write) | relativePath, typed field edits |
 | `repack_tre` | `repack-tre` | **Destructive**, not Idempotent, dry_run=true default | relativePath, dry_run |
 | `get_template_schema` | `compile-definition --skip-native` | ReadOnly, Idempotent | tdfRelativePath (or pre-built schema artifact) |
 | `roundtrip_check` *(optional)* | `roundtrip-iff/tab/stf/ot` | ReadOnly-ish (writes to temp), Idempotent | relativePath (verify-only; supports verify-before-commit) |
 
 **`decode_iff` collapses the read variants:** `decode-iff` already auto-dispatches on the root FORM tag (datatable/stf/OT/mesh/shader/ui-page), so a single `decode_iff` tool covers all typed reads — no need for separate `read_datatable`/`read_stf`/`read_object_template`. `inspect_iff` (raw chunk tree) stays distinct from `decode_iff` (typed model) because they answer different questions (structure vs semantics). This yields **4 read tools**, not 6+.
 
-**Save-tool arg shape — important nuance for the planner:** the **current** `save` verb (read `SaveCommand.cs`) is a *re-serialize-in-place* operation — it loads an asset, detects format, re-serializes, writes; it does **NOT** accept typed edit args (record index / column id / new value). The locked constraint says "write tools take typed structured args only … never apply the change you inferred." There are two viable interpretations the planner must pick between:
-1. **Re-serialize-only save (matches today's CLI):** the agent edits the loose file by other means (or a future tool), and `save_*` just canonicalizes + validates + writes with the envelope. Minimal, but the "typed edit" promise is unmet.
-2. **Typed single-edit then save:** the MCP `save_*` tools take a typed mutation (e.g. `{recordIndex, columnId, value}`) and wrap the **`roundtrip-*`** verbs (which DO accept `--mutate-cell`/`--mutate-leaf`/typed mutations and assert byte-exact-on-untouched) to apply exactly one typed edit, then persist. This honors "typed args only" and "verify-before-commit" directly.
+**Save-tool arg shape — RESOLVED post cross-AI review (2026-06-06).** The original draft of this section weighed two interpretations and tentatively recommended a **host-side two-step composition** (`roundtrip-*` to edit+verify, then `save` to persist). **That recommendation was BLOCKED by both cross-AI reviewers and is now overturned** — see `14-REVIEWS.md` (consensus finding #1) and the verified source evidence below. The two-step does **not** persist the edit:
+- `SaveCommand.cs:110` — loose-override mode sets `sourcePath = destPath`; `save` re-serializes the **unchanged** on-disk file and accepts **no** mutation args.
+- `RoundtripTabCommand.cs:137` — applies the mutation in memory, serializes `roundtrippedBytes`, compares untouched slices, then `EmitSuccess` — **no `WriteAtomic`/`File.WriteAllBytes`**; the mutated bytes are **discarded**.
 
-**Recommendation:** interpretation **2** for the write path where a typed mutation is provided (wrap `roundtrip-*` for the edit + verification), falling back to the `save` verb's re-serialize for the persist/loose-override step. This is the only shape that satisfies *both* "typed structured args only" *and* "byte-exact verify-before-commit" from the locked list. **Flag:** confirm with the planner whether a net-new CLI surface is needed to combine "apply one typed edit AND persist to loose-override in one call," or whether composing existing `roundtrip-*` (edit+verify) + `save` (persist) two-step inside the host is acceptable (it is logic-free orchestration, not business logic — arguably allowed). `[ASSUMED]` that two-step composition is acceptable; needs planner confirmation.
+So composing `roundtrip-* → save` verifies an edit it never commits — "byte-exact verify-before-commit" would be mislabeled and the persisted bytes are the *pre-mutation* file. MCP-02 + SC2/SC5 are unachievable that way.
+
+**Resolution (LOCKED, user-approved):** add a **single atomic CLI verb family** — `apply-save-{tab,iff,stf,ot}` (Plan **14-03a**) — that in **one** operation applies one typed mutation → verifies byte-identity on the untouched region → `WriteAtomic`-commits the **mutated** in-memory bytes to the loose-override destination → emits a CLI envelope. Failed verify = exit 2, **no write**. The MCP `save_*` tools wrap that single verb **opaquely** and decide persist-vs-fail on the **exit code only** — the host never parses `bytesEqualUntouched` or any other domain field. This reconciles "typed structured args only" + "byte-exact verify-before-commit" + "zero business logic in the host," and closes the TOCTOU window. These verbs are golden-tested in `Utinni.Cli.Tests` first, and constitute a **scoped, documented exception** to the phase's "Phase 14 adds ZERO verbs" guard-rail (named in 14-03a and `MCP-SECURITY.md`, not silent). Interpretation 1 (re-serialize-only) is rejected because it drops the typed-edit promise; the old interpretation-2 two-step is rejected because it does not persist.
 
 **Build/compile verbs deferred** (`compile-template`, `build-tre`, `compile-datatable`, `export-armor`, `export-weapon`): per CONTEXT D-01 + Deferred Ideas, these are authoring/CLI-primary, rarely agent-driven, and addable later without re-architecting the shim. `compile-definition` is the one exception worth surfacing as `get_template_schema` (read-only schema fetch) because it directly supports an agent understanding OT typed structure. **Do not ship the BUILD verbs as MCP tools this phase.**
 
@@ -466,9 +468,9 @@ Both forks were ruled by the gsd-planner during planning (2026-06-05); recorded 
 
 1. **Save-tool typed-edit shape (the one genuine design fork).**
    - What we know: locked constraints demand "typed structured args only" + "byte-exact verify-before-commit"; the current `save` verb is re-serialize-in-place (no edit args); the `roundtrip-*` verbs DO take typed mutations + assert untouched-byte identity.
-   - What's unclear: whether to (2a) compose `roundtrip-*`(edit+verify) + `save`(persist) two-step in the host, (2b) ship re-serialize-only save tools + a separate `apply_edit` tool, or (2c) add a net-new CLI verb (out of scope).
-   - Recommendation: **2a** — it satisfies both locked constraints with zero new CLI work and stays logic-free (orchestration only). Planner to confirm A1.
-   - **RESOLVED → 2a.** Host-side two-step composition (`roundtrip-*` applies ONE typed edit + verifies byte-identity, then `save` persists to loose-override) adopted as logic-free orchestration that does not cross the zero-business-logic seam. Ruling lives in **Plan 14-03, Task 1** (`save_* tools — typed-edit two-step composition`). No net-new CLI verb planned.
+   - What's unclear: whether to (2a) compose `roundtrip-*`(edit+verify) + `save`(persist) two-step in the host, (2b) ship re-serialize-only save tools + a separate `apply_edit` tool, or (2c) add a net-new CLI verb.
+   - Original (2026-06-05) ruling: **2a** (two-step composition, no new verb). ~~Adopted.~~
+   - **RE-RESOLVED → 2c (2026-06-06, post cross-AI review — OVERTURNS the 2a ruling).** Both reviewers independently returned HIGH/phase-blocking: the 2a two-step **never persists the edit** — `SaveCommand.cs:110` re-serializes the unchanged file (`sourcePath = destPath`, no mutation args) and `RoundtripTabCommand.cs:137` discards the mutated bytes (compare-only, no write). 2a is therefore rejected. **Final shape:** a single atomic CLI verb family `apply-save-{tab,iff,stf,ot}` (Plan **14-03a**) that applies one typed mutation → verifies untouched-byte identity → `WriteAtomic`-commits the **mutated** bytes in one op (failed verify = exit 2, no write); MCP `save_*` wrap that single verb opaquely and branch on exit code only. This is a scoped, documented exception to "Phase 14 adds ZERO verbs," golden-tested in `Utinni.Cli.Tests` first. Ruling now lives in **Plan 14-03a** (the verbs) + **Plan 14-03, Task 1** (the thin `save_*` wrappers). See `14-REVIEWS.md` consensus #1.
 
 2. **Solution placement / CI lane for the net10 project.**
    - What we know: net10 SDK is installed; worktrees off; existing CI is x86 MSBuild + native v145.
@@ -610,10 +612,10 @@ Both forks were ruled by the gsd-planner during planning (2026-06-05); recorded 
 | Standard Stack | HIGH | SDK version/TFM/deps verified on NuGet; net10 verified on machine |
 | Architecture | HIGH | Mirrors read-verified Phase-13 seam + locked constraints |
 | Pitfalls | HIGH | Grounded in source reads (TFM mismatch, LooseOverridePath location, exit-code contract) |
-| D-01 save-tool shape | MEDIUM | One genuine design fork — needs planner confirmation (A1) |
+| D-01 save-tool shape | HIGH | Resolved post-review → atomic `apply-save-*` verb (14-03a); two-step rejected |
 
 ### Open Questions
-1. Save-tool typed-edit shape: compose `roundtrip-*`(edit+verify) + `save`(persist) two-step in the host (recommended, A1) vs re-serialize-only vs a net-new CLI verb (out of scope). Planner to rule.
+1. ~~Save-tool typed-edit shape~~ **RESOLVED (post cross-AI review):** atomic `apply-save-{tab,iff,stf,ot}` CLI verb family (Plan 14-03a) — applies one typed edit + verifies + commits in one op; MCP `save_*` wrap it opaquely (exit-code branch). The earlier "two-step composition (A1)" recommendation was overturned by both reviewers as non-persisting — see the RESOLVED Open Questions block above and `14-REVIEWS.md`.
 2. Solution placement / CI lane for the net10 project (Claude's Discretion; recommend a dedicated `dotnet test` lane, keep out of the x86 MSBuild pass).
 
 ### Ready for Planning
