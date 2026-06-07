@@ -184,7 +184,21 @@ namespace UtinniCoreDotNet.Formats.Particle
             var emitters = new List<ParticleEmitterDescription>(emitterCount);
             for (int i = 0; i < emitterCount && i < emtrNodes.Count; i++)
             {
-                emitters.Add(ParticleEmitterDescription.FromEmtrNode(emtrNodes[i]));
+                // Loop-level catch → raw-preserve (D-05), copied from
+                // MutableObjectTemplate.FromMutableIff: if a single emitter's typed field walk throws
+                // (a truncated / over-length leaf inside a recognized-version emitter), capture that
+                // emitter raw rather than aborting the whole effect. The captured bytes re-emit
+                // verbatim through IffWriter, so the round-trip stays byte-exact.
+                MutableIffNode emtr = emtrNodes[i];
+                try
+                {
+                    emitters.Add(ParticleEmitterDescription.FromEmtrNode(emtr));
+                }
+                catch (DecoderException)
+                {
+                    string ev = FirstContainerSubType(emtr);
+                    emitters.Add(ParticleEmitterDescription.RawPreserved(ev));
+                }
             }
 
             return new MutableParticleEmitterGroup(emgp, emitterCountLeaf, emitters);
@@ -244,8 +258,24 @@ namespace UtinniCoreDotNet.Formats.Particle
         private static int ReadLeadingInt32(MutableIffNode leaf)
         {
             byte[] payload = leaf.GetPayloadCopy();
-            var cursor = new IffPayloadCursor(payload);
-            return cursor.ReadInt32Le(); // throws DecoderException(Truncated) on a < 4-byte chunk
+            try
+            {
+                var cursor = new IffPayloadCursor(payload);
+                return cursor.ReadInt32Le();
+            }
+            catch (DecoderException ex)
+            {
+                // A count chunk shorter than its int32 is a hard structural malformation; surface it as
+                // a structured particle error rather than a leaked decoder exception.
+                throw new ParticleParseException(ParticleParseError.UnexpectedForm,
+                    "Count chunk is truncated: " + ex.Message);
+            }
+        }
+
+        private static string FirstContainerSubType(MutableIffNode parent)
+        {
+            MutableIffNode c = FirstContainerChild(parent);
+            return (c != null) ? c.SubTypeId : "";
         }
 
         // Division-form / cap count guard (T-15-02): rejects a negative count, a count above the

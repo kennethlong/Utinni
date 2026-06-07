@@ -229,6 +229,49 @@ namespace UtinniCoreDotNet.Tests.Formats.Particle
             return IffWriter.Write(new MutableIffDocument(peft));
         }
 
+        /// <summary>
+        /// Builds a minimal valid <c>FORM PEFT 0002</c> with one recognized-version EMTR whose WVFM
+        /// field carries a TRUNCATED 0002 payload (claims control points it does not contain). The
+        /// codec must raw-preserve that field (consume-exactly-or-hex) rather than OOB-throwing, and
+        /// the whole effect must still round-trip byte-exact.
+        /// </summary>
+        public static byte[] BuildPeftWithTruncatedWaveForm()
+        {
+            MutableIffNode peft = MutableIffNode.NewContainer("FORM", "PEFT");
+            MutableIffNode effVersion = peft.AddContainer("FORM", "0002");
+            AddTiming(effVersion);
+            using (var ms = new MemoryStream())
+            {
+                Write(ms, Int32Le(1));
+                for (int i = 0; i < 4; i++) Write(ms, FloatLe(1.0f));
+                effVersion.AddLeaf("0000", ms.ToArray());
+            }
+
+            MutableIffNode emgp = effVersion.AddContainer("FORM", "EMGP");
+            AddTiming(emgp);
+            emgp.AddLeaf("0000", Int32Le(1));
+
+            MutableIffNode emtr = emgp.AddContainer("FORM", "EMTR");
+            MutableIffNode emtrVersion = emtr.AddContainer("FORM", "0011");
+            emtrVersion.AddLeaf("0000", Int32Le(7));
+
+            // A 0002 WVFM header that declares 5 control points but only supplies a few bytes — the
+            // codec's consume-exactly guard / truncation-safe cursor must raw-preserve this verbatim.
+            MutableIffNode wvfm = emtrVersion.AddContainer("FORM", "WVFM");
+            using (var ms = new MemoryStream())
+            {
+                Write(ms, Int32Le(0));      // interp
+                Write(ms, Int32Le(0));      // sample
+                Write(ms, FloatLe(-1f));    // min
+                Write(ms, FloatLe(1f));     // max
+                Write(ms, Int32Le(5));      // claims 5 points
+                Write(ms, FloatLe(0.0f));   // ... but only one stray float follows
+                wvfm.AddLeaf("0002", ms.ToArray());
+            }
+
+            return IffWriter.Write(new MutableIffDocument(peft));
+        }
+
         private static void AddTiming(MutableIffNode parent)
         {
             MutableIffNode ptim = parent.AddContainer("FORM", "PTIM");

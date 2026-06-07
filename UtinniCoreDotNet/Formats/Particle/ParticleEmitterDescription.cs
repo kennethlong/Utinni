@@ -89,6 +89,17 @@ namespace UtinniCoreDotNet.Formats.Particle
         public IReadOnlyList<ParticleFieldValue> ColorRampFields { get { return _colorRampFields.AsReadOnly(); } }
 
         /// <summary>
+        /// Builds a raw-preserved emitter view (D-05) — used by the effect parser's loop-level
+        /// catch when a recognized-version emitter's typed field walk nonetheless throws (a truncated
+        /// or over-length leaf). The captured bytes still re-emit verbatim through IffWriter.
+        /// </summary>
+        public static ParticleEmitterDescription RawPreserved(string version)
+        {
+            return new ParticleEmitterDescription(version ?? "", true,
+                new List<ParticleFieldValue>(), new List<ParticleFieldValue>());
+        }
+
+        /// <summary>
         /// Builds the typed view from an <c>EMTR</c> container node. An unrecognized version sub-form
         /// returns a raw-preserved view (no field walk, no throw). A recognized version walks the
         /// sub-tree typing every WVFM + CLRR leaf via the leaf codecs (each of which itself
