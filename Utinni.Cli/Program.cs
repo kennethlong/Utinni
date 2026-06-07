@@ -62,7 +62,9 @@ namespace Utinni.Cli
                         typeof(Commands.CompileDefinitionOptions),
                         typeof(Commands.CompileDatatableOptions),
                         typeof(Commands.ExportArmorOptions),
-                        typeof(Commands.ExportWeaponOptions))
+                        typeof(Commands.ExportWeaponOptions),
+                        typeof(Commands.ApplySaveTabOptions),
+                        typeof(Commands.ApplySaveOtOptions))
                     .MapResult(
                         (object opts) => Dispatch(opts),
                         errs => 1);  // exit 1 on usage error per D-02
@@ -90,6 +92,8 @@ namespace Utinni.Cli
                 case Commands.CompileDatatableOptions o:  return Commands.CompileDatatableCommand.Run(o);
                 case Commands.ExportArmorOptions o:       return Commands.ExportArmorCommand.Run(o);
                 case Commands.ExportWeaponOptions o:      return Commands.ExportWeaponCommand.Run(o);
+                case Commands.ApplySaveTabOptions o:      return Commands.ApplySaveTabCommand.Run(o);
+                case Commands.ApplySaveOtOptions o:       return Commands.ApplySaveOtCommand.Run(o);
                 default:                                  return 1;
             }
         }

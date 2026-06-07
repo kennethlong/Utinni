@@ -30,6 +30,12 @@
         }
       },
       "utinnicoredotnet": {
+        "type": "Project",
+        "dependencies": {
+          "UtinniCoreDotNet.PathContainment": "[1.0.0, )"
+        }
+      },
+      "utinnicoredotnet.pathcontainment": {
         "type": "Project"
       }
     },
