@@ -103,6 +103,10 @@ The known right-edge cursor-clip dead-zone (`project_swg_cursor_clip_deadzone`) 
 - RESID-04 automatable code + regression gate shipped and build-green (UtinniCore + UtinniCore.Tests Release|x86).
 - 15-08 owns the live confirmation; the DISCL log + runtime toggle are the instruments it needs.
 
+## Self-Check: PASSED
+
+All created/modified files exist on disk; all task commits (`bf5843d`, `6ae1dd7`) and the SUMMARY commit (`2702db1`) exist in git history.
+
 ---
 *Phase: 15-wave-2-editors-worldsnapshot-particle-presentation-residuals*
 *Completed: 2026-06-07*

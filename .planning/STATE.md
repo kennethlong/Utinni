@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
 status: executing
-stopped_at: Completed 15-02-PLAN.md (Particle .prt codec)
-last_updated: "2026-06-07T15:35:13.354Z"
+stopped_at: Completed 15-05-PLAN.md (RESID-04 fullscreen suppress + no-Reset gate)
+last_updated: "2026-06-07T15:43:51.725Z"
 last_activity: 2026-06-07
 progress:
   total_phases: 20
   completed_phases: 15
   total_plans: 78
-  completed_plans: 75
-  percent: 96
+  completed_plans: 76
+  percent: 97
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 15 (wave-2-editors-worldsnapshot-particle-presentation-residuals) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
 Last activity: 2026-06-07
 
@@ -148,6 +148,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 15 P02 | ~95 min | 3 tasks | 13 files |
 | Phase 15 P03 | ~45 min | 2 tasks | 4 files |
 | Phase 15 P04 | ~40min | 2 tasks | 11 files |
+| Phase 15 P05 | ~25min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -185,6 +186,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: 15-02: .prt/FORM PEFT typed codec (PROD-W2-PRT format half) in UtinniCoreDotNet/Formats/Particle. WaveForm(3 ver)/ColorRamp(2 ver) leaves + PEFT->EMGP->EMTR tree composing shipped IffReader/IffWriter/IffPayloadCursor; byte-exactness via consume-exactly-or-hex (typed decode accepted only when it re-encodes identical, else raw-preserve); degrade-don't-abort D-05 raw-preserves any unrecognized FORM-version sub-tree and NEVER hard-aborts (Pitfall 2); division-form count DoS guard T-15-02. 21 facts, 663/663 suite green Debug+Release|x86. PROD-W2-PRT editor+live-preview half remains a later plan.
 - [Phase ?]: 15-03: D-09 live-preview spike — reject ParticleManager (debug/config singleton, no live instances); choose ClientEffectManager (m_particleSystems) via AppearanceTemplateList reload + ParticleEffectAppearance::restart(). HONEST FINDING: no reachable native hot-retrigger hook this phase — ship documented no-op stub ParticlePreview seam returning NotReachable; editor degrades to tier-(b) badge; real hook is a scoped follow-on (15-08+) behind the same seam.
 - [Phase ?]: 15-04: .prt read-assist headless — decode-iff auto-dispatches FORM PEFT; new roundtrip-particle byte-exact gate (degraded fixtures round-trip identical, D-05); summarize_particle MCP read tool = thin decode-iff dispatch (ReadOnly D-07, ZERO format logic D-06), the same .prt read path the in-app Explain effect button reuses (D-08).
+- [Phase 15]: 15-05 (RESID-04 automatable half) COMPLETE 2026-06-07. Suppress SWG's exclusive-fullscreen mode switch at the DirectInput cooperative-level layer — `hkSetCooperativeLevel` rewrites `DISCL_EXCLUSIVE` -> `DISCL_NONEXCLUSIVE` (FOREGROUND/BACKGROUND/NOWINKEY preserved) behind a default-ON `std::atomic<bool>` toggle (D-12), keeping the owned-popup embed windowed instead of detaching to true D3D9 exclusive fullscreen (RESEARCH A4 / `chat-open-d3d9-fullscreen.md` prime suspect). Existing DISCL flag + caller-PC logging retained as the A4 live-confirmation instrument; the redirect logs the old->new flag rewrite. Toggle exposed via new exported `DirectInput::setSuppressExclusiveFullscreen`/`getSuppressExclusiveFullscreen` so 15-08 can A/B live without a rebuild and the deferred detached-fullscreen fallback (Open Q3) stays reachable. PanelGame.cs resize path documented: window-side `SetWindowPos`-only, NO Utinni-initiated device `Reset` (D-13), owned-popup unchanged (no `WS_CHILD`), imgui RT-space mouse/DisplaySize mapping holds across resize via windowed COPY Present self-stretch. D-13 enforced by a new Catch2 `[resid04]` `NoDeviceResetTests.cpp` — a comment-stripped source grep-gate over directx9.cpp + direct_input.cpp + PanelGame.cs counting `->Reset(`/`.Reset(` invocations == 0 (hkReset's free-function `reset(pDevice,...)` SWG-own pass-through naturally excluded), with an anti-trivial self-check section (grep-gate hygiene). UtinniCore + UtinniCore.Tests Release|x86 green; 8 assertions pass. Generated/UtinniCore.cs regen churn reverted (never committed). Live edge-case-matrix confirmation folded into 15-08. Commits bf5843d, 6ae1dd7.
 
 ### Pending Todos
 
@@ -240,8 +242,8 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-07T15:35:03.798Z
-Stopped at: Completed 15-02-PLAN.md (Particle .prt codec)
+Last session: 2026-06-07T15:43:51.694Z
+Stopped at: Completed 15-05-PLAN.md (RESID-04 fullscreen suppress + no-Reset gate)
 Resume file: None
 
 ## Ingest Provenance
