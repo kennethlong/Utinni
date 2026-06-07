@@ -1,0 +1,11 @@
+# Minimal authored .tdf fixture (Plan 14-04). Mirrors Utinni.Cli.Tests Fixtures/tdf/mintest.tdf.
+# Exercises the compile-definition verb + the ParamType/ListType schema vocabulary.
+clientpath foo
+compilerpath bar
+id TEST
+version 0
+	int hitPoints
+	float scale
+	bool wantSawDust
+	string objectName
+	list int slots
