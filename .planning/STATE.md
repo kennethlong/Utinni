@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: — "AI-Assisted SWG Tools"
+milestone_name: — "AI-Assisted SWG Tools
 status: completed
-stopped_at: Completed 14-04-PLAN.md
-last_updated: "2026-06-07T02:42:47.730Z"
+stopped_at: Phase 15 context gathered
+last_updated: "2026-06-07T12:47:39.439Z"
 last_activity: 2026-06-07 -- Phase 14 marked complete
 progress:
   total_phases: 20
@@ -232,9 +232,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-07T02:35:42.185Z
-Stopped at: Completed 14-04-PLAN.md
-Resume file: None
+Last session: 2026-06-07T12:47:39.407Z
+Stopped at: Phase 15 context gathered
+Resume file: .planning/phases/15-wave-2-editors-worldsnapshot-particle-presentation-residuals/15-CONTEXT.md
 
 ## Ingest Provenance
 
