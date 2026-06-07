@@ -79,6 +79,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UtinniCoreDotNet.PathContai
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Utinni.Mcp", "Utinni.Mcp\Utinni.Mcp.csproj", "{D723F3F8-71C0-4B6E-9E9D-6633BA78B0E1}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Utinni.Mcp.Tests", "Utinni.Mcp.Tests\Utinni.Mcp.Tests.csproj", "{0245A52C-8FD5-4F62-9525-FE2728413931}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -101,6 +103,9 @@ Global
 		{D723F3F8-71C0-4B6E-9E9D-6633BA78B0E1}.Debug|x86.ActiveCfg = Debug|Any CPU
 		{D723F3F8-71C0-4B6E-9E9D-6633BA78B0E1}.Release|x86.ActiveCfg = Release|Any CPU
 		{D723F3F8-71C0-4B6E-9E9D-6633BA78B0E1}.RelWithDbgInfo|x86.ActiveCfg = Release|Any CPU
+		{0245A52C-8FD5-4F62-9525-FE2728413931}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{0245A52C-8FD5-4F62-9525-FE2728413931}.Release|x86.ActiveCfg = Release|Any CPU
+		{0245A52C-8FD5-4F62-9525-FE2728413931}.RelWithDbgInfo|x86.ActiveCfg = Release|Any CPU
 		{E1923E12-B8CB-4C7E-8A12-68877DC01E5C}.Debug|x86.ActiveCfg = Debug|Win32
 		{E1923E12-B8CB-4C7E-8A12-68877DC01E5C}.Debug|x86.Build.0 = Debug|Win32
 		{E1923E12-B8CB-4C7E-8A12-68877DC01E5C}.Release|x86.ActiveCfg = Release|Win32

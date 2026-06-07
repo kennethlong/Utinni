@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    14-01 Task 2: the SEPARATE net10 unit-test project for the MCP host's non-protocol
+    contracts. It CANNOT be net472 (Pitfall 1) — it project-references the net10 Utinni.Mcp.
+    Carries the Wave-0 suite: SC3 path-escape (ResolvedRoot), arg parsing (ServerArgs),
+    deterministic absolute CLI locator (CliLocator), and dispatcher timeout/exe-missing/
+    large-stdout (CliDispatcher). Runs on the net10 `dotnet test` CI lane, NOT the x86 pass.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Utinni.Mcp.Tests</RootNamespace>
+    <AssemblyName>Utinni.Mcp.Tests</AssemblyName>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Utinni.Mcp\Utinni.Mcp.csproj" />
+    <ProjectReference Include="..\UtinniCoreDotNet.PathContainment\UtinniCoreDotNet.PathContainment.csproj" />
+  </ItemGroup>
+
+</Project>
