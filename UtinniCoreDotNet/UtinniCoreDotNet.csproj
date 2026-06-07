@@ -91,6 +91,10 @@
     <Compile Include="Formats\ObjectTemplate\EffectiveField.cs" />
     <Compile Include="Formats\ObjectTemplate\ObjectTemplateResolver.cs" />
     <EmbeddedResource Include="Formats\ObjectTemplate\object-template-common.schema.json" />
+    <Compile Include="Formats\Particle\ParticleParseException.cs" />
+    <Compile Include="Formats\Particle\ParticleFieldValue.cs" />
+    <Compile Include="Formats\Particle\WaveFormCodec.cs" />
+    <Compile Include="Formats\Particle\ColorRampCodec.cs" />
     <Compile Include="Formats\StringTable\StringTableParseException.cs" />
     <Compile Include="Formats\StringTable\StringTableEntry.cs" />
     <Compile Include="Formats\StringTable\StringTableDocument.cs" />
