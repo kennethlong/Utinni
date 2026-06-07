@@ -126,7 +126,7 @@ Theme: *Utinni authors, not just edits.* Ship an MCP server so AI agents can dri
 - [ ] **AUTH-02**: `TemplateDefinitionCompiler` is revived and its `.tdf`/`.tpd` → per-class param→type schema drives the Object Template Editor's typed list-param display (closes RESID-01).
 - [ ] **AUTH-03**: A modder can compile a `.tpf` object-template source to a byte-correct object-template `.iff` via a `utinni-cli` verb wrapping the revived `TemplateCompiler`.
 - [ ] **AUTH-04**: A modder can build a `.tre` archive from a source tree via a `utinni-cli` verb wrapping the revived `TreeFileBuilder`.
-- [ ] **AUTH-05**: `utinni-cli` gains a SAVE verb that writes an edited asset (loose-override or repack) — the net-new write surface MCP-02 wraps (today the CLI is read + roundtrip only).
+- [x] **AUTH-05**: `utinni-cli` gains a SAVE verb that writes an edited asset (loose-override or repack) — the net-new write surface MCP-02 wraps (today the CLI is read + roundtrip only).
 - [ ] **AUTH-06**: A modder can compile a datatable from CSV/XML source and run the item exporters (`ArmorExporterTool`/`WeaponExporterTool`) via `utinni-cli` verbs.
 
 ### Product Capability — Wave-2 editors
@@ -200,11 +200,11 @@ Each requirement maps to exactly one phase. Phase numbers refer to ROADMAP.md.
 | AUTH-02 (TemplateDefinitionCompiler → param→type schema) | Phase 13 | Pending |
 | AUTH-03 (TemplateCompiler `.tpf` → `.iff` verb) | Phase 13 | Pending |
 | AUTH-04 (TreeFileBuilder build-`.tre` verb) | Phase 13 | Pending |
-| AUTH-05 (utinni-cli SAVE verb) | Phase 13 | Pending |
+| AUTH-05 (utinni-cli SAVE verb) | Phase 13 (write surface completed Phase 14 P03a: apply-save-* verbs) | Complete |
 | AUTH-06 (Datatable compile + item exporters) | Phase 13 | Pending |
 | RESID-01 (OT Tier-2 typed list-param display) | Phase 13 | Pending |
 | MCP-01 (Headless MCP READ tools) | Phase 14 | Pending |
-| MCP-02 (MCP write/SAVE + MCP-SECURITY.md threat register) | Phase 14 | Pending |
+| MCP-02 (MCP write/SAVE + MCP-SECURITY.md threat register) | Phase 14 | Complete |
 | PROD-W2-WS (WorldSnapshot / object-placement editor) | Phase 15 | Pending |
 | PROD-W2-PRT (Particle / client-effect editor) | Phase 15 | Pending |
 | RESID-03 (SC3 live-reload candor) | Phase 15 | Pending |
