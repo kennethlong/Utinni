@@ -4,14 +4,14 @@ milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
 status: executing
 stopped_at: Completed 14-03a-PLAN.md
-last_updated: "2026-06-07T01:56:40.297Z"
+last_updated: "2026-06-07T02:08:04.219Z"
 last_activity: 2026-06-07
 progress:
   total_phases: 20
   completed_phases: 14
   total_plans: 70
-  completed_plans: 68
-  percent: 97
+  completed_plans: 69
+  percent: 99
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 14 (headless-mcp-server-utinni-mcp-the-centerpiece) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-06-07
 
@@ -141,6 +141,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 12 P04 | ~1h | 4 tasks (2 checkpoints) | 2 new + 1 modified |
 | Phase 14 P01 | 35min | 3 tasks | 18 files |
 | Phase 14 P03a | 12min | 2 tasks | 12 files |
+| Phase 14 P02 | ~20min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -171,6 +172,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: Phase 11 P04: OT editor mutations/widgets/save/reload — per-type widgets (bool/int/float/string) + Consolas hex fallback (FormParamHexEditor) for complex params; origin-branching commit (Inherited edit -> AddOverride promote); Save modes 1/2/4 via ObjectTemplateSaveTargets shim (mode 3 disabled CF-03, V6000 refused); LOCKED CF-05 tier-(b) reload badge (states candor, no refetch hook); ReloadAssetClassifier verify-test. 624/624 framework Debug+Release|x86; TJT clean both configs. Commits UtinniPlugins 758330d/a9b738f, Utinni 78ec981.
 - [Phase 14]: 14-01: single-source LooseOverridePath in netstandard2.0 + [TypeForwardedTo] binary identity (re-export forbidden); net10 Utinni.Mcp host on ModelContextProtocol 1.4.0 with fail-closed ResolvedRoot pin + injectable-timeout CliDispatcher subprocess seam; net10 CI lane added off the x86 pass
 - [Phase 14]: 14-03a: apply-save-tab/ot/iff/stf CLI verbs FUSE (roundtrip-* apply+verify) with (save WriteAtomic-to-loose-override), persisting the SAME mutatedBytes they verified (no re-load between verify+commit) — closes the reviewer-confirmed gap where save re-serialized the UNCHANGED file and roundtrip-* discarded the mutated bytes. Fail-closed: a failed untouched-region verify -> exit 2 + write NOTHING. MCP host (14-03) wraps each 1:1 and decides persist-vs-fail on the EXIT CODE alone. SCOPED documented exception to the Phase-14-adds-ZERO-verbs guard-rail (cross-AI review BLOCKING finding). Shared SaveCommandIo.WriteAtomic (Flush(true)); internal-static TestPerturbSerialized seam drives failed-verify-no-write through the real CLI. 37 apply-save+dispatch golden tests; full Utinni.Cli.Tests 239 pass / 2 skip; Debug+Release|x86 green. Commits 7eed25f, bb3e5bc.
+- [Phase ?]: 14-02: CliResultMapper is the single chokepoint interpreting utinni-cli stdout — verbatim envelope pass-through (text + StructuredContent JsonElement) with SHAPE validation (schemaVersion + command + result XOR error) + exit-code taxonomy (hard McpException on exe-missing/timeout/non-JSON/empty/malformed/out-of-range/exit-0-with-error/non-zero-with-result). 5 thin read tools resolve->dispatch->map; get_template_schema writes a host-temp --out OUTSIDE resolvedRoot (IDisposable, cleaned up). MCP-01 read surface in place.
 
 ### Pending Todos
 
@@ -226,7 +228,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-07T01:56:22.105Z
+Last session: 2026-06-07T02:07:34.959Z
 Stopped at: Completed 14-03a-PLAN.md
 Resume file: None
 

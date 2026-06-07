@@ -325,7 +325,7 @@ Plans:
 **Wave plan:** Wave 1 = net10 scaffold+ResolvedRoot/CliDispatcher foundation (14-01) IN PARALLEL WITH the net-new `apply-save-*` CLI verbs (14-03a; zero deps, touches only `Utinni.Cli`/`Utinni.Cli.Tests` — no overlap with 14-01). Wave 2 = read tools (14-02; `Utinni.Mcp`). Wave 3 = MCP write/repack tools (14-03; wraps the apply-save-* verbs + the 14-01 seam + the 14-02 mapper). Wave 4 = MCP-SECURITY.md + real-client integration close-out (14-04).
 **Plans**:
 - [x] 14-01-PLAN.md - net10 Utinni.Mcp scaffold + fail-closed ResolvedRoot + CliDispatcher (injectable timeout, default 60s) + netstandard2.0 LooseOverridePath extract via [TypeForwardedTo] + LooseOverridePathTests regression gate + Wave-0 tests + net10 CI lane + NuGet legitimacy gate (Wave 1) [MCP-01, MCP-02]
-- [ ] 14-02-PLAN.md - read tools (read_tre/inspect_iff/decode_iff/list_world_objects + get_template_schema) + CliResultMapper envelope-SHAPE validation + exit-code taxonomy + temp-boundary doc for get_template_schema (Wave 2) [MCP-01]
+- [x] 14-02-PLAN.md - read tools (read_tre/inspect_iff/decode_iff/list_world_objects + get_template_schema) + CliResultMapper envelope-SHAPE validation + exit-code taxonomy + temp-boundary doc for get_template_schema (Wave 2) [MCP-01]
 - [x] 14-03a-PLAN.md - NEW golden-tested CLI verbs apply-save-tab/iff/stf/ot (apply ONE typed edit -> verify byte-identity on untouched -> WriteAtomic loose-override; failed-verify = exit 2, no write) - the persist path the reviewers proved was missing (Wave 1; Utinni.Cli only) [MCP-02, AUTH-05]
 - [ ] 14-03-PLAN.md - MCP write tools (save_* wrap the SINGLE apply-save-* verb opaquely) + repack_tre (Destructive, host-side dry_run gate) + roundtrip_check (verify-only) + MCP-boundary path-escape integration test (Wave 3) [MCP-02]
 - [ ] 14-04-PLAN.md - MCP-SECURITY.md threat register (each row cites its proving test) + real-McpClient RoundTripTests with read-back-after-save assertion + committed binary Fixtures/ + isolated-copy repack + exact tool-count (Wave 4) [MCP-01, MCP-02]
@@ -410,7 +410,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 11. Wave-1 plugin — Object Template Editor | 5/5 | Complete    | 2026-06-01 |
 | 12. Revive-feasibility spike (HARD GATE) + intro-skip crash | 0/TBD | Not started | - |
 | 13. Wrap compilers as CLI verbs + OT Tier-2 | 6/6 | Complete   | 2026-06-05 |
-| 14. Headless MCP server (`Utinni.Mcp`) | 2/5 | In Progress|  |
+| 14. Headless MCP server (`Utinni.Mcp`) | 3/5 | In Progress|  |
 | 15. Wave-2 editors (WorldSnapshot, Particle) + residuals | 0/TBD | Not started | - |
 | 16. Live-injected MCP bridge + Blender boundary | 0/TBD | Not started | - |
 
