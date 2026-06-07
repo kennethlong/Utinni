@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
 status: executing
-stopped_at: Phase 14 context gathered
-last_updated: "2026-06-06T15:22:42.630Z"
-last_activity: 2026-06-06 -- Phase 14 planning complete
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-06-07T01:40:12.249Z"
+last_activity: 2026-06-07
 progress:
   total_phases: 20
   completed_phases: 14
   total_plans: 70
-  completed_plans: 66
-  percent: 94
+  completed_plans: 67
+  percent: 96
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-01)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 13 — Wrap revived compilers as CLI verbs + close OT Tier-2
+**Current focus:** Phase 14 — headless-mcp-server-utinni-mcp-the-centerpiece
 
 ## Current Position
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
-Phase: 13 — COMPLETE
-Plan: 6 of 6
+Phase: 14 (headless-mcp-server-utinni-mcp-the-centerpiece) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-06-06 -- Phase 14 planning complete
+Last activity: 2026-06-07
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 
@@ -139,6 +139,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 12 P02 | ~2h | 4 tasks | 2700 files |
 | Phase 12 P03 | ~1h | 3 tasks | 4 files |
 | Phase 12 P04 | ~1h | 4 tasks (2 checkpoints) | 2 new + 1 modified |
+| Phase 14 P01 | 35min | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -167,6 +168,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase 11]: Phase 11 P02 (OT inheritance resolver + edit controller + roundtrip-ot) COMPLETE 2026-05-31. ObjectTemplateResolver.Resolve replicates the client `if(!isLoaded()) return base->getXxx()` as a nearest-supplier effective-merge with origin markers (LocalOverride/Inherited/UnresolvedBase) + ancestor breadcrumb; NEW depth/cycle guard (visited-set + MaxDepth=64, the single new defensive control T-11-04). ResolveViaArchive wires TrePayloadResolver.TryResolve (false-return = D-01 graceful degradation; never throws on the open path — unresolved base stops the walk + records a Resolved=false breadcrumb segment, locals stay editable). ObjectTemplateEditController clones DatatableEditController's core Apply/Undo/Redo/MarkSaved skeleton (Phase-9 cascade machinery dropped), with ZERO scene undo/redo-manager coupling (CON-M-05, extra-load-bearing); ObjectTemplateEditCommands EditValue/AddOverride/RemoveOverride capture byte-exact prior state for undo. roundtrip-ot CLI verb = param-LEVEL untouched byte-exact gate after a typed mutation (CF-02; the typed-OT analog of roundtrip-tab's per-cell slice), goldens incl. hex-fallback + unresolved-base degradation. 20 new facts (5 resolver + 6 controller + 9 CLI); full UtinniCoreDotNet.Tests 619/619 + Utinni.Cli.Tests 165/165 green Debug+Release|x86. DEVIATION (Rule 1): refreshed dispatch help/no-args goldens for the new verb. Commits: 36861d9, 81bacd1, 244c45a.
 - [Phase 11]: Phase 11 P03 (Object Template Editor host + hand-offs) COMPLETE 2026-05-31. Cross-repo. FormObjectTemplateEditor (UtinniForm, IEditorForm) clones FormDatatableEditor: 4-column effective-inheritance grid (Field/Effective value/Origin/Type) with Phase 11 deviations (AllowUserToOrderColumns=false, MultiSelect=false/FullRowSelect, Value-only Fill); binds OWN DataGridViewRows from EffectiveField (ThemedDataGridView.BindMutable is datatable-typed) + form-local CellFormatting for origin overlays (local-override Origin accent / inherited rows grey+italic / unresolved-base red); background DERV-chain resolve (Task.Run -> BeginInvoke) that NEVER blocks the open (D-01 LOCKED — lazily-cached TreArchiveIndex from resolved client root via ResolveViaArchive, null-locator graceful-degradation fallback); ancestor breadcrumb root->this (terminal this accent, unresolved segment red); editor-local ObjectTemplateEditController undo/redo (Ctrl+Z/Y, ZERO scene-manager coupling CON-M-05); Show-inherited toggle (default ON, persisted); singleton hide-not-dispose via SingletonFormClosePolicy. NEW framework OtHandoffPolicy (UtinniCoreDotNet/UI; mirrors DatatableHandoffPolicy): ShouldOfferObjectTemplateEditor (.iff visibility gate) + IsObjectTemplatePayload (click-time LooksLikeObjectTemplate content sniff, never throws). 5th SubPanel registered in Plugin.cs try/catch; GetSubPanels() stays null (SPI NOT widened, CON-M-01/02, T-11-10). IFF Editor 'Switch to typed object-template view' (mutable-root sniff, OpenFromMutableIff no re-parse) + TRE Browser 'Open in Object Template Editor' (off-UI-thread TryResolve -> IsObjectTemplatePayload gate -> OpenFromTreEntry) hand-offs, both HIDDEN when the sniff fails. Save/Promote/Revert/Reload click bodies are status-only stubs (wired 11-04/11-05); grid ReadOnly this plan. UtinniCoreDotNet + TJT clean Debug+Release|x86 (WinForms-host logic verified by MSBuild-green build per Phase 8/9/10 precedent — not project-referenceable from the x86 test project); framework xUnit 619/619 green (OtHandoffPolicy additive). Commits — Utinni: 484211c (OtHandoffPolicy); UtinniPlugins: bc32f12 (host), 0504dfa (registration + hand-offs).
 - [Phase ?]: Phase 11 P04: OT editor mutations/widgets/save/reload — per-type widgets (bool/int/float/string) + Consolas hex fallback (FormParamHexEditor) for complex params; origin-branching commit (Inherited edit -> AddOverride promote); Save modes 1/2/4 via ObjectTemplateSaveTargets shim (mode 3 disabled CF-03, V6000 refused); LOCKED CF-05 tier-(b) reload badge (states candor, no refetch hook); ReloadAssetClassifier verify-test. 624/624 framework Debug+Release|x86; TJT clean both configs. Commits UtinniPlugins 758330d/a9b738f, Utinni 78ec981.
+- [Phase 14]: 14-01: single-source LooseOverridePath in netstandard2.0 + [TypeForwardedTo] binary identity (re-export forbidden); net10 Utinni.Mcp host on ModelContextProtocol 1.4.0 with fail-closed ResolvedRoot pin + injectable-timeout CliDispatcher subprocess seam; net10 CI lane added off the x86 pass
 
 ### Pending Todos
 
@@ -222,9 +224,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-06T03:37:43.691Z
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/14-headless-mcp-server-utinni-mcp-the-centerpiece/14-CONTEXT.md
+Last session: 2026-06-07T01:40:11.504Z
+Stopped at: Completed 14-01-PLAN.md
+Resume file: None
 
 ## Ingest Provenance
 

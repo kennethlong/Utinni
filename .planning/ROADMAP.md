@@ -324,7 +324,7 @@ Plans:
 **Plans**: 5 plans (4 waves; revised post cross-AI `--reviews` 2026-06-06 - both reviewers flagged the old 14-03 `roundtrip->save` two-step as a NO-OP that never persists the edit. Fix: a NEW golden-tested CLI verb family `apply-save-*` (apply-typed-edit + verify-untouched + WriteAtomic-to-loose-override in ONE atomic verb, failed-verify = exit 2), split out as Plan 14-03a. The MCP `save_*` tools wrap that single verb OPAQUELY. This is a scoped, documented exception to the "Phase 14 adds ZERO verbs" guard-rail - named, not silent.)
 **Wave plan:** Wave 1 = net10 scaffold+ResolvedRoot/CliDispatcher foundation (14-01) IN PARALLEL WITH the net-new `apply-save-*` CLI verbs (14-03a; zero deps, touches only `Utinni.Cli`/`Utinni.Cli.Tests` — no overlap with 14-01). Wave 2 = read tools (14-02; `Utinni.Mcp`). Wave 3 = MCP write/repack tools (14-03; wraps the apply-save-* verbs + the 14-01 seam + the 14-02 mapper). Wave 4 = MCP-SECURITY.md + real-client integration close-out (14-04).
 **Plans**:
-- [ ] 14-01-PLAN.md - net10 Utinni.Mcp scaffold + fail-closed ResolvedRoot + CliDispatcher (injectable timeout, default 60s) + netstandard2.0 LooseOverridePath extract via [TypeForwardedTo] + LooseOverridePathTests regression gate + Wave-0 tests + net10 CI lane + NuGet legitimacy gate (Wave 1) [MCP-01, MCP-02]
+- [x] 14-01-PLAN.md - net10 Utinni.Mcp scaffold + fail-closed ResolvedRoot + CliDispatcher (injectable timeout, default 60s) + netstandard2.0 LooseOverridePath extract via [TypeForwardedTo] + LooseOverridePathTests regression gate + Wave-0 tests + net10 CI lane + NuGet legitimacy gate (Wave 1) [MCP-01, MCP-02]
 - [ ] 14-02-PLAN.md - read tools (read_tre/inspect_iff/decode_iff/list_world_objects + get_template_schema) + CliResultMapper envelope-SHAPE validation + exit-code taxonomy + temp-boundary doc for get_template_schema (Wave 2) [MCP-01]
 - [ ] 14-03a-PLAN.md - NEW golden-tested CLI verbs apply-save-tab/iff/stf/ot (apply ONE typed edit -> verify byte-identity on untouched -> WriteAtomic loose-override; failed-verify = exit 2, no write) - the persist path the reviewers proved was missing (Wave 1; Utinni.Cli only) [MCP-02, AUTH-05]
 - [ ] 14-03-PLAN.md - MCP write tools (save_* wrap the SINGLE apply-save-* verb opaquely) + repack_tre (Destructive, host-side dry_run gate) + roundtrip_check (verify-only) + MCP-boundary path-escape integration test (Wave 3) [MCP-02]
@@ -410,7 +410,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 11. Wave-1 plugin — Object Template Editor | 5/5 | Complete    | 2026-06-01 |
 | 12. Revive-feasibility spike (HARD GATE) + intro-skip crash | 0/TBD | Not started | - |
 | 13. Wrap compilers as CLI verbs + OT Tier-2 | 6/6 | Complete   | 2026-06-05 |
-| 14. Headless MCP server (`Utinni.Mcp`) | 0/TBD | Not started | - |
+| 14. Headless MCP server (`Utinni.Mcp`) | 1/5 | In Progress|  |
 | 15. Wave-2 editors (WorldSnapshot, Particle) + residuals | 0/TBD | Not started | - |
 | 16. Live-injected MCP bridge + Blender boundary | 0/TBD | Not started | - |
 
