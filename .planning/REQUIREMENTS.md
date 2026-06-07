@@ -132,7 +132,7 @@ Theme: *Utinni authors, not just edits.* Ship an MCP server so AI agents can dri
 ### Product Capability — Wave-2 editors
 
 - [x] **PROD-W2-WS**: A modder can view + edit object placements in a world snapshot via a Utinni SubPanel (extends the existing Snapshot panel; reuses shipped codecs — zero new format work).
-- [ ] **PROD-W2-PRT**: A modder can open + edit a particle / client-effect asset in a Utinni SubPanel, with live in-client preview when injected. *(The flashy AI-assist showcase; Terrain `PROD-W2-TRN` deferred to v2.1.)*
+- [ ] **PROD-W2-PRT**: A modder can open + edit a particle / client-effect asset in a Utinni SubPanel, with live in-client preview when injected. *(The flashy AI-assist showcase; Terrain `PROD-W2-TRN` deferred to v2.1.)* — **format codec half delivered 15-02 (headless `.prt`/FORM PEFT codec, byte-exact + degrade-don't-abort); editor SubPanel + live preview remain in a later Wave-2 plan.**
 
 ### Ecosystem
 
@@ -206,7 +206,7 @@ Each requirement maps to exactly one phase. Phase numbers refer to ROADMAP.md.
 | MCP-01 (Headless MCP READ tools) | Phase 14 | Complete |
 | MCP-02 (MCP write/SAVE + MCP-SECURITY.md threat register) | Phase 14 | Complete |
 | PROD-W2-WS (WorldSnapshot / object-placement editor) | Phase 15 | Pending |
-| PROD-W2-PRT (Particle / client-effect editor) | Phase 15 | Pending |
+| PROD-W2-PRT (Particle / client-effect editor) | Phase 15 | In Progress (codec half done 15-02) |
 | RESID-03 (SC3 live-reload candor) | Phase 15 | Pending |
 | RESID-04 (Window-resize / fullscreen edge cases) | Phase 15 | Pending |
 | MCP-03 (Live-injected MCP bridge) | Phase 16 | Pending |

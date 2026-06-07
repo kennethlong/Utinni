@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
 status: executing
-stopped_at: Phase 15 UI-SPEC approved
-last_updated: "2026-06-07T14:50:43.938Z"
+stopped_at: Completed 15-02-PLAN.md (Particle .prt codec)
+last_updated: "2026-06-07T15:12:00.777Z"
 last_activity: 2026-06-07
 progress:
   total_phases: 20
   completed_phases: 15
   total_plans: 78
-  completed_plans: 72
-  percent: 92
+  completed_plans: 73
+  percent: 94
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 15 (wave-2-editors-worldsnapshot-particle-presentation-residuals) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-06-07
 
@@ -145,6 +145,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 14 P03 | ~25min | 2 tasks | 7 files |
 | Phase 14 P04 | ~50min | 4 tasks | 12 files |
 | Phase 15 P01 | ~75 min | 2 tasks | 10 files |
+| Phase 15 P02 | ~95 min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -179,6 +180,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: 14-03: save_* MCP write tools each wrap ONE apply-save-* verb opaquely (one Process.Start), deciding persist-vs-fail on the EXIT CODE alone (0 persisted / 2 verify-failed) — never parsing bytesEqualUntouched. repack_tre is a distinct off-by-default Destructive tool with a HOST-SIDE dry_run=true plan-only gate (no spawn, no backup claim; repack-tre verb has no --dry-run flag), unreachable from save_*. roundtrip_check is verify-only non-persisting. SaveVerb owns format->verb map + typed-arg->argv builders + per-resolved-path SemaphoreSlim serialization (T-14-16). Path-escape blocked at the MCP boundary with ZERO CLI spawns. CliDispatcher unsealed + RunAsync virtual as a test-only stub seam (prod unchanged). MCP-02 write half complete.
 - [Phase ?]: 14-04: real McpClient round-trips the built Utinni.Mcp.exe end-to-end (--cli-path pinned, no transcript fallback) — exact 11-tool surface + multi-format read + edit-save-READ-BACK persistence + isolated-copy repack + boundary escape; committed binary Fixtures (generate-once-via-32bit-PS); MCP-SECURITY.md 17-threat register (each mitigate row cites file:line + a proving test, 5-layer advisory-vs-enforcement model + apply-save ZERO-verbs exception). Both lanes green. MCP-01+02 integration-proven.
 - [Phase ?]: 15-01: WorldSnapshot bulk ops compose shipped WorldSnapshotCommands as N ordered descriptors (retemplate=remove+add per node); duplicate ids not deduped; zero new format code (D-02). Companion FormSnapshotPlacements table launched from SnapshotPanel button.
+- [Phase ?]: 15-02: .prt/FORM PEFT typed codec (PROD-W2-PRT format half) in UtinniCoreDotNet/Formats/Particle. WaveForm(3 ver)/ColorRamp(2 ver) leaves + PEFT->EMGP->EMTR tree composing shipped IffReader/IffWriter/IffPayloadCursor; byte-exactness via consume-exactly-or-hex (typed decode accepted only when it re-encodes identical, else raw-preserve); degrade-don't-abort D-05 raw-preserves any unrecognized FORM-version sub-tree and NEVER hard-aborts (Pitfall 2); division-form count DoS guard T-15-02. 21 facts, 663/663 suite green Debug+Release|x86. PROD-W2-PRT editor+live-preview half remains a later plan.
 
 ### Pending Todos
 
@@ -234,8 +236,8 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-07T14:50:29.288Z
-Stopped at: Phase 15 UI-SPEC approved
+Last session: 2026-06-07T15:12:00.754Z
+Stopped at: Completed 15-02-PLAN.md (Particle .prt codec)
 Resume file: None
 
 ## Ingest Provenance

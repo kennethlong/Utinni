@@ -347,7 +347,7 @@ Plans:
 **Plans**: 8 plans (4 waves)
 **Plans**:
 - [x] 15-01-PLAN.md — WorldSnapshot editor: placements table + multi-select bulk move/delete/retemplate (FormSnapshotPlacements companion window; WorldSnapshotBulkComposer) [PROD-W2-WS] (Wave 1)
-- [ ] 15-02-PLAN.md — .prt/PEFT typed codec in Formats/Particle (WaveForm/ColorRamp/EMTR) + degrade-dont-abort raw-preserve + byte-exact round-trip [PROD-W2-PRT] (Wave 1)
+- [x] 15-02-PLAN.md — .prt/PEFT typed codec in Formats/Particle (WaveForm/ColorRamp/EMTR) + degrade-dont-abort raw-preserve + byte-exact round-trip [PROD-W2-PRT] (Wave 1)
 - [ ] 15-03-PLAN.md — D-09 live-preview native hot-retrigger SPIKE (ParticleManager export or documented fallback; heap-free) [PROD-W2-PRT] (Wave 1)
 - [ ] 15-04-PLAN.md — .prt CLI verbs (decode-iff PEFT dispatch + roundtrip-particle golden) + thin MCP read tool (D-08) [PROD-W2-PRT] (Wave 2)
 - [ ] 15-05-PLAN.md — RESID-04: suppress exclusive-fullscreen mode switch (direct_input.cpp) + no-Reset regression gate (D-12/D-13) [RESID-04] (Wave 2)
@@ -422,7 +422,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 12. Revive-feasibility spike (HARD GATE) + intro-skip crash | 0/TBD | Not started | - |
 | 13. Wrap compilers as CLI verbs + OT Tier-2 | 6/6 | Complete   | 2026-06-05 |
 | 14. Headless MCP server (`Utinni.Mcp`) | 5/5 | Complete   | 2026-06-07 |
-| 15. Wave-2 editors (WorldSnapshot, Particle) + residuals | 1/8 | In Progress|  |
+| 15. Wave-2 editors (WorldSnapshot, Particle) + residuals | 2/8 | In Progress|  |
 | 16. Live-injected MCP bridge + Blender boundary | 0/TBD | Not started | - |
 
 ## Backlog
