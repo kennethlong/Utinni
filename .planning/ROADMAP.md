@@ -352,7 +352,7 @@ Plans:
 - [x] 15-04-PLAN.md — .prt CLI verbs (decode-iff PEFT dispatch + roundtrip-particle golden) + thin MCP read tool (D-08) [PROD-W2-PRT] (Wave 2)
 - [x] 15-05-PLAN.md — RESID-04: suppress exclusive-fullscreen mode switch (direct_input.cpp) + no-Reset regression gate (D-12/D-13) [RESID-04] (Wave 2)
 - [x] 15-06-PLAN.md — FormParticleEditor: emitter tree + typed grid + hex fallback + AI Explain-effect (reuses 15-04 read path) + state-encoded Preview [PROD-W2-PRT] (Wave 3)
-- [ ] 15-07-PLAN.md — RESID-03: route .ws/.prt to honest tier-(b) reload candor + routing tests (D-14) [RESID-03] (Wave 3)
+- [x] 15-07-PLAN.md — RESID-03: route .ws/.prt to honest tier-(b) reload candor + routing tests (D-14) [RESID-03] (Wave 3)
 - [ ] 15-08-PLAN.md — Tier-4 maintainer live-SWG smoke: WS/Particle demo + RESID-04 matrix + RESID-03 SC3 (autonomous:false) [PROD-W2-WS/PRT, RESID-03/04] (Wave 4)
 **Research flag**: yes — `.prt` codec format depth is MEDIUM-confidence; `swg-client-v2` is the spec reference but no Utinni fixtures exist yet (`/gsd:plan-phase --research-phase 15`).
 **UI hint**: yes
@@ -422,7 +422,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 12. Revive-feasibility spike (HARD GATE) + intro-skip crash | 0/TBD | Not started | - |
 | 13. Wrap compilers as CLI verbs + OT Tier-2 | 6/6 | Complete   | 2026-06-05 |
 | 14. Headless MCP server (`Utinni.Mcp`) | 5/5 | Complete   | 2026-06-07 |
-| 15. Wave-2 editors (WorldSnapshot, Particle) + residuals | 6/8 | In Progress|  |
+| 15. Wave-2 editors (WorldSnapshot, Particle) + residuals | 7/8 | In Progress|  |
 | 16. Live-injected MCP bridge + Blender boundary | 0/TBD | Not started | - |
 
 ## Backlog

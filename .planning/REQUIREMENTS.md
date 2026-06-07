@@ -142,7 +142,7 @@ Theme: *Utinni authors, not just edits.* Ship an MCP server so AI agents can dri
 
 - [ ] **RESID-01**: The Object Template Editor displays list/struct params typed, not raw (closed via AUTH-02).
 - [ ] **RESID-02**: The intro-skip scene-transition crash is diagnosed (VEH faulting address/module) and fixed.
-- [ ] **RESID-03**: SC3 live-reload semantics are confirmed/honest for string-table + object-template reload candor.
+- [x] **RESID-03**: SC3 live-reload semantics are confirmed/honest for string-table + object-template reload candor.
 - [x] **RESID-04**: The SWG window-resize / windowed↔fullscreen edge cases are enumerated and fixed.
 
 ## Future Requirements (beyond v2.0)
