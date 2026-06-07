@@ -65,6 +65,12 @@ namespace UtinniCoreDotNet.Saving
     ///   <item>StringtableExtensions := { .stf } → PendingNextSceneChange</item>
     ///   <item>ObjectTemplateExtensions := { .iff } + root TypeId in { SHOT, STOT, SBOT }
     ///         → PendingNextSceneChange</item>
+    ///   <item>WorldSnapshotExtensions := { .ws } → PendingNextSceneChange (15-07 RESID-03 / D-14;
+    ///         backs the LOCKED WorldSnapshot badge "Placements re-resolve on the next scene change.")</item>
+    ///   <item>ParticleExtensions := { .prt } → PendingNextSceneChange (15-07 RESID-03 / D-14;
+    ///         backs the LOCKED Particle DEGRADED badge "Reloads on next scene change or relog."; the
+    ///         LIVE-capable Particle badge is a form-side runtime affordance gated on the 15-03 retrigger
+    ///         hook + Game.IsRunning, NOT a classifier tier)</item>
     ///   <item>UnknownExtensions := everything else → PendingNextSceneChange (CONSERVATIVE
     ///         fallback; never silently over-promises a no-op reload)</item>
     /// </list>
@@ -97,6 +103,17 @@ namespace UtinniCoreDotNet.Saving
         /// "SHOT"/"STOT"/"SBOT").</summary>
         public static readonly string[] ObjectTemplateExtensions = new[] { ".iff" };
 
+        /// <summary>Recognized WorldSnapshot file extensions (15-07 RESID-03 / D-14). Routes to the
+        /// honest tier-(b) <see cref="ReloadTier.PendingNextSceneChange"/> backing the LOCKED badge
+        /// "Placements re-resolve on the next scene change." — never an instant in-session refresh.</summary>
+        public static readonly string[] WorldSnapshotExtensions = new[] { ".ws" };
+
+        /// <summary>Recognized Particle file extensions (15-07 RESID-03 / D-14). Routes to the honest
+        /// tier-(b) <see cref="ReloadTier.PendingNextSceneChange"/> backing the LOCKED DEGRADED badge
+        /// "Reloads on next scene change or relog." The Particle LIVE-capable badge is a form-side
+        /// runtime affordance (15-03 retrigger hook + Game.IsRunning), NOT a classifier tier.</summary>
+        public static readonly string[] ParticleExtensions = new[] { ".prt" };
+
         /// <summary>
         /// Classifies <paramref name="extension"/> + optional <paramref name="rootTypeIdOrNull"/>
         /// into a <see cref="ReloadTier"/>. <paramref name="extension"/> may include or omit
@@ -123,6 +140,15 @@ namespace UtinniCoreDotNet.Saving
                 return ReloadTier.ReloadedTerrain;
             }
             if (Contains(StringtableExtensions, ext))
+            {
+                return ReloadTier.PendingNextSceneChange;
+            }
+            // WorldSnapshot (.ws) and Particle (.prt) reload paths (15-07 RESID-03 / D-14) surface as
+            // the honest tier-(b) PendingNextSceneChange — backing the LOCKED WS "Placements re-resolve
+            // on the next scene change." and Particle DEGRADED "Reloads on next scene change or relog."
+            // badge copy. Never an instant/live tier (the Particle LIVE-capable badge is a form-side
+            // runtime affordance gated on the 15-03 retrigger hook, NOT a classifier tier).
+            if (Contains(WorldSnapshotExtensions, ext) || Contains(ParticleExtensions, ext))
             {
                 return ReloadTier.PendingNextSceneChange;
             }
