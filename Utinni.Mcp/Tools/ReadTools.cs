@@ -94,6 +94,21 @@ public static class ReadTools
         return CliResultMapper.ToCallToolResult(r);
     }
 
+    [McpServerTool(Name = "summarize_particle", ReadOnly = true, Idempotent = true)]
+    [Description("Summarize a particle-effect .prt (FORM PEFT) — root version, emitter-group / emitter " +
+                 "counts, and the degrade (raw-preserve) disposition — as the utinni-cli JSON envelope. " +
+                 "Read-assist ONLY (no write/mutate): the same .prt read path the in-app 'Explain effect' " +
+                 "button reuses (D-07/D-08). Dispatches decode-iff, which auto-routes a FORM PEFT root.")]
+    public static async Task<CallToolResult> SummarizeParticle(
+        ResolvedRoot root,
+        CliDispatcher cli,
+        [Description(PathParamDescription)] string relativePath)
+    {
+        string abs = root.Resolve(relativePath);                 // throws on escape → SDK tool error
+        CliInvocationResult r = await cli.RunAsync("decode-iff", new[] { abs }).ConfigureAwait(false);
+        return CliResultMapper.ToCallToolResult(r);              // verbatim envelope pass-through
+    }
+
     [McpServerTool(Name = "list_world_objects", ReadOnly = true, Idempotent = true)]
     [Description("List world-snapshot objects from a ws.iff and return the utinni-cli JSON envelope.")]
     public static async Task<CallToolResult> ListWorldObjects(
