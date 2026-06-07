@@ -177,7 +177,7 @@ namespace UtinniCoreDotNet.Formats.Particle
     /// most importantly an unrecognized FORM version sub-tree, but also an over-length / truncated leaf
     /// — is carried as <see cref="ParticleFieldKind.RawBytesHexFallback"/> via
     /// <see cref="FromRawBytes"/>, which captures the EXACT original bytes so they round-trip
-    /// byte-for-byte. The codec never FATALs the way the SOE reference does.</para>
+    /// byte-for-byte. The codec never hard-aborts the way the SOE reference does.</para>
     /// </summary>
     public sealed class ParticleFieldValue
     {

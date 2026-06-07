@@ -129,7 +129,7 @@ namespace UtinniCoreDotNet.Formats.Particle
                     valueMax = cursor.ReadFloatLe();
                     break;
                 default:
-                    // NEVER FATAL — the caller (TryDecode / the emitter codec) raw-preserves this.
+                    // NEVER hard-abort — the caller (TryDecode / the emitter codec) raw-preserves this.
                     throw new ParticleParseException(ParticleParseError.UnexpectedForm,
                         "Unrecognized WaveForm version '" + versionTag + "'.");
             }

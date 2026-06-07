@@ -34,7 +34,7 @@ namespace UtinniCoreDotNet.Formats.Particle
     /// Discriminates the kind of structural problem the particle codec rejects up front. Mirrors the
     /// shared <see cref="Decoders.DecoderError"/> taxonomy so the CLI can surface a JSON error
     /// envelope. NOTE: an UNRECOGNIZED FORM version is NOT an error — it degrades to byte-exact
-    /// raw-preserve (D-05) and never throws (the codec NEVER FATALs the way the SOE reference does).
+    /// raw-preserve (D-05) and never throws (the codec NEVER hard-aborts the way the SOE reference does).
     /// Only a hard malformation (an attacker-forged oversized count, a truncated required scalar that
     /// cannot even be raw-preserved as a sub-tree) reaches this exception.
     /// </summary>
