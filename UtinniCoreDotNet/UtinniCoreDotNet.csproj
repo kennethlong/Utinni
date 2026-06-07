@@ -260,6 +260,19 @@
     <Compile Include="Utility\Log.cs" />
     <Compile Include="Utility\Native.cs" />
   </ItemGroup>
+  <!-- 14-01 (Fork-2 ruling): LooseOverridePath physically lives in the netstandard2.0
+       UtinniCoreDotNet.PathContainment lib (single source of truth, also consumed by the
+       net10 Utinni.Mcp server). This old-style net472 project carries a [TypeForwardedTo]
+       in Saving/LooseOverridePath.cs that points at the type in that lib. The ProjectReference
+       below makes MSBuild build the lib first AND copies UtinniCoreDotNet.PathContainment.dll
+       into the net472 output (CopyLocal default = true), so the forward resolves at load time
+       for compiled net472 plugins. -->
+  <ItemGroup>
+    <ProjectReference Include="..\UtinniCoreDotNet.PathContainment\UtinniCoreDotNet.PathContainment.csproj">
+      <Project>{B7E4A0C3-3D2F-4E91-9A6E-14C0A7E5D210}</Project>
+      <Name>UtinniCoreDotNet.PathContainment</Name>
+    </ProjectReference>
+  </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="UI\Forms\FormHotkeyEditorDialog.resx">
       <DependentUpon>FormHotkeyEditorDialog.cs</DependentUpon>

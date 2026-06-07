@@ -98,9 +98,12 @@
         }
       },
       "utinnicoredotnet": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "UtinniCoreDotNet.PathContainment": "[1.0.0, )"
+        }
       },
-      "utinnicoredotnetgen": {
+      "utinnicoredotnet.pathcontainment": {
         "type": "Project"
       }
     }

@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Phase 14 — the headless MCP server (the centerpiece). net10 SDK-style console host
+    that exposes Utinni's verified asset pipeline as MCP tools by shelling the net472/x86
+    utinni-cli.exe (the honest two-process seam — the MCP SDK is NEVER hosted in-proc in
+    the x86 client). Builds against the installed net10 SDK (10.0.300); it MUST NOT be
+    routed through the Release|x86 MSBuild pass (RESEARCH A3 — a net10 project cannot
+    target x86-only).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Utinni.Mcp</RootNamespace>
+    <AssemblyName>Utinni.Mcp</AssemblyName>
+    <!-- 14-01 Task 0 supply-chain pin: commit packages.lock.json so the maintainer-approved
+         ModelContextProtocol 1.4.0 (+ first-party Microsoft.Extensions.* deps) versions are
+         locked and CI restore is reproducible. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Task 0 approved against nuget.org: id=ModelContextProtocol, version=1.4.0,
+         publisher=modelcontextprotocol org (github.com/modelcontextprotocol/csharp-sdk),
+         targets net10.0/net9.0/net8.0/netstandard2.0. -->
+    <PackageReference Include="ModelContextProtocol" Version="1.4.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The netstandard2.0 containment lib loads cleanly under net10 (no NU1701). The MCP
+         server's access-control boundary (ResolvedRoot.Resolve) delegates to its
+         LooseOverridePath. -->
+    <ProjectReference Include="..\UtinniCoreDotNet.PathContainment\UtinniCoreDotNet.PathContainment.csproj" />
+  </ItemGroup>
+
+</Project>

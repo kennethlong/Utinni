@@ -23,23 +23,37 @@
 **/
 // Implementation original to Utinni under MIT.
 
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
 // ─────────────────────────────────────────────────────────────────────────────
-// 14-01 (Fork-2 ruling, review Consensus #5): TYPE-FORWARD shim — NOT a re-export.
+// Phase 14 — Utinni.Mcp generic-host bootstrap (the centerpiece).
 //
-// UtinniCoreDotNet.Saving.LooseOverridePath physically MOVED to the netstandard2.0
-// UtinniCoreDotNet.PathContainment assembly (single source of truth, also consumed
-// by the net10 Utinni.Mcp server). This [assembly: TypeForwardedTo] preserves the
-// EXACT type identity for already-compiled net472 plugins that reference
-//   UtinniCoreDotNet, UtinniCoreDotNet.Saving.LooseOverridePath
-// — a re-export wrapper class would create a DISTINCT type and break that binary
-// identity (MissingMethodException / type-mismatch at MEF compose). The
-// UtinniCoreDotNet.PathContainment ProjectReference (in UtinniCoreDotNet.csproj)
-// carries the netstandard2.0 DLL into the net472 output so the forward resolves at
-// load time. NO net472 callsite changes — the namespace + type name are unchanged.
+// CRITICAL (RESEARCH Pitfall 2): stdout is the MCP stdio transport. ALL host logging
+// MUST go to stderr or it corrupts the JSON-RPC framing. LogToStandardErrorThreshold
+// = Trace routes every log record to stderr; the round-trip test in Plan 14-04 proves
+// the stdout channel is clean before MCP framing.
 //
-// CI regression gate: UtinniCoreDotNet.Tests/SavingTests/LooseOverridePathTests
-// runs against this forwarded type and proves net472 callers still resolve it.
+// NOTE (Task 1 of 14-01): this is the host skeleton. Task 2 of this plan wires in the
+// fail-closed ResolvedRoot.PinOrThrow(args) singleton + the CliLocator/CliDispatcher
+// subprocess seam (their classes land in Server/* with the Wave-0 unit tests). No MCP
+// tools exist yet — the assembly scan finds none this wave; that is expected.
 // ─────────────────────────────────────────────────────────────────────────────
 
-[assembly: System.Runtime.CompilerServices.TypeForwardedTo(
-    typeof(UtinniCoreDotNet.Saving.LooseOverridePath))]
+var builder = Host.CreateApplicationBuilder(args);
+
+// All logs to stderr — stdout is reserved for the MCP transport.
+builder.Logging.AddConsole(consoleLogOptions =>
+{
+    consoleLogOptions.LogToStandardErrorThreshold = LogLevel.Trace;
+});
+
+// MCP server over stdio. The assembly scan finds no [McpServerTool] types yet — that is
+// expected this wave; the tool plans (Wave-2/3) add them.
+builder.Services
+    .AddMcpServer()
+    .WithStdioServerTransport()
+    .WithToolsFromAssembly();
+
+await builder.Build().RunAsync();

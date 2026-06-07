@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    14-01 (Fork-2 ruling, review Consensus #5): single-source-of-truth for the
+    LooseOverridePath root-containment helper. Targets netstandard2.0 so the SAME
+    compiled assembly is consumable by BOTH:
+      - the net472 editor host (UtinniCoreDotNet, which type-forwards the
+        UtinniCoreDotNet.Saving.LooseOverridePath type here via [TypeForwardedTo]
+        — binary type identity preserved for already-compiled net472 plugins), and
+      - the net10 Utinni.Mcp server (the access-control boundary delegates to it).
+    BCL-only (System + System.IO) — no platform-specific API, so netstandard2.0
+    loads cleanly under both net472 and net10 with no NU1701.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>UtinniCoreDotNet.PathContainment</RootNamespace>
+    <AssemblyName>UtinniCoreDotNet.PathContainment</AssemblyName>
+    <LangVersion>7.3</LangVersion>
+    <Deterministic>true</Deterministic>
+    <!-- AnyCPU: the net472 x86 MSBuild pass tolerates a netstandard2.0 AnyCPU
+         dependency (it is bit-agnostic IL). The net10 dotnet lane consumes it the
+         same way. -->
+    <Platforms>AnyCPU</Platforms>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+</Project>

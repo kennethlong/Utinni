@@ -75,6 +75,10 @@ Project("{930C7802-8A8C-48F9-8165-68863BCCD9DD}") = "Utinni.Installer", "install
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SwgPathDetector", "installer\CustomActions\SwgPathDetector.csproj", "{B2F73F8D-CBAB-43EE-A869-3C200023802D}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UtinniCoreDotNet.PathContainment", "UtinniCoreDotNet.PathContainment\UtinniCoreDotNet.PathContainment.csproj", "{B7E4A0C3-3D2F-4E91-9A6E-14C0A7E5D210}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Utinni.Mcp", "Utinni.Mcp\Utinni.Mcp.csproj", "{D723F3F8-71C0-4B6E-9E9D-6633BA78B0E1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -88,6 +92,15 @@ Global
 		{B2F73F8D-CBAB-43EE-A869-3C200023802D}.Debug|x86.ActiveCfg = Debug|Any CPU
 		{B2F73F8D-CBAB-43EE-A869-3C200023802D}.Release|x86.ActiveCfg = Release|Any CPU
 		{B2F73F8D-CBAB-43EE-A869-3C200023802D}.RelWithDbgInfo|x86.ActiveCfg = Release|Any CPU
+		{B7E4A0C3-3D2F-4E91-9A6E-14C0A7E5D210}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B7E4A0C3-3D2F-4E91-9A6E-14C0A7E5D210}.Debug|x86.Build.0 = Debug|Any CPU
+		{B7E4A0C3-3D2F-4E91-9A6E-14C0A7E5D210}.Release|x86.ActiveCfg = Release|Any CPU
+		{B7E4A0C3-3D2F-4E91-9A6E-14C0A7E5D210}.Release|x86.Build.0 = Release|Any CPU
+		{B7E4A0C3-3D2F-4E91-9A6E-14C0A7E5D210}.RelWithDbgInfo|x86.ActiveCfg = Release|Any CPU
+		{B7E4A0C3-3D2F-4E91-9A6E-14C0A7E5D210}.RelWithDbgInfo|x86.Build.0 = Release|Any CPU
+		{D723F3F8-71C0-4B6E-9E9D-6633BA78B0E1}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D723F3F8-71C0-4B6E-9E9D-6633BA78B0E1}.Release|x86.ActiveCfg = Release|Any CPU
+		{D723F3F8-71C0-4B6E-9E9D-6633BA78B0E1}.RelWithDbgInfo|x86.ActiveCfg = Release|Any CPU
 		{E1923E12-B8CB-4C7E-8A12-68877DC01E5C}.Debug|x86.ActiveCfg = Debug|Win32
 		{E1923E12-B8CB-4C7E-8A12-68877DC01E5C}.Debug|x86.Build.0 = Debug|Win32
 		{E1923E12-B8CB-4C7E-8A12-68877DC01E5C}.Release|x86.ActiveCfg = Release|Win32
