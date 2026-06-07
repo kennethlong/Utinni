@@ -28,6 +28,7 @@
 
 #include <dinput.h>
 #include <intrin.h>
+#include <atomic>
 
 // dxguid.lib provides the GUID_SysKeyboard / GUID_SysMouse symbol bodies used
 // by the vtable shim below. Only the GUIDs are linked; we resolve all
@@ -78,6 +79,25 @@ pDirectInput8Create origDirectInput8Create = nullptr;
 pDIO_CreateDevice origCreateDevice = nullptr;
 pDID_SetCooperativeLevel origSetCooperativeLevel = nullptr;
 
+// 2026-06-07 RESID-04 / D-12: runtime toggle for the exclusive-fullscreen
+// suppression. Default ON. When ON, an incoming DISCL_EXCLUSIVE request is
+// redirected to DISCL_NONEXCLUSIVE (FOREGROUND/BACKGROUND preserved) so SWG
+// stays windowed-embedded instead of flipping the D3D9 device into true
+// exclusive fullscreen (which detaches the owned-popup embed and kills input
+// routing -- see .planning/debug/chat-open-d3d9-fullscreen.md +
+// .planning/todos/pending/swg-window-resize-fullscreen-edge-cases.md).
+//
+// The toggle exists so the maintainer can A/B the suppression LIVE without a
+// rebuild (15-08 smoke): flip s_suppressExclusiveFullscreen to false to let
+// SWG's original DISCL_EXCLUSIVE through and observe the un-suppressed mode
+// switch (the DISCL log below is the confirmation instrument). It also keeps
+// the deferred "detached-fullscreen-with-reattach" fallback (CONTEXT Open Q3)
+// reachable should suppress prove wrong on the first live run.
+//
+// std::atomic<bool> so a maintainer-driven toggle (future debug verb / hotkey)
+// can flip it from another thread without tearing relative to the DI pump.
+std::atomic<bool> s_suppressExclusiveFullscreen{true};
+
 void decodeCoopFlags(DWORD f, char* out, size_t sz)
 {
     snprintf(out, sz, "%s%s%s%s%s(0x%lX)",
@@ -102,7 +122,33 @@ HRESULT __stdcall hkSetCooperativeLevel(IDirectInputDevice8A* pThis, HWND hwnd, 
              "DI::SetCooperativeLevel: device=0x%p hwnd=0x%p flags=%s caller=0x%p",
              (void*)pThis, (void*)hwnd, flagstr, ret);
     utinni::log::info(msg);
-    return origSetCooperativeLevel(pThis, hwnd, dwFlags);
+
+    // RESID-04 / D-12: suppress/redirect the exclusive cooperative level to keep
+    // SWG windowed-embedded. DISCL_EXCLUSIVE is the prime-suspect trigger
+    // (RESEARCH A4) for SWG flipping the D3D9 device into true exclusive
+    // fullscreen; rewriting it to DISCL_NONEXCLUSIVE keeps the owned-popup embed
+    // intact and the OS hardware cursor + input routing working. We preserve
+    // DISCL_FOREGROUND/DISCL_BACKGROUND (and any other coop bits) so chat/input
+    // acquisition semantics are otherwise unchanged. NEVER touch the D3D9 device
+    // here -- the no-Reset constraint (D-13) lives entirely in the windowed
+    // Present self-stretch path; this is a pure DirectInput-level redirect.
+    DWORD effectiveFlags = dwFlags;
+    if (s_suppressExclusiveFullscreen.load(std::memory_order_relaxed)
+        && (dwFlags & DISCL_EXCLUSIVE))
+    {
+        // Clear EXCLUSIVE, set NONEXCLUSIVE; leave FOREGROUND/BACKGROUND/NOWINKEY
+        // exactly as SWG requested.
+        effectiveFlags = (dwFlags & ~static_cast<DWORD>(DISCL_EXCLUSIVE)) | DISCL_NONEXCLUSIVE;
+
+        char redirMsg[200];
+        snprintf(redirMsg, sizeof(redirMsg),
+                 "DI::SetCooperativeLevel: D-12 suppress -> redirected EXCLUSIVE to "
+                 "NONEXCLUSIVE (0x%lX -> 0x%lX) to keep SWG windowed-embedded",
+                 (unsigned long)dwFlags, (unsigned long)effectiveFlags);
+        utinni::log::info(redirMsg);
+    }
+
+    return origSetCooperativeLevel(pThis, hwnd, effectiveFlags);
 }
 
 void patchDeviceVtableOnce(IDirectInputDevice8A* device)
@@ -224,6 +270,21 @@ int __cdecl hkSetupInstall(HINSTANCE hInstance, HWND hwnd, DWORD menuKey, DWORD 
     }
 
     return swg::directInput::setupInstall(hInstance, hwnd, menuKey, unk);
+}
+
+void DirectInput::setSuppressExclusiveFullscreen(bool enabled)
+{
+    // RESID-04 / D-12 live A/B toggle. Both the toggle and the DI pump that
+    // reads it are atomic, so flipping from a managed/debug thread is safe.
+    s_suppressExclusiveFullscreen.store(enabled, std::memory_order_relaxed);
+    utinni::log::info(enabled
+        ? "DirectInput: exclusive-fullscreen suppression ENABLED (D-12, keep windowed-embedded)"
+        : "DirectInput: exclusive-fullscreen suppression DISABLED (D-12, allow SWG's native mode switch)");
+}
+
+bool DirectInput::getSuppressExclusiveFullscreen()
+{
+    return s_suppressExclusiveFullscreen.load(std::memory_order_relaxed);
 }
 
 void DirectInput::detour()

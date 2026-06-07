@@ -124,6 +124,20 @@ namespace UtinniCoreDotNet.UI.Controls
             // passes for pSourceRect/pDestRect/SwapEffect on the next run.
             reparentPollTimer.Tick += ReparentPollTimer_Tick;
             HandleCreated += PanelGame_HandleCreated_ForReparent;
+
+            // 2026-06-07 RESID-04 (D-12 + D-13): with the native DirectInput shim
+            // now suppressing SWG's exclusive-fullscreen mode switch
+            // (direct_input.cpp hkSetCooperativeLevel -> DISCL_NONEXCLUSIVE), SWG
+            // stays windowed-embedded across the login->world / chat-open paths
+            // that previously detached it. Any resize/reposition response stays
+            // PURELY window-side via RepositionSwgWindow's SetWindowPos below --
+            // we NEVER call IDirect3DDevice9::Reset on SWG's device (D-13; the
+            // Phase B-bis revert comment above records why Reset is fatal). The
+            // windowed COPY Present self-stretches the backbuffer onto the resized
+            // client rect, and the imgui overlay's RT-space mouse + DisplaySize
+            // mapping (feedback_imgui_embedded_d3d9_rt_space) is driven off that
+            // same backbuffer-vs-client ratio, so it stays correct across the
+            // resize without any device-level intervention here.
             Resize += (s, e) => RepositionSwgWindow();
 
             GameDragDropEventHandlers.Initialize(this);

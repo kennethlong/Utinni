@@ -35,5 +35,14 @@ public:
     static void resume();
 
     static void detour();
+
+    // RESID-04 / D-12: runtime A/B toggle (default ON) for the exclusive-
+    // fullscreen suppression in hkSetCooperativeLevel. When ON, an incoming
+    // DISCL_EXCLUSIVE request is redirected to DISCL_NONEXCLUSIVE so SWG stays
+    // windowed-embedded. Exposed so the maintainer can flip it live (15-08
+    // smoke) without a rebuild, and so the deferred detached-fullscreen
+    // fallback stays reachable if suppress proves wrong.
+    static void setSuppressExclusiveFullscreen(bool enabled);
+    static bool getSuppressExclusiveFullscreen();
 };
 } // namespace utinni
