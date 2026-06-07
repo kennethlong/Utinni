@@ -33,8 +33,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Phase Numbering (v2.0):** Continues from V1 — V1 ended at Phase 11, so v2.0 starts at **Phase 12**. Integer phases (12–16) are planned milestone work; decimal phases (e.g. 12.1) reserved for urgent insertions. Build order strongly honors the research-recommended sequence: **revive-feasibility spike as a hard gate first**, then cheap revive+wrap (which also unblocks OT Tier-2), then the headless MCP centerpiece, then the meatier Wave-2 editors, with live-injected MCP explicitly last.
 
 - [ ] **Phase 12: Revive-feasibility spike (HARD GATE) + intro-skip crash** — Verify `TreeFileBuilder` + `TemplateCompiler`/`TemplateDefinitionCompiler` build + link standalone at v145 in a Utinni-owned `tools/` tree (lift-and-shift), strip dead Perforce/transitive deps, produce a per-tool dependency manifest + pinned `swg-client-v2` SHA. Diagnose + fix the independent intro-skip scene-transition crash (RESID-02). Gates all of AUTH.
-- [x] **Phase 13: Wrap compilers as CLI verbs + close OT Tier-2** — Wrap the revived compilers/builders as `utinni-cli` verbs (`compile-definition`, `compile-template`, `build-tre`, datatable compile + item exporters); add the net-new CLI SAVE verb; surface the param→type schema to close the Object Template Editor's Tier-2 typed display (RESID-01). (completed 2026-06-05)
-- [x] **Phase 14: Headless MCP server (`Utinni.Mcp`) — the centerpiece** — A separate net10 stdio MCP process shelling `utinni-cli`: read tools over the existing verbs + write/SAVE tools defaulting to loose-override with byte-exact verify-before-commit, fail-closed `resolvedRoot`, and a first-class `MCP-SECURITY.md` threat register. (completed 2026-06-07)
+- [x] **Phase 13: Wrap compilers as CLI verbs + close OT Tier-2** — Wrap the revived compilers/builders as `utinni-cli` verbs (`compile-definition`, `compile-template`, `build-tre`, datatable compile + item exporters); add the net-new CLI SAVE verb; surface the param→type schema to close the Object Template Editor's Tier-2 typed display (RESID-01).
+ (completed 2026-06-05)
+- [x] **Phase 14: Headless MCP server (`Utinni.Mcp`) — the centerpiece** — A separate net10 stdio MCP process shelling `utinni-cli`: read tools over the existing verbs + write/SAVE tools defaulting to loose-override with byte-exact verify-before-commit, fail-closed `resolvedRoot`, and a first-class `MCP-SECURITY.md` threat register.
+ (completed 2026-06-07)
 - [ ] **Phase 15: Wave-2 editors (WorldSnapshot, Particle) + presentation residuals** — Ship the WorldSnapshot/object-placement SubPanel (zero new deps) then the Particle/client-effect SubPanel (new `.prt` codec) as TJT MEF SubPanels; enumerate + fix the SWG window-resize/fullscreen edge cases (RESID-04) and confirm SC3 live-reload candor (RESID-03).
 - [ ] **Phase 16: Live-injected MCP bridge + Blender ecosystem boundary** — Add the optional named-pipe IPC live bridge so an agent can preview an edit in the injected client (MCP-03); formalize the Utinni ↔ `swg-blender-plugin` file-format / `.rsp` search-path contract (ECO-01).
 
@@ -342,7 +344,16 @@ Plans:
   3. Both SubPanels load inside TJT against a live SWG client and follow the Wave-1 MEF SubPanel seam unchanged.
   4. The SWG window-resize / windowed↔fullscreen edge cases are enumerated and fixed without a device Reset (RESID-04).
   5. SC3 live-reload semantics for string-table + object-template reload are confirmed and honestly stated in the editor reload-candor UI (RESID-03).
-**Plans**: TBD
+**Plans**: 8 plans (4 waves)
+**Plans**:
+- [ ] 15-01-PLAN.md — WorldSnapshot editor: placements table + multi-select bulk move/delete/retemplate (FormSnapshotPlacements companion window; WorldSnapshotBulkComposer) [PROD-W2-WS] (Wave 1)
+- [ ] 15-02-PLAN.md — .prt/PEFT typed codec in Formats/Particle (WaveForm/ColorRamp/EMTR) + degrade-dont-abort raw-preserve + byte-exact round-trip [PROD-W2-PRT] (Wave 1)
+- [ ] 15-03-PLAN.md — D-09 live-preview native hot-retrigger SPIKE (ParticleManager export or documented fallback; heap-free) [PROD-W2-PRT] (Wave 1)
+- [ ] 15-04-PLAN.md — .prt CLI verbs (decode-iff PEFT dispatch + roundtrip-particle golden) + thin MCP read tool (D-08) [PROD-W2-PRT] (Wave 2)
+- [ ] 15-05-PLAN.md — RESID-04: suppress exclusive-fullscreen mode switch (direct_input.cpp) + no-Reset regression gate (D-12/D-13) [RESID-04] (Wave 2)
+- [ ] 15-06-PLAN.md — FormParticleEditor: emitter tree + typed grid + hex fallback + AI Explain-effect (reuses 15-04 read path) + state-encoded Preview [PROD-W2-PRT] (Wave 3)
+- [ ] 15-07-PLAN.md — RESID-03: route .ws/.prt to honest tier-(b) reload candor + routing tests (D-14) [RESID-03] (Wave 3)
+- [ ] 15-08-PLAN.md — Tier-4 maintainer live-SWG smoke: WS/Particle demo + RESID-04 matrix + RESID-03 SC3 (autonomous:false) [PROD-W2-WS/PRT, RESID-03/04] (Wave 4)
 **Research flag**: yes — `.prt` codec format depth is MEDIUM-confidence; `swg-client-v2` is the spec reference but no Utinni fixtures exist yet (`/gsd:plan-phase --research-phase 15`).
 **UI hint**: yes
 
