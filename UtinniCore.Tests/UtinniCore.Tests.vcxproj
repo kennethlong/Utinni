@@ -131,6 +131,8 @@
     <ClCompile Include="Log\OutputSinkRoundTripTests.cpp" />
     <!-- Phase 6 06-03 Task 3: CON-O-06 / D-03 max-harness fence for the custom INI parser. -->
     <ClCompile Include="UtINI\IniParserTests.cpp" />
+    <!-- Phase 15 15-05 Task 2: RESID-04 / D-13 no-device-Reset regression gate. -->
+    <ClCompile Include="Graphics\NoDeviceResetTests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\UtinniCore\UtinniCore.vcxproj">
