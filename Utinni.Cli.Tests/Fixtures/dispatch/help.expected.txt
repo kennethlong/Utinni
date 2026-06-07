@@ -57,6 +57,23 @@ Copyright (c) 2005 - 2020 Giacomo Stelluti Scala & Contributors
   export-weapon         Run the revived CoreWeaponExporterTool over a datatable
                         .iff (emits .tpf + chained .iff) (AUTH-06).
 
+  apply-save-tab        Apply ONE typed datatable mutation to a loose-override
+                        .tab/.iff, verify untouched cells byte-identical, then
+                        atomically commit the mutated bytes.
+
+  apply-save-ot         Apply ONE typed object-template override mutation to a
+                        loose-override .iff, verify untouched params
+                        byte-identical, then atomically commit the mutated
+                        bytes.
+
+  apply-save-iff        Apply ONE generic IFF leaf mutation to a loose-override
+                        .iff, verify untouched leaves byte-identical, then
+                        atomically commit the mutated bytes.
+
+  apply-save-stf        Apply ONE string-table text edit to a loose-override
+                        .stf, verify untouched entries byte-identical, then
+                        atomically commit the mutated bytes.
+
   help                  Display more information on a specific command.
 
   version               Display version information.
