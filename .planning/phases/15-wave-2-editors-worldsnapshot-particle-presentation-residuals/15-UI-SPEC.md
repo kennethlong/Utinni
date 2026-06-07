@@ -1,0 +1,569 @@
+---
+phase: 15
+slug: wave-2-editors-worldsnapshot-particle-presentation-residuals
+status: draft
+shadcn_initialized: false
+preset: none
+created: 2026-06-07
+platform: winforms-desktop
+inherits:
+  - 07-UI-SPEC.md
+  - 08-UI-SPEC.md
+  - 09-UI-SPEC.md
+  - 10-UI-SPEC.md
+  - 11-UI-SPEC.md
+design_system: inherited (Phase 9 ThemedDataGridView + Phase 7/8 TJT SubPanel/editor system)
+---
+
+<!--
+gsd-ui-researcher notes (2026-06-07):
+
+  PLATFORM IS WINFORMS DESKTOP — NOT WEB. The "design system" is the established
+  Wave-1 TJT control suite (UtinniCoreDotNet.UI.Controls + the Phase-9 ThemedDataGridView
+  wrapper), LOCKED across Phases 7/8/9/10/11. No shadcn, no Tailwind, no CSS, no
+  components.json, no icon font, no npm/registry component. shadcn init gate is N/A
+  (the stack is .NET Framework 4.7.2 WinForms, not React/Next/Vite). Every token below
+  is INHERITED + verified against live code (Colors.cs accessors, SnapshotPanel.cs,
+  FormDatatableEditor.cs) — none invented in this phase.
+
+  TWO EDITORS WITH DIFFERENT HOST SHAPES — this is the load-bearing distinction:
+
+    1. WorldSnapshot (PROD-W2-WS) GROWS the ALREADY-SHIPPED `SnapshotPanel`
+       (TJT.UI.SubPanels.SnapshotPanel : SubPanel). It is a FIXED-WIDTH 417px
+       SubPanel in the SubPanelContainer, NOT a UtinniForm. The shipped panel already
+       has Load/Save/SaveAs/Reload/Add/Remove + per-node gizmo + position/rotation
+       controls + the event-detach-reattach idiom (Pattern 2). The Wave-2 DELTA (D-01)
+       is a flat placements TABLE (ThemedDataGridView) + multi-select bulk ops layered
+       on top. Because a 417px SubPanel is too narrow for a real table, this spec makes
+       a HOST DECISION below: the table ships in a companion resizable UtinniForm
+       (FormSnapshotPlacements) launched from the SubPanel, mirroring the Wave-1
+       "SubPanel hosts the controls, a UtinniForm hosts the heavy grid" split.
+
+    2. Particle (PROD-W2-PRT) is a BRAND-NEW editor, shaped EXACTLY like the five
+       Wave-1 editors: a resizable UtinniForm (FormParticleEditor) registered via
+       GetForms() in Plugin.cs (GetSubPanels() stays null — CON-M-01/02 NOT widened).
+       Its typed/hex-fallback param surface is the closest sibling of the Phase-11
+       Object Template editor (typed widgets for scalars + Consolas-9pt hex fallback
+       for anything the codec greys out — the D-05 degrade-don't-abort contract made
+       visible).
+
+  RELOAD CANDOR (RESID-03, CF-05) IS LOCKED — the planner may NOT loosen badge copy to
+  over-promise. WorldSnapshot reload = relog/scene-change dependent; Particle live
+  preview = hot-retrigger of live scene instances (D-09, the one genuinely-new runtime
+  affordance) which is a REAL in-session refresh when injected — its badge says so
+  honestly, and degrades to the tier-(b) "next scene change / relog" candor when the
+  retrigger hook is unavailable.
+
+  RESID-04 (window resize / fullscreen) is a PRESENTATION concern, not a panel-layout
+  one. Its only UI surface is a non-blocking NOTICE affordance if/when the embed
+  detaches on an exclusive-fullscreen switch. Hard constraint: NO IDirect3DDevice9::Reset.
+
+  No interactive questions were asked: CONTEXT.md + RESEARCH.md + the five approved
+  Wave-1 UI-SPECs answer every design-contract dimension for a WinForms desktop tool
+  with a locked design system.
+-->
+
+# Phase 15 — UI Design Contract: Wave-2 Editors (WorldSnapshot + Particle) + Presentation Residuals
+
+> Visual and interaction contract for the first two Wave-2 DCC-style editors, shipped inside The
+> Jawa Toolbox (DEC-C4) via the unchanged Wave-1 MEF seam:
+>
+> 1. **WorldSnapshot (PROD-W2-WS)** — grows the shipped `SnapshotPanel` (in-world gizmo / add /
+>    remove) with a **flat placements table + multi-select bulk operations** (move / delete /
+>    retemplate), hosted in a companion resizable `FormSnapshotPlacements` window. **Zero new format
+>    work** — the table is a new view over the native `WorldSnapshotReaderWriter` node list and bulk
+>    ops compose the shipped `WorldSnapshotCommands` `IUndoCommand`s (D-01/D-02/D-03).
+> 2. **Particle (PROD-W2-PRT)** — a brand-new `FormParticleEditor` over a `.prt` (`FORM PEFT`)
+>    particle/client-effect asset, backed by a new `Formats/Particle` typed codec with
+>    **degrade-don't-abort raw-byte preservation** (D-04/D-05), an in-app **AI read-assist** button
+>    reusing the CLI/MCP read path (D-07/D-08), and **live in-client hot-retrigger preview** when
+>    injected (D-09). Preview-vs-author boundary (DEC-A3) is surfaced verbatim (D-10/D-11).
+>
+> Plus two presentation residuals folded into the same live session:
+> - **RESID-03** — honest SC3 live-reload candor badges on both new editors' reload paths (D-14).
+> - **RESID-04** — window-resize / windowed↔fullscreen edge-case fix; the only UI surface is a
+>   non-blocking detach NOTICE (D-12/D-13; hard no-`Reset` constraint).
+>
+> Generated by gsd-ui-researcher, verified by gsd-ui-checker.
+>
+> **PLATFORM: .NET Framework 4.7.2 WinForms desktop UI — NOT web/CSS.** No component library, no
+> shadcn, no Tailwind, no icon font, no `components.json`. The "design system" is the existing
+> Utinni themed WinForms control suite (`UtinniCoreDotNet.UI`) plus the Phase-9 `ThemedDataGridView`
+> wrapper. Every token below is **INHERITED** from the approved Phase 7/8/9/10/11 UI-SPECs and
+> verified against live code (`Colors.cs`, `SnapshotPanel.cs`, `FormDatatableEditor.cs`,
+> `SubPanel.cs`) — none invented in this phase.
+>
+> **THIS SPEC EXTENDS `07/08/09/10/11-UI-SPEC.md` — it does not re-derive them.** The design system,
+> spacing scale, typography, color contract, host-placement rule, dirty-marker idiom, `Save ▾`
+> drop-down, `FormSaveConfirmDialog`, editor-local undo/redo, reload affordance, status strip,
+> `ThemedDataGridView` token map, per-type-widget + hex-fallback contract, and singleton
+> hide-not-dispose pattern are all **LOCKED**. The sections below restate the locked tokens for the
+> checker's six dimensions, then specify ONLY the new/changed surfaces Phase 15 adds: the
+> WorldSnapshot placements table + bulk-op affordances, the Particle editor shell + emitter
+> tree/param grid + hex-fallback + AI-assist button + live-preview affordance, the two reload-candor
+> badges, and the RESID-04 detach notice.
+
+---
+
+## Inheritance (LOCKED — do not re-derive)
+
+| Inherited contract | Source | Phase 15 stance |
+|--------------------|--------|-----------------|
+| Dark theme + `Colors.*()` accessors (no raw ARGB literals; `Color.Red` the only allowed raw literal) | 07 § Color; verified `Colors.cs` L44-128 | Inherited verbatim — both editors pull every paintable surface via `Colors.*()` |
+| `ThemedDataGridView` wrapper + its FULL token map | **09 § ThemedDataGridView token map** | **Inherited verbatim.** The WS placements table AND the Particle param grid are both `ThemedDataGridView` instances. No new grid-styling tokens. |
+| Per-type cell-widget contract + hex/Consolas-9pt fallback for complex params | 09 § Per-type cell widget; 11 § hex-fallback sub-editor | **Inherited verbatim** — the Particle param grid reuses the typed-widget + `Consolas 9pt` raw-bytes fallback idiom for any field the codec greys out (D-05) |
+| Typography: 8.25pt MS Sans Serif base, Regular + Bold (Bold reserved), 12pt Arcon titlebar, `Consolas 9pt` monospace exception | 07 + 09 § Typography | Inherited verbatim; `Consolas 9pt` reused for the Particle hex-fallback value cells |
+| Spacing: 3px control inset, 4 / 8 / 16 / 24 / 32 scale + WinForms control-metric exceptions (28px toolbar / 22px row / 24px column-header / 40px row-header) | 07 + 09 § Spacing | Inherited verbatim |
+| Accent (`#007ACC`) reserved-list | 07 + 09 § Color | Inherited; Phase 15 adds two narrowly-scoped uses (selected-placement-row highlight; live-preview-success pulse) — both within the existing "selection / dirty / status-acknowledgement" families, NOT new categories |
+| Dirty marker idiom (`● ` glyph in title + accent `Unsaved changes` label + `● ` row-header glyph + accent cell `ForeColor`) | 08 + 09 § States | Inherited verbatim (applies to `FormParticleEditor`; WorldSnapshot dirty state is the panel's existing Save-enabled cue + the table row markers) |
+| `Save ▾` drop-down (modes; risk-proportional confirms via `FormSaveConfirmDialog`); mode 3 (Patch live client) ships DISABLED (CF-03) | 08 § Copywriting; 09 § Save▾ | **Inherited verbatim for `FormParticleEditor`.** WorldSnapshot keeps its EXISTING `Save` / `Save As…` buttons (shipped `SnapshotPanel` — native `saveFile`, not the loose-override Save▾) |
+| Save-confirm modal (heading + `Color.Red` body + explicit verb buttons) | 08 § Destructive; `FormSaveConfirmDialog` | **REUSE the existing `FormSaveConfirmDialog` — do NOT clone it.** Per-call modal, `using (...)` |
+| Editor-local undo/redo (Ctrl+Z / Ctrl+Y; toolbar Undo/Redo; INDEPENDENT of scene `UndoRedoManager`) | 08 + 09 § Accessibility | `FormParticleEditor` inherits verbatim. WorldSnapshot bulk ops compose the shipped `WorldSnapshotCommands` undo, which IS scene-coupled by design (those edits ARE live-scene state) — see WS Undo note |
+| Reload affordance idiom + locked CF-05 tier-(b) candor | 08 § States; 09/11 CF-05 | Inherited shape; Phase 15 sets **editor-specific honest candor copy** for each new reload path (RESID-03 / D-14) — see Reload Candor Contract |
+| Status strip at bottom (inset 3px, `Color.Red` failure / `Colors.Font()` normal) | 08 + 09 § Layout | Inherited verbatim for `FormParticleEditor` |
+| `winforms-dockfill-zorder` add-order rule (Fill grid added FIRST → front-most) | 09 CF-09; memory `feedback_winforms_dockfill_zorder` | Inherited verbatim for BOTH new grids |
+| Singleton-form hide-not-dispose on `CloseReason.UserClosing` (`SingletonFormClosePolicy`) | 08 STATE.md; 09 § Accessibility | Inherited verbatim for `FormParticleEditor` AND `FormSnapshotPlacements` |
+| Event-handler detach/reattach around `ValueChanged` to break feedback loops | 09 Pattern 2; verified `SnapshotPanel.UpdateSelectedNodeControlsPosition` L246 | Inherited verbatim — load-bearing for the new table↔gizmo selection sync |
+| MEF SPI conformance: new forms via `GetForms()`; `GetSubPanels()` stays null; interface NOT widened (CON-M-01/02, STAB-04) | 07/11 § Host Placement | Inherited verbatim |
+
+---
+
+## Host Placement Decisions
+
+Two editors, two host shapes — the load-bearing structural decision of this phase.
+
+### WorldSnapshot (PROD-W2-WS) — grow the SubPanel; host the heavy table in a companion UtinniForm
+
+The shipped `SnapshotPanel` is a **fixed-width 417px `SubPanel`** in the SubPanelContainer
+(`SubPanel.cs` L36 `const int width = 417`). It already owns Load / Save / Save As… / Reload /
+Unload / Add node / Remove node + the per-node gizmo (translate / rotate / snap / mode) + the
+position/radius controls. **Keep that panel as-is and ADD ONE BUTTON** (`Placements…`) that opens
+a companion resizable `FormSnapshotPlacements` window holding the flat placements table + bulk-op
+toolbar. This mirrors the Wave-1 "narrow SubPanel hosts the controls, a wide `UtinniForm` hosts the
+heavy grid" division and respects the 417px width floor (a real table cannot live in 417px).
+
+| Property | Value |
+|----------|-------|
+| Controls host | EXISTING `SnapshotPanel : SubPanel` (417px fixed; **unchanged** except a new `Placements…` `UtinniButton`) |
+| Table host | NEW `FormSnapshotPlacements : UtinniForm` (resizable, custom titlebar, `DrawName = true`, TJT icon — mirrors `FormDatatableEditor`) |
+| Window title | `Snapshot Placements — {snapshotName}` |
+| Default size | 900 × 600 (persist `[Snapshot] placementsWidth/placementsHeight`) |
+| Minimum size | 720 × 420 (below this the table + bulk toolbar are unusable) |
+| Open behavior | Singleton per editor session — "already open → `Activate()` : `Show()`"; hide-not-dispose on `CloseReason.UserClosing` (`SingletonFormClosePolicy`) |
+| Lifecycle coupling | The placements window is a VIEW over the SAME loaded snapshot the panel drives; load / unload / save in the panel refresh / clear / re-baseline the table. Closing the placements window does NOT unload the snapshot |
+| Fallback | If the companion-Form path is blocked in execution, degrade to a `StandalonePanel` (dockable UserControl) at no less than 760×440; **never** cram the table into the 417px SubPanel |
+
+**MEF SPI conformance (CON-M-01/02):** `FormSnapshotPlacements` returns from `GetForms()` (or is
+launched directly by the existing panel — planner discretion); `GetSubPanels()` stays as-is; the
+interface is NOT widened.
+
+### Particle (PROD-W2-PRT) — a new Wave-1-shaped editor Form
+
+| Property | Value |
+|----------|-------|
+| Host type | NEW `FormParticleEditor : UtinniForm` (resizable, custom titlebar, `DrawName = true`, TJT icon — direct clone of the `FormObjectTemplateEditor`/`FormDatatableEditor` shell) |
+| Window title | `Particle Editor` — leading `● ` dirty marker per Phase 8 idiom |
+| Default size | 1100 × 760 (persist `[ParticleEditor] width/height/splitterDistance`) |
+| Minimum size | 880 × 560 (emitter tree + param grid + preview controls need the room) |
+| Open behavior | Singleton; "already open → `Activate()` : `Show()`"; single document per window with dirty-discard prompt; hide-not-dispose (`SingletonFormClosePolicy`) |
+| Registration | Added to `GetForms()` in `Plugin.cs` inside try/catch isolation (Pattern 4); `GetSubPanels()` stays null |
+| Entry points | (a) toolbar `Open…` file picker (`.prt`); (b) TRE Browser hand-off `Open in Particle Editor` on a selected `.prt` / `FORM PEFT` entry (visibility-gated, HIDDEN when the sniff fails — mirrors Phase 9/11 hand-offs) |
+| Fallback | `StandalonePanel` ≥ 900×600 if the Form path is blocked; never the fixed SubPanel |
+
+---
+
+## Design System
+
+| Property | Value |
+|----------|-------|
+| Tool | none (WinForms; no web design system, no shadcn) |
+| Preset | not applicable |
+| Component library | Existing Utinni themed WinForms controls (`UtinniCoreDotNet.UI.Controls`) + the Phase-9 TJT-side `ThemedDataGridView` wrapper |
+| Icon library | none (no icon font). Toolbar / state affordances use short text-glyph buttons or 16×16 `ImageList` bitmaps (the Phase 7 mechanism). Do NOT add an icon-font dependency. |
+| Font | Default WinForms UI font — `Microsoft Sans Serif 8.25pt` (`AutoScaleMode.Font`). Titlebar window name: `Arcon 12pt` (`UtinniForm.nameFont`). Raw-bytes / hex-fallback value cells: `Consolas 9pt` (monospace exception, matches Phase 8 hex view + Phase 11 hex fallback) |
+| Theme | Fixed dark theme (`Colors.Theme = Themes.Dark`). Pull ALL colors via `UtinniCoreDotNet.UI.Theme.Colors` accessors — never hard-code `Color.FromArgb(...)` |
+
+**Mandatory control reuse (Don't Hand-Roll) — Phase 15 additions:**
+
+| Need (NEW in Phase 15) | Use this existing control |
+|------------------------|---------------------------|
+| WorldSnapshot placements table | **`ThemedDataGridView`** (Phase-9 wrapper) — columns per the WS table contract below. Read-mostly grid; selection drives the gizmo + bulk ops. Do NOT hand-paint; do NOT use `ListView` |
+| WorldSnapshot row search / filter | A docked filter row: `UtinniLabel "Filter:"` + `UtinniTextbox` (mirrors the Phase 10 filter-row precedent) — substring match across id / object-template / cell. NOT a modal |
+| WorldSnapshot bulk-op buttons | `UtinniButton`s on the placements-window toolbar: `Move selected…` · `Delete selected` · `Retemplate selected…` |
+| WorldSnapshot bulk-move / retemplate input modals | Small per-call modals built from `UtinniForm` + `UtinniNumericUpDown` (move delta XYZ) / `UtinniTextbox` (new object-template path) + `UtinniButton` Apply/Cancel — mirror `FormSnapshotSaveAsDialog` (shipped) |
+| Particle emitter-group / emitter tree | **`IffChunkTree`** (the shipped Phase-8 themed `TreeView` UserControl) OR a plain themed `TreeView` — left pane showing `PEFT → EMGP → EMTR → PTQD/PTMH` hierarchy. Selecting a node populates the param grid. Reuse `IffChunkTree`'s theming; do NOT hand-roll a tree |
+| Particle param grid (selected emitter's fields) | **`ThemedDataGridView`** — Field / Value / Type columns, per-type widgets, hex fallback for greyed-out unknowns (Phase 9 + 11 widget contract). Right pane |
+| Particle typed scalar widgets (`float`/`int`/`bool`/`enum`) | The Phase-9 per-type widgets: `UtinniNumericUpDown` (float/int via `EditingControlShowing` swap), `DataGridViewCheckBoxColumn` (bool), `DataGridViewComboBoxColumn` (enum) |
+| Particle `WaveForm` / `ColorRamp` fields | V1 floor: a **read-only summary cell** (`{n} control points` / a small color-swatch strip) + an `Edit…` affordance that opens a per-call sub-editor modal. A full curve/ramp graphical editor is NOT required this phase (no charting package — RESEARCH A6). If un-typed, falls to hex fallback |
+| Particle un-typed / unrecognized field (D-05 degrade) | `DataGridViewTextBoxColumn` at `Consolas 9pt` / `Colors.FontDisabled()` showing the raw bytes as hex, marked read-only with the locked "preserved as original bytes" tooltip (the Phase-11 hex-fallback idiom made the honesty surface for D-05) |
+| Particle `Save ▾` (loose-override / Save As… / repack; live-patch DISABLED) | **REUSE** the inherited Phase-8 `Save ▾` drop-down + provenance gating verbatim |
+| Particle AI read-assist | A toolbar `UtinniButton` `Explain effect` opening a read-only `UtinniTextbox` (multiline, `Consolas 9pt` acceptable) results pane / docked panel; the button calls the SAME `.prt` decode/summarize CLI/MCP read path (D-08) — NO independent AI/format path |
+| Particle live-preview trigger | A toolbar `UtinniButton` `Preview in client` (D-09 hot-retrigger) — state-encoded; disabled when `!Game.IsRunning` |
+| Reload-status badge (both editors) | A `UtinniLabel` (`AutoSize = false`) in the toolbar right cluster — LOCKED candor copy (see Reload Candor Contract) |
+| Save-confirm / discard / destructive modals | **REUSE `FormSaveConfirmDialog`** (per-call) — do NOT clone |
+| File pickers | BCL `OpenFileDialog` / `SaveFileDialog` (acceptable per Phase 8 precedent) |
+| RESID-04 detach notice | A non-modal `UtinniLabel` banner (`Dock = Top`, `Colors.Secondary()` accent strip + text) shown on the editor host OR a one-shot status-strip line — see RESID-04 section. NOT a modal (it must not steal focus from the recovering client) |
+
+**Grid token reuse:** both new `ThemedDataGridView` instances apply the **Phase-9 token map
+verbatim** (BackgroundColor `PrimaryHighlight()`, header `PrimaryShadow()`, selection
+`Secondary()`, etc.). No new grid-styling tokens are introduced.
+
+---
+
+## Layout Contract (WinForms)
+
+### `FormSnapshotPlacements` regions (top → bottom; `Controls.Add` order with Fill FIRST per CF-09)
+
+1. **Bulk toolbar** (`Dock = Top`, 28px). Left cluster: `Move selected…` · `Delete selected` ·
+   `Retemplate selected…` · separator (4px) · `Refresh` (re-reads the native node list). Right
+   cluster: `lblReloadBadge` (`UtinniLabel`, 240px, `MiddleRight`) — LOCKED WS candor copy ·
+   `lblSelCount` (`UtinniLabel`, 120px, `MiddleRight`) — `{n} selected`.
+2. **Filter row** (`Dock = Top`, 28px): `UtinniLabel "Filter:"` · `UtinniTextbox txtFilter`
+   (width 280) · `UtinniLabel lblRowCount` (`{shown} / {total} nodes`).
+3. **Placements grid** (`Dock = Fill`, **added FIRST** → front-most). `ThemedDataGridView`,
+   `MultiSelect = true`, `SelectionMode = FullRowSelect`, `AllowUserToAddRows = false`,
+   `AllowUserToDeleteRows = false`, `ReadOnly = true` (edits flow through bulk-op modals + the
+   gizmo, never inline — keeps undo wired through `WorldSnapshotCommands`).
+4. **Status strip** (`Dock = Bottom`, 22px, inset 3px): `lblStatus` (`Dock = Fill`) —
+   `Color.Red` for failure, `Colors.Font()` normal.
+
+**WS placements table columns:**
+
+| Column | Source | Notes |
+|--------|--------|-------|
+| Id | `WorldSnapshotReaderWriter.Node.Id` | Right-aligned; the stable selection key |
+| Object template | `node.ObjectTemplateName` (via `getObjectTemplateName`) | Fill weight; the most-scanned column |
+| Cell | resolved cell name (parent-id → cell) | Empty for world-cell (0) nodes |
+| Position | `node.Transform.Position` → `({X:0.0}, {Y:0.0}, {Z:0.0})` | Read-only display; precise edits via the gizmo / move modal |
+
+**Selection sync (Pattern 2 — load-bearing):** clicking a single row drives the existing gizmo +
+the panel's position/radius/rotation controls via the shipped `UpdateSelectedNodeControls` path;
+detach/reattach the table's `SelectionChanged` handler before programmatic re-selection (and the
+panel detaches its `nud*_ValueChanged` handlers before pushing values back, exactly as
+`SnapshotPanel.UpdateSelectedNodeControlsPosition` already does). A bulk multi-select shows the
+bulk toolbar count and does NOT drive the single-node gizmo.
+
+### `FormParticleEditor` regions (top → bottom; Fill FIRST per CF-09)
+
+1. **Editor toolbar** (`Dock = Top`, 28px). Left cluster: `Open…` · `Save ▾` (inherited 3 modes;
+   live-patch DISABLED) · sep · `Undo` · `Redo` · sep · `Explain effect` (AI read-assist) · sep ·
+   `Preview in client` (D-09) · sep · `Reload in client` (state-encoded). Right cluster:
+   `lblReloadBadge` (240px, `MiddleRight`) — LOCKED Particle candor copy · `lblDirty` (140px,
+   `MiddleRight`) — `Unsaved changes` at `Colors.Secondary()`.
+2. **Main split** (`Dock = Fill`, **added FIRST**). A `SplitContainer` (Orientation = Vertical;
+   **set `Size` before `SplitterDistance`** per the dock-fill memory):
+   - **Left pane** (≈ 280px): emitter tree (`PEFT → EMGP[i] → EMTR[j] → PTQD/PTMH`). Selecting a
+     node populates the right pane.
+   - **Right pane**: the param `ThemedDataGridView` (Field / Value / Type). Below it (or as a
+     bottom split): the AI-assist results `UtinniTextbox` (collapsed until `Explain effect` runs).
+3. **Status strip** (`Dock = Bottom`, 22px, inset 3px): `lblStatus` (Fill) +
+   right-aligned `lblCounters` (`{emitterGroups} groups · {emitters} emitters · {raw} raw-preserved`).
+
+**Particle param grid — value-cell states:**
+
+| State | Trigger | Visual |
+|-------|---------|--------|
+| Typed clean | Field decoded to a known type, matches loaded bytes | Default cell colors; the per-type widget on edit |
+| Typed dirty | User edited a typed field | Cell `ForeColor = Colors.Secondary()`; row-header `● ` glyph; title `● `; `lblDirty` shows |
+| Raw-preserved (D-05 degrade) | Field/version the codec could not type | `Consolas 9pt`, `Colors.FontDisabled()` foreground, read-only; hex of the raw bytes; tooltip = locked "preserved as original bytes" copy |
+| `WaveForm` / `ColorRamp` summary | A curve/ramp field | Read-only summary (`{n} control points` / swatch strip) + `Edit…` affordance opening the per-call sub-editor |
+
+---
+
+## States
+
+| State | Trigger | UI |
+|-------|---------|----|
+| **WS — no scene / snapshot** | No active scene OR no loaded snapshot | Placements `Refresh`/bulk buttons disabled; centered dimmed `UtinniLabel`: heading `No snapshot loaded` + body `Load a snapshot from the Snapshot panel to see its placements.` Reload badge HIDDEN |
+| **WS — loaded** | A snapshot is loaded | Table populated from the native node list; filter + bulk toolbar enabled; reload badge VISIBLE with the locked WS candor copy; `lblRowCount` shows `{total} / {total} nodes` |
+| **WS — single-select** | One row clicked | Gizmo + panel controls drive that node (shipped path); `lblSelCount` `1 selected` |
+| **WS — multi-select** | ≥2 rows selected | Bulk toolbar active; `lblSelCount` `{n} selected`; the single-node gizmo is NOT driven |
+| **WS — bulk move** | `Move selected…` → delta modal Apply | One atomic `GroundSceneCallbacks.AddUpdateLoopCall` composing N `PositionChanged` commands; status `Moved {n} placements.` |
+| **WS — bulk delete** | `Delete selected` | `FormSaveConfirmDialog` confirm (destructive — see below); on Proceed, one atomic update-loop call composing N `Remove…` commands; status `Deleted {n} placements.` |
+| **WS — bulk retemplate** | `Retemplate selected…` → new-template modal Apply | One atomic update-loop call; status `Retemplated {n} placements to {template}.` |
+| **WS — saved** | Panel `Save` / `Save As…` (shipped native `saveFile`) | Status `Saved {snapshot}.`; table row markers cleared |
+| **Particle — empty** | Editor open, no `.prt` loaded | Tree + grid empty; centered dimmed `UtinniLabel`: heading `No particle effect open` + body `Open a .prt file from the toolbar, or use "Open in Particle Editor" from the TRE Browser.` All edit / preview / reload / AI buttons disabled; reload badge HIDDEN |
+| **Particle — loading** | `.prt` parsing on a background `Task` | Status `Opening {name}…`; window responsive (no modal spinner) |
+| **Particle — loaded (partial typed)** | Codec decoded; some fields raw-preserved | Tree + grid populated; raw-preserved cells render in the degrade style; `lblCounters` shows the `{raw} raw-preserved` count; reload badge VISIBLE with locked Particle candor copy |
+| **Particle — edited / dirty** | User edited a typed field | Accent cell foreground; row-header `● `; title `● `; `lblDirty` `Unsaved changes` |
+| **Particle — AI assist running** | `Explain effect` clicked | Results pane expands; status `Reading effect…`; on completion the read-only summary fills the pane. On error: `Couldn't read this effect — {reason}.` at `Color.Red` |
+| **Particle — preview triggered (injected)** | `Preview in client` clicked, `Game.IsRunning` | Hot-retrigger runs on the game thread; on success status `Re-triggered {n} live instance(s).` + a 1s `Colors.Secondary()` badge pulse; reload badge shows the live-capable candor copy |
+| **Particle — preview unavailable** | `!Game.IsRunning` OR no retrigger hook | `Preview in client` disabled; tooltip `No live client — start SWG to preview in-scene.` Reload badge falls back to the tier-(b) candor copy |
+| **Particle — saved** | A save mode completed | Status `Saved {name} ({mode})`; dirty markers cleared; reload badge text stays the locked candor copy |
+| **Particle — save failed** | Write threw | Status `Color.Red`: `{reason}. Your edits are kept in the editor — try another save target.` Dirty state RETAINED |
+| **RESID-04 — embed detached** | SWG flipped to exclusive fullscreen and the embed detached (before/after the suppress fix lands) | Non-modal detach NOTICE banner (see RESID-04 section). Never a modal; never calls `Reset` |
+
+---
+
+## Reload Candor Contract (RESID-03 / D-14 — LOCKED, planner may NOT loosen)
+
+Both new editors carry the inherited reload-badge affordance with **honest, editor-specific
+candor**. Per D-14, if a reload is relog-only or scene-change-only, the badge must say so; the
+Particle live-preview is the one path that is a REAL in-session refresh — and only when the
+retrigger hook is reachable.
+
+| Editor / path | Badge / status copy (LOCKED) | Honesty basis |
+|---------------|------------------------------|---------------|
+| **WorldSnapshot reload badge** | `Placements re-resolve on the next scene change.` | Snapshot edits land in the loaded scene's node graph; a full client re-read of the `.ws` follows the same scene-change/relog candor as the Wave-1 tier-(b) assets. Do NOT imply an instant world refresh |
+| **WorldSnapshot panel `Reload` button** (shipped) | unchanged shipped behavior; its candor inherits the same wording in its tooltip | The button reloads the snapshot into the editor's working set, not the live world appearance |
+| **Particle reload badge — live-capable (injected, hook reachable)** | `Re-triggers live instances on Preview.` | D-09 hot-retrigger genuinely refreshes in-scene effect instances — the badge may say so ONLY when the hook is reachable AND `Game.IsRunning` |
+| **Particle reload badge — degraded (no hook / not injected)** | `Reloads on next scene change or relog.` | Falls back to the locked tier-(b) candor when the retrigger hook is unavailable; never over-promises |
+| **Particle `Preview in client` disabled tooltip** | `No live client — start SWG to preview in-scene.` | Inherited "no live client" idiom |
+
+The reload-candor classification reuses the shipped `ReloadAssetClassifier` tier-(b) routing
+(extend its test map for the new WS/Particle paths per the RESEARCH Wave-0 gap). **No badge copy
+in this table may be softened to imply a reload that did not happen.**
+
+---
+
+## RESID-04 — Window Resize / Fullscreen Detach Notice (presentation, not panel layout)
+
+RESID-04 is a D3D9/window-management fix (D-12 intercept/suppress the exclusive-fullscreen mode
+switch; D-13 hard no-`IDirect3DDevice9::Reset`). Its ONLY UI surface is a recovery affordance:
+
+| Property | Value |
+|----------|-------|
+| Trigger | The embed detaches on an exclusive-fullscreen mode switch (login→world or chat-open Enter) — the residual being fixed |
+| Affordance | A **non-modal** notice: a `UtinniLabel` banner (`Dock = Top` on the editor host, 24px, `Colors.Secondary()` 2px accent strip + `Colors.Font()` text) OR a one-shot status-strip line. **Never a modal** — a modal would steal focus from the recovering client |
+| Copy (LOCKED) | `SWG switched to fullscreen and detached from the editor. Drop SWG's resolution off fullscreen to re-embed.` (matches the maintainer's live recovery hint) |
+| Dismissal | Auto-clears when the embed re-attaches; manual `✕` to dismiss meanwhile |
+| Hard constraints | NO `IDirect3DDevice9::Reset` on SWG's device (D-13); resize the window + let windowed COPY `Present` self-stretch; keep RT-space mouse mapping correct across resize (`feedback_imgui_embedded_d3d9_rt_space`) |
+
+Once the suppress fix (D-12) lands and the embed stays windowed, this notice should rarely fire;
+it is the honest fallback for the residual-fallback case, NOT the primary path.
+
+---
+
+## Spacing Scale (WinForms-mapped — inherited from Phases 7/8/9)
+
+Identical to `09-UI-SPEC.md`. Restated for the checker:
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| inset | 3px | Control inset from panel edge; status-strip padding |
+| xs | 4px | Toolbar separator width; gap between inline toolbar controls |
+| sm | 8px | Gap between toolbar button groups; modal padding |
+| md | 16px | Section row pitch in modals; vertical gaps |
+| lg | 24px | `ColumnHeadersHeight`; collapsible-section header height |
+| xl | 32px | Titlebar height (`UtinniForm.titleBarHeight = 32`); filter/find pane height |
+
+Exceptions (WinForms-mandated, not violations — same as Phases 7/8/9):
+- **3px control inset** is the canonical edge gutter.
+- **28px toolbar height / 22px grid row height / 24px column-header height / 40px row-header width**
+  are `DataGridView`/WinForms control metrics, kept for theme consistency.
+- **32px titlebar** is fixed by `UtinniForm`.
+- **417px SubPanel width** is fixed by `SubPanel` — which is precisely WHY the WS table lives in a
+  companion resizable Form, not in the SubPanel.
+
+---
+
+## Typography (inherited from Phases 7/8/9 — no new weights)
+
+Two weights only: Regular and Bold. **Bold remains reserved** (not used for state in this phase).
+
+| Role | Size | Weight | Notes |
+|------|------|--------|-------|
+| Body / grid cells / tree nodes / toolbar text / status strip / counters | 8.25pt MS Sans Serif | Regular | Framework default; do not override per-control |
+| Filter / param / modal inputs | 8.25pt MS Sans Serif | Regular | `UtinniTextbox` / `UtinniNumericUpDown` default |
+| Window titlebar name | 12pt Arcon | Regular | `UtinniForm.nameFont` |
+| Particle raw-preserved (hex-fallback) value cells + AI-assist results pane | 9pt Consolas | Regular | The monospace exception — matches Phase 8 hex view + Phase 11 hex fallback |
+
+**No new Bold usage.** Dirty / edited / raw-preserved / selected states are differentiated by
+COLOR (`Colors.Secondary()` accent / `Colors.FontDisabled()` dimmed / `Color.Red` destructive) +
+a text-glyph marker (`● `), NOT by weight. WinForms controls manage their own row metrics; do not
+set custom line heights.
+
+---
+
+## Color (inherited from Phases 7/8/9 — accent reserved-list extended by two narrow uses)
+
+Mapped from `UtinniCoreDotNet.UI.Theme.Colors` (fixed Dark theme; accessors verified `Colors.cs`
+L44-128). Pull via `Colors.*()` at runtime. NO raw `Color.FromArgb` literals. The ONLY raw color
+literal allowed is `Color.Red` for destructive emphasis.
+
+| Role | Accessor | Value | Usage |
+|------|----------|-------|-------|
+| Dominant (~60%) | `Colors.Primary()` | #282828 (40,40,40) | Form/panel backgrounds, toolbars, zebra alternating rows |
+| Secondary surface (~30%) | `Colors.PrimaryHighlight()` | #404040 (64,64,64) | DataGridView background + cell background; input backgrounds; tree background |
+| Shadow / deep recess | `Colors.PrimaryShadow()` | #191919 (25,25,25) | Column-header + row-header cell background |
+| Accent (~10%) | `Colors.Secondary()` | #007ACC (0,122,204) | RESERVED — see list below |
+| Foreground text | `Colors.Font()` | #F5F5F5 WhiteSmoke | All primary text; clean cells; tree nodes; selected-cell foreground |
+| Dimmed / disabled | `Colors.FontDisabled()` | #646464 (100,100,100) | Empty-state text; disabled buttons; raw-preserved value cells; row index; clean counters |
+| Control border | `Colors.ControlBorder()` | #646464 (100,100,100) | `DataGridView.GridColor`; 1px outlines |
+| Destructive / error | `Color.Red` | #FF0000 | Save-failure text; AI-read-error text; `FormSaveConfirmDialog` body emphasis (bulk delete / discard / repack) |
+
+**Accent (`#007ACC`) reserved for — explicit list (Phases 7+8+9+11 union + 2 narrow Phase-15 uses;
+never "all interactive elements"):**
+1. The 2px top accent rule on the `UtinniForm` titlebar (inherited `OnPaint`).
+2. The 2px top accent rule on a type/version banner (inherited `TreDetailPane`).
+3. Selected tree node / selected `DataGridView` cell or row highlight
+   (`DefaultCellStyle.SelectionBackColor`).
+4. The primary `Save` toolbar button face (`UtinniButton` `Colors.Secondary()`).
+5. Dirty / edited indication: edited param cells render `ForeColor` at `Colors.Secondary()` with a
+   `● ` row-header glyph.
+6. **NEW (narrow): selected-placement-row highlight** in the WS table — the standard
+   `SelectionBackColor` accent (same as use 3; called out because multi-select makes it prominent).
+7. **NEW (narrow): live-preview-success badge pulse** — a 1s `Colors.Secondary()` tint on
+   `lblReloadBadge` after a successful Particle hot-retrigger (status-acknowledgement family, same
+   idiom as the Phase-9 reload pulse).
+8. **NEW (narrow): RESID-04 detach-notice accent strip** — the 2px accent rule on the non-modal
+   notice banner (informational, same idiom as use 1/2).
+
+Accent is NOT used for: ordinary button bodies beyond the existing `UtinniButton` face; borders;
+section dividers; labels; the read-only-vs-editable cue (that uses `Font()` vs `FontDisabled()`);
+or errors (those use `Color.Red`).
+
+**Destructive color (`Color.Red`)** flags: (a) save failures, (b) AI-read errors, (c) the emphasis
+text inside `FormSaveConfirmDialog` for bulk delete / discard-while-dirty / repack. Phase 15 does
+NOT introduce new cell-level red usage (no type-cascade like Phase 9).
+
+---
+
+## Copywriting Contract
+
+Sentence case, concise, tells the user what to do next. The **primary CTA** of this phase is
+**editing + saving an asset** (place/retemplate placements; edit emitter params and save).
+
+| Element | Copy |
+|---------|------|
+| **Primary CTA — WorldSnapshot** | `Move selected…` / `Retemplate selected…` (bulk edit) + the shipped `Save` button |
+| **Primary CTA — Particle** | `Save` (toolbar drop-down lists the inherited save modes) |
+| WS open table button (on the SubPanel) | `Placements…` |
+| WS bulk buttons | `Move selected…` · `Delete selected` · `Retemplate selected…` · `Refresh` |
+| WS filter label | `Filter:` |
+| WS row counter | `{shown} / {total} nodes` |
+| WS selection counter | `{n} selected` |
+| WS empty-state heading | `No snapshot loaded` |
+| WS empty-state body | `Load a snapshot from the Snapshot panel to see its placements.` |
+| WS bulk-move modal title / fields | `Move {n} placements` · `Δ X` / `Δ Y` / `Δ Z` (`UtinniNumericUpDown`) · buttons `Apply` / `Cancel` |
+| WS bulk-retemplate modal title / field | `Retemplate {n} placements` · `New object template` (`UtinniTextbox`, e.g. `object/tangible/…/shared_*.iff`) · buttons `Apply` / `Cancel` |
+| WS bulk-delete confirm (heading / body / verbs) | `Delete {n} placements?` / `This removes {n} object placements from the snapshot. This is undoable in the editor until you save.` (`Color.Red`) / `Delete` · `Cancel` |
+| WS status — moved / deleted / retemplated | `Moved {n} placements.` · `Deleted {n} placements.` · `Retemplated {n} placements to {template}.` |
+| WS reload badge (LOCKED — RESID-03) | `Placements re-resolve on the next scene change.` |
+| **Particle preview-vs-author note (D-10/D-11 — MANDATORY, surfaced in the editor)** | WS: `Utinni places, transforms, and retemplates existing object templates — authoring the templates or their meshes is the Blender lane.` · Particle: `Utinni edits emitter, timing, and color parameters and swaps texture/mesh references — authoring the referenced meshes or textures stays in Blender.` (render as a dimmed `Colors.FontDisabled()` footer/about line in each editor) |
+| Particle open button | `Open…` |
+| Particle TRE Browser hand-off | Context-menu `Open in Particle Editor` on a `.prt` / `FORM PEFT` entry (HIDDEN when the sniff fails) |
+| Particle empty-state heading | `No particle effect open` |
+| Particle empty-state body | `Open a .prt file from the toolbar, or use "Open in Particle Editor" from the TRE Browser.` |
+| Particle AI-assist button | `Explain effect` |
+| Particle AI-assist running status | `Reading effect…` |
+| Particle AI-assist error | `Couldn't read this effect — {reason}.` (`Color.Red`) |
+| Particle live-preview button | `Preview in client` |
+| Particle preview success status | `Re-triggered {n} live instance(s).` |
+| Particle preview-unavailable tooltip | `No live client — start SWG to preview in-scene.` |
+| Particle raw-preserved cell tooltip (D-05 — LOCKED honesty) | `This field isn't typed yet — its original bytes are preserved exactly and saved unchanged.` |
+| Particle reload badge — live-capable (LOCKED) | `Re-triggers live instances on Preview.` |
+| Particle reload badge — degraded (LOCKED) | `Reloads on next scene change or relog.` |
+| Particle counters | `{emitterGroups} groups · {emitters} emitters · {raw} raw-preserved` |
+| Particle opening / saving / saved / save-failed | `Opening {name}…` · `Saving ({mode})…` · `Saved {name} ({mode})` · `{reason}. Your edits are kept in the editor — try another save target.` |
+| Particle `Save ▾` mode labels (inherited verbatim Phase 8/9) | `Save (in place)` · `Save as loose override` · `Save As…` · `Patch live client (in memory)` · `Repack into source .tre…` |
+| Particle `Save ▾` — `Patch live client` disabled tooltip (CF-03 inherited) | `Live patch requires opening from client memory — not wired in this phase.` |
+| Discard-while-dirty modal (inherited Phase 8 — heading / body / verbs) | `Discard unsaved changes?` / `{name} has unsaved edits. Save before {opening another file / closing}?` / `Save` · `Discard` · `Cancel` |
+| **RESID-04 detach notice (LOCKED)** | `SWG switched to fullscreen and detached from the editor. Drop SWG's resolution off fullscreen to re-embed.` |
+
+### Destructive / risky actions (each + confirmation approach)
+
+| Action | Risk | Confirmation |
+|--------|------|--------------|
+| **WS — single-node move / rotate (shipped gizmo)** | Local, undoable via `WorldSnapshotCommands` | **No modal.** Immediate; undoable (shipped behavior) |
+| **WS — bulk move / retemplate** | Multi-node, undoable; applied atomically on one game-frame | Input modal (`Apply`/`Cancel`) — NO red confirm (non-destructive, fully undoable) |
+| **WS — bulk delete** | Removes N placements; undoable until save | **`FormSaveConfirmDialog`** — heading `Delete {n} placements?`, `Color.Red` body, verbs `Delete` / `Cancel` |
+| **Particle — edit a typed field** | Local, undoable via editor-local stack | **No modal.** Immediate; undoable |
+| **Particle — live-preview hot-retrigger (D-09)** | Touches live scene instances on the game thread | **No modal** for the retrigger itself (it's a refresh, not a write); runs marshalled on the game thread, heap-free per `project_rh_snapshot_no_heap_alloc`. The preceding SAVE uses its normal Save▾ confirms |
+| **Particle — repack into source .tre** | Inherited Phase 8 full repack | **Inherited `FormSaveConfirmDialog`** (heading `Repack {archive}.tre?`, verbs `Repack`/`Cancel`, backup checkbox ON), provenance-gated on `Source is OpenSource.TreArchive` |
+| **Particle — discard unsaved edits (close / open-replace)** | Loses editor-local edits | **Inherited `FormSaveConfirmDialog`** (heading `Discard unsaved changes?`, verbs `Save`/`Discard`/`Cancel`) |
+
+---
+
+## Accessibility / Interaction Notes (WinForms)
+
+- **Keyboard (inherits Phase 8/9 + the two new surfaces):**
+  - `Ctrl+Z` / `Ctrl+Y` → editor-local undo/redo in `FormParticleEditor` (caught at the form
+    before the grid; MUST NOT dispatch to the scene `UndoRedoManager` — CON-M-05). WorldSnapshot
+    bulk-op undo flows through `WorldSnapshotCommands` (which ARE scene state by design — see note).
+  - `Ctrl+S` → default Save (Particle: inherited Phase-8 logic; WS: the shipped panel Save).
+  - `Ctrl+A` (WS table focused) → select all visible (filtered) placements.
+  - `Delete` (WS table, ≥1 row selected) → `Delete selected` (routes through the red confirm).
+  - `Esc` (WS filter textbox focused) → clear filter.
+  - Native `DataGridView` + `TreeView` keys (arrows / Tab / Enter / F2) preserved.
+  - Tab order: toolbar → filter/tree → grid → status strip.
+- **Color + glyph, never color alone:** dirty / raw-preserved / selected states use BOTH a text
+  glyph or distinct foreground (`● ` / `Consolas` dimmed) AND color, so state is legible without
+  color discrimination.
+- **Thread marshaling (CON foundations):** file open / parse / save / AI-read all run on a
+  background `Task`; UI mutations marshal via `Control.Invoke`/`BeginInvoke`. ALL live-client
+  touches — every WS table/bulk op, the Particle hot-retrigger — marshal to the SWG game thread
+  via `GroundSceneCallbacks.AddUpdateLoopCall` / `GameCallbacks.AddMainLoopCall` (Pattern 1).
+  Bulk ops enqueue one composed call so the whole bulk lands atomically on one game-frame.
+- **No modal blocking for progress:** loading / saving / AI-reading / previewing are inline
+  status-strip text, never modal spinners. Modals are reserved for the risk confirmations.
+- **Edits never silently lost:** a failed Particle save RETAINS dirty state; closing/opening while
+  dirty routes through the discard-confirm modal (Phase 8 idiom).
+- **High-DPI:** inherit `AutoScaleMode.Font` from `UtinniForm`; no hard-coded pixel sizes beyond
+  the documented control metrics.
+- **Singleton hide-not-dispose (LOCKED):** `FormParticleEditor` and `FormSnapshotPlacements` cancel
+  close + `Hide()` on `CloseReason.UserClosing` via `SingletonFormClosePolicy`; host-shutdown
+  reasons fall through normally.
+
+**WorldSnapshot undo note (intentional divergence from the Wave-1 editor-local rule):** Wave-1
+file editors keep an editor-local undo stack disentangled from the scene `UndoRedoManager` (CF-06)
+because their edits are file state, not scene state. WorldSnapshot is the opposite: placing /
+moving / deleting nodes mutates the LIVE scene, so its bulk ops compose the shipped
+`WorldSnapshotCommands` `IUndoCommand`s through the scene's undo path — this is correct and
+matches the shipped per-node gizmo behavior. The exact composite-vs-N-commands wiring is the
+planner's discretion (CONTEXT discretion area).
+
+---
+
+## Assumptions To Confirm (recorded, non-blocking)
+
+Where CONTEXT + RESEARCH + the Wave-1 baselines left a genuinely open UI question, a reasonable
+assumption consistent with the established baseline is recorded rather than blocking on questions:
+
+1. **The WS placements table lives in a companion resizable `FormSnapshotPlacements`** launched via
+   a new `Placements…` button on the existing 417px `SnapshotPanel`, NOT inside the SubPanel.
+   Rationale: `SubPanel` is hard-fixed at 417px (`SubPanel.cs` L36); a real multi-column table with
+   bulk ops cannot live there, and the Wave-1 precedent already splits "narrow controls SubPanel"
+   from "wide grid `UtinniForm`." If the maintainer prefers the table inline (scrolling within
+   417px), flag at planning — but the companion Form is the recommended floor.
+2. **WS bulk ops apply atomically in one `AddUpdateLoopCall`** composing N existing per-node
+   commands (RESEARCH code example), undoable as either one composite or N ordered commands
+   (planner discretion).
+3. **The Particle editor is a NEW `UtinniForm` via `GetForms()`** (not a SubPanel), mirroring all
+   five Wave-1 editors; `GetSubPanels()` stays null (CON-M-01/02 not widened).
+4. **`WaveForm`/`ColorRamp` get a read-only summary + `Edit…` sub-editor floor, not a graphical
+   curve editor** this phase. Rationale: no charting package is in the solution (RESEARCH A6) and
+   D-04's typed decode + D-05's raw-preserve already satisfy round-trip safety. A graphical curve
+   editor is a polish follow-up; flag if desired.
+5. **The Particle live-preview badge has TWO honest states** (live-capable vs degraded) keyed on
+   `Game.IsRunning` + retrigger-hook reachability (D-09 is the open implementation question). The
+   degraded copy is the locked tier-(b) candor; never over-promise.
+6. **RESID-04's only UI surface is the non-modal detach notice** — the fix itself is native
+   D3D9/DirectInput suppression (D-12) with the hard no-`Reset` constraint (D-13). The notice is
+   the honest fallback, not the primary path.
+7. **The DEC-A3 preview-vs-author sentence is surfaced in each editor** (a dimmed footer/about
+   line), satisfying the MANDATORY D-10/D-11 one-sentence-per-editor requirement visibly, not just
+   in docs.
+
+These do not change locked decisions; flag any disagreement at planning time.
+
+---
+
+## Registry Safety
+
+| Registry | Blocks Used | Safety Gate |
+|----------|-------------|-------------|
+| not applicable (WinForms; no shadcn/component registry) | none | not applicable — no third-party UI registry, no `components.json`, no npm/registry component install. All UI is built from in-repo themed WinForms controls (`UtinniCoreDotNet.UI.Controls` + the TJT-side `ThemedDataGridView`/`IffChunkTree`) and BCL `System.Windows.Forms` types. **No new package install this phase** (RESEARCH Package Audit: zero external packages). The shadcn initialization gate is N/A: the stack is .NET Framework 4.7.2 WinForms desktop, not React/Next.js/Vite. |
+
+---
+
+## Checker Sign-Off
+
+- [ ] Dimension 1 Copywriting: PASS
+- [ ] Dimension 2 Visuals: PASS
+- [ ] Dimension 3 Color: PASS
+- [ ] Dimension 4 Typography: PASS
+- [ ] Dimension 5 Spacing: PASS
+- [ ] Dimension 6 Registry Safety: PASS
+
+**Approval:** pending
