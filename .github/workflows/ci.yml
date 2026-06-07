@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   build-and-test:
-    name: Build (Release|x86) + Test (net472)
+    name: Build (Release|x86) + Test (net472) + MCP (net10)
     runs-on: [self-hosted, windows, x64, utinni-v145]   # this machine: VS 2026 (v145) + VS 2019 (v142/14.29)
     timeout-minutes: 40            # generous — self-hosted cold runs still do NuGet restore + vcpkg + CppSharp post-build
 
@@ -231,6 +231,45 @@ jobs:
             Utinni.Cli.Tests/TestResults/cli-test-results.trx
             Utinni.Cli.Tests/bin/Release/net472/TestResults/**/*.json
             Utinni.Cli.Tests/bin/Release/net472/TestResults/**/*.txt
+          if-no-files-found: warn
+
+      # ─────────────────────────────────────────────────────────────────────
+      # Phase 14 (14-01): net472 binary-forward regression gate + net10 MCP lane.
+      #
+      # (1) LooseOverridePathTests regression gate (review Consensus #5): proves the
+      #     [TypeForwardedTo] move of UtinniCoreDotNet.Saving.LooseOverridePath into the
+      #     netstandard2.0 UtinniCoreDotNet.PathContainment lib did NOT break the net472
+      #     containment type identity. The tests live in UtinniCoreDotNet.Tests (already
+      #     built Release|x86 by the msbuild step above), so --no-build is correct.
+      # (2)+(3) The net10 Utinni.Mcp build + fast-test lane run against the installed net10
+      #     SDK (10.0.300), NOT through the Release|x86 MSBuild pass (RESEARCH A3 — a net10
+      #     project cannot target x86-only; the .sln has no Build.0 mapping for it). The
+      #     fast lane EXCLUDES the Slow-trait 60s real-timeout test (Cursor LOW).
+      # NIGHTLY/MANUAL: the Slow-trait dispatcher timeout test is run on demand via
+      #   dotnet test Utinni.Mcp.Tests/Utinni.Mcp.Tests.csproj -c Release --filter Category=Slow
+      # It is deliberately NOT in this per-push lane (it waits ~60s).
+      # ─────────────────────────────────────────────────────────────────────
+      - name: Run LooseOverridePath binary-forward regression gate (net472)
+        run: dotnet test UtinniCoreDotNet.Tests/UtinniCoreDotNet.Tests.csproj --no-build --configuration Release --filter LooseOverridePathTests --logger "console;verbosity=normal"
+        # Consensus #5: net472 callers must still resolve UtinniCoreDotNet.Saving.LooseOverridePath
+        # after the netstandard2.0 move + [TypeForwardedTo] shim.
+
+      - name: Build MCP server (net10)
+        run: dotnet build Utinni.Mcp/Utinni.Mcp.csproj -c Release
+        # net10 SDK 10.0.300 (verified, 14-RESEARCH §Environment Availability). NOT routed through
+        # the Release|x86 MSBuild pass per A3.
+
+      - name: Run MCP unit tests (net10 fast lane, excludes Category=Slow)
+        run: dotnet test Utinni.Mcp.Tests/Utinni.Mcp.Tests.csproj -c Release --filter "Category!=Slow" --logger "console;verbosity=normal" --logger "trx;LogFileName=mcp-test-results.trx"
+        # SC3 path-escape + fail-closed pin + arg-parsing + absolute CLI-locator + dispatcher
+        # exe-missing/non-zero/injected-timeout/large-stdout. The Slow 60s test is nightly/manual.
+
+      - name: Upload MCP test artifacts (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-test-results
+          path: Utinni.Mcp.Tests/TestResults/mcp-test-results.trx
           if-no-files-found: warn
 
       - name: Build native tests (Debug|x86) — triple-config verification per 05-REVIEWS.md item C3
