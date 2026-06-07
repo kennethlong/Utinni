@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
 status: executing
-stopped_at: Completed 15-03-PLAN.md (D-09 live-preview retrigger spike)
-last_updated: "2026-06-07T15:21:22.296Z"
+stopped_at: Completed 15-02-PLAN.md (Particle .prt codec)
+last_updated: "2026-06-07T15:35:13.354Z"
 last_activity: 2026-06-07
 progress:
   total_phases: 20
   completed_phases: 15
   total_plans: 78
-  completed_plans: 74
-  percent: 95
+  completed_plans: 75
+  percent: 96
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 15 (wave-2-editors-worldsnapshot-particle-presentation-residuals) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Ready to execute
 Last activity: 2026-06-07
 
@@ -147,6 +147,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 15 P01 | ~75 min | 2 tasks | 10 files |
 | Phase 15 P02 | ~95 min | 3 tasks | 13 files |
 | Phase 15 P03 | ~45 min | 2 tasks | 4 files |
+| Phase 15 P04 | ~40min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -183,6 +184,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: 15-01: WorldSnapshot bulk ops compose shipped WorldSnapshotCommands as N ordered descriptors (retemplate=remove+add per node); duplicate ids not deduped; zero new format code (D-02). Companion FormSnapshotPlacements table launched from SnapshotPanel button.
 - [Phase ?]: 15-02: .prt/FORM PEFT typed codec (PROD-W2-PRT format half) in UtinniCoreDotNet/Formats/Particle. WaveForm(3 ver)/ColorRamp(2 ver) leaves + PEFT->EMGP->EMTR tree composing shipped IffReader/IffWriter/IffPayloadCursor; byte-exactness via consume-exactly-or-hex (typed decode accepted only when it re-encodes identical, else raw-preserve); degrade-don't-abort D-05 raw-preserves any unrecognized FORM-version sub-tree and NEVER hard-aborts (Pitfall 2); division-form count DoS guard T-15-02. 21 facts, 663/663 suite green Debug+Release|x86. PROD-W2-PRT editor+live-preview half remains a later plan.
 - [Phase ?]: 15-03: D-09 live-preview spike — reject ParticleManager (debug/config singleton, no live instances); choose ClientEffectManager (m_particleSystems) via AppearanceTemplateList reload + ParticleEffectAppearance::restart(). HONEST FINDING: no reachable native hot-retrigger hook this phase — ship documented no-op stub ParticlePreview seam returning NotReachable; editor degrades to tier-(b) badge; real hook is a scoped follow-on (15-08+) behind the same seam.
+- [Phase ?]: 15-04: .prt read-assist headless — decode-iff auto-dispatches FORM PEFT; new roundtrip-particle byte-exact gate (degraded fixtures round-trip identical, D-05); summarize_particle MCP read tool = thin decode-iff dispatch (ReadOnly D-07, ZERO format logic D-06), the same .prt read path the in-app Explain effect button reuses (D-08).
 
 ### Pending Todos
 
@@ -238,7 +240,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-07T15:20:55.696Z
+Last session: 2026-06-07T15:35:03.798Z
 Stopped at: Completed 15-02-PLAN.md (Particle .prt codec)
 Resume file: None
 

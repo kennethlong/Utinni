@@ -132,7 +132,7 @@ Theme: *Utinni authors, not just edits.* Ship an MCP server so AI agents can dri
 ### Product Capability — Wave-2 editors
 
 - [x] **PROD-W2-WS**: A modder can view + edit object placements in a world snapshot via a Utinni SubPanel (extends the existing Snapshot panel; reuses shipped codecs — zero new format work).
-- [ ] **PROD-W2-PRT**: A modder can open + edit a particle / client-effect asset in a Utinni SubPanel, with live in-client preview when injected. *(The flashy AI-assist showcase; Terrain `PROD-W2-TRN` deferred to v2.1.)* — **format codec half delivered 15-02 (headless `.prt`/FORM PEFT codec, byte-exact + degrade-don't-abort); editor SubPanel + live preview remain in a later Wave-2 plan.**
+- [x] **PROD-W2-PRT**: A modder can open + edit a particle / client-effect asset in a Utinni SubPanel, with live in-client preview when injected. *(The flashy AI-assist showcase; Terrain `PROD-W2-TRN` deferred to v2.1.)* — **format codec half delivered 15-02 (headless `.prt`/FORM PEFT codec, byte-exact + degrade-don't-abort); editor SubPanel + live preview remain in a later Wave-2 plan.**
 
 ### Ecosystem
 
