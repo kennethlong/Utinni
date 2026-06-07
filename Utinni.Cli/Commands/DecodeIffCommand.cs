@@ -80,6 +80,18 @@ namespace Utinni.Cli.Commands
                 }
 
                 var doc = IffReader.Read(new MemoryStream(bytes));
+
+                // A particle-effect (FORM PEFT) root auto-dispatches into the 15-02 particle codec.
+                // It needs the source bytes (the typed model captures the raw IFF tree for byte-exact
+                // re-emit), so it is handled here rather than in TryDecode. Mirrors how the other typed
+                // reads route by root FORM — PEFT is just a new branch (PATTERNS.md MCP note).
+                if ((doc.Root as IffContainerChunk)?.SubTypeId == "PEFT")
+                {
+                    return JsonOutput.EmitSuccess("decode-iff",
+                        BuildParticleResult(
+                            UtinniCoreDotNet.Formats.Particle.ParticleEffectDocument.FromIff(doc, bytes), o.Path));
+                }
+
                 object result;
                 if (!TryDecode(doc, o.Path, out result, out string unsupportedTag))
                 {
@@ -87,6 +99,10 @@ namespace Utinni.Cli.Commands
                         "No structured decoder for root form '" + unsupportedTag + "'.", exitCode: 2);
                 }
                 return JsonOutput.EmitSuccess("decode-iff", result);
+            }
+            catch (UtinniCoreDotNet.Formats.Particle.ParticleParseException ex)
+            {
+                return JsonOutput.EmitError("decode-iff", ex.Kind.ToString(), ex.Message, exitCode: 2);
             }
             catch (DecoderException ex)
             {
@@ -200,6 +216,45 @@ namespace Utinni.Cli.Commands
                 source = sourcePath,
                 type = "objecttemplate",
                 version = ot.Version
+            };
+        }
+
+        // Particle-effect (FORM PEFT) summary: root version, emitter-group / emitter counts, the
+        // raw-preserve disposition, and per-group emitter counts + raw-preserved-emitter tally. The
+        // typed views are a non-destructive overlay (D-05); a raw-preserved effect still summarizes.
+        private static object BuildParticleResult(
+            UtinniCoreDotNet.Formats.Particle.MutableParticleEffect effect, string sourcePath)
+        {
+            int rawPreservedEmitters = 0;
+            var groups = new System.Collections.Generic.List<object>();
+            foreach (var g in effect.Groups)
+            {
+                int rawInGroup = 0;
+                foreach (var e in g.Emitters)
+                {
+                    if (e.IsRawPreserved) { rawInGroup++; rawPreservedEmitters++; }
+                }
+                groups.Add(new
+                {
+                    emitterCount = g.Emitters.Count,
+                    rawPreservedEmitters = rawInGroup
+                });
+            }
+
+            int emitterCount = 0;
+            foreach (var g in effect.Groups) emitterCount += g.Emitters.Count;
+
+            return new
+            {
+                emitterCount = emitterCount,
+                emitterGroupCount = effect.Groups.Count,
+                groups = groups,
+                rawPreserved = effect.IsRawPreserved,
+                rawPreservedEmitters = rawPreservedEmitters,
+                rootType = "PEFT",
+                source = sourcePath,
+                type = "particle",
+                version = effect.Version
             };
         }
 

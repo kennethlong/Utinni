@@ -77,6 +77,10 @@ ERROR(S):
                         .stf, verify untouched entries byte-identical, then
                         atomically commit the mutated bytes.
 
+  roundtrip-particle    Parse -> serialize -> re-parse a particle-effect .prt
+                        (FORM PEFT); assert byte-exact identity on the whole
+                        file.
+
   help                  Display more information on a specific command.
 
   version               Display version information.

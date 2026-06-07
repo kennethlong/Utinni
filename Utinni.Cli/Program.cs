@@ -66,7 +66,8 @@ namespace Utinni.Cli
                         typeof(Commands.ApplySaveTabOptions),
                         typeof(Commands.ApplySaveOtOptions),
                         typeof(Commands.ApplySaveIffOptions),
-                        typeof(Commands.ApplySaveStfOptions))
+                        typeof(Commands.ApplySaveStfOptions),
+                        typeof(Commands.RoundtripParticleOptions))
                     .MapResult(
                         (object opts) => Dispatch(opts),
                         errs => 1);  // exit 1 on usage error per D-02
@@ -98,6 +99,7 @@ namespace Utinni.Cli
                 case Commands.ApplySaveOtOptions o:       return Commands.ApplySaveOtCommand.Run(o);
                 case Commands.ApplySaveIffOptions o:      return Commands.ApplySaveIffCommand.Run(o);
                 case Commands.ApplySaveStfOptions o:      return Commands.ApplySaveStfCommand.Run(o);
+                case Commands.RoundtripParticleOptions o: return Commands.RoundtripParticleCommand.Run(o);
                 default:                                  return 1;
             }
         }
