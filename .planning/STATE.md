@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
-status: executing
-stopped_at: Completed 14-03-PLAN.md
-last_updated: "2026-06-07T02:18:15.135Z"
+status: verifying
+stopped_at: Completed 14-04-PLAN.md
+last_updated: "2026-06-07T02:36:06.902Z"
 last_activity: 2026-06-07
 progress:
   total_phases: 20
-  completed_phases: 14
+  completed_phases: 15
   total_plans: 70
-  completed_plans: 70
+  completed_plans: 71
   percent: 100
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 ## Current Position
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
-Phase: 14 (headless-mcp-server-utinni-mcp-the-centerpiece) — EXECUTING
+Phase: 14 (headless-mcp-server-utinni-mcp-the-centerpiece) — READY FOR VERIFICATION
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-07
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
@@ -143,6 +143,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 14 P03a | 12min | 2 tasks | 12 files |
 | Phase 14 P02 | ~20min | 2 tasks | 4 files |
 | Phase 14 P03 | ~25min | 2 tasks | 7 files |
+| Phase 14 P04 | ~50min | 4 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -175,6 +176,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase 14]: 14-03a: apply-save-tab/ot/iff/stf CLI verbs FUSE (roundtrip-* apply+verify) with (save WriteAtomic-to-loose-override), persisting the SAME mutatedBytes they verified (no re-load between verify+commit) — closes the reviewer-confirmed gap where save re-serialized the UNCHANGED file and roundtrip-* discarded the mutated bytes. Fail-closed: a failed untouched-region verify -> exit 2 + write NOTHING. MCP host (14-03) wraps each 1:1 and decides persist-vs-fail on the EXIT CODE alone. SCOPED documented exception to the Phase-14-adds-ZERO-verbs guard-rail (cross-AI review BLOCKING finding). Shared SaveCommandIo.WriteAtomic (Flush(true)); internal-static TestPerturbSerialized seam drives failed-verify-no-write through the real CLI. 37 apply-save+dispatch golden tests; full Utinni.Cli.Tests 239 pass / 2 skip; Debug+Release|x86 green. Commits 7eed25f, bb3e5bc.
 - [Phase ?]: 14-02: CliResultMapper is the single chokepoint interpreting utinni-cli stdout — verbatim envelope pass-through (text + StructuredContent JsonElement) with SHAPE validation (schemaVersion + command + result XOR error) + exit-code taxonomy (hard McpException on exe-missing/timeout/non-JSON/empty/malformed/out-of-range/exit-0-with-error/non-zero-with-result). 5 thin read tools resolve->dispatch->map; get_template_schema writes a host-temp --out OUTSIDE resolvedRoot (IDisposable, cleaned up). MCP-01 read surface in place.
 - [Phase ?]: 14-03: save_* MCP write tools each wrap ONE apply-save-* verb opaquely (one Process.Start), deciding persist-vs-fail on the EXIT CODE alone (0 persisted / 2 verify-failed) — never parsing bytesEqualUntouched. repack_tre is a distinct off-by-default Destructive tool with a HOST-SIDE dry_run=true plan-only gate (no spawn, no backup claim; repack-tre verb has no --dry-run flag), unreachable from save_*. roundtrip_check is verify-only non-persisting. SaveVerb owns format->verb map + typed-arg->argv builders + per-resolved-path SemaphoreSlim serialization (T-14-16). Path-escape blocked at the MCP boundary with ZERO CLI spawns. CliDispatcher unsealed + RunAsync virtual as a test-only stub seam (prod unchanged). MCP-02 write half complete.
+- [Phase ?]: 14-04: real McpClient round-trips the built Utinni.Mcp.exe end-to-end (--cli-path pinned, no transcript fallback) — exact 11-tool surface + multi-format read + edit-save-READ-BACK persistence + isolated-copy repack + boundary escape; committed binary Fixtures (generate-once-via-32bit-PS); MCP-SECURITY.md 17-threat register (each mitigate row cites file:line + a proving test, 5-layer advisory-vs-enforcement model + apply-save ZERO-verbs exception). Both lanes green. MCP-01+02 integration-proven.
 
 ### Pending Todos
 
@@ -230,8 +232,8 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-07T02:18:15.119Z
-Stopped at: Completed 14-03-PLAN.md
+Last session: 2026-06-07T02:35:42.185Z
+Stopped at: Completed 14-04-PLAN.md
 Resume file: None
 
 ## Ingest Provenance

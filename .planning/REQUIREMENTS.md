@@ -203,7 +203,7 @@ Each requirement maps to exactly one phase. Phase numbers refer to ROADMAP.md.
 | AUTH-05 (utinni-cli SAVE verb) | Phase 13 (write surface completed Phase 14 P03a: apply-save-* verbs) | Complete |
 | AUTH-06 (Datatable compile + item exporters) | Phase 13 | Pending |
 | RESID-01 (OT Tier-2 typed list-param display) | Phase 13 | Pending |
-| MCP-01 (Headless MCP READ tools) | Phase 14 | Pending |
+| MCP-01 (Headless MCP READ tools) | Phase 14 | Complete |
 | MCP-02 (MCP write/SAVE + MCP-SECURITY.md threat register) | Phase 14 | Complete |
 | PROD-W2-WS (WorldSnapshot / object-placement editor) | Phase 15 | Pending |
 | PROD-W2-PRT (Particle / client-effect editor) | Phase 15 | Pending |

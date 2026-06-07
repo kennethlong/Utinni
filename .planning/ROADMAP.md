@@ -34,7 +34,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 12: Revive-feasibility spike (HARD GATE) + intro-skip crash** — Verify `TreeFileBuilder` + `TemplateCompiler`/`TemplateDefinitionCompiler` build + link standalone at v145 in a Utinni-owned `tools/` tree (lift-and-shift), strip dead Perforce/transitive deps, produce a per-tool dependency manifest + pinned `swg-client-v2` SHA. Diagnose + fix the independent intro-skip scene-transition crash (RESID-02). Gates all of AUTH.
 - [x] **Phase 13: Wrap compilers as CLI verbs + close OT Tier-2** — Wrap the revived compilers/builders as `utinni-cli` verbs (`compile-definition`, `compile-template`, `build-tre`, datatable compile + item exporters); add the net-new CLI SAVE verb; surface the param→type schema to close the Object Template Editor's Tier-2 typed display (RESID-01). (completed 2026-06-05)
-- [ ] **Phase 14: Headless MCP server (`Utinni.Mcp`) — the centerpiece** — A separate net10 stdio MCP process shelling `utinni-cli`: read tools over the existing verbs + write/SAVE tools defaulting to loose-override with byte-exact verify-before-commit, fail-closed `resolvedRoot`, and a first-class `MCP-SECURITY.md` threat register.
+- [x] **Phase 14: Headless MCP server (`Utinni.Mcp`) — the centerpiece** — A separate net10 stdio MCP process shelling `utinni-cli`: read tools over the existing verbs + write/SAVE tools defaulting to loose-override with byte-exact verify-before-commit, fail-closed `resolvedRoot`, and a first-class `MCP-SECURITY.md` threat register. (completed 2026-06-07)
 - [ ] **Phase 15: Wave-2 editors (WorldSnapshot, Particle) + presentation residuals** — Ship the WorldSnapshot/object-placement SubPanel (zero new deps) then the Particle/client-effect SubPanel (new `.prt` codec) as TJT MEF SubPanels; enumerate + fix the SWG window-resize/fullscreen edge cases (RESID-04) and confirm SC3 live-reload candor (RESID-03).
 - [ ] **Phase 16: Live-injected MCP bridge + Blender ecosystem boundary** — Add the optional named-pipe IPC live bridge so an agent can preview an edit in the injected client (MCP-03); formalize the Utinni ↔ `swg-blender-plugin` file-format / `.rsp` search-path contract (ECO-01).
 
@@ -328,7 +328,7 @@ Plans:
 - [x] 14-02-PLAN.md - read tools (read_tre/inspect_iff/decode_iff/list_world_objects + get_template_schema) + CliResultMapper envelope-SHAPE validation + exit-code taxonomy + temp-boundary doc for get_template_schema (Wave 2) [MCP-01]
 - [x] 14-03a-PLAN.md - NEW golden-tested CLI verbs apply-save-tab/iff/stf/ot (apply ONE typed edit -> verify byte-identity on untouched -> WriteAtomic loose-override; failed-verify = exit 2, no write) - the persist path the reviewers proved was missing (Wave 1; Utinni.Cli only) [MCP-02, AUTH-05]
 - [x] 14-03-PLAN.md - MCP write tools (save_* wrap the SINGLE apply-save-* verb opaquely) + repack_tre (Destructive, host-side dry_run gate) + roundtrip_check (verify-only) + MCP-boundary path-escape integration test (Wave 3) [MCP-02]
-- [ ] 14-04-PLAN.md - MCP-SECURITY.md threat register (each row cites its proving test) + real-McpClient RoundTripTests with read-back-after-save assertion + committed binary Fixtures/ + isolated-copy repack + exact tool-count (Wave 4) [MCP-01, MCP-02]
+- [x] 14-04-PLAN.md - MCP-SECURITY.md threat register (each row cites its proving test) + real-McpClient RoundTripTests with read-back-after-save assertion + committed binary Fixtures/ + isolated-copy repack + exact tool-count (Wave 4) [MCP-01, MCP-02]
 
 ### Phase 15: Wave-2 editors (WorldSnapshot, Particle) + presentation residuals
 **Milestone**: v2.0 — "AI-Assisted SWG Tools"
@@ -410,7 +410,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 11. Wave-1 plugin — Object Template Editor | 5/5 | Complete    | 2026-06-01 |
 | 12. Revive-feasibility spike (HARD GATE) + intro-skip crash | 0/TBD | Not started | - |
 | 13. Wrap compilers as CLI verbs + OT Tier-2 | 6/6 | Complete   | 2026-06-05 |
-| 14. Headless MCP server (`Utinni.Mcp`) | 4/5 | In Progress|  |
+| 14. Headless MCP server (`Utinni.Mcp`) | 5/5 | Complete   | 2026-06-07 |
 | 15. Wave-2 editors (WorldSnapshot, Particle) + residuals | 0/TBD | Not started | - |
 | 16. Live-injected MCP bridge + Blender boundary | 0/TBD | Not started | - |
 
