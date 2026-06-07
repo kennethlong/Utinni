@@ -49,7 +49,11 @@ namespace Utinni.Mcp.Server;
 ///   <item>Missing exe returns <see cref="CliInvocationResult.ExeMissing"/> WITHOUT throwing.</item>
 /// </list>
 /// </summary>
-public sealed class CliDispatcher
+// NOTE (14-03): no longer sealed and RunAsync is virtual so the write-tool tests can substitute a
+// recording stub dispatcher (proves exactly-one spawn / typed argv / zero-spawn on path-escape)
+// WITHOUT a separate interface. Production behavior is unchanged — the host always registers the
+// concrete CliDispatcher in DI; only tests override.
+public class CliDispatcher
 {
     /// <summary>Production default wall-clock backstop for a single CLI invocation.</summary>
     public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(60);
@@ -75,7 +79,7 @@ public sealed class CliDispatcher
     /// <see cref="CliInvocationResult"/>. Never throws on the missing-exe or timeout paths — those
     /// become hard-error result objects the host maps to MCP errors.
     /// </summary>
-    public async Task<CliInvocationResult> RunAsync(string verb, IReadOnlyList<string> args)
+    public virtual async Task<CliInvocationResult> RunAsync(string verb, IReadOnlyList<string> args)
     {
         if (verb == null) throw new ArgumentNullException(nameof(verb));
         args ??= Array.Empty<string>();
