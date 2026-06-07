@@ -1,7 +1,8 @@
 ---
 phase: 15
 slug: wave-2-editors-worldsnapshot-particle-presentation-residuals
-status: draft
+status: approved
+reviewed_at: 2026-06-07
 shadcn_initialized: false
 preset: none
 created: 2026-06-07
