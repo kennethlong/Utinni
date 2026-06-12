@@ -1,5 +1,10 @@
 # Debug dossier — phantom forward-walk in injected SWG client
 
+> **RESOLVED 2026-06-12** — root cause was NOT injection: stale swg-blender-plugin
+> searchPath overrides (`all_m.lat`/`all_b.skt`) in `swgemu_live.cfg` shadowing retail
+> animation data. Full record: `.planning/debug/resolved/phantom-forward-walk.md`.
+> 15-08 Tier-4 smoke is UNBLOCKED.
+
 > Written 2026-06-12 mid 15-08 live smoke, immediately before a context clear.
 > **Feed this to `/gsd-debug` as the issue description.** Maintainer is at the keyboard;
 > live repro available on demand. This defect BLOCKS the 15-08 Tier-4 smoke visual checks.

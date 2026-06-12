@@ -1,5 +1,5 @@
 ---
-status: investigating
+status: resolved
 trigger: "Phantom forward-walk in injected SWG client — full dossier at .planning/debug-phantom-walk-dossier.md. Blocks 15-08 Tier-4 smoke. Maintainer at keyboard for live repro."
 created: 2026-06-12
 updated: 2026-06-12
@@ -132,9 +132,21 @@ next_action: CHECKPOINT — maintainer runs with skipInputGroup=true; result (wa
 - Build: Task-1 assembled injection build (Jun 7 binaries), all suites green.
 - Maintainer hotkey gotcha: TJT ToggleFreeCam = Shift+Tab collides with Claude Code permission-mode cycling; permission prompts steal focus from the game.
 
+## Late-session evidence (post-bisect pivot)
+
+- timestamp: 2026-06-12 (LIVE) — INPUT-group bisect cut #1: skipInputGroup=true CONFIRMED active in utinni.log (13:18:31 `skipInputGroup = SKIP`) → STILL WALKS. debugCamera::patch NOP + all INPUT detours exonerated.
+- timestamp: 2026-06-12 (LIVE) — RENDER-group cut: still walks. MID-RUN BOMBSHELL from maintainer: **vanilla SWGEmu.exe launched directly NOW WALKS TOO** (char-select + in-world). The morning "vanilla CLEAN" baseline inverted → all of today's injected bisect cuts were confounded; cause is NOT injection-specific.
+- timestamp: 2026-06-12 (LIVE) — fresh profiles + machineoptions (moved aside): still walks (character bald = regenerated customization, expected). Per-account client files exonerated.
+- timestamp: 2026-06-12 (orchestrator harness) — GetAsyncKeyState 10s pressed-since-last-call scan: CLEAN. winmm joystick enumeration: none connected. NumLock toggle OFF at OS level. No OS-level input source.
+- timestamp: 2026-06-12 (LIVE) — NumLock in vanilla in-world TOGGLES the walk (stop/resume = SWG autorun engaged); stopped pose = arms-out-45° **bind/default pose** (animation resolution broken); maintainer: **ALL NPCs run/walk IN PLACE**. → global animation-system breakage, not an input synthesizer.
+- timestamp: 2026-06-12 (disk forensics) — `swgemu_live.cfg` [SharedFile] contains TWO loose searchPath entries at priority 27 (HIGHER than all .tre archives, max 25): `C:\Users\kenne\AppData\Local\Temp\swg_creature_m16_smoke` (contains `appearance/lat/all_m.lat` — male logical animation table — + hum_m_face.skt/lat) and `D:/swg_dev_bundle` (contains `appearance/skeleton/all_b.skt` — base biped skeleton — + .ans/.mgn/.msh/.sht). Both planted 2026-05-30 by swg-blender-plugin client-validation work (PHASE7_SPAWN_NOTES.md instructs exactly this cfg edit); swgemu_live.cfg mtime 5/30 17:40 = 20 min after the Temp dir creation.
+- timestamp: 2026-06-12 (LIVE ×2) — searchPath lines commented out: vanilla CLEAN (stands, NPCs normal) AND injected via Launcher CLEAN (stands, NPCs normal). Root cause confirmed; injection exonerated entirely.
+- note (red herring): the "GOD MODE" yellow text is Core3 SERVER-side admin-account god mode (acct `admin`), not utinni.cfg's `0fd345d9` — it appears in every run on this account regardless of client config.
+- residual (unexplained): the morning "vanilla CLEAN" data point in the dossier is inconsistent with overrides present since 5/30; most likely imperfect recall or a differing morning run condition. Not pursued — fix verified empirically in both modes.
+
 ## Resolution
 
-root_cause:
-fix:
-verification:
-files_changed:
+root_cause: Stale loose-file searchPath overrides in the SWG client's own cfg chain (`swgemu_live.cfg` [SharedFile] priority-27 entries pointing at `C:\Users\kenne\AppData\Local\Temp\swg_creature_m16_smoke` and `D:/swg_dev_bundle`), planted 2026-05-30 by swg-blender-plugin Phase-7 client-validation and never removed. Their `all_m.lat` (male logical animation table) and `all_b.skt` (biped skeleton) shadowed retail animation data for EVERY client run (vanilla and injected), breaking locomotion/animation resolution globally: continuous forward-walk (autorun-coupled), bind poses, NPCs walking in place, char-select walk animation. Utinni injection was never the cause.
+fix: Commented out both searchPath_00_27 lines in D:\SWGEmu-Client\SWGEmu\swgemu_live.cfg (override dirs left on disk, untouched, for the blender-plugin project to re-enable deliberately when validating).
+verification: Maintainer live runs after the fix — vanilla SWGEmu.exe: stands, NPCs normal. Injected via Utinni Launcher (full editor config): stands, NPCs normal. Both clean.
+files_changed: D:\SWGEmu-Client\SWGEmu\swgemu_live.cfg (2 lines commented; outside repo). Debug scaffolding retained in repo: commit 04fa26d added ini-gated [DebugBisect] skip groups to UtinniCore (default-off, harmless; revert or keep for future detour bisects). bin/Release/ut.ini [DebugBisect] flags reset to all-false.
