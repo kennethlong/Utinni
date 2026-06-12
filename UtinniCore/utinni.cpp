@@ -73,9 +73,46 @@ static std::string g_readyEventName;
 static HMODULE g_utinniModule = nullptr;
 static HMODULE g_swgModule = nullptr;
 
+// 2026-06-12 (phantom-forward-walk debug): ini-gated bisect skip flags. Each
+// group can be skipped at init via [DebugBisect] keys in ut.ini WITHOUT a
+// rebuild, so one binary serves an entire binary search. Keys DEFAULT to false
+// (getBool on a missing key returns false), so an unmodified ut.ini runs the
+// FULL detour/patch set exactly as before. Set a key = true to SKIP that group.
+//
+// Groups (split for binary search; INPUT-path group is the prime suspect for
+// the persistent forward-walk + god-mode-overlay synthesizer):
+//   skipInputGroup  -> GroundScene (draw/update/handleInputMapEvent),
+//                      MessageQueue, cuiIo (processEvent), cuiHud
+//                      (actionPerformAction/getTarget/gameMenuCtor),
+//                      debugCamera detour, creatureObject (setTarget),
+//                      AND debugCamera::patch (the unconditional 2-byte NOP of
+//                      `xor cl,cl` at 0x0051AA8D inside GroundScene's
+//                      input-map handler — see ground_scene 0x0051AA40).
+//   skipRenderGroup -> Graphics, renderWorld, shaderPrimitiveSorter,
+//                      postProcessing, skeletalAppearance,
+//                      ParticleEffectAppearance.
+//   skipMiscGroup   -> Client, clientWorld, Game, CuiChatWindow, CuiManager,
+//                      cuiMenu, cuiRadialMenuManager, cuiLoginScreen,
+//                      SystemMessageManager, report, treefile, config, IoWin,
+//                      cuiMisc::patch.
+// REVERTABLE: deleting this block + restoring the original call list removes
+// all bisect scaffolding. No behavior change unless a skip key is set true.
+static bool bisectSkip(const char* key)
+{
+    const bool skip = ini.getBool("DebugBisect", key);
+    char msg[96];
+    snprintf(msg, sizeof(msg), "  [DebugBisect] %s = %s", key, skip ? "SKIP" : "run");
+    utinni::log::info(msg);
+    return skip;
+}
+
 void createDetours()
 {
     utinni::log::info("Creating detours");
+
+    const bool skipInput = bisectSkip("skipInputGroup");
+    const bool skipRender = bisectSkip("skipRenderGroup");
+    const bool skipMisc = bisectSkip("skipMiscGroup");
 
     // 2026-05-19: full detour set restored after bisection (rounds 0-10).
     // The audio-init stall was traced to Client::detour's hkSetupStartInstall
@@ -84,42 +121,73 @@ void createDetours()
     // (see client.cpp). All other detours+patches were proven innocent by
     // the bisection; restoring them here.
 
-    swg::config::detour();
+    // --- MISC / UI / lifecycle group ---
+    if (!skipMisc)
+    {
+        swg::config::detour();
 
-    utinni::Client::detour();
-    utinni::clientWorld::detour();
-    utinni::creatureObject::detour();
-    utinni::CuiChatWindow::detour();
-    utinni::CuiManager::detour();
-    utinni::cuiHud::detour();
-    utinni::cuiIo::detour();
-    // utinni::cuiIntro::detour();
-    utinni::cuiMenu::detour();
-    utinni::cuiRadialMenuManager::detour();
-    utinni::cuiLoginScreen::detour();
-    // utinni::cuiMediatorFactorySetup::detour();
-    utinni::debugCamera::detour();
-    utinni::Game::detour();
-    utinni::GroundScene::detour();
-    utinni::Graphics::detour();
-    utinni::MessageQueue::detour(); // Phase G (Issue #11): instrument input-map output
-    utinni::ParticleEffectAppearance::detour();
-    utinni::report::detour();
-    utinni::skeletalAppearance::detour();
-    utinni::SystemMessageManager::detour();
-    utinni::treefile::detour();
-    utinni::renderWorld::detour();
-    utinni::shaderPrimitiveSorter::detour();
-    utinni::IoWin::detour();
-    utinni::postProcessing::detour();
+        utinni::Client::detour();
+        utinni::clientWorld::detour();
+        utinni::CuiChatWindow::detour();
+        utinni::CuiManager::detour();
+        // utinni::cuiIntro::detour();
+        utinni::cuiMenu::detour();
+        utinni::cuiRadialMenuManager::detour();
+        utinni::cuiLoginScreen::detour();
+        // utinni::cuiMediatorFactorySetup::detour();
+        utinni::Game::detour();
+        utinni::report::detour();
+        utinni::SystemMessageManager::detour();
+        utinni::treefile::detour();
+        utinni::IoWin::detour();
+    }
+
+    // --- INPUT / EVENT / MOVEMENT / LOCOMOTION group (prime suspect) ---
+    if (!skipInput)
+    {
+        utinni::creatureObject::detour();
+        utinni::cuiHud::detour();
+        utinni::cuiIo::detour();
+        utinni::debugCamera::detour();
+        utinni::GroundScene::detour();
+        utinni::MessageQueue::detour(); // Phase G (Issue #11): instrument input-map output
+    }
+
+    // --- RENDER group ---
+    if (!skipRender)
+    {
+        utinni::Graphics::detour();
+        utinni::ParticleEffectAppearance::detour();
+        utinni::skeletalAppearance::detour();
+        utinni::renderWorld::detour();
+        utinni::shaderPrimitiveSorter::detour();
+        utinni::postProcessing::detour();
+    }
 }
 
 void createPatches()
 {
     utinni::log::info("Creating patches");
 
-    utinni::cuiMisc::patch();
-    utinni::debugCamera::patch();
+    const bool skipInput = ini.getBool("DebugBisect", "skipInputGroup");
+    const bool skipMisc = ini.getBool("DebugBisect", "skipMiscGroup");
+
+    // cuiMisc::patch is itself fully gated on enableOfflineScenes; group it with
+    // MISC for completeness.
+    if (!skipMisc)
+    {
+        utinni::cuiMisc::patch();
+    }
+
+    // debugCamera::patch performs an UNCONDITIONAL 2-byte NOP of `xor cl,cl` at
+    // 0x0051AA8D inside GroundScene::handleInputMapEvent (0x0051AA40). It alters
+    // input-map control flow ("enable mouse wheel to debugCamera"). Grouped with
+    // INPUT so the bisect can disable the only unconditional code-write that sits
+    // directly on the locomotion input path.
+    if (!skipInput)
+    {
+        utinni::debugCamera::patch();
+    }
 }
 
 // DIAG 2026-05-19: Vectored Exception Handler to log first-chance int 3
