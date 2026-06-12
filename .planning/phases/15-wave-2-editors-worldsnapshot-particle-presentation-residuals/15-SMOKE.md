@@ -68,10 +68,10 @@ visibly affect in-world placements and that undo reverses them.
 
 | # | Step | Expected | Result |
 |---|------|----------|--------|
-| A1 | TJT loads; open the Snapshot panel | Panel + the new `Placements…` button visible (MEF seam unchanged) | ⬜ |
+| A1 | TJT loads; open the Snapshot panel | Panel + the new `Placements…` button visible (MEF seam unchanged) | ✅ 2026-06-12 |
 | A2 | Load a `.ws` snapshot | Placements populate; in-world objects appear | ⬜ |
-| A3 | Click `Placements…` | The `FormSnapshotPlacements` table opens with the placement rows | ⬜ |
-| A4 | Single-select a row | The gizmo drives that single placement (selection-sync holds) | ⬜ |
+| A3 | Click `Placements…` | The `FormSnapshotPlacements` table opens with the placement rows | ✅ 2026-06-12 — `Snapshot Placements — naboo`, 5440 placements; filter works (543 theed) | 
+| A4 | Single-select a row | The gizmo drives that single placement (selection-sync holds) | ◐ partial 2026-06-12 — row-select → sidebar Selected Node sync ✅ (`shared_streetlamp_naboo_theed_style_1.iff`); gizmo VISUAL not yet confirmed |
 | A5 | Multi-select rows | Multi-row selection holds; detach/reattach is stable | ⬜ |
 | A6 | `Move selected…` | Selected placements visibly move in-world | ⬜ |
 | A7 | `Delete selected` (red confirm) | Selected placements disappear in-world after the confirm | ⬜ |
@@ -79,6 +79,13 @@ visibly affect in-world placements and that undo reverses them.
 | A9 | Undo (each op) | Each bulk op reverses atomically (N undo commands compose) | ⬜ |
 
 **Checklist A outcome / defects:**
+
+> Banked from the 2026-06-12 session (interrupted by the phantom-walk defect, since RESOLVED —
+> stale blender-plugin searchPath overrides in `swgemu_live.cfg`, NOT injection; see
+> `.planning/debug/resolved/phantom-forward-walk.md`): A1/A3 confirmed, A4 selection-sync half
+> confirmed. RESID-03 WS LOCKED badge verbatim confirmed: "Placements re-resolve on the next
+> scene change." DEC-A3/D-11 boundary footer verbatim confirmed (Blender-lane sentence).
+> A2, A4-gizmo-visual, A5–A9 remain for the post-fix session.
 
 _(record here)_
 
@@ -151,6 +158,11 @@ For each transition record: embed survives? SWG renders at right size? mouse map
 
 **Checklist C outcome / defects** (update `swg-window-resize-fullscreen-edge-cases.md` with the per-row findings):
 
+> Preliminary data point (2026-06-12 session, pre-walk-fix): TJT Scene▸Load `naboo.trn` scene
+> change — embed survived, `hkSetScene` clean (supports C4; re-walk in the full matrix).
+> Note: utinni.log that session showed only `NONEXCLUSIVE FOREGROUND (0x6)` requests at char
+> select — no EXCLUSIVE request seen yet; C1/C2 need the fullscreen/login-to-world triggers.
+
 _(record here)_
 
 ---
@@ -193,5 +205,11 @@ _(record here)_
 **Signed:** _(maintainer)_  **Date:** _(YYYY-MM-DD)_
 
 **Notes / follow-on defects:**
+
+> Session logistics (2026-06-12): TJT `ToggleFreeCam = Shift+Tab` hotkey collides with Claude
+> Code's permission-mode cycling, and permission prompts steal focus from the game — MCP-driven
+> UI automation was unreliable; maintainer-drives mode is the working pattern for this smoke.
+> Build under test: Task-1 assembled build + `04fa26d` `[DebugBisect]` ini-gated skip groups
+> (default-off, live-verified clean standing/NPCs-normal post-walk-fix).
 
 _(record here)_
