@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 15 (wave-2-editors-worldsnapshot-particle-presentation-residuals) — EXECUTING
-Plan: 15-18 live re-smoke COMPLETE (defects disposition) — gap-closure round 2 (15-12..15-18) all executed; B5/B7/C3/A9 PASS live, but B6 + D-ii defects found → Phase 15 routes to a NEW --gaps round (15-19+)
-Status: BLOCKED on gaps round 3 — plan + execute fixes for B6 (disabled-button tooltip) + D-ii (.stf loose-override subpath flatten), then re-smoke. Requirements NOT Validated until that round closes.
+Plan: gap-closure round 3 PLANNED — 15-19 (B6 Preview-candor reachable), 15-20 (D-ii LogicalAssetPath subpath preserve), 15-21 (reassembly + re-verify + final sign-off). Round 2 (15-12..15-18) executed; B5/B7/C3/A9 PASS live; B6 + D-ii defects routed here.
+Status: READY TO EXECUTE round 3 — run `/gsd:execute-phase 15 --gaps-only` (picks up 15-19/15-20 wave 8, 15-21 wave 9). Requirements NOT Validated until 15-21 sign-off.
 Last activity: 2026-06-13 -- 15-18 maintainer live re-smoke (Claude-driven via windows-mcp): B5/B7/C3/A9 PASS; B6 + D-ii defects → new --gaps round; D-render deferred (loose searchPath disabled); fullscreen mouse-mapping residual logged
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
