@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
 status: executing
-stopped_at: Completed 15-11-PLAN.md (gap-closure Release gate + reassembled content-verified injection build)
-last_updated: "2026-06-13T16:33:17.836Z"
-last_activity: 2026-06-13 -- Phase 15 planning complete
+stopped_at: Completed 15-14-PLAN.md (finalized A9 WS undo revert + stripped [A9-diag] logging + node-only guard coverage)
+last_updated: "2026-06-13T17:30:00.000Z"
+last_activity: 2026-06-13 -- 15-14 gap-closure executed (A9 revert finalized, diagnostic-free)
 progress:
   total_phases: 20
   completed_phases: 15
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 15 (wave-2-editors-worldsnapshot-particle-presentation-residuals) — EXECUTING
-Plan: 15-11 of 11 (gap-closure 15-09/15-10/15-11 complete) — phase awaiting maintainer 15-08 live smoke
+Plan: 15-14 complete (round-2 gap-closure 15-12..15-18 in flight) — phase awaiting maintainer 15-08/15-18 live smoke
 Status: Ready to execute
-Last activity: 2026-06-13 -- Phase 15 planning complete
+Last activity: 2026-06-13 -- 15-14 gap-closure executed (A9 revert finalized, diagnostic-free)
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 
@@ -154,6 +154,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 15 P15-09 | ~5 min | 2 tasks tasks | 4 files files |
 | Phase 15 P15-10 | ~20 min | 2 tasks | 9 (cross-repo) files |
 | Phase 15 P15-11 | ~39 min | 2 tasks | 1 doc + reassembled bin/Release build artifacts |
+| Phase 15 P15-14 | ~20 min | 1 task | 2 files |
 
 ## Accumulated Context
 
@@ -196,6 +197,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: 15-07 (RESID-03 automatable half) COMPLETE: extended ReloadAssetClassifier with named WorldSnapshotExtensions{.ws}+ParticleExtensions{.prt} sets routing both to tier-(b) PendingNextSceneChange (D-14), backing the LOCKED WS 'Placements re-resolve on the next scene change.' + Particle DEGRADED 'Reloads on next scene change or relog.' badge copy; conservative unknown fallback preserved exactly. Particle LIVE-capable badge is a form-side runtime affordance (15-03 hook+Game.IsRunning), NOT a classifier tier. ParticleSnapshotReloadRoutingTests 9 facts incl honesty guard; dotnet test --filter ReloadRouting 15/15. Live SC3 render-on-reload is 15-08 smoke. Commit c63122a.
 - [Phase ?]: 15-09: A9 WS undo-crash closed — pure WorldSnapshotCommandGuard bail-on-null helper + all four WS IUndoCommand bodies guarded (ParentNode before LastChild). 696/696 managed suite green; sln Release|x86 exit 0; live A9 re-verify in 15-11->15-08.
 - [Phase 15]: 15-10: UndoRedoManager.Clear() public seam + IEditorPlugin Undo/Redo/ClearUndoStack delegates wired by FormMain; WorldSnapshotImpl clears stack+gizmo on Load/Unload/Reload+BulkDelete/RemoveNode; FormSnapshotPlacements Ctrl+Z/Y routes to editor undo with FIFO refresh-after-undo. Both repos Release|x86 green against the paired-rebuilt widened interface (binary-compat verified). A9 secondary half + GAP2 stale-gizmo closed; live re-verify in 15-11->15-08.
+- [Phase 15]: 15-14: A9 WS undo REVERT finalized (the 15-09 fix stopped the crash; this stops the silent no-op). SetPosition/SetRotation resolve the LIVE node by id (WorldSnapshotReaderWriter.Get().GetNodeById + GetChildById live-parent fallback) — NOT the copied node's dead ParentNode linkage — guard node-only via WorldSnapshotCommandGuard.ShouldApply(node) (node-required; in-world object OPTIONAL, moved only when instantiated via Network.GetObjectById), revert the node data + DetailLevelChanged. All 7 temporary [A9-diag] Log.Info lines stripped + unused Utility using removed → diagnostic-free for the 15-17 reassembled build. Guard source unchanged (both overloads already shipped in 15-09); only added explicit node-only-semantics facts (8 guard facts). sln Release|x86 exit 0; 695/695 non-harness managed tests green (1 pre-existing out-of-scope failure: FindPatternHarnessTests.GetVtbl — headless dummy-device CreateDevice(HAL) has no graphics adapter, logged to deferred-items.md). Live A9 re-verify (PASS 2026-06-13) re-confirms against diagnostic-free build in 15-18. Commit c7cbd8a.
 - [Phase ?]: 15-11: gap-closure Release gate green (697 managed + 84/27 native + resid04 8/1, zero regression); reassembled bin/Release injection build content-verified (deployed UtinniCoreDotNet.dll defines WorldSnapshotCommandGuard + UndoRedoManager.Clear; TheJawaToolboxDotNet.dll references ClearUndoStack via reflection-only enumeration, not just mtime); A9 undo-crash re-verify pointer recorded in 15-SMOKE.md back to 15-08; phase still gated on maintainer live smoke.
 
 ### Pending Todos
@@ -252,8 +254,8 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-13T02:54:59.005Z
-Stopped at: Completed 15-11-PLAN.md (gap-closure Release gate + reassembled content-verified injection build)
+Last session: 2026-06-13T17:30:00.000Z
+Stopped at: Completed 15-14-PLAN.md (finalized A9 WS undo revert + stripped [A9-diag] logging + node-only guard coverage)
 Resume file: None
 
 ## Ingest Provenance
