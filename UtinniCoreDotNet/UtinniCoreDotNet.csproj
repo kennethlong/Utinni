@@ -270,6 +270,7 @@
     <Compile Include="Editing\LivePatchValidator.cs" />
     <Compile Include="Utility\Log.cs" />
     <Compile Include="Utility\Native.cs" />
+    <Compile Include="Utility\InjectedAssemblyResolver.cs" />
   </ItemGroup>
   <!-- 14-01 (Fork-2 ruling): LooseOverridePath physically lives in the netstandard2.0
        UtinniCoreDotNet.PathContainment lib (single source of truth, also consumed by the
@@ -283,6 +284,19 @@
       <Project>{B7E4A0C3-3D2F-4E91-9A6E-14C0A7E5D210}</Project>
       <Name>UtinniCoreDotNet.PathContainment</Name>
     </ProjectReference>
+  </ItemGroup>
+  <!-- 15-12 (15-SMOKE B5): UtinniCoreDotNet.PathContainment is a netstandard2.0 assembly; it
+       needs the `netstandard` 4.0.30319 façade to load inside the injected .NET-Framework host.
+       Under injection the default AppDomain's APPBASE is the host exe dir (SWGEmu.exe), NOT the
+       Utinni inject root, so the BCL probe never finds the façade. Deploy the in-box façade next
+       to UtinniCoreDotNet.dll so the InjectedAssemblyResolver AssemblyResolve handler has a file
+       to bind from the inject root. Use $(SystemRoot) (not a hardcoded C:\Windows). The physical
+       copy into bin/Release/ is finalized by the rebuild/reassembly plan 15-17. -->
+  <ItemGroup>
+    <Content Include="$(SystemRoot)\Microsoft.NET\Framework\v4.0.30319\netstandard.dll">
+      <Link>netstandard.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="UI\Forms\FormHotkeyEditorDialog.resx">
