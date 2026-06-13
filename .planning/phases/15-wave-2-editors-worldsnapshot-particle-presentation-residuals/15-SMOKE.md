@@ -99,9 +99,15 @@ target node disappears on re-resolve. Cosmetic; the gizmo clears on next selecti
 follow-on: clear/hide the gizmo when the selected node is removed or on snapshot reload. Does NOT
 block the PROD-W2-WS sign-off.
 
-**DEFECT (BLOCKING — client crash) — Undo after a Snapshot ▸ Reload null-derefs:** A9 — after Move
-(or any bulk op) followed by a `Snapshot ▸ Reload`, invoking the editor Undo (main-window Undo arrow)
-crashes the client with `0xC0000005` null-read at a managed/JIT address (`utinni.log` 19:32:15).
+**DEFECT (BLOCKING — client crash) — Undo of a WorldSnapshot bulk op null-derefs:** A9 — invoking the
+editor Undo (main-window Undo arrow) after any WS bulk op crashes the client with `0xC0000005`
+null-read at a managed/JIT address. Reproduced TWICE: (1) Move→Snapshot Reload→Undo (`utinni.log`
+19:32:15); (2) **clean-stack relaunch repro** — matched Naboo terrain, fresh snapshot Load (empty
+undo stack), Move ΔX=100 (grid updated 2097.7→2197.7, object resolved, move worked), Undo →
+**crashed again**, identical signature (`utinni.log` 20:14:48 `VEH FATAL 0xC0000005 …
+module=<unmapped-EIP> … READ target=0x0`, same int3 `0x00AA1E3F`, same ESP `0x001AF9FC`).
+**SCOPING RESULT: the crash is NOT reload-specific** — undo crashes with a single clean Move command
+on matched terrain. The reload only made the unresolved-object condition easier to hit.
 **ROOT CAUSE (confirmed in code):** `WorldSnapshotNodePositionChangedCommand.SetPosition()`
 (`UtinniCoreDotNet/Commands/WorldSnapshotCommands.cs:140-141`) does
 `var obj = Network.GetObjectById(nodeCopy.Id); obj.Transform.Position = position;` with **no null
@@ -111,11 +117,12 @@ for that node id is not currently instantiated, so `Network.GetObjectById` retur
 AV. The Add/Remove/Rotation undo commands have the same unguarded `WorldSnapshotReaderWriter`/`obj`
 lookups (`LastNode`, `ParentNode.LastChild`, `GetNodeById`). Secondary finding: `Ctrl+Z` is not
 routed from the `FormSnapshotPlacements` child window to the editor undo manager (no-op from that
-window). **Scoping still open:** NOT confirmed whether a clean `load → move → undo` (no reload in the
-stack) reverses correctly or also crashes — needs a fresh-stack repro after relaunch.
-**Gap-closure fix:** (1) null-guard `obj`/`node` lookups in all WS undo command bodies; (2) clear the
-editor undo stack on snapshot Unload/Reload so stale commands can't run; (3) ideally wire Ctrl+Z from
-the placements window.
+window). **Gap-closure fix:** (1) null-guard `obj`/`node` lookups in ALL WS undo command bodies
+(Position/Rotation/Add/Remove `Execute` AND `Undo`) — bail gracefully (and re-derive/skip) when
+`Network.GetObjectById`/node lookup returns null instead of dereferencing; (2) clear the editor undo
+stack on snapshot Unload/Reload so stale commands can't run; (3) ideally wire Ctrl+Z from the
+placements window. **This is a hard blocker on PROD-W2-WS sign-off** — undo is a core advertised bulk-op
+affordance (A9) and currently takes down the client.
 
 ---
 
