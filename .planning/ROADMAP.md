@@ -344,7 +344,7 @@ Plans:
   3. Both SubPanels load inside TJT against a live SWG client and follow the Wave-1 MEF SubPanel seam unchanged.
   4. The SWG window-resize / windowed↔fullscreen edge cases are enumerated and fixed without a device Reset (RESID-04).
   5. SC3 live-reload semantics for string-table + object-template reload are confirmed and honestly stated in the editor reload-candor UI (RESID-03).
-**Plans**: 11 plans (5 waves; 15-09..15-11 gap closure from the 15-SMOKE A9 undo-crash)
+**Plans**: 18 plans (7 waves; 15-09..15-11 gap closure from the 15-SMOKE A9 undo-crash; 15-12..15-18 defect-driven gap closure from the 2026-06-13 15-SMOKE live smoke)
 **Plans**:
 - [x] 15-01-PLAN.md — WorldSnapshot editor: placements table + multi-select bulk move/delete/retemplate (FormSnapshotPlacements companion window; WorldSnapshotBulkComposer) [PROD-W2-WS] (Wave 1)
 - [x] 15-02-PLAN.md — .prt/PEFT typed codec in Formats/Particle (WaveForm/ColorRamp/EMTR) + degrade-dont-abort raw-preserve + byte-exact round-trip [PROD-W2-PRT] (Wave 1)
@@ -357,6 +357,13 @@ Plans:
 - [x] 15-09-PLAN.md — GAP: null-guard all WS IUndoCommand Execute/Undo bodies + pure WorldSnapshotCommandGuard helper (fixes A9 undo-crash root cause) [PROD-W2-WS] (Wave 1, gap_closure)
 - [x] 15-10-PLAN.md — GAP: UndoRedoManager.Clear() + IEditorPlugin undo seam; clear stack + gizmo on snapshot Load/Unload/Reload; route Ctrl+Z from FormSnapshotPlacements [PROD-W2-WS] (Wave 1, gap_closure)
 - [x] 15-11-PLAN.md — GAP: full Release gate + reassemble bin/Release injection build for the 15-08 A9 re-verify; record outcome in 15-SMOKE.md [PROD-W2-WS] (Wave 2, gap_closure)
+- [ ] 15-12-PLAN.md — GAP: inject-root AssemblyResolve handler + ship netstandard.dll (B5 façade — loose-override Save works under injection for every editor) [PROD-W2-PRT, RESID-03] (Wave 5, gap_closure)
+- [ ] 15-13-PLAN.md — GAP: window-side watchdog re-asserts owned-popup embed on SWG's window-level fullscreen restyle, no device Reset (C3) [RESID-04] (Wave 5, gap_closure)
+- [ ] 15-14-PLAN.md — GAP: finalize A9 revert (live-node-by-id + optional-obj) + strip [A9-diag] logging + node-only guard coverage [PROD-W2-WS] (Wave 5, gap_closure)
+- [ ] 15-15-PLAN.md — GAP: ParticleReadAssist.LocateCli inject-root probe so a deployed utinni-cli.exe resolves (B7) [PROD-W2-PRT] (Wave 5, gap_closure)
+- [ ] 15-16-PLAN.md — GAP: managed polish — Particle param-grid rebind (B4/B5), honest no-hook preview tooltip (B6), delete-confirm candor + BulkDelete DetailLevelChanged (A7) [PROD-W2-PRT, PROD-W2-WS, RESID-03] (Wave 5, gap_closure)
+- [ ] 15-17-PLAN.md — GAP: full Release gate + reassemble bin/Release with netstandard.dll + utinni-cli.exe, content-verified [PROD-W2-WS/PRT, RESID-03/04] (Wave 6, gap_closure)
+- [ ] 15-18-PLAN.md — GAP: Tier-4 maintainer live re-smoke (B5-B8 + Checklist C incl C3 + Checklist D); sign-off gates closure (autonomous:false) [PROD-W2-WS/PRT, RESID-03/04] (Wave 7, gap_closure)
 **Research flag**: yes — `.prt` codec format depth is MEDIUM-confidence; `swg-client-v2` is the spec reference but no Utinni fixtures exist yet (`/gsd:plan-phase --research-phase 15`).
 **UI hint**: yes
 
