@@ -76,7 +76,7 @@ visibly affect in-world placements and that undo reverses them.
 | A6 | `Move selected…` | Selected placements visibly move in-world | ✅ 2026-06-12 — Move dialog (ΔX/ΔY/ΔZ + Apply); ΔX=3 → both armoires + grid Position values shifted in-world (maintainer confirmed) |
 | A8 | `Retemplate selected…` | Selected placements swap template (remove+add per node) in-world | ✅ 2026-06-12 — selected streetlamps 104+105 → Retemplate → `object/tangible/furniture/cheap/shared_armoire_s01.iff` → Apply. 2 new armoire nodes (`9995373`/`9995374`) created at the **exact preserved transforms** of 104/105 (-5110/4184, -5151/4290) + armoire rendered in-world. Add half immediate; Remove half deferred (tier-b, same as Delete). Composes Remove+Add descriptors per 15-01 design. |
 | A7 | `Delete selected` (red confirm) | Selected placements disappear in-world after the confirm | ✅ 2026-06-12 (tier-b) — red confirm fired ("Delete 2 placements? …undoable in the editor until you save."), selection cleared. Live render + grid defer (matches LOCKED badge "Placements re-resolve on the next scene change"); after Snapshot ▸ Reload the deleted armoires + rows are gone. **History note (maintainer-confirmed):** base naboo snapshot has NO armoires — all armoire nodes are in-memory adds. Reload re-reads the authored node list (reverts unsaved node edits) and does NOT de-spawn already-rendered objects until a scene change. So delete/retemplate persistence is governed by **Save** (loose-override), not reload; reload-revert is expected, not a bug. |
-| A9 | Undo (each op) | Each bulk op reverses atomically (N undo commands compose) | ❌ **CRASH 2026-06-12** — Move applied cleanly (104 X −5151.1→−5051.1 in grid). `Ctrl+Z` while the Placements child window was focused did NOTHING (no revert, no crash) — undo hotkey not routed from the child window to the editor undo manager. Clicking the **main-editor Undo arrow** then **crashed the client**: `utinni.log` 19:32:15 `VEH FATAL: code=0xC0000005 … module=<unmapped-EIP> base=0x0 rva=0x03667F2A READ target=0x00000000` → `ExceptionHandler invoked`. Null-deref AV at a JIT/managed address. No fresh `.mdmp` (int3 halt). Client process gone. **HYPOTHESIS:** Snapshot ▸ Reload reverts the node list but does NOT invalidate the editor undo stack → undo command holds a stale/dangling node pointer from before the reload → null-deref on undo. NOT yet scoped whether a clean move→undo (no reload in the stack) also crashes. |
+| A9 | Undo (each op) | Each bulk op reverses atomically (N undo commands compose) | 🔧 **FIX SHIPPED (15-09/15-10); AWAITING LIVE RE-VERIFY against the reassembled build (under 15-08)** — original crash evidence below preserved. ❌ **CRASH 2026-06-12** — Move applied cleanly (104 X −5151.1→−5051.1 in grid). `Ctrl+Z` while the Placements child window was focused did NOTHING (no revert, no crash) — undo hotkey not routed from the child window to the editor undo manager. Clicking the **main-editor Undo arrow** then **crashed the client**: `utinni.log` 19:32:15 `VEH FATAL: code=0xC0000005 … module=<unmapped-EIP> base=0x0 rva=0x03667F2A READ target=0x00000000` → `ExceptionHandler invoked`. Null-deref AV at a JIT/managed address. No fresh `.mdmp` (int3 halt). Client process gone. **HYPOTHESIS:** Snapshot ▸ Reload reverts the node list but does NOT invalidate the editor undo stack → undo command holds a stale/dangling node pointer from before the reload → null-deref on undo. NOT yet scoped whether a clean move→undo (no reload in the stack) also crashes. |
 
 **Checklist A outcome / defects:**
 
@@ -123,6 +123,40 @@ window). **Gap-closure fix:** (1) null-guard `obj`/`node` lookups in ALL WS undo
 stack on snapshot Unload/Reload so stale commands can't run; (3) ideally wire Ctrl+Z from the
 placements window. **This is a hard blocker on PROD-W2-WS sign-off** — undo is a core advertised bulk-op
 affordance (A9) and currently takes down the client.
+
+**GAP-CLOSURE 2026-06-13 (plans 15-09 / 15-10 / 15-11 — fixes shipped, awaiting live re-verify):**
+The two A9 defects above (the BLOCKING undo crash + the minor stale-gizmo) and the Ctrl+Z routing gap
+have been fixed in code and the fixed injection build reassembled. The original crash evidence above
+(the `0xC0000005` records + both DEFECT blocks) is preserved verbatim — this is an annotation, not a
+rewrite.
+
+- **A9 BLOCKING undo crash — root cause fixed (15-09):** the WS bulk-op `IUndoCommand` bodies now resolve
+  obj+node FIRST, then null-guard every `Network.GetObjectById` / node lookup via the pure
+  `WorldSnapshotCommandGuard` bail-on-null helper (with unit coverage). All four WS command
+  `Execute` AND `Undo` paths (Position / Rotation / Add / Remove; ParentNode before LastChild)
+  bail gracefully instead of dereferencing null — so a stale/dangling node pointer no longer
+  null-derefs the client. (Utinni `43b9dc9` helper, `08eeb51` guards.)
+- **A9 secondary (stale undo stack) + Ctrl+Z routing fixed (15-10):** `UndoRedoManager.Clear()` is now a
+  public seam; the editor undo stack is cleared on snapshot **Load / Unload / Reload** (and on
+  BulkDelete / RemoveNode) so a pre-reload command can no longer run against a reverted node list;
+  `Ctrl+Z` / `Ctrl+Y` now route from the `FormSnapshotPlacements` child window to the editor undo
+  manager with refresh-after-undo ordering. (Utinni `8a888b7`; UtinniPlugins `0b7e1a1` / `d61b922`.)
+- **GAP 2 (minor) stale selection gizmo on re-resolve / node-removal — fixed (15-10):** the in-world
+  manipulation gizmo is cleared when its target node disappears on reload / node removal.
+- **Fixed injection build reassembled + content-verified (15-11, this plan):** the full automated gate is
+  green with zero regression (`UtinniCoreDotNet.Tests` 697 pass / 0 fail incl. the new 15-09/15-10
+  facts; `Utinni.Cli.Tests` 249 pass / 2 skip; `Utinni.Mcp.Tests` 77 pass; native `UtinniCore.Tests.exe`
+  84 assertions / 27 cases + `[resid04]` 8 / 1). The deployable layout at `D:/Code/Utinni/bin/Release/`
+  was rebuilt (`Utinni.sln` + `TheJawaToolbox.sln` Release|x86, MSBuild exit 0) and **content-verified
+  to carry the fix** (not just freshly-timestamped): the deployed `UtinniCoreDotNet.dll` defines type
+  `WorldSnapshotCommandGuard` AND `UndoRedoManager` exposes a public `Clear`, and the deployed
+  `Plugins/TheJawaToolbox/TheJawaToolboxDotNet.dll` references `ClearUndoStack` (verified via
+  reflection-only type/method enumeration of the deployed PEs). The maintainer cannot be handed the
+  crashing DLL again.
+- **A9 re-verify is the maintainer's live-smoke continuation under plan 15-08:** inject the reassembled
+  `bin/Release/` build and re-run the A9 undo path (plus the still-open Checklist A re-run and
+  Checklists B / C / D). **Record the A9 re-verify result back in THIS `15-SMOKE.md`** against the fixed
+  build. This plan (15-11) does NOT sign off the phase — the Maintainer Sign-Off block remains the gate.
 
 ---
 
