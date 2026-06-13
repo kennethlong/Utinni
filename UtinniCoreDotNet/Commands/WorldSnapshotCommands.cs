@@ -55,14 +55,23 @@ namespace UtinniCoreDotNet.Commands
         {
             GroundSceneCallbacks.AddUpdateLoopCall(() =>
             {
-                // As we merely store a copy of the node, we need to fetch the actual node first before removing it
+                // As we merely store a copy of the node, we need to fetch the actual node first before removing it.
+                // 15-09 A9 fix: LastNode / ParentNode.LastChild can be null when nothing live is present;
+                // guard ParentNode BEFORE reading .LastChild, capture to a local, and skip the native
+                // RemoveNode entirely on null instead of passing a null into the native remove.
+                WorldSnapshotReaderWriter.Node node;
                 if (nodeCopy.ParentId == 0)
                 {
-                    WorldSnapshot.RemoveNode(WorldSnapshotReaderWriter.Get().LastNode);
+                    node = WorldSnapshotReaderWriter.Get().LastNode;
                 }
                 else
                 {
-                    WorldSnapshot.RemoveNode(nodeCopy.ParentNode.LastChild);
+                    node = nodeCopy.ParentNode != null ? nodeCopy.ParentNode.LastChild : null;
+                }
+
+                if (WorldSnapshotCommandGuard.ShouldApply(node))
+                {
+                    WorldSnapshot.RemoveNode(node);
                 }
             });
         }
@@ -90,14 +99,23 @@ namespace UtinniCoreDotNet.Commands
         {
             GroundSceneCallbacks.AddUpdateLoopCall(() =>
             {
-                // As we merely store a copy of the node, we need to fetch the actual node first before removing it
+                // As we merely store a copy of the node, we need to fetch the actual node first before removing it.
+                // 15-09 A9 fix: LastNode / ParentNode.LastChild can be null when nothing live is present;
+                // guard ParentNode BEFORE reading .LastChild, capture to a local, and skip the native
+                // RemoveNode entirely on null instead of passing a null into the native remove.
+                WorldSnapshotReaderWriter.Node node;
                 if (nodeCopy.ParentId == 0)
                 {
-                    WorldSnapshot.RemoveNode(WorldSnapshotReaderWriter.Get().LastNode);
+                    node = WorldSnapshotReaderWriter.Get().LastNode;
                 }
                 else
                 {
-                    WorldSnapshot.RemoveNode(nodeCopy.ParentNode.LastChild);
+                    node = nodeCopy.ParentNode != null ? nodeCopy.ParentNode.LastChild : null;
+                }
+
+                if (WorldSnapshotCommandGuard.ShouldApply(node))
+                {
+                    WorldSnapshot.RemoveNode(node);
                 }
             });
         }
@@ -137,19 +155,28 @@ namespace UtinniCoreDotNet.Commands
         {
             GroundSceneCallbacks.AddUpdateLoopCall(() =>
             {
+                // 15-09 A9 fix: resolve the in-world object AND the snapshot node FIRST, then guard
+                // before ANY dereference. Both native lookups return null when the object/node is not
+                // currently instantiated (e.g. Undo against a node whose live object is gone) — the
+                // old code dereferenced obj BEFORE node was even resolved -> 0xC0000005 client crash.
                 var obj = Network.GetObjectById(nodeCopy.Id);
-                obj.Transform.Position = position;
 
                 WorldSnapshotReaderWriter.Node node;
                 if (nodeCopy.ParentId > 0)
                 {
-                    node = nodeCopy.ParentNode.GetChildById(nodeCopy.Id);
+                    node = nodeCopy.ParentNode != null ? nodeCopy.ParentNode.GetChildById(nodeCopy.Id) : null;
                 }
                 else
                 {
                     node = WorldSnapshotReaderWriter.Get().GetNodeById(nodeCopy.Id);
                 }
 
+                if (!WorldSnapshotCommandGuard.ShouldApply(obj, node))
+                {
+                    return; // bail gracefully: a missing object/node is skipped, never dereferenced
+                }
+
+                obj.Transform.Position = position;
                 obj.PositionAndRotationChanged(false, node.Transform.Position);
                 node.Transform.Position = position;
 
@@ -200,19 +227,26 @@ namespace UtinniCoreDotNet.Commands
         {
             GroundSceneCallbacks.AddUpdateLoopCall(() =>
             {
+                // 15-09 A9 fix: resolve object AND node FIRST, single guard before any deref (see
+                // SetPosition). The old code dereferenced obj before node was resolved -> null-deref AV.
                 var obj = Network.GetObjectById(nodeCopy.Id);
-                obj.Transform.CopyRotation(transform);
 
                 WorldSnapshotReaderWriter.Node node;
                 if (nodeCopy.ParentId > 0)
                 {
-                    node = nodeCopy.ParentNode.GetChildById(nodeCopy.Id);
+                    node = nodeCopy.ParentNode != null ? nodeCopy.ParentNode.GetChildById(nodeCopy.Id) : null;
                 }
                 else
                 {
                     node = WorldSnapshotReaderWriter.Get().GetNodeById(nodeCopy.Id);
                 }
 
+                if (!WorldSnapshotCommandGuard.ShouldApply(obj, node))
+                {
+                    return; // bail gracefully: a missing object/node is skipped, never dereferenced
+                }
+
+                obj.Transform.CopyRotation(transform);
                 obj.PositionAndRotationChanged(false, node.Transform.Position);
                 node.Transform.CopyRotation(transform);
 
