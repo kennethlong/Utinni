@@ -4,14 +4,14 @@ milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
 status: executing
 stopped_at: Completed 15-09-PLAN.md (A9 WS undo-crash null-guards)
-last_updated: "2026-06-13T01:54:51.025Z"
+last_updated: "2026-06-13T02:05:25.043Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 20
   completed_phases: 15
   total_plans: 81
-  completed_plans: 79
-  percent: 98
+  completed_plans: 80
+  percent: 99
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 15 (wave-2-editors-worldsnapshot-particle-presentation-residuals) — EXECUTING
-Plan: 2 of 11
+Plan: 3 of 11
 Status: Ready to execute
 Last activity: 2026-06-13
 
@@ -152,6 +152,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 15 P06 | ~70min | 2 tasks | 9 files (cross-repo) |
 | Phase 15 P07 | ~20min | 1 tasks | 2 files |
 | Phase 15 P15-09 | ~5 min | 2 tasks tasks | 4 files files |
+| Phase 15 P15-10 | ~20 min | 2 tasks | 9 (cross-repo) files |
 
 ## Accumulated Context
 
@@ -193,6 +194,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase 15]: 15-05 (RESID-04 automatable half) COMPLETE 2026-06-07. Suppress SWG's exclusive-fullscreen mode switch at the DirectInput cooperative-level layer — `hkSetCooperativeLevel` rewrites `DISCL_EXCLUSIVE` -> `DISCL_NONEXCLUSIVE` (FOREGROUND/BACKGROUND/NOWINKEY preserved) behind a default-ON `std::atomic<bool>` toggle (D-12), keeping the owned-popup embed windowed instead of detaching to true D3D9 exclusive fullscreen (RESEARCH A4 / `chat-open-d3d9-fullscreen.md` prime suspect). Existing DISCL flag + caller-PC logging retained as the A4 live-confirmation instrument; the redirect logs the old->new flag rewrite. Toggle exposed via new exported `DirectInput::setSuppressExclusiveFullscreen`/`getSuppressExclusiveFullscreen` so 15-08 can A/B live without a rebuild and the deferred detached-fullscreen fallback (Open Q3) stays reachable. PanelGame.cs resize path documented: window-side `SetWindowPos`-only, NO Utinni-initiated device `Reset` (D-13), owned-popup unchanged (no `WS_CHILD`), imgui RT-space mouse/DisplaySize mapping holds across resize via windowed COPY Present self-stretch. D-13 enforced by a new Catch2 `[resid04]` `NoDeviceResetTests.cpp` — a comment-stripped source grep-gate over directx9.cpp + direct_input.cpp + PanelGame.cs counting `->Reset(`/`.Reset(` invocations == 0 (hkReset's free-function `reset(pDevice,...)` SWG-own pass-through naturally excluded), with an anti-trivial self-check section (grep-gate hygiene). UtinniCore + UtinniCore.Tests Release|x86 green; 8 assertions pass. Generated/UtinniCore.cs regen churn reverted (never committed). Live edge-case-matrix confirmation folded into 15-08. Commits bf5843d, 6ae1dd7.
 - [Phase ?]: 15-07 (RESID-03 automatable half) COMPLETE: extended ReloadAssetClassifier with named WorldSnapshotExtensions{.ws}+ParticleExtensions{.prt} sets routing both to tier-(b) PendingNextSceneChange (D-14), backing the LOCKED WS 'Placements re-resolve on the next scene change.' + Particle DEGRADED 'Reloads on next scene change or relog.' badge copy; conservative unknown fallback preserved exactly. Particle LIVE-capable badge is a form-side runtime affordance (15-03 hook+Game.IsRunning), NOT a classifier tier. ParticleSnapshotReloadRoutingTests 9 facts incl honesty guard; dotnet test --filter ReloadRouting 15/15. Live SC3 render-on-reload is 15-08 smoke. Commit c63122a.
 - [Phase ?]: 15-09: A9 WS undo-crash closed — pure WorldSnapshotCommandGuard bail-on-null helper + all four WS IUndoCommand bodies guarded (ParentNode before LastChild). 696/696 managed suite green; sln Release|x86 exit 0; live A9 re-verify in 15-11->15-08.
+- [Phase 15]: 15-10: UndoRedoManager.Clear() public seam + IEditorPlugin Undo/Redo/ClearUndoStack delegates wired by FormMain; WorldSnapshotImpl clears stack+gizmo on Load/Unload/Reload+BulkDelete/RemoveNode; FormSnapshotPlacements Ctrl+Z/Y routes to editor undo with FIFO refresh-after-undo. Both repos Release|x86 green against the paired-rebuilt widened interface (binary-compat verified). A9 secondary half + GAP2 stale-gizmo closed; live re-verify in 15-11->15-08.
 
 ### Pending Todos
 
@@ -248,7 +250,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-13T01:54:51.002Z
+Last session: 2026-06-13T02:02:17.098Z
 Stopped at: Completed 15-09-PLAN.md (A9 WS undo-crash null-guards)
 Resume file: None
 
