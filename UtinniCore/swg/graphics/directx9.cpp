@@ -562,10 +562,59 @@ void detour()
     swgptr SetDepthStencilAddress = Detour::CheckPointer(vtbl[d3di_SetDepthStencilSurface_Index]);
     setDepthStencil = (pSetDepthStencil)Detour::Create((LPVOID)SetDepthStencilAddress, hkSetDepthStencil, DETOUR_TYPE_PUSH_RET);
 
-    // ToDo Potentially make this an option, in case it creates issues
-    compileShader = (pCompileShader)Detour::Create((LPVOID)compileShader, hkD3DXCompileShader, DETOUR_TYPE_PUSH_RET);
+    // The compileShader override targets a function inside the SWG shader DLL
+    // s207_r.dll. The address below (0x62A4F9DB) is only correct when s207_r.dll
+    // is mapped at its preferred ImageBase. That assumption is fragile: if
+    // s207_r.dll is not yet loaded when detour() runs (load-order), or it was
+    // relocated (ASLR / preferred-base conflict), the hardcoded pointer is
+    // unmapped and Detour::Create's prologue read faults (0xC0000005 READ at the
+    // bare address — observed at inject time 2026-06-13). Mirror the CheckPointer
+    // guard the 7 vtable detours already use: resolve the module's ACTUAL base,
+    // relocate the address, and skip gracefully (log) if the module is absent or
+    // the target is not committed+executable. The overlay and 7 core D3D9 hooks
+    // are unaffected; this shader-compat override simply becomes safe/optional.
+    {
+        const swgptr kCompileShaderPreferredAddr = 0x62A4F9DB; // s207_r.dll at preferred ImageBase
 
-    utinni::log::info("directX::detour: EXIT (all 7 D3D9 hooks + compileShader detour installed)");
+        HMODULE hS207 = GetModuleHandleA("s207_r.dll");
+        if (hS207 == nullptr)
+        {
+            utinni::log::info("directX::detour: s207_r.dll not loaded; skipping compileShader detour");
+        }
+        else
+        {
+            // Relocate the preferred-base address to s207_r.dll's actual load base.
+            auto dos = (PIMAGE_DOS_HEADER)hS207;
+            auto nt = (PIMAGE_NT_HEADERS)((BYTE*)hS207 + dos->e_lfanew);
+            swgptr preferredBase = (swgptr)nt->OptionalHeader.ImageBase;
+            swgptr targetAddr = (swgptr)hS207 + (kCompileShaderPreferredAddr - preferredBase);
+
+            // Guard: only detour if the target is committed, executable code.
+            MEMORY_BASIC_INFORMATION mbi = {};
+            const DWORD execMask = PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
+            if (VirtualQuery((LPCVOID)targetAddr, &mbi, sizeof(mbi)) == sizeof(mbi)
+                && mbi.State == MEM_COMMIT
+                && (mbi.Protect & execMask) != 0)
+            {
+                compileShader = (pCompileShader)Detour::Create((LPVOID)targetAddr, hkD3DXCompileShader, DETOUR_TYPE_PUSH_RET);
+                char msg[192];
+                snprintf(msg, sizeof(msg),
+                         "directX::detour: compileShader detour installed at 0x%p (s207_r.dll base=0x%p, reloc from 0x%p)",
+                         (void*)targetAddr, (void*)hS207, (void*)kCompileShaderPreferredAddr);
+                utinni::log::info(msg);
+            }
+            else
+            {
+                char msg[192];
+                snprintf(msg, sizeof(msg),
+                         "directX::detour: compileShader target 0x%p not committed/executable (protect=0x%lX state=0x%lX); skipping detour",
+                         (void*)targetAddr, (unsigned long)mbi.Protect, (unsigned long)mbi.State);
+                utinni::log::info(msg);
+            }
+        }
+    }
+
+    utinni::log::info("directX::detour: EXIT (7 core D3D9 hooks installed; compileShader detour handled/guarded above)");
 }
 
 void cleanup()
