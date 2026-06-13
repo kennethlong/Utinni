@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
 status: executing
-stopped_at: Completed 15-13-PLAN.md (RESID-04 window-level-fullscreen embed re-assert watchdog in PanelGame.cs)
-last_updated: "2026-06-13T18:15:00.000Z"
-last_activity: 2026-06-13 -- 15-13 gap-closure executed (RESID-04 owned-popup re-assert watchdog)
+stopped_at: Completed 15-15-PLAN.md (B7 ParticleReadAssist.LocateCli inject-root probe)
+last_updated: "2026-06-13T19:00:00.000Z"
+last_activity: 2026-06-13 -- 15-15 gap-closure executed (B7 inject-root CLI probe path)
 progress:
   total_phases: 20
   completed_phases: 15
   total_plans: 88
-  completed_plans: 83
-  percent: 94
+  completed_plans: 84
+  percent: 95
 ---
 
 # Project State
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 15 (wave-2-editors-worldsnapshot-particle-presentation-residuals) — EXECUTING
-Plan: 15-13 complete (round-2 gap-closure 15-12..15-18 in flight) — phase awaiting maintainer 15-08/15-18 live smoke
+Plan: 15-15 complete (round-2 gap-closure 15-12..15-18 in flight) — phase awaiting maintainer 15-08/15-18 live smoke
 Status: Ready to execute
-Last activity: 2026-06-13 -- 15-13 gap-closure executed (RESID-04 owned-popup re-assert watchdog)
+Last activity: 2026-06-13 -- 15-15 gap-closure executed (B7 inject-root CLI probe path)
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 
@@ -157,6 +157,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 15 P15-14 | ~20 min | 1 task | 2 files |
 | Phase 15 P15-12 | ~25 min | 2 tasks | 4 files |
 | Phase 15 P15-13 | ~20 min | 1 task | 1 file |
+| Phase 15 P15-15 | ~12 min | 1 task | 1 file (cross-repo) |
 
 ## Accumulated Context
 
@@ -202,6 +203,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase 15]: 15-14: A9 WS undo REVERT finalized (the 15-09 fix stopped the crash; this stops the silent no-op). SetPosition/SetRotation resolve the LIVE node by id (WorldSnapshotReaderWriter.Get().GetNodeById + GetChildById live-parent fallback) — NOT the copied node's dead ParentNode linkage — guard node-only via WorldSnapshotCommandGuard.ShouldApply(node) (node-required; in-world object OPTIONAL, moved only when instantiated via Network.GetObjectById), revert the node data + DetailLevelChanged. All 7 temporary [A9-diag] Log.Info lines stripped + unused Utility using removed → diagnostic-free for the 15-17 reassembled build. Guard source unchanged (both overloads already shipped in 15-09); only added explicit node-only-semantics facts (8 guard facts). sln Release|x86 exit 0; 695/695 non-harness managed tests green (1 pre-existing out-of-scope failure: FindPatternHarnessTests.GetVtbl — headless dummy-device CreateDevice(HAL) has no graphics adapter, logged to deferred-items.md). Live A9 re-verify (PASS 2026-06-13) re-confirms against diagnostic-free build in 15-18. Commit c7cbd8a.
 - [Phase 15]: 15-12: B5 inject-root assembly-resolve façade closed. Pure BCL-only InjectedAssemblyResolver.ResolveProbePath (checker B-1; narrow file-existence-gated allow-list = exactly { netstandard, UtinniCoreDotNet.PathContainment }; full display name reduced to simple name; returns null for any non-allow-listed name per T-15-12-02) + AppDomain.CurrentDomain.AssemblyResolve handler installed as the FIRST statement inside Startup.EntryPoint's if(!initialized), BEFORE new PluginLoader() (plugins call LooseOverridePath at registration) — never throws (LoadFrom in try/catch -> Log.Info + null). csproj wires explicit <Compile Include> + a netstandard.dll deploy item via $(SystemRoot)\Microsoft.NET\Framework\v4.0.30319\ (Content/CopyToOutputDirectory); facade verified deployed to bin/Release. ROOT CAUSE: ExecuteInDefaultAppDomain (clr.cpp) runs in the default AppDomain whose APPBASE is the host exe dir (SWGEmu.exe), not the Utinni inject root, so the netstandard2.0 PathContainment façade never bound under injection -> loose-override Save threw for EVERY editor (15-SMOKE B5). 7 facts via --filter InjectedAssemblyResolver; full UtinniCoreDotNet.Tests 706/706 green; sln Release|x86 exit 0; Generated/UtinniCore.cs reverted. Live B5 re-verify gated to 15-18 against the 15-17 reassembled build (cached failed bind needs a relaunch). Commits e97d388, a05954f.
 - [Phase 15]: 15-13: RESID-04 window-level-fullscreen embed re-assert closed. The 2026-06-13 smoke proved C3 windowed→fullscreen is a WINDOW-LEVEL restyle (SWG mutates its own GWL_STYLE/GWLP_HWNDPARENT with ZERO new SetCooperativeLevel/EXCLUSIVE request → D-12 DirectInput suppress correctly never fires), so nothing re-asserted the owned-popup reparent and the embed detached (black gutter, chrome behind), focus dropped to 0x0, input died. NEW 250ms `embedWatchdogTimer` in PanelGame.cs (DISTINCT from the self-stopping one-shot reparentPollTimer), started after first reparent / stopped+disposed in PanelGame_Disposed: tick reads style+owner, detects WS_POPUP cleared OR any frame-mask bit re-added OR owner != FormMain, then `ReassertEmbed` re-strips frame (| WS_POPUP) + re-sets owner + RepositionSwgWindow (HWND_TOP + SWP_NOACTIVATE) + ownerFormCached.Activate() to pull focus back off 0x0. Shared `AssertEmbedStyles` helper = single source of frame-mask/WS_POPUP/owner logic for BOTH reparent + re-assert. Window-side ONLY (SetWindowLong/SetWindowPos + Activate), NEVER IDirect3DDevice9::Reset (D-13) — [resid04] no-Reset gate green (8 assertions/1 case); SWG stays WS_POPUP (never WS_CHILD, DirectInput top-level-HWND req). sln Release|x86 exit 0; 706/706 managed tests green; Generated/UtinniCore.cs reverted. Live C3 re-verify gated to 15-18 against the 15-17 reassembled build (rate-limited Log.Info diagnostic retained for utinni.log confirmation). Commit fc6e3fe.
+- [Phase 15]: 15-15: B7 packaging/probe gap closed (probe-path half). ParticleReadAssist.LocateCli now probes the Utinni inject root in addition to the executing-assembly dir + host-process dir: candidate 3 = two levels up from asmDir (Plugins/TheJawaToolbox -> Plugins -> bin/Release, nested Path.GetDirectoryName null-guarded), then a bounded (<=3-parent) walk-up that probes the CLI directly OR detects an inject-root marker (Launcher.exe / UtinniCoreDotNet.dll) and probes the CLI there. ROOT CAUSE: under injection the host-process dir is SWGEmu.exe's, not the Utinni deploy, so the prior two-candidate probe never found a deployed utinni-cli.exe -> Explain effect (D-08 read-assist) couldn't shell decode-iff (15-SMOKE B7). Whole probe stays inside the existing try/catch (never throws into the click handler); null-return CLI-absent path + 'was not found next to the editor' copy + decode-iff dispatch all unchanged (T-15-15-02 accepted: read-only decode-iff over the trusted maintainer-launched deploy). TheJawaToolbox.sln Release|x86 MSBuild exit 0; Generated/UtinniCore.cs not regenerated (C#-only build). Physical deploy of utinni-cli.exe + net472 dependency closure into bin/Release is finalized by 15-17; live B7 confirm gated to 15-18. Commit UtinniPlugins b6d0129.
 - [Phase ?]: 15-11: gap-closure Release gate green (697 managed + 84/27 native + resid04 8/1, zero regression); reassembled bin/Release injection build content-verified (deployed UtinniCoreDotNet.dll defines WorldSnapshotCommandGuard + UndoRedoManager.Clear; TheJawaToolboxDotNet.dll references ClearUndoStack via reflection-only enumeration, not just mtime); A9 undo-crash re-verify pointer recorded in 15-SMOKE.md back to 15-08; phase still gated on maintainer live smoke.
 
 ### Pending Todos
@@ -258,8 +260,8 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-13T18:15:00.000Z
-Stopped at: Completed 15-13-PLAN.md (RESID-04 window-level-fullscreen embed re-assert watchdog in PanelGame.cs)
+Last session: 2026-06-13T19:00:00.000Z
+Stopped at: Completed 15-15-PLAN.md (B7 ParticleReadAssist.LocateCli inject-root probe)
 Resume file: None
 
 ## Ingest Provenance

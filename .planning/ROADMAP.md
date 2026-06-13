@@ -360,7 +360,7 @@ Plans:
 - [x] 15-12-PLAN.md — GAP: inject-root AssemblyResolve handler + ship netstandard.dll (B5 façade — loose-override Save works under injection for every editor) [PROD-W2-PRT, RESID-03] (Wave 5, gap_closure)
 - [x] 15-13-PLAN.md — GAP: window-side watchdog re-asserts owned-popup embed on SWG's window-level fullscreen restyle, no device Reset (C3) [RESID-04] (Wave 5, gap_closure)
 - [x] 15-14-PLAN.md — GAP: finalize A9 revert (live-node-by-id + optional-obj) + strip [A9-diag] logging + node-only guard coverage [PROD-W2-WS] (Wave 5, gap_closure)
-- [ ] 15-15-PLAN.md — GAP: ParticleReadAssist.LocateCli inject-root probe so a deployed utinni-cli.exe resolves (B7) [PROD-W2-PRT] (Wave 5, gap_closure)
+- [x] 15-15-PLAN.md — GAP: ParticleReadAssist.LocateCli inject-root probe so a deployed utinni-cli.exe resolves (B7) [PROD-W2-PRT] (Wave 5, gap_closure)
 - [ ] 15-16-PLAN.md — GAP: managed polish — Particle param-grid rebind (B4/B5), honest no-hook preview tooltip (B6), delete-confirm candor + BulkDelete DetailLevelChanged (A7) [PROD-W2-PRT, PROD-W2-WS, RESID-03] (Wave 5, gap_closure)
 - [ ] 15-17-PLAN.md — GAP: full Release gate + reassemble bin/Release with netstandard.dll + utinni-cli.exe, content-verified [PROD-W2-WS/PRT, RESID-03/04] (Wave 6, gap_closure)
 - [ ] 15-18-PLAN.md — GAP: Tier-4 maintainer live re-smoke (B5-B8 + Checklist C incl C3 + Checklist D); sign-off gates closure (autonomous:false) [PROD-W2-WS/PRT, RESID-03/04] (Wave 7, gap_closure)
@@ -432,7 +432,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 12. Revive-feasibility spike (HARD GATE) + intro-skip crash | 0/TBD | Not started | - |
 | 13. Wrap compilers as CLI verbs + OT Tier-2 | 6/6 | Complete   | 2026-06-05 |
 | 14. Headless MCP server (`Utinni.Mcp`) | 5/5 | Complete   | 2026-06-07 |
-| 15. Wave-2 editors (WorldSnapshot, Particle) + residuals | 13/18 | In Progress|  |
+| 15. Wave-2 editors (WorldSnapshot, Particle) + residuals | 14/18 | In Progress|  |
 | 16. Live-injected MCP bridge + Blender boundary | 0/TBD | Not started | - |
 
 ## Backlog
