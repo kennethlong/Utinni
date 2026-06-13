@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
 status: executing
-stopped_at: Completed 15-05-PLAN.md (RESID-04 fullscreen suppress + no-Reset gate)
-last_updated: "2026-06-13T01:43:00.163Z"
-last_activity: 2026-06-13 -- Phase 15 planning complete
+stopped_at: Completed 15-09-PLAN.md (A9 WS undo-crash null-guards)
+last_updated: "2026-06-13T01:54:51.025Z"
+last_activity: 2026-06-13
 progress:
   total_phases: 20
   completed_phases: 15
   total_plans: 81
-  completed_plans: 78
-  percent: 96
+  completed_plans: 79
+  percent: 98
 ---
 
 # Project State
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 15 (wave-2-editors-worldsnapshot-particle-presentation-residuals) — EXECUTING
-Plan: 8 of 8
+Plan: 2 of 11
 Status: Ready to execute
-Last activity: 2026-06-13 -- Phase 15 planning complete
+Last activity: 2026-06-13
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 
@@ -151,6 +151,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 15 P05 | ~25min | 2 tasks | 5 files |
 | Phase 15 P06 | ~70min | 2 tasks | 9 files (cross-repo) |
 | Phase 15 P07 | ~20min | 1 tasks | 2 files |
+| Phase 15 P15-09 | ~5 min | 2 tasks tasks | 4 files files |
 
 ## Accumulated Context
 
@@ -191,6 +192,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase 15]: 15-06 (PROD-W2-PRT editor half) COMPLETE 2026-06-07. New FormParticleEditor : UtinniForm cloning the Phase-11 OT shell: emitter tree (IffChunkTree.LoadMutable over effect.SourceIff) + typed param grid (ThemedDataGridView, Field/Value/Type) with the D-05 honest greyed Consolas-9pt hex fallback + LOCKED "preserved as original bytes" tooltip, inherited Save▾ provenance gating (ParticleSaveTargets shim → Phase-8 IffSaveTargets/TreRepackSaveTarget), editor-local leaf-edit undo/redo (Before/After leaf-payload stack, CON-M-05, NOT a ParticleEditController — codec has no command layer), raw-leaf hex edit via FormParamHexEditor→EditLeafPayload, singleton hide-not-dispose (D-03), CF-09 Fill-first add order. Explain effect = read-assist ONLY (D-07): ParticleReadAssist shells utinni-cli decode-iff (same verb summarize_particle dispatches, D-08) with 15s timeout backstop, NO codec in the AI handler, no write/prompt-to-mutate, degrades to honest error if CLI absent (D-06). Preview in client (D-09) state-encoded on Game.IsRunning + IsRetriggerHookReachable() (=false this phase per 15-03 → LOCKED tier-(b) degraded reload badge "Reloads on next scene change or relog."; live-capable "Re-triggers live instances on Preview." wired for 15-08 via the single seam method). DEC-A3/D-11 boundary sentence surfaced verbatim as dimmed footer. NEW framework ParticleHandoffPolicy (UtinniCoreDotNet/UI; mirrors OtHandoffPolicy): ShouldOfferParticleEditor (.prt gate) + IsParticlePayload (cheap FORM PEFT byte sniff, never throws) — 18 facts. Registered in Plugin.cs GetForms() try/catch; GetSubPanels() stays null (CON-M-01/02). TRE Browser "Open in Particle Editor" hand-off gated on the policy (HIDDEN when sniff fails). Param grid read-only this phase (typed scalar inline edit + WaveForm/ColorRamp curve editor deferred per UI-SPEC Assumption 4 — typed surface VISIBLE + hex fallback editable). 18/18 ParticleHandoff facts green; TJT solution Debug|x86 green (VS2026 MSBuild exit 0). Commits — Utinni: 26af8e6 (ParticleHandoffPolicy); UtinniPlugins: 589f206 (editor + hand-off + registration).
 - [Phase 15]: 15-05 (RESID-04 automatable half) COMPLETE 2026-06-07. Suppress SWG's exclusive-fullscreen mode switch at the DirectInput cooperative-level layer — `hkSetCooperativeLevel` rewrites `DISCL_EXCLUSIVE` -> `DISCL_NONEXCLUSIVE` (FOREGROUND/BACKGROUND/NOWINKEY preserved) behind a default-ON `std::atomic<bool>` toggle (D-12), keeping the owned-popup embed windowed instead of detaching to true D3D9 exclusive fullscreen (RESEARCH A4 / `chat-open-d3d9-fullscreen.md` prime suspect). Existing DISCL flag + caller-PC logging retained as the A4 live-confirmation instrument; the redirect logs the old->new flag rewrite. Toggle exposed via new exported `DirectInput::setSuppressExclusiveFullscreen`/`getSuppressExclusiveFullscreen` so 15-08 can A/B live without a rebuild and the deferred detached-fullscreen fallback (Open Q3) stays reachable. PanelGame.cs resize path documented: window-side `SetWindowPos`-only, NO Utinni-initiated device `Reset` (D-13), owned-popup unchanged (no `WS_CHILD`), imgui RT-space mouse/DisplaySize mapping holds across resize via windowed COPY Present self-stretch. D-13 enforced by a new Catch2 `[resid04]` `NoDeviceResetTests.cpp` — a comment-stripped source grep-gate over directx9.cpp + direct_input.cpp + PanelGame.cs counting `->Reset(`/`.Reset(` invocations == 0 (hkReset's free-function `reset(pDevice,...)` SWG-own pass-through naturally excluded), with an anti-trivial self-check section (grep-gate hygiene). UtinniCore + UtinniCore.Tests Release|x86 green; 8 assertions pass. Generated/UtinniCore.cs regen churn reverted (never committed). Live edge-case-matrix confirmation folded into 15-08. Commits bf5843d, 6ae1dd7.
 - [Phase ?]: 15-07 (RESID-03 automatable half) COMPLETE: extended ReloadAssetClassifier with named WorldSnapshotExtensions{.ws}+ParticleExtensions{.prt} sets routing both to tier-(b) PendingNextSceneChange (D-14), backing the LOCKED WS 'Placements re-resolve on the next scene change.' + Particle DEGRADED 'Reloads on next scene change or relog.' badge copy; conservative unknown fallback preserved exactly. Particle LIVE-capable badge is a form-side runtime affordance (15-03 hook+Game.IsRunning), NOT a classifier tier. ParticleSnapshotReloadRoutingTests 9 facts incl honesty guard; dotnet test --filter ReloadRouting 15/15. Live SC3 render-on-reload is 15-08 smoke. Commit c63122a.
+- [Phase ?]: 15-09: A9 WS undo-crash closed — pure WorldSnapshotCommandGuard bail-on-null helper + all four WS IUndoCommand bodies guarded (ParentNode before LastChild). 696/696 managed suite green; sln Release|x86 exit 0; live A9 re-verify in 15-11->15-08.
 
 ### Pending Todos
 
@@ -246,8 +248,8 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-07T16:13:36.267Z
-Stopped at: Completed 15-05-PLAN.md (RESID-04 fullscreen suppress + no-Reset gate)
+Last session: 2026-06-13T01:54:51.002Z
+Stopped at: Completed 15-09-PLAN.md (A9 WS undo-crash null-guards)
 Resume file: None
 
 ## Ingest Provenance
