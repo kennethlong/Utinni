@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
 status: executing
-stopped_at: Completed 15-16-PLAN.md (B4/B5 particle param-grid rebind + B6 no-hook preview tooltip + A7 delete-confirm candor/BulkDelete DetailLevelChanged)
-last_updated: "2026-06-13T20:00:00.000Z"
-last_activity: 2026-06-13 -- 15-16 gap-closure executed (managed polish: particle grid rebind, honest no-hook preview tooltip, delete-confirm candor)
+stopped_at: Completed 15-17-PLAN.md (wave-5 full Release gate + reassembled COMPLETE bin/Release injection build with netstandard.dll + utinni-cli.exe closure, content-verified)
+last_updated: "2026-06-13T21:00:00.000Z"
+last_activity: 2026-06-13 -- 15-17 gap-closure executed (full Release gate green zero regression; bin/Release reassembled + completed with netstandard.dll/utinni-cli.exe; deployed PEs content-verified; 15-SMOKE wave-5 note recorded)
 progress:
   total_phases: 20
   completed_phases: 15
   total_plans: 88
-  completed_plans: 85
-  percent: 97
+  completed_plans: 86
+  percent: 98
 ---
 
 # Project State
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 15 (wave-2-editors-worldsnapshot-particle-presentation-residuals) — EXECUTING
-Plan: 15-16 complete (round-2 gap-closure 15-12..15-18 in flight; only 15-17 reassemble + 15-18 live re-smoke remain) — phase awaiting maintainer 15-08/15-18 live smoke
-Status: Ready to execute
-Last activity: 2026-06-13 -- 15-16 gap-closure executed (managed polish: particle grid rebind, honest no-hook preview tooltip, delete-confirm candor)
+Plan: 15-17 complete (round-2 gap-closure 15-12..15-18 in flight; only 15-18 live re-smoke remains) — phase awaiting maintainer 15-18 live smoke against the reassembled + COMPLETE bin/Release build
+Status: Ready to execute (15-18 = maintainer live re-smoke, autonomous:false)
+Last activity: 2026-06-13 -- 15-17 gap-closure executed (full Release gate green zero regression; bin/Release reassembled + completed with netstandard.dll/utinni-cli.exe closure; deployed PEs content-verified; 15-SMOKE wave-5 note recorded)
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 
@@ -159,6 +159,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 15 P15-13 | ~20 min | 1 task | 1 file |
 | Phase 15 P15-15 | ~12 min | 1 task | 1 file (cross-repo) |
 | Phase 15 P15-16 | ~25 min | 2 tasks | 3 files (cross-repo) |
+| Phase 15 P15-17 | ~22 min | 2 tasks | 1 doc + reassembled bin/Release build artifacts |
 
 ## Accumulated Context
 
@@ -206,6 +207,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase 15]: 15-13: RESID-04 window-level-fullscreen embed re-assert closed. The 2026-06-13 smoke proved C3 windowed→fullscreen is a WINDOW-LEVEL restyle (SWG mutates its own GWL_STYLE/GWLP_HWNDPARENT with ZERO new SetCooperativeLevel/EXCLUSIVE request → D-12 DirectInput suppress correctly never fires), so nothing re-asserted the owned-popup reparent and the embed detached (black gutter, chrome behind), focus dropped to 0x0, input died. NEW 250ms `embedWatchdogTimer` in PanelGame.cs (DISTINCT from the self-stopping one-shot reparentPollTimer), started after first reparent / stopped+disposed in PanelGame_Disposed: tick reads style+owner, detects WS_POPUP cleared OR any frame-mask bit re-added OR owner != FormMain, then `ReassertEmbed` re-strips frame (| WS_POPUP) + re-sets owner + RepositionSwgWindow (HWND_TOP + SWP_NOACTIVATE) + ownerFormCached.Activate() to pull focus back off 0x0. Shared `AssertEmbedStyles` helper = single source of frame-mask/WS_POPUP/owner logic for BOTH reparent + re-assert. Window-side ONLY (SetWindowLong/SetWindowPos + Activate), NEVER IDirect3DDevice9::Reset (D-13) — [resid04] no-Reset gate green (8 assertions/1 case); SWG stays WS_POPUP (never WS_CHILD, DirectInput top-level-HWND req). sln Release|x86 exit 0; 706/706 managed tests green; Generated/UtinniCore.cs reverted. Live C3 re-verify gated to 15-18 against the 15-17 reassembled build (rate-limited Log.Info diagnostic retained for utinni.log confirmation). Commit fc6e3fe.
 - [Phase 15]: 15-15: B7 packaging/probe gap closed (probe-path half). ParticleReadAssist.LocateCli now probes the Utinni inject root in addition to the executing-assembly dir + host-process dir: candidate 3 = two levels up from asmDir (Plugins/TheJawaToolbox -> Plugins -> bin/Release, nested Path.GetDirectoryName null-guarded), then a bounded (<=3-parent) walk-up that probes the CLI directly OR detects an inject-root marker (Launcher.exe / UtinniCoreDotNet.dll) and probes the CLI there. ROOT CAUSE: under injection the host-process dir is SWGEmu.exe's, not the Utinni deploy, so the prior two-candidate probe never found a deployed utinni-cli.exe -> Explain effect (D-08 read-assist) couldn't shell decode-iff (15-SMOKE B7). Whole probe stays inside the existing try/catch (never throws into the click handler); null-return CLI-absent path + 'was not found next to the editor' copy + decode-iff dispatch all unchanged (T-15-15-02 accepted: read-only decode-iff over the trusted maintainer-launched deploy). TheJawaToolbox.sln Release|x86 MSBuild exit 0; Generated/UtinniCore.cs not regenerated (C#-only build). Physical deploy of utinni-cli.exe + net472 dependency closure into bin/Release is finalized by 15-17; live B7 confirm gated to 15-18. Commit UtinniPlugins b6d0129.
 - [Phase ?]: 15-11: gap-closure Release gate green (697 managed + 84/27 native + resid04 8/1, zero regression); reassembled bin/Release injection build content-verified (deployed UtinniCoreDotNet.dll defines WorldSnapshotCommandGuard + UndoRedoManager.Clear; TheJawaToolboxDotNet.dll references ClearUndoStack via reflection-only enumeration, not just mtime); A9 undo-crash re-verify pointer recorded in 15-SMOKE.md back to 15-08; phase still gated on maintainer live smoke.
+- [Phase 15]: 15-17: wave-5 gap-closure Release gate green (706 managed + 84/27 native + resid04 8/1, zero regression); reassembled + COMPLETED bin/Release injection build with the two previously-missing files (netstandard.dll B5 façade + utinni-cli.exe + full net472 closure B7); deployed PEs content-verified via reflection-only enumeration + byte-string grep (UtinniCoreDotNet.dll defines InjectedAssemblyResolver + WorldSnapshotCommandGuard + UndoRedoManager.Clear, no A9-diag; netstandard.dll/utinni-cli.exe/TheJawaToolboxDotNet.dll present) — not just mtime; 15-SMOKE.md annotated with the wave-5 (15-12..15-17) note + 15-18 re-smoke pointer (original B5/B7/C3 + A9 0xC0000005 evidence preserved, Sign-Off still unsigned); Generated/UtinniCore.cs reverted; phase still gated on the 15-18 maintainer live re-smoke.
 - [Phase 15]: 15-16: three deferred managed-only polish defects closed in UtinniPlugins (TJT Release|x86 MSBuild exit 0; Generated/UtinniCore.cs untouched, C#-only build). B4/B5: FormParticleEditor.AfterModelMutated now re-calls BindParamGrid(currentParamNode) after emitterTree.RefreshMutable so a raw-hex leaf edit (and Undo/Redo, which share AfterModelMutated) re-renders the edited cell immediately — no reselect. currentParamNode tracks the MutableIffNode MODEL object (set in BindParamGrid), which survives RefreshMutable because IffChunkTree.LoadMutable rebuilds only TreeNode wrappers from the SAME MutableIffDocument — so a direct re-bind is correct, no id/path re-resolve. B6: new PreviewNoHookTooltip ("Live preview isn't wired this build — edits show on the next scene change or relog.") selected in RefreshButtonsState by Game.IsRunning (running-but-no-hook -> no-hook copy; !running -> existing no-client PreviewUnavailableTooltip); honest, no implied hook, consistent with LOCKED ReloadBadgeDegraded; LOCKED badge constants untouched. A7: FormSnapshotPlacements delete-confirm appends "The in-world object stays visible until the next scene change." (matches LOCKED WS badge, no instant-de-spawn over-promise) keeping the undoable clause + heading/verbs; WorldSnapshotImpl.BulkDelete adds WorldSnapshot.DetailLevelChanged() inside its AddUpdateLoopCall like BulkMove/BulkRetemplate for immediate grid refresh while retaining the GAP-2 DisableGizmo()/UpdateSelectedNodeControls(null) clear. Live B4/B5/B6/A7 re-verify gated to 15-18 against the 15-17 reassembled build. Commits UtinniPlugins 02bfc46, 9180250.
 
 ### Pending Todos
@@ -262,8 +264,8 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-13T19:00:00.000Z
-Stopped at: Completed 15-15-PLAN.md (B7 ParticleReadAssist.LocateCli inject-root probe)
+Last session: 2026-06-13T21:00:00.000Z
+Stopped at: Completed 15-17-PLAN.md (wave-5 Release gate + reassembled COMPLETE bin/Release injection build, content-verified; 15-SMOKE wave-5 note recorded)
 Resume file: None
 
 ## Ingest Provenance

@@ -76,7 +76,7 @@ visibly affect in-world placements and that undo reverses them.
 | A6 | `Move selected…` | Selected placements visibly move in-world | ✅ 2026-06-12 — Move dialog (ΔX/ΔY/ΔZ + Apply); ΔX=3 → both armoires + grid Position values shifted in-world (maintainer confirmed) |
 | A8 | `Retemplate selected…` | Selected placements swap template (remove+add per node) in-world | ✅ 2026-06-12 — selected streetlamps 104+105 → Retemplate → `object/tangible/furniture/cheap/shared_armoire_s01.iff` → Apply. 2 new armoire nodes (`9995373`/`9995374`) created at the **exact preserved transforms** of 104/105 (-5110/4184, -5151/4290) + armoire rendered in-world. Add half immediate; Remove half deferred (tier-b, same as Delete). Composes Remove+Add descriptors per 15-01 design. |
 | A7 | `Delete selected` (red confirm) | Selected placements disappear in-world after the confirm | ✅ 2026-06-12 (tier-b) — red confirm fired ("Delete 2 placements? …undoable in the editor until you save."), selection cleared. Live render + grid defer (matches LOCKED badge "Placements re-resolve on the next scene change"); after Snapshot ▸ Reload the deleted armoires + rows are gone. **History note (maintainer-confirmed):** base naboo snapshot has NO armoires — all armoire nodes are in-memory adds. Reload re-reads the authored node list (reverts unsaved node edits) and does NOT de-spawn already-rendered objects until a scene change. So delete/retemplate persistence is governed by **Save** (loose-override), not reload; reload-revert is expected, not a bug. |
-| A9 | Undo (each op) | Each bulk op reverses atomically (N undo commands compose) | 🔧 **FIX SHIPPED (15-09/15-10); AWAITING LIVE RE-VERIFY against the reassembled build (under 15-08)** — original crash evidence below preserved. ❌ **CRASH 2026-06-12** — Move applied cleanly (104 X −5151.1→−5051.1 in grid). `Ctrl+Z` while the Placements child window was focused did NOTHING (no revert, no crash) — undo hotkey not routed from the child window to the editor undo manager. Clicking the **main-editor Undo arrow** then **crashed the client**: `utinni.log` 19:32:15 `VEH FATAL: code=0xC0000005 … module=<unmapped-EIP> base=0x0 rva=0x03667F2A READ target=0x00000000` → `ExceptionHandler invoked`. Null-deref AV at a JIT/managed address. No fresh `.mdmp` (int3 halt). Client process gone. **HYPOTHESIS:** Snapshot ▸ Reload reverts the node list but does NOT invalidate the editor undo stack → undo command holds a stale/dangling node pointer from before the reload → null-deref on undo. NOT yet scoped whether a clean move→undo (no reload in the stack) also crashes. |
+| A9 | Undo (each op) | Each bulk op reverses atomically (N undo commands compose) | ✅ **RE-VERIFIED PASS 2026-06-13** (no crash + actually reverts; see "A9 RE-VERIFY" section below + follow-on fixes `b26e4bd` / WorldSnapshotCommands obj-optional). Original crash evidence preserved below. ❌ **CRASH 2026-06-12** — Move applied cleanly (104 X −5151.1→−5051.1 in grid). `Ctrl+Z` while the Placements child window was focused did NOTHING (no revert, no crash) — undo hotkey not routed from the child window to the editor undo manager. Clicking the **main-editor Undo arrow** then **crashed the client**: `utinni.log` 19:32:15 `VEH FATAL: code=0xC0000005 … module=<unmapped-EIP> base=0x0 rva=0x03667F2A READ target=0x00000000` → `ExceptionHandler invoked`. Null-deref AV at a JIT/managed address. No fresh `.mdmp` (int3 halt). Client process gone. **HYPOTHESIS:** Snapshot ▸ Reload reverts the node list but does NOT invalidate the editor undo stack → undo command holds a stale/dangling node pointer from before the reload → null-deref on undo. NOT yet scoped whether a clean move→undo (no reload in the stack) also crashes. |
 
 **Checklist A outcome / defects:**
 
@@ -158,6 +158,52 @@ rewrite.
   Checklists B / C / D). **Record the A9 re-verify result back in THIS `15-SMOKE.md`** against the fixed
   build. This plan (15-11) does NOT sign off the phase — the Maintainer Sign-Off block remains the gate.
 
+### A9 RE-VERIFY — 2026-06-13 (live, maintainer-driven) — ✅ PASS (with two follow-on fixes)
+
+Re-ran the A9 path against a freshly rebuilt `bin/Release/` (UtinniCore.dll 09:48 + UtinniCoreDotNet.dll 10:00):
+
+- ✅ **No crash on Undo** — single Move → main-editor Undo no longer crashes (15-09 guard holds).
+- ✅ **No crash on the original recipe** — Move → Snapshot ▸ Reload → Undo: no crash (the `objNull` reload case).
+- ✅ **Ctrl+Z from the Placements child window** reverts + the grid auto-refreshes (15-10 routing).
+- ✅ **Undo now actually REVERTS** (was a silent no-op even after the 15-09 guard) — see follow-on fix #2.
+- ✅ **Gizmo on grid-select + stale-gizmo clear** work once **node-editing mode is toggled ON** (the gizmo
+  requires `EnableNodeEditing`; it was simply off — NOT a regression).
+
+**Two defects found + fixed live during this re-verify (both blocked the smoke):**
+
+1. **Inject-time client crash (NEW, blocked everything) — `directx9.cpp`.** On injection the `compileShader`
+   D3D9 detour was installed on a hardcoded absolute address (`0x62A4F9DB`) into `s207_r.dll` with no
+   validity guard — the only detour skipping the `Detour::CheckPointer` treatment the 7 vtable hooks use.
+   When `s207_r.dll` is relocated by ASLR (observed live at base `0x14310000`), that address is unmapped
+   and `Detour::Create`'s prologue read faults (`0xC0000005`), killing the client before the menu. Fix:
+   resolve `s207_r.dll`'s actual base via `GetModuleHandleA` + PE `ImageBase`, relocate the address, and
+   guard with a committed+executable `VirtualQuery` check (skip + log otherwise). Live-verified: clean
+   inject + render at both relocated (`0x1435F9DB`) and preferred (`0x62A4F9DB`) bases.
+   Committed: Utinni `b26e4bd`.
+
+2. **Undo silently did not revert (functional A9 gap under the crash) — `WorldSnapshotCommands.cs`.** With
+   the crash gone, Undo still left the object at the new position. Diag proved `Network.GetObjectById(id)`
+   returns **null** for these snapshot placements (`objNull=True, nodeNull=False`), and the shipped 15-09
+   guard `ShouldApply(obj, node)` required BOTH non-null → it bailed before reverting. Also the undo
+   resolved the live node via the COPIED node's `ParentNode` (null on a copy). Fix: resolve the LIVE node
+   by id from the live tree (mirrors the working `BulkMove`), make the in-world object OPTIONAL
+   (node-required; revert the node data so the snapshot re-resolve repaints it), and pass the target
+   position to `PositionAndRotationChanged`. Same fix applied to the rotation undo. Live-verified: Undo
+   reverts + auto-refreshes. (Temporary `[A9-diag]` logging still in the deployed build — to be stripped
+   before the final commit.)
+
+**A7 (Delete) re-confirmed 2026-06-13 — ✅ PASS (tier-b deferral, end-to-end):** Delete → red confirm →
+gizmo clears immediately (GAP 2 fix). The in-world object + grid row defer (engine does not de-spawn an
+already-rendered object without a scene change; the node IS removed from the editor list). Verified the
+full deferral: **Snapshot ▸ Reload cleared the grid row**, and a **Scene-panel Load (scene change)
+de-spawned the in-world armoire**. Matches the LOCKED badge "Placements re-resolve on the next scene
+change." **Candor follow-on (polish, non-blocking):** the delete confirm dialog says "This removes N
+object placements from the snapshot" with no mention that the in-world object persists until a scene
+change — RESID-03-style over-promise; recommend a one-line copy amend so the dialog matches the deferred
+reality. Also a minor consistency note: `BulkDelete` omits the `WorldSnapshot.DetailLevelChanged()` call
+that `BulkMove`/`BulkRetemplate` make (the immediate grid refresh relies on the 250ms `ScheduleRefresh`
+timer instead).
+
 ---
 
 ## Checklist B — PROD-W2-PRT · Particle editor + preview (live demo)
@@ -181,7 +227,49 @@ a live hot-retrigger would only be possible once a future plan wires the seam.
 
 **Checklist B outcome / defects** (note: live hot-retrigger refresh OR confirm the honest degraded fallback):
 
-_(record here)_
+**2026-06-13 live:** B1–B4 PASS (TRE Browser → Open in Particle Editor opens `FormParticleEditor`;
+emitter tree + Field/Value/Type grid populate; raw/unknown leaf shows greyed Consolas hex; double-click →
+hex sub-editor edits a leaf). _(B5–B8 in progress.)_
+
+**DEFECT (B4/B5, display-only, non-blocking) — param grid not refreshed after a raw-bytes edit:** editing a
+leaf via the hex sub-editor updates the MODEL correctly (re-opening the hex dialog shows the new value; Save
+persists it), but the **Field/Value grid cell keeps showing the old hex** until the node is reselected. Root
+cause: `FormParticleEditor.ApplyLeafEdit` → `AfterModelMutated()` calls `emitterTree.RefreshMutable(...)`
+(tree only) and never re-runs `BindParamGrid(...)` for the current selection. Fix (managed-only, batched into
+the cleanup rebuild): re-bind the param grid to the edited leaf after `AfterModelMutated()` — also covers
+DoUndo/DoRedo, which share that method. Not data-affecting (the edit is real); display refresh only.
+
+**2026-06-13 live, B5–B8:**
+
+- **B6 ✅ PASS** — reload badge shows verbatim "Reloads on next scene change or relog." (top-right). The
+  preview button is correctly disabled. (Minor candor polish: no tooltip for the *no-hot-retrigger-hook*
+  reason — the only preview tooltip is the "No live client — start SWG…" case, which correctly doesn't fire
+  with SWG running. Add a disabled-reason tooltip — batched.)
+- **B8 ✅ PASS** — DEC-A3/D-11 footer shows verbatim: "Utinni edits emitter, timing, and color parameters
+  and swaps texture/mesh references — authoring the referenced meshes or textures stays in Blender."
+- **B5 ❌ BLOCKING (cross-editor) — loose-override Save fails: `netstandard.dll` façade not resolvable in the
+  injected client.** Status bar: *"Could not load file or assembly 'UtinniCoreDotNet.PathContainment,
+  Version=1.0.0.0, Culture=neutral, PublicKeyToken=null' or one of its dependencies."* `PathContainment.dll`
+  (the netstandard2.0 assembly that owns `LooseOverridePath` since the Phase-14 `TypeForwardedTo` rework) IS
+  deployed in `bin/Release`, but **`netstandard.dll` is not** — and a netstandard2.0 assembly can't load in
+  the injected .NET-Framework host without the façade. This breaks the loose-override save tier for **every**
+  editor (IFF/Datatable/Stringtable/ObjectTemplate/WorldSnapshot/Particle), not just Particle — it was never
+  caught because in-injected loose-override save had no live test (CLI/MCP saves run in a net472 process where
+  the façade resolves). `netstandard.dll` is available on the box
+  (`C:\Windows\Microsoft.NET\Framework\v4.0.30319\netstandard.dll` + 4.7.2 Facades). Fix: ship `netstandard.dll`
+  in the injected deploy (and confirm the injected assembly resolver probes its location); a cached failed-bind
+  means a relaunch is required to pick it up. **Headline gap-closure item.**
+- **B7 ⚠ blocked by B5** — Explain effect on this (raw-preserved, TRE-sourced) `.prt` returns the honest
+  "Couldn't read this effect — save it to a file first, then try again." It needs an on-disk file to run
+  `utinni-cli decode-iff`; you can't save-first because B5 save fails. Also separately: `utinni-cli.exe` is not
+  shipped in the injection build (`LocateCli` would fail even with a file) — packaging gap. Both fold into the
+  gap-closure. (The `.prt` opened here is version-0001 raw-preserved: tree shows FORM PEFT→FORM 0001, grid
+  shows the D-05 raw-bytes fallback, footer "1 groups · 0 emitters · 1 raw-preserved" — the degrade path is
+  working; B2/B3 typed surface was confirmed on a typed `.prt` earlier in B1–B4.)
+
+**Checklist B verdict:** core editor works (open/parse/tree/grid/typed+raw/hex-edit/undo B1–B4, badge B6,
+footer B8); **Save + Explain + Preview-disclosure-tooltip need gap-closure** (headline = the netstandard
+façade / loose-override save break, which is cross-editor and also blocks Checklist D's `.stf`/`.ot` saves).
 
 ---
 
@@ -232,7 +320,34 @@ For each transition record: embed survives? SWG renders at right size? mouse map
 > Note: utinni.log that session showed only `NONEXCLUSIVE FOREGROUND (0x6)` requests at char
 > select — no EXCLUSIVE request seen yet; C1/C2 need the fullscreen/login-to-world triggers.
 
-_(record here)_
+### 2026-06-13 live — C partial; windowed→fullscreen is a BLOCKING RESID-04 gap
+
+- **C1/C2 — NOT exercised.** At login SWG made only two `NONEXCLUSIVE FOREGROUND (0x6)`
+  `SetCooperativeLevel` calls (`caller=0x0041E5C5` / `0x0041EC1A`); the DI hook is installed
+  (`patched IDirectInputDevice8A::SetCooperativeLevel vtbl[13]`). **Switching to fullscreen produced NO
+  new `SetCooperativeLevel` / NO `EXCLUSIVE` request** — so SWG's fullscreen here is a *window-level*
+  fullscreen, not a D3D9 exclusive switch. The D-12 suppress therefore never engages (correctly — nothing
+  to suppress); we have not yet found a path that makes this build request EXCLUSIVE, so C1/C2 remain
+  uncaptured.
+- **D-13 holds ✅ — no Utinni device Reset, no crash.** No `Reset` / `D3DERR` / `DEVICELOST` / `VEH FATAL`
+  across the transition; the SWG process stayed alive and responsive (`Responding=True`).
+- **C3 windowed→fullscreen — ❌ BLOCKING gap (embed detaches + input lockup).** SWG resized to the correct
+  size and kept rendering in-world, **but lost its pinning** — the SWG HWND detached from the WinForms host
+  panel (editor chrome fell behind; black gutter on the right). Then **input locked up entirely** — no
+  keystrokes, no mouse. Log shows the window bouncing `WM_ACTIVATE INACTIVE` / `WM_KILLFOCUS
+  (gained-focus-to=0x00000000)`. Root cause (analysis): SWG's window-level fullscreen restyles/repositions
+  its own HWND; nothing re-asserts Utinni's reparent/pin (and the input/focus routing that rides on it), so
+  the embed pops out and input dies. The D-12 suppress addresses the *input/exclusive* axis but NOT the
+  *window-pinning* axis of a window-level fullscreen. Follow-on symptom: with the window stuck `INACTIVE`
+  and focus unrecoverable, SWG paused (no animation, no audio — its normal unfocused behavior) and could
+  not be reactivated — the session had to be torn down. **This is the live RESID-04 residual the phase was
+  meant to close — it is NOT closed for the fullscreen edge.** Fix direction: detect SWG's window
+  style/extent change (e.g. in `hkWndProcHandler` / the PanelGame reparent layer) and re-assert the embed
+  (reparent + reposition + restore input/focus), or intercept/deny SWG's window-level fullscreen while
+  embedded. Gap-closure item.
+- **C4 login→world ✅** embed survived earlier this session; **C5–C11, C.3 toggle — NOT walked** (the
+  fullscreen transition locked input, ending the matrix walk for this session). Resume after the gap-closure
+  fix.
 
 ---
 
@@ -257,6 +372,80 @@ actually happened (no over-promise). Both `.stf` and `.ot` route to tier-(b) `Pe
 **Checklist D outcome / defects** (record the SC3 disposition + close `phase10-stringtable-sc3-live-reload-residual.md`):
 
 _(record here)_
+
+---
+
+## WAVE-5 GAP-CLOSURE 2026-06-13 (plans 15-12 … 15-17) — fixed + COMPLETE build reassembled, awaiting live re-smoke (15-18)
+
+This annotates (does NOT rewrite) the 2026-06-13 live-smoke defect records above. The B5/B7/C3 defect
+blocks, the A9 `0xC0000005` crash evidence, and the original Checklist-B/C findings are preserved
+verbatim — the fixes below close them in code and reassemble the deployable build; the maintainer's live
+re-verify under 15-18 is the gate.
+
+- **B5 (netstandard façade / loose-override Save break — was BLOCKING, cross-editor) — fixed in 15-12.**
+  Root cause: `ExecuteInDefaultAppDomain` runs in the default AppDomain whose APPBASE is the host exe dir
+  (SWGEmu.exe), not the Utinni inject root, so the netstandard2.0 `UtinniCoreDotNet.PathContainment` façade
+  never bound under injection → loose-override Save threw for **every** editor. Fix: a BCL-only
+  `InjectedAssemblyResolver.ResolveProbePath` (narrow file-existence-gated allow-list = exactly
+  `{ netstandard, UtinniCoreDotNet.PathContainment }`) installed as an `AppDomain.AssemblyResolve` handler
+  as the FIRST statement in `Startup.EntryPoint` (before `new PluginLoader()`), plus `netstandard.dll`
+  shipped next to `UtinniCoreDotNet.dll`. **Re-enables loose-override Save for every editor and unblocks
+  Checklist D** (`.stf`/`.ot` saves). A cached failed-bind means a relaunch is required to pick it up.
+- **C3 (windowed→fullscreen embed detach + input lockup — was BLOCKING RESID-04) — fixed in 15-13.**
+  The 2026-06-13 smoke proved C3 is a WINDOW-LEVEL restyle (SWG mutates its own `GWL_STYLE`/
+  `GWLP_HWNDPARENT` with ZERO new `SetCooperativeLevel`/EXCLUSIVE request — so the D-12 DirectInput
+  suppress correctly never fires), and nothing re-asserted the owned-popup reparent → the embed detached
+  and focus dropped to 0x0. Fix: a 250 ms `embedWatchdogTimer` in `PanelGame.cs` re-asserts the embed
+  (re-strip frame + re-set owner + `RepositionSwgWindow` HWND_TOP/SWP_NOACTIVATE + `Activate()` to pull
+  focus back) when it detects the style/owner change — **window-side only, NO device `Reset` (D-13)**; the
+  `[resid04]` no-Reset gate stays green (8 assertions / 1 case).
+- **A9 revert finalized — 15-14.** The 15-09 guard stopped the crash; 15-14 stops the silent no-op:
+  `SetPosition`/`SetRotation` now resolve the LIVE node by id (not the copied node's dead `ParentNode`),
+  make the in-world object OPTIONAL (node-required), and revert the node data + `DetailLevelChanged`. All 7
+  temporary `[A9-diag]` `Log.Info` lines were stripped → the deployed `UtinniCoreDotNet.dll` is
+  diagnostic-free (content-verified: no `A9-diag` string in the deployed PE). Live A9 already re-verified
+  PASS 2026-06-13 above; this re-confirms against the diagnostic-free build.
+- **B7 (utinni-cli not shipped / `LocateCli` probe) — fixed in 15-15 + completed in 15-17.** 15-15 widened
+  `ParticleReadAssist.LocateCli` to probe the Utinni inject root (two levels up from the plugin dir +
+  bounded marker walk-up). 15-17 (this plan) ships `utinni-cli.exe` **and its full net472 dependency
+  closure** (`CommandLine.dll`, `Newtonsoft.Json.dll`, `System.Collections.Immutable.dll`,
+  `System.Reflection.Metadata.dll`, `utinni-cli.exe.config`) into `bin/Release/` so the Explain-effect
+  read-assist can shell `decode-iff`.
+- **B4/B5 grid-rebind, B6 no-hook preview tooltip, A7 delete-confirm candor + `BulkDelete`
+  `DetailLevelChanged` — folded into 15-16.** `FormParticleEditor.AfterModelMutated` now re-binds the param
+  grid after a raw-hex leaf edit (and Undo/Redo); a `PreviewNoHookTooltip` gives the honest
+  no-hot-retrigger-hook disabled reason; the delete-confirm dialog appends "The in-world object stays
+  visible until the next scene change." (no instant-de-spawn over-promise); `WorldSnapshotImpl.BulkDelete`
+  adds the immediate-grid-refresh `WorldSnapshot.DetailLevelChanged()` call.
+
+### Reassembled + content-verified COMPLETE build (15-17)
+
+The full automated gate is **green with zero regression** after the wave-5 fixes: `Utinni.sln` +
+`TheJawaToolbox.sln` Release|x86 MSBuild exit 0; `UtinniCoreDotNet.Tests` 706 pass / 0 fail (incl. the new
+`InjectedAssemblyResolver` + node-only guard facts); `Utinni.Cli.Tests` 249 pass / 2 skip;
+`Utinni.Mcp.Tests` 77 pass; native `UtinniCore.Tests.exe` 84 assertions / 27 cases + `[resid04]` 8
+assertions / 1 case (the no-Reset gate held after the 15-13 watchdog).
+
+The deployable injection build at `D:/Code/Utinni/bin/Release/` was rebuilt and **completed with the two
+previously-missing files** — `netstandard.dll` (next to `UtinniCoreDotNet.dll`, B5 façade) and
+`utinni-cli.exe` + its net472 dependency closure (B7) — then **content-verified** (anti-stale, not mtime
+alone) via reflection-only enumeration + a byte-string grep of the DEPLOYED PEs: the deployed
+`UtinniCoreDotNet.dll` defines `InjectedAssemblyResolver` AND `WorldSnapshotCommandGuard` AND exposes
+`UndoRedoManager.Clear`, and contains NO `A9-diag` string; `netstandard.dll`, `utinni-cli.exe` (+ closure),
+and the deployed `Plugins/TheJawaToolbox/TheJawaToolboxDotNet.dll` are all present. The maintainer cannot be
+handed a stale or incomplete build.
+
+### Remaining live re-smoke → plan 15-18 (record results back in THIS file)
+
+Inject the reassembled `bin/Release/` build and resume the still-open smoke against the fixed + complete
+binaries:
+- **B5–B8** now that loose-override Save works (Save → dirty clears; Explain-effect shells `decode-iff` via
+  the shipped `utinni-cli.exe`; Preview disabled-reason tooltip).
+- **Checklist C full matrix INCLUDING the C3 windowed→fullscreen re-verify** (the embed should re-assert via
+  the 15-13 watchdog; confirm no detach / no input lockup, no device Reset) plus C4–C15.
+- **Checklist D** `.stf`/`.ot` loose-override saves (unblocked by the B5 façade fix).
+
+This plan (15-17) does NOT sign off the phase — the **Maintainer Sign-Off** block below remains the gate.
 
 ---
 
