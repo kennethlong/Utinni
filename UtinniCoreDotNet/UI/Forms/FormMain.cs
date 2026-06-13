@@ -313,6 +313,13 @@ namespace UtinniCoreDotNet.UI.Forms
             {
                 undoRedoManager.AddUndoCommand(editorPlugin);
 
+                // 15-10: bind each plugin's editor-undo seam to the single shared manager so child
+                // forms (e.g. FormSnapshotPlacements) can route Ctrl+Z / Ctrl+Y and clear the stack
+                // on snapshot boundaries without a hard reference back into FormMain.
+                editorPlugin.Undo = undoRedoManager.Undo;
+                editorPlugin.Redo = undoRedoManager.Redo;
+                editorPlugin.ClearUndoStack = undoRedoManager.Clear;
+
                 Log.Info("Editor Plugin: [" + editorPlugin.Information.Name + "] loaded");
 
                 var subPanels = editorPlugin.GetSubPanels();

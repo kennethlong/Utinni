@@ -64,6 +64,11 @@ namespace ExampleEditorPlugin
 
         public EventHandler<AddUndoCommandEventArgs> AddUndoCommand { get; set; }
 
+        // 15-10 editor-undo seam — wired by FormMain to the shared UndoRedoManager.
+        public Action Undo { get; set; }
+        public Action Redo { get; set; }
+        public Action ClearUndoStack { get; set; }
+
         public HotkeyManager GetHotkeyManager() { return null; }
 
         public List<IEditorForm> GetForms() { return null; }

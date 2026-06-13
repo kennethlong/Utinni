@@ -87,6 +87,12 @@ namespace UtinniCoreDotNet.Tests
         {
             public EventHandler<AddUndoCommandEventArgs> AddUndoCommand { get; set; }
 
+            // 15-10 editor-undo seam members (not exercised by these tests; present so the stub
+            // satisfies the widened IEditorPlugin interface).
+            public Action Undo { get; set; }
+            public Action Redo { get; set; }
+            public Action ClearUndoStack { get; set; }
+
             public void RaiseAddUndoCommand(IUndoCommand cmd)
             {
                 AddUndoCommand?.Invoke(this, new AddUndoCommandEventArgs(cmd));
@@ -263,6 +269,42 @@ namespace UtinniCoreDotNet.Tests
             // Assert: both stacks cleared (CON-M-05)
             Assert.Equal(0, mgr.UndoCommands.Count);
             Assert.Equal(0, mgr.RedoCommands.Count);
+        }
+
+        // ===================================================================
+        // Test 6: 15-10 — public Clear() empties both stacks AND fires the
+        // UI update callback (so the titlebar Undo/Redo buttons disable after
+        // a programmatic clear on a snapshot boundary).
+        // ===================================================================
+        [Fact]
+        public void Clear_EmptiesBothStacks_AndFiresUpdateCallback()
+        {
+            // Arrange: count update-callback fires via the onUpdateCommandsCallback seam.
+            int updateCallbackFires = 0;
+            var mgr = new UndoRedoManager(
+                onUpdateCommandsCallback: () => updateCallbackFires++,
+                undoCallback: () => { },
+                redoCallback: () => { },
+                registerCleanupCallback: _ => { });
+
+            var plugin = new StubEditorPlugin();
+            mgr.AddUndoCommand(plugin);
+
+            // Push 3 commands, undo 1 so BOTH stacks are non-empty.
+            for (int i = 0; i < 3; i++) plugin.RaiseAddUndoCommand(new StubCommand());
+            mgr.Undo();
+            Assert.Equal(2, mgr.UndoCommands.Count);
+            Assert.Equal(1, mgr.RedoCommands.Count);
+
+            int firesBeforeClear = updateCallbackFires;
+
+            // Act
+            mgr.Clear();
+
+            // Assert: both stacks empty + the update callback fired exactly once.
+            Assert.Equal(0, mgr.UndoCommands.Count);
+            Assert.Equal(0, mgr.RedoCommands.Count);
+            Assert.Equal(firesBeforeClear + 1, updateCallbackFires);
         }
     }
 }

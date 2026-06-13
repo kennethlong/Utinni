@@ -62,8 +62,21 @@ namespace UtinniCoreDotNet.UndoRedo
         }
 
         // CON-M-05 preservation: cleanup-on-scene-cleanup behavior is preserved verbatim —
-        // both stacks are cleared and the UI update callback fires. Only wrapped in lock.
+        // both stacks are cleared and the UI update callback fires. Delegates to the public
+        // Clear() so the clear-both-stacks + fire-callback idiom lives in exactly one place.
         private void OnCleanupCallback()
+        {
+            Clear();
+        }
+
+        // 15-10 GAP 1.2: public programmatic clear of the editor undo stack. Empties BOTH stacks
+        // under lock then fires the UI update callback AFTER releasing the lock (C-07 / T-02-10
+        // ordering: never call an external callback while holding syncRoot — re-entrancy through
+        // GroundSceneCallbacks.AddUpdateLoopCall could deadlock). Wired into the plugin seam by
+        // FormMain so a snapshot Load/Unload/Reload can drop any command built against the now
+        // re-read node list (the secondary half of the A9 WS undo-crash cluster). The titlebar
+        // Undo/Redo buttons disable correctly because onUpdateCommandsCallback re-reads the counts.
+        public void Clear()
         {
             lock (syncRoot)
             {

@@ -43,6 +43,15 @@ namespace UtinniCoreDotNet.PluginFramework
     {
         EventHandler<AddUndoCommandEventArgs> AddUndoCommand { get; set; }
 
+        // 15-10 editor-undo seam. These three delegates let a plugin's child forms reach the single
+        // shared UndoRedoManager (owned by FormMain) WITHOUT a hard reference back into the host.
+        // They are settable-from-host (mirroring AddUndoCommand) and are wired by FormMain in its
+        // per-plugin CreatePluginControls loop. They may be NULL until that wiring runs (or in odd
+        // hosts that never wire them) — every caller MUST null-check (e.g. `Undo?.Invoke()`).
+        Action Undo { get; set; }
+        Action Redo { get; set; }
+        Action ClearUndoStack { get; set; }
+
         HotkeyManager GetHotkeyManager();
 
         List<IEditorForm> GetForms();
