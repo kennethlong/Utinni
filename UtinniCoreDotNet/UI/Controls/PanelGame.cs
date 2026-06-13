@@ -83,6 +83,40 @@ namespace UtinniCoreDotNet.UI.Controls
         private readonly Timer reparentPollTimer = new Timer { Interval = 100 };
         private Form ownerFormCached;
 
+        // 2026-06-13 RESID-04 / 15-13 (15-SMOKE C3): SWG's windowed->fullscreen
+        // here is a WINDOW-LEVEL fullscreen, NOT a D3D9 exclusive switch (the
+        // 2026-06-13 live smoke captured ZERO new SetCooperativeLevel/EXCLUSIVE
+        // request across the transition, so the D-12 DirectInput suppress
+        // correctly never engages). SWG restyles/repositions its OWN top-level
+        // HWND for fullscreen -- it re-adds frame styles / clears WS_POPUP /
+        // changes its owner -- and nothing re-asserts our owned-popup reparent,
+        // so the embed pops out (editor chrome falls behind, black right gutter),
+        // focus drops to 0x0, and input dies. The one-shot reparentPollTimer
+        // can't counter this: it self-stops by contract after the first reparent,
+        // and thereafter only Resize/LocationChanged reposition (neither
+        // re-strips the frame nor re-sets the owner).
+        //
+        // This low-frequency watchdog runs AFTER the first reparent. Each tick it
+        // reads SWG's current GWL_STYLE + GWLP_HWNDPARENT and, if SWG dropped the
+        // owned-popup-embed state (WS_POPUP cleared / any frame-mask bit re-added
+        // / owner != FormMain), re-asserts the embed window-side via ReassertEmbed.
+        // It is a DISTINCT timer (the reparentPollTimer self-stops; reusing it
+        // would defeat its contract). HARD CONSTRAINT (D-13,
+        // feedback_d3d9_reset_third_party): the re-assert is SetWindowLong/
+        // SetWindowPos ONLY -- it NEVER calls IDirect3DDevice9::Reset on SWG's
+        // device (Reset is fatal; see the Phase B-bis comment below). Nothing in
+        // this file is named *Reset* and no `.Reset(` token appears -- the
+        // [resid04] NoDeviceResetTests grep gate counts Reset invocations == 0.
+        private readonly Timer embedWatchdogTimer = new Timer { Interval = 250 };
+
+        // The frame-style bits we strip from SWG so it presents as a chromeless
+        // owned popup. Single source of truth shared by the initial reparent and
+        // the watchdog re-assert (AssertEmbedStyles) so the masks cannot drift.
+        private static readonly uint EmbedFrameMask =
+              Native.WS_CAPTION | Native.WS_THICKFRAME
+            | Native.WS_MINIMIZEBOX | Native.WS_MAXIMIZEBOX
+            | Native.WS_SYSMENU | Native.WS_BORDER | Native.WS_DLGFRAME;
+
         public PanelGame(PluginLoader pluginLoader)
         {
             // Phase 3 R-C / D-20: resolve the SWG WndProc address once at
@@ -123,6 +157,7 @@ namespace UtinniCoreDotNet.UI.Controls
             // diagnostics added to hkPresent to confirm what SWG actually
             // passes for pSourceRect/pDestRect/SwapEffect on the next run.
             reparentPollTimer.Tick += ReparentPollTimer_Tick;
+            embedWatchdogTimer.Tick += EmbedWatchdogTimer_Tick;
             HandleCreated += PanelGame_HandleCreated_ForReparent;
 
             // 2026-06-07 RESID-04 (D-12 + D-13): with the native DirectInput shim
@@ -161,6 +196,8 @@ namespace UtinniCoreDotNet.UI.Controls
         {
             reparentPollTimer.Stop();
             reparentPollTimer.Dispose();
+            embedWatchdogTimer.Stop();
+            embedWatchdogTimer.Dispose();
             if (ownerFormCached != null)
             {
                 ownerFormCached.LocationChanged -= OwnerForm_LocationChanged;
@@ -203,20 +240,30 @@ namespace UtinniCoreDotNet.UI.Controls
             reparentPollTimer.Stop();
         }
 
-        private void ReparentSwgWindow(IntPtr swgHwnd, IntPtr ownerHwnd)
+        // Shared frame-strip + owner-set. Single source of the owned-popup embed
+        // style assertion -- used by BOTH the initial reparent (ReparentSwgWindow)
+        // and the window-level-fullscreen re-assert (ReassertEmbed), so the
+        // frame-mask + WS_POPUP + owner logic cannot diverge between the two paths.
+        // Returns the (oldStyle, newStyle) pair for diagnostic logging. Window-side
+        // only (SetWindowLong); NEVER a device Reset (D-13).
+        private void AssertEmbedStyles(IntPtr swgHwnd, IntPtr ownerHwnd, out uint oldStyle, out uint newStyle)
         {
-            int oldStyle = Native.GetWindowLong(swgHwnd, Native.GWL_STYLE);
-            uint u = unchecked((uint)oldStyle);
-            uint frameMask = Native.WS_CAPTION | Native.WS_THICKFRAME
-                           | Native.WS_MINIMIZEBOX | Native.WS_MAXIMIZEBOX
-                           | Native.WS_SYSMENU | Native.WS_BORDER | Native.WS_DLGFRAME;
-            u = (u & ~frameMask) | Native.WS_POPUP;
-            Native.SetWindowLong(swgHwnd, Native.GWL_STYLE, unchecked((int)u));
+            oldStyle = unchecked((uint)Native.GetWindowLong(swgHwnd, Native.GWL_STYLE));
+            // Keep the owned-popup model: strip every frame bit, force WS_POPUP.
+            // NEVER WS_CHILD -- DirectInput's SetCooperativeLevel requires a
+            // top-level HWND (CODEX consult #3 + MSFT docs).
+            newStyle = (oldStyle & ~EmbedFrameMask) | Native.WS_POPUP;
+            Native.SetWindowLong(swgHwnd, Native.GWL_STYLE, unchecked((int)newStyle));
 
             // GWLP_HWNDPARENT: documentation calls it "parent" but it actually
             // sets the OWNER. SWG stays top-level but gets minimized/closed
             // with FormMain as a group.
             Native.SetWindowLong(swgHwnd, Native.GWLP_HWNDPARENT, ownerHwnd.ToInt32());
+        }
+
+        private void ReparentSwgWindow(IntPtr swgHwnd, IntPtr ownerHwnd)
+        {
+            AssertEmbedStyles(swgHwnd, ownerHwnd, out uint oldStyle, out uint newStyle);
 
             // Flag MUST flip before RepositionSwgWindow so the !swgReparented
             // guard inside it doesn't early-return. Without this the SWP_FRAMECHANGED
@@ -225,11 +272,92 @@ namespace UtinniCoreDotNet.UI.Controls
 
             RepositionSwgWindow();
 
+            // Now that the owned-popup embed is asserted, start the window-level
+            // fullscreen watchdog (15-13). It is intentionally a distinct timer
+            // from reparentPollTimer (which self-stops by contract). Idempotent
+            // Start() -- safe even if the initial reparent somehow re-runs.
+            embedWatchdogTimer.Start();
+
             Log.Info("PanelGame: reparented SWG hwnd=0x" + swgHwnd.ToInt64().ToString("X")
                 + " owner=0x" + ownerHwnd.ToInt64().ToString("X")
-                + " oldStyle=0x" + oldStyle.ToString("X8") + " newStyle=0x" + u.ToString("X8")
+                + " oldStyle=0x" + oldStyle.ToString("X8") + " newStyle=0x" + newStyle.ToString("X8")
                 + " (Issue #10 Phase B -- owned popup)");
         }
+
+        private void EmbedWatchdogTimer_Tick(object sender, EventArgs e)
+        {
+            // Only meaningful once the initial embed is asserted.
+            if (!swgReparented) return;
+            if (!IsHandleCreated) return;
+            if (ownerFormCached == null || !ownerFormCached.IsHandleCreated) return;
+
+            IntPtr swgHwnd = Native.GetSwgHwnd();
+            if (swgHwnd == IntPtr.Zero) return;
+
+            // Don't fight SWG while the host is minimized -- the owned-popup group
+            // goes down together by design; RepositionSwgWindow already guards the
+            // ~(-32000,-32000) sentinel, and restore re-syncs via Resize.
+            Form host = FindForm();
+            if (host != null && host.WindowState == FormWindowState.Minimized) return;
+
+            uint style = unchecked((uint)Native.GetWindowLong(swgHwnd, Native.GWL_STYLE));
+            IntPtr owner = new IntPtr(Native.GetWindowLong(swgHwnd, Native.GWLP_HWNDPARENT));
+
+            // DETACHED/RESTYLED detection: SWG performed a WINDOW-LEVEL fullscreen
+            // restyle if it CLEARED WS_POPUP, RE-ADDED any frame-mask bit, or its
+            // OWNER no longer points at FormMain. Any one means the embed popped out.
+            bool popupCleared = (style & Native.WS_POPUP) == 0;
+            bool frameReadded = (style & EmbedFrameMask) != 0;
+            bool ownerChanged = owner != ownerFormCached.Handle;
+
+            if (!popupCleared && !frameReadded && !ownerChanged) return;
+
+            ReassertEmbed(swgHwnd, ownerFormCached.Handle, style, owner);
+        }
+
+        // Re-assert the owned-popup embed after SWG restyled its own HWND for a
+        // window-level fullscreen. Window-side ONLY (SetWindowLong/SetWindowPos +
+        // managed Activate) -- never a device Reset (D-13). Does NOT recreate any
+        // timer (the watchdog keeps running); it re-runs the same frame-strip +
+        // owner-set as the initial reparent, repositions over the PanelGame rect
+        // (HWND_TOP + SWP_NOACTIVATE via RepositionSwgWindow), and re-activates the
+        // host group so focus/input return to the embed (the L250-259 reparent
+        // comment's "FormMain stays active, SWG visually on top" group model).
+        private void ReassertEmbed(IntPtr swgHwnd, IntPtr ownerHwnd, uint detectedStyle, IntPtr detectedOwner)
+        {
+            AssertEmbedStyles(swgHwnd, ownerHwnd, out uint oldStyle, out uint newStyle);
+
+            // Reposition over the PanelGame client rect (HWND_TOP, SWP_FRAMECHANGED,
+            // SWP_NOACTIVATE) -- pure window-side, the windowed COPY Present
+            // self-stretches the backbuffer; the imgui RT-space mouse/DisplaySize
+            // mapping rides that ratio and needs no change here.
+            RepositionSwgWindow();
+
+            // Restore focus/input window-side: re-activate the host group. Keeps
+            // focus on the host (no SWG focus theft -- SWP_NOACTIVATE above), with
+            // SWG visually on top, exactly as the original reparent describes. This
+            // pulls focus back off the 0x0 it dropped to during the fullscreen restyle.
+            if (ownerFormCached != null && ownerFormCached.IsHandleCreated)
+            {
+                ownerFormCached.Activate();
+            }
+
+            // Rate-limited so the live re-smoke can confirm the watchdog engaged
+            // across the fullscreen transition without spamming the log.
+            if (s_reassertLogCount < 8)
+            {
+                s_reassertLogCount++;
+                Log.Info("PanelGame.ReassertEmbed: window-level fullscreen restyle detected"
+                    + " (detectedStyle=0x" + detectedStyle.ToString("X8")
+                    + ", detectedOwner=0x" + detectedOwner.ToInt64().ToString("X")
+                    + ") -> re-asserted owned-popup embed oldStyle=0x" + oldStyle.ToString("X8")
+                    + " newStyle=0x" + newStyle.ToString("X8")
+                    + " owner=0x" + ownerHwnd.ToInt64().ToString("X")
+                    + " (15-13 RESID-04 watchdog, window-side only -- NO device Reset)");
+            }
+        }
+
+        private static int s_reassertLogCount;
 
         private void RepositionSwgWindow()
         {
