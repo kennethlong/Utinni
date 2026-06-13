@@ -69,14 +69,14 @@ visibly affect in-world placements and that undo reverses them.
 | # | Step | Expected | Result |
 |---|------|----------|--------|
 | A1 | TJT loads; open the Snapshot panel | Panel + the new `Placements…` button visible (MEF seam unchanged) | ✅ 2026-06-12 |
-| A2 | Load a `.ws` snapshot | Placements populate; in-world objects appear | ⬜ |
-| A3 | Click `Placements…` | The `FormSnapshotPlacements` table opens with the placement rows | ✅ 2026-06-12 — `Snapshot Placements — naboo`, 5440 placements; filter works (543 theed) | 
-| A4 | Single-select a row | The gizmo drives that single placement (selection-sync holds) | ◐ partial 2026-06-12 — row-select → sidebar Selected Node sync ✅ (`shared_streetlamp_naboo_theed_style_1.iff`); gizmo VISUAL not yet confirmed |
-| A5 | Multi-select rows | Multi-row selection holds; detach/reattach is stable | ⬜ |
-| A6 | `Move selected…` | Selected placements visibly move in-world | ⬜ |
-| A7 | `Delete selected` (red confirm) | Selected placements disappear in-world after the confirm | ⬜ |
-| A8 | `Retemplate selected…` | Selected placements swap template (remove+add per node) in-world | ⬜ |
-| A9 | Undo (each op) | Each bulk op reverses atomically (N undo commands compose) | ⬜ |
+| A2 | Load a `.ws` snapshot | Placements populate; in-world objects appear | ✅ 2026-06-12 — naboo snapshot loaded, 5442 placements, in-world objects render |
+| A3 | Click `Placements…` | The `FormSnapshotPlacements` table opens with the placement rows | ✅ 2026-06-12 — `Snapshot Placements — naboo`, 5442 placements; filter works (`armoire` → 2/5442, `theed` → 543) | 
+| A4 | Single-select a row | The gizmo drives that single placement (selection-sync holds) | ✅ 2026-06-12 — row-select → sidebar Selected Node sync + in-world translate gizmo on the node; maintainer confirmed gizmo drives movement |
+| A5 | Multi-select rows | Multi-row selection holds; detach/reattach is stable | ✅ 2026-06-12 — 2 armoire rows multi-selected (`2 selected`), held stably through Move/Delete |
+| A6 | `Move selected…` | Selected placements visibly move in-world | ✅ 2026-06-12 — Move dialog (ΔX/ΔY/ΔZ + Apply); ΔX=3 → both armoires + grid Position values shifted in-world (maintainer confirmed) |
+| A8 | `Retemplate selected…` | Selected placements swap template (remove+add per node) in-world | ✅ 2026-06-12 — selected streetlamps 104+105 → Retemplate → `object/tangible/furniture/cheap/shared_armoire_s01.iff` → Apply. 2 new armoire nodes (`9995373`/`9995374`) created at the **exact preserved transforms** of 104/105 (-5110/4184, -5151/4290) + armoire rendered in-world. Add half immediate; Remove half deferred (tier-b, same as Delete). Composes Remove+Add descriptors per 15-01 design. |
+| A7 | `Delete selected` (red confirm) | Selected placements disappear in-world after the confirm | ✅ 2026-06-12 (tier-b) — red confirm fired ("Delete 2 placements? …undoable in the editor until you save."), selection cleared. Live render + grid defer (matches LOCKED badge "Placements re-resolve on the next scene change"); after Snapshot ▸ Reload the deleted armoires + rows are gone. **History note (maintainer-confirmed):** base naboo snapshot has NO armoires — all armoire nodes are in-memory adds. Reload re-reads the authored node list (reverts unsaved node edits) and does NOT de-spawn already-rendered objects until a scene change. So delete/retemplate persistence is governed by **Save** (loose-override), not reload; reload-revert is expected, not a bug. |
+| A9 | Undo (each op) | Each bulk op reverses atomically (N undo commands compose) | ❌ **CRASH 2026-06-12** — Move applied cleanly (104 X −5151.1→−5051.1 in grid). `Ctrl+Z` while the Placements child window was focused did NOTHING (no revert, no crash) — undo hotkey not routed from the child window to the editor undo manager. Clicking the **main-editor Undo arrow** then **crashed the client**: `utinni.log` 19:32:15 `VEH FATAL: code=0xC0000005 … module=<unmapped-EIP> base=0x0 rva=0x03667F2A READ target=0x00000000` → `ExceptionHandler invoked`. Null-deref AV at a JIT/managed address. No fresh `.mdmp` (int3 halt). Client process gone. **HYPOTHESIS:** Snapshot ▸ Reload reverts the node list but does NOT invalidate the editor undo stack → undo command holds a stale/dangling node pointer from before the reload → null-deref on undo. NOT yet scoped whether a clean move→undo (no reload in the stack) also crashes. |
 
 **Checklist A outcome / defects:**
 
@@ -87,7 +87,35 @@ visibly affect in-world placements and that undo reverses them.
 > scene change." DEC-A3/D-11 boundary footer verbatim confirmed (Blender-lane sentence).
 > A2, A4-gizmo-visual, A5–A9 remain for the post-fix session.
 
-_(record here)_
+**2026-06-12 live (MCP-driven + maintainer):** A1–A7 PASS. WorldSnapshot load, placements table,
+single-select gizmo, multi-select, bulk Move, and bulk Delete (tier-b re-resolve) all confirmed.
+Bulk ops compose `WorldSnapshotCommands` as ordered descriptors with per-op undo, exactly as 15-01
+designed. RESID-03 WS badge + DEC-A3/D-11 footer verbatim confirmed.
+
+**DEFECT (minor / polish, non-blocking) — stale selection gizmo after re-resolve:** after `Delete
+selected` + snapshot reload, the deleted placements are gone but the in-world manipulation gizmo
+(translate adjuster) remains rendered at the old selected-node location — it is not cleared when its
+target node disappears on re-resolve. Cosmetic; the gizmo clears on next selection change. Candidate
+follow-on: clear/hide the gizmo when the selected node is removed or on snapshot reload. Does NOT
+block the PROD-W2-WS sign-off.
+
+**DEFECT (BLOCKING — client crash) — Undo after a Snapshot ▸ Reload null-derefs:** A9 — after Move
+(or any bulk op) followed by a `Snapshot ▸ Reload`, invoking the editor Undo (main-window Undo arrow)
+crashes the client with `0xC0000005` null-read at a managed/JIT address (`utinni.log` 19:32:15).
+**ROOT CAUSE (confirmed in code):** `WorldSnapshotNodePositionChangedCommand.SetPosition()`
+(`UtinniCoreDotNet/Commands/WorldSnapshotCommands.cs:140-141`) does
+`var obj = Network.GetObjectById(nodeCopy.Id); obj.Transform.Position = position;` with **no null
+guard**. After `Snapshot ▸ Reload` (`WorldSnapshotImpl.Reload()` line 122 calls native
+`WorldSnapshot.Reload()` and does NOT clear the editor undo stack), the re-resolved in-world object
+for that node id is not currently instantiated, so `Network.GetObjectById` returns null → null-deref
+AV. The Add/Remove/Rotation undo commands have the same unguarded `WorldSnapshotReaderWriter`/`obj`
+lookups (`LastNode`, `ParentNode.LastChild`, `GetNodeById`). Secondary finding: `Ctrl+Z` is not
+routed from the `FormSnapshotPlacements` child window to the editor undo manager (no-op from that
+window). **Scoping still open:** NOT confirmed whether a clean `load → move → undo` (no reload in the
+stack) reverses correctly or also crashes — needs a fresh-stack repro after relaunch.
+**Gap-closure fix:** (1) null-guard `obj`/`node` lookups in all WS undo command bodies; (2) clear the
+editor undo stack on snapshot Unload/Reload so stale commands can't run; (3) ideally wire Ctrl+Z from
+the placements window.
 
 ---
 
