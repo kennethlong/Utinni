@@ -55,6 +55,27 @@ Concrete per-transition results to seed the matrix:
   the exclusive-fullscreen mode switch** (matches proposed scope #3 → keep it windowed-embedded).
 - **Maintainer triage (2026-06-03):** low priority for now, likely not a hard find.
 
+## Observed live (2026-06-13 — maintainer, injected SWGEmu session; Phase 15 C3 re-smoke)
+
+- **windowed → fullscreen:** ✅ **embed SURVIVES** after the 15-13 watchdog fix (no detach, no
+  overlay, focus/input recover). The previously-BLOCKING C3 gap is closed.
+- **NEW bug — mouse position/click mapping is wrong when BOTH the app and the editor are fullscreen.**
+  The OS cursor and the effective click point are scaled/offset incorrectly: to hit the in-game
+  **Quest** button the maintainer had to aim **slightly above** the button and **~50 px to the left**
+  of it. So the RT-space mouse mapping that holds for windowed/maximized does **not** hold for the
+  fullscreen-embed condition — a constant-ish offset + scale error.
+  - **Scope:** out of Phase 15 scope; captured here for the window-management / D3D9 presentation pass.
+  - **Same family as:** the RT-space mouse-mapping note (`feedback_imgui_embedded_d3d9_rt_space`, #4
+    below) and the cursor-clip dead-zone (`project_swg_cursor_clip_deadzone`, #2 below) — the mapping is
+    computed against the backbuffer/render-target rect, which the window-level fullscreen restyle
+    changes (different client-rect ↔ backbuffer stretch ratio + origin), so the windowed-derived
+    scale/offset is stale.
+  - **Repro:** put both the editor and SWG in fullscreen, try to click a known UI element (e.g. the
+    Quest button); the hot-spot is up-and-left of the visible control.
+  - **Fix direction (to investigate):** recompute the RT-space mouse scale + origin from the *current*
+    fullscreen client-rect ↔ backbuffer mapping on the window-level fullscreen transition (the same
+    transition the 15-13 watchdog already detects), instead of reusing the windowed mapping.
+
 ## Known-adjacent issues (link, don't re-investigate from scratch)
 
 This is the same family as several already-recorded items — start here:

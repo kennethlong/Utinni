@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
 status: executing
-stopped_at: Completed 15-17-PLAN.md (wave-5 full Release gate + reassembled COMPLETE bin/Release injection build with netstandard.dll + utinni-cli.exe closure, content-verified)
-last_updated: "2026-06-13T21:00:00.000Z"
-last_activity: 2026-06-13 -- 15-17 gap-closure executed (full Release gate green zero regression; bin/Release reassembled + completed with netstandard.dll/utinni-cli.exe; deployed PEs content-verified; 15-SMOKE wave-5 note recorded)
+stopped_at: 15-18 live re-smoke COMPLETE — DEFECTS disposition (B5/B7/C3/A9 PASS live; B6 + D-ii defects → gaps round 2); Phase 15 NOT closed
+last_updated: "2026-06-13T22:30:00.000Z"
+last_activity: 2026-06-13 -- 15-18 maintainer live re-smoke (Claude-driven via windows-mcp): B5/B7/C3/A9 PASS; B6 (disabled-button tooltip) + D-ii (.stf loose-override subpath flatten) defects → new --gaps round; D-render deferred (loose searchPath disabled); fullscreen mouse-mapping residual logged
 progress:
   total_phases: 20
   completed_phases: 15
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 15 (wave-2-editors-worldsnapshot-particle-presentation-residuals) — EXECUTING
-Plan: 15-17 complete (round-2 gap-closure 15-12..15-18 in flight; only 15-18 live re-smoke remains) — phase awaiting maintainer 15-18 live smoke against the reassembled + COMPLETE bin/Release build
-Status: Ready to execute (15-18 = maintainer live re-smoke, autonomous:false)
-Last activity: 2026-06-13 -- 15-17 gap-closure executed (full Release gate green zero regression; bin/Release reassembled + completed with netstandard.dll/utinni-cli.exe closure; deployed PEs content-verified; 15-SMOKE wave-5 note recorded)
+Plan: 15-18 live re-smoke COMPLETE (defects disposition) — gap-closure round 2 (15-12..15-18) all executed; B5/B7/C3/A9 PASS live, but B6 + D-ii defects found → Phase 15 routes to a NEW --gaps round (15-19+)
+Status: BLOCKED on gaps round 3 — plan + execute fixes for B6 (disabled-button tooltip) + D-ii (.stf loose-override subpath flatten), then re-smoke. Requirements NOT Validated until that round closes.
+Last activity: 2026-06-13 -- 15-18 maintainer live re-smoke (Claude-driven via windows-mcp): B5/B7/C3/A9 PASS; B6 + D-ii defects → new --gaps round; D-render deferred (loose searchPath disabled); fullscreen mouse-mapping residual logged
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 

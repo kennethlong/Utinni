@@ -41,3 +41,29 @@ disposition. It requires a live observation that automation cannot reach without
 Record the Step-7 result + the badge disposition in
 `.planning/phases/10-tjt-subpanel-string-table-editor-stf/10-06-SMOKE-LOG.md` (the CF-05 finding section +
 the V1 sign-off block), and close this todo. If the badge is amended, ship the 10-07 inline fix.
+
+## 2026-06-13 — Phase 15 Checklist D attempt (Claude-driven via windows-mcp, maintainer watching)
+
+**Outcome: STILL OPEN — deferred again (Option B).** SC3 live render-on-reload was attempted against the
+15-17 reassembled build and could NOT be observed, for a reason upstream of the reload-tier question:
+
+- **Root blocker — the loose searchPath is DISABLED.** There is no active `searchPath` in any client cfg.
+  `swgemu_live.cfg`'s priority-27 `searchPath_00_27=…\loose` lines are commented out (the 2026-06-12
+  phantom-walk mitigation, see `[[project_swg_client_loose_overrides]]`), and `ut.ini` has
+  `useSwgOverrideCfg=false` so `utinni.cfg` is not applied. The SWG client therefore never searches
+  `D:\SWGEmu-Client\SWGEmu\loose\`, so **no loose override (`.stf` or `.ot`) is picked up** regardless of
+  reload tier. Re-enabling it re-introduces the machine-wide retail-data shadow that caused the phantom
+  walk, so the maintainer chose **not** to re-enable + relaunch for this smoke (Option B).
+- **The editor save tier itself works** — drove `ui_auc.stf` → edited `accept_bid` → "Accept Bid (EDITED)"
+  → Save as loose override succeeded, file on disk (+18 b = the UTF-16 " (EDITED)"). The badge copy
+  "Reloads on next scene change or relog." is honest (does not over-promise) and the 15-07 classifier proxy
+  (`.stf`/`.ot` → tier-(b) `PendingNextSceneChange`) stands.
+- **Adjacent defect found — loose-override subdir flatten (Phase-8 Open Q2):** an `.stf` opened via the raw
+  `Open…` file dialog saved **flat** (`loose\ui_auc.stf`) instead of `loose\string\en\ui_auc.stf`; the
+  TRE-Browser "Open in String-table Editor" hand-off (which carries the logical path) is the path that
+  preserves the subdir. Routed to the Phase-15 next `--gaps` round.
+
+**To close this todo in a future session:** (1) re-enable the priority-27 `…\loose` searchPath (accept the
+shadow for a scoped session) **or** stand up the V2 tier-3 mock-D3D9 harness; (2) save the `.stf` via the
+TRE-Browser hand-off (not the raw dialog) so the loose subpath is correct; (3) relaunch; (4) observe
+render-on-scene-change vs relog-only and amend the badge only if it over-promises.

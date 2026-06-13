@@ -360,18 +360,21 @@ actually happened (no over-promise). Both `.stf` and `.ot` route to tier-(b) `Pe
 
 | # | Step | Expected / record | Result |
 |---|------|-------------------|--------|
-| D1 | Edit + save an `.stf` (loose override) | Save succeeds; reload badge shows tier-(b) copy | ⬜ |
-| D2 | Trigger a TJT chat-command scene change | Scene reloads | ⬜ |
-| D3 | Does the edited string render on reload? | Record: renders-on-scene-change **OR** relog-only | ⬜ |
-| D4 | Edit + save an `.ot` (loose override) | Save succeeds; reload badge shows tier-(b) copy | ⬜ |
-| D5 | Trigger a scene change | Scene reloads | ⬜ |
-| D6 | Does the edited template render on reload? | Record: renders-on-scene-change **OR** relog-only | ⬜ |
-| D7 | F5b stale-crc check (`.stf`) | Edited text still renders with the preserved stale `sourceCrc` (expected harmless) | ⬜ |
-| D8 | Badge candor | Confirm the badge copy honestly matches D3/D6 (amend to relog wording if relog-only; do NOT over-promise) | ⬜ |
+| D1 | Edit + save an `.stf` (loose override) | Save succeeds; reload badge shows tier-(b) copy | ✅ **PASS** — drove `ui_auc.stf` open → edited `accept_bid` → "Accept Bid (EDITED)" → **Save as loose override** succeeded ("Saved ui_auc.stf (loose override)", dirty cleared); badge read **"Reloads on next scene change."** (tier-(b)). On-disk artifact confirmed (+18 b = 9 UTF-16 chars for " (EDITED)"). |
+| D2 | Trigger a TJT chat-command scene change | Scene reloads | ⏸ **DEFERRED** (Option B) — not triggered; render is structurally blocked (see D3). |
+| D3 | Does the edited string render on reload? | Record: renders-on-scene-change **OR** relog-only | ⏸ **DEFERRED — render gated by config.** The loose **searchPath is disabled**: no active `searchPath` in any client cfg; `swgemu_live.cfg` priority-27 `searchPath_00_27=…\loose` is commented out (06-12 phantom-walk mitigation) and `ut.ini useSwgOverrideCfg=false`. SWG never searches `…\loose\` this session, so no loose override (`.stf` or `.ot`) can render. **Independent reload-tier question left unobserved by maintainer decision (Option B) rather than re-enable a known machine-wide shadow + relaunch.** |
+| D4 | Edit + save an `.ot` (loose override) | Save succeeds; reload badge shows tier-(b) copy | ⏸ **NOT DRIVEN** — same searchPath block makes the render half unobservable; `.ot` save path itself already proven by 11-04 + the B5 façade fix. |
+| D5 | Trigger a scene change | Scene reloads | ⏸ **DEFERRED** (Option B). |
+| D6 | Does the edited template render on reload? | Record: renders-on-scene-change **OR** relog-only | ⏸ **DEFERRED** — gated by the disabled loose searchPath (same as D3). |
+| D7 | F5b stale-crc check (`.stf`) | Edited text still renders with the preserved stale `sourceCrc` (expected harmless) | ⏸ **DEFERRED** — unobservable while the loose searchPath is disabled. |
+| D8 | Badge candor | Confirm the badge copy honestly matches D3/D6 (amend to relog wording if relog-only; do NOT over-promise) | ✅ **HONEST AS-SHIPPED** — the editor badge "Reloads on next scene change or relog." does not over-promise; with render unobservable it stays correct. 15-07 classifier routing (`.stf`/`.ot` → tier-(b) `PendingNextSceneChange`) is the standing automated proxy and is unchanged. |
 
 **Checklist D outcome / defects** (record the SC3 disposition + close `phase10-stringtable-sc3-live-reload-residual.md`):
 
-_(record here)_
+**Disposition: DEFERRED (Option B) — RESID-03 live render-on-reload remains gated on the disabled loose searchPath; not re-enabled to avoid the known phantom-walk machine-wide shadow + relaunch.** The editor **save tier works** (D1 PASS, re-confirming the B5 façade fix) and the badge candor is honest (D8); only the live render observation is deferred. Two findings logged:
+
+- **FINDING D-i (config, not a code defect):** the loose-override **render** path requires the priority-27 `…\loose` searchPath, which is currently disabled in `swgemu_live.cfg` (commented out after the 2026-06-12 phantom-walk). Until it is re-enabled, no loose override is picked up by the client. Logged to `phase10-stringtable-sc3-live-reload-residual.md`.
+- **FINDING D-ii (real defect — loose-override subdir flatten):** saving an `.stf` opened via the **raw `Open…` file dialog** writes the loose override **flat** (`loose\ui_auc.stf`) instead of preserving the logical subpath (`loose\string\en\ui_auc.stf`) the client resolves by. The `.prt` (B7) preserved its subpath because it was opened from inside the loose tree; the TRE-Browser "Open in …" hand-off carries the logical path, the raw `Open…` dialog does not. This is the Phase-8 Open Q2 *loose-override-subdir* gap, now concretely reproduced for `.stf`. → next `--gaps` round (with B6).
 
 ---
 
@@ -449,20 +452,54 @@ This plan (15-17) does NOT sign off the phase — the **Maintainer Sign-Off** bl
 
 ---
 
+## 15-18 RE-SMOKE RESULTS (2026-06-13 — Claude-driven via windows-mcp, maintainer watching)
+
+This pass was **Claude-driven** through the staged `windows-mcp` RESID-04 loop (editor opened/edited/saved
+by coordinate-click; UIA labels did not surface so screenshots drove every action). Focus theft was avoided
+because Claude Code ran with **bypass-permissions on** — confirming the windows-mcp loop is viable for the
+WinForms editor surface (the in-game chat scene-change was the only part not exercised; see Checklist D).
+
+| Check | Result |
+|-------|--------|
+| B4 param-grid rebind on raw-hex edit | ✅ PASS |
+| B5 loose-override Save under injection | ✅ PASS (re-confirmed live via `ui_auc.stf` save → "Saved … (loose override)") |
+| B6 no-hook preview tooltip | ⛔ **DEFECT** — WinForms does not render a tooltip over a disabled control; the honest no-hook copy is unreachable. → new `--gaps` round |
+| B7 Explain effect (`decode-iff`) | ✅ PASS (codec honestly reported a self-inflicted `01→02` group-count edit as `CountExceedsCap`; clean decode after revert) |
+| B8 boundary footer | ✅ PASS (verbatim) |
+| C3 windowed→fullscreen embed | ✅ PASS — embed survives (no detach/overlay), focus + input recover, no crash, no device Reset |
+| Cx fullscreen mouse-mapping | ⚠ NEW out-of-phase residual — cursor/click offset (up + ~50px left) when both app + editor are fullscreen; logged to `swg-window-resize-fullscreen-edge-cases.md` |
+| D1 `.stf` edit + loose-override Save | ✅ PASS |
+| D-render SC3 render-on-reload | ⏸ DEFERRED (Option B) — loose searchPath disabled; see Checklist D |
+| D-ii `.stf` loose-override subpath flatten | ⛔ **DEFECT** — raw `Open…` dialog save flattens to `loose\ui_auc.stf` (should be `loose\string\en\…`). → new `--gaps` round |
+| D8 badge candor | ✅ honest as-shipped |
+
+**Core gap-round goals (B5, B7, C3, A9) all PASSED live.** Open defects: **B6**, **D-ii**. Deferred
+residuals: D-render (config), fullscreen mouse-mapping, codec hard-abort-on-edited-count.
+
 ## Maintainer Sign-Off
 
-- [ ] Checklist A (WS demo) completed
-- [ ] Checklist B (Particle demo) completed
-- [ ] Checklist C (RESID-04 matrix + DISCL log + toggle A/B + no-Reset) completed
-- [ ] Checklist D (RESID-03 SC3) completed
-- [ ] `swg-window-resize-fullscreen-edge-cases.md` updated/closed per the findings
-- [ ] `phase10-stringtable-sc3-live-reload-residual.md` updated/closed per the findings
+- [x] Checklist A (WS demo) completed — A1–A9 PASS (A9 re-verified earlier; finalized diagnostic-free by 15-14)
+- [x] Checklist B (Particle demo) completed — B4/B5/B7/B8 PASS; **B6 defect**
+- [x] Checklist C (RESID-04 matrix + DISCL log + toggle A/B + no-Reset) completed — **C3 PASS** (the blocking gate); DISCL EXCLUSIVE rows N/A (window-level fullscreen); new fullscreen mouse-mapping residual logged
+- [x] Checklist D (RESID-03 SC3) recorded — D1 save PASS; **render DEFERRED** (loose searchPath disabled); **D-ii defect**
+- [x] `swg-window-resize-fullscreen-edge-cases.md` updated (C3 PASS + fullscreen mouse-mapping residual)
+- [x] `phase10-stringtable-sc3-live-reload-residual.md` updated (D-render config blocker + D-ii subpath flatten)
 
-**Disposition:** _(approved / approved-with-deferred-residual / defects — see notes)_
+**Disposition:** **defects — see notes** (Phase 15 NOT closed; routes to a new `--gaps` round)
 
-**Signed:** _(maintainer)_  **Date:** _(YYYY-MM-DD)_
+**Signed:** Kenneth Long (maintainer)  **Date:** 2026-06-13
 
 **Notes / follow-on defects:**
+
+- **B6 — no-hook preview tooltip unreachable on a disabled button.** 15-16 set the honest `PreviewNoHookTooltip` text but `btnPreview` is disabled this phase, and WinForms ToolTip does not render over disabled controls. Fix options: wrap the button in a tooltip-bearing `Panel`, keep the button enabled and surface the message on click, or owner-draw the tooltip. → next `--gaps` round.
+- **D-ii — `.stf` loose-override subpath flatten (Phase-8 Open Q2).** Saving an `.stf` opened via the raw `Open…` dialog writes `loose\ui_auc.stf` instead of `loose\string\en\ui_auc.stf`; the TRE-Browser "Open in …" hand-off carries the logical path and saves correctly. Make the raw-dialog open derive/preserve the logical subpath (or block loose-override save when the logical path is unknown and steer to TRE-Browser). → next `--gaps` round.
+- **Deferred residuals (todos, not this round):** D-render gated on the disabled priority-27 loose searchPath (re-enable re-introduces the phantom-walk shadow); fullscreen mouse-mapping offset; particle codec hard-aborts decode on an edited over-count instead of degrading (D-05 tension, read-tool only).
+
+> Session logistics (2026-06-12): TJT `ToggleFreeCam = Shift+Tab` hotkey collides with Claude
+> Code's permission-mode cycling, and permission prompts steal focus from the game — MCP-driven
+> UI automation was unreliable; maintainer-drives mode is the working pattern for this smoke.
+> **2026-06-13 update:** with **bypass-permissions on**, Claude DID drive the WinForms editor surface
+> reliably via windows-mcp (no focus theft); only the in-game chat scene-change remained maintainer-territory.
 
 > Session logistics (2026-06-12): TJT `ToggleFreeCam = Shift+Tab` hotkey collides with Claude
 > Code's permission-mode cycling, and permission prompts steal focus from the game — MCP-driven
