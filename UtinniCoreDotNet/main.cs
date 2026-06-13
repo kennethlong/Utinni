@@ -23,6 +23,8 @@
 **/
 
 using System;
+using System.IO;
+using System.Reflection;
 using System.Windows.Forms;
 using UtinniCoreDotNet.Callbacks;
 using UtinniCoreDotNet.PluginFramework;
@@ -41,6 +43,42 @@ namespace UtinniCoreDotNet
             if (!initialized)
             {
                 initialized = true;
+
+                // 15-12 (15-SMOKE B5 — BLOCKING): install the injected-host AssemblyResolve handler
+                // BEFORE anything that can touch UtinniCoreDotNet.PathContainment / LooseOverridePath
+                // (the PluginLoader below constructs plugins that call LooseOverridePath at
+                // registration). Under injection clr::load() calls
+                // ExecuteInDefaultAppDomain(<injectRoot>/UtinniCoreDotNet.dll, ...) which runs in the
+                // DEFAULT AppDomain whose APPBASE is the host exe dir (SWGEmu.exe), NOT the Utinni
+                // inject root — so the BCL probe never searches the inject root and the netstandard2.0
+                // PathContainment façade (netstandard.dll) fails to bind. This handler probes the
+                // inject root (the directory of the executing UtinniCoreDotNet.dll) for the narrow
+                // allow-list (netstandard + UtinniCoreDotNet.PathContainment) via the unit-tested
+                // InjectedAssemblyResolver decision, and binds from there. It NEVER throws: a failed
+                // LoadFrom logs and returns null so the default bind cascade is not aborted.
+                // NOTE (live): a cached FAILED bind is not re-driven — the maintainer must RELAUNCH to
+                // pick up this fix in a fresh process. Injected-only behavior; confirmed live in the
+                // 15-18 re-smoke against the 15-17 reassembled build.
+                string injectRoot = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                AppDomain.CurrentDomain.AssemblyResolve += (sender, resolveArgs) =>
+                {
+                    string probePath = InjectedAssemblyResolver.ResolveProbePath(injectRoot, resolveArgs.Name, File.Exists);
+                    if (probePath == null)
+                    {
+                        return null;
+                    }
+
+                    try
+                    {
+                        return Assembly.LoadFrom(probePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Info($"InjectedAssemblyResolver: failed to load '{probePath}' for '{resolveArgs.Name}': {ex.Message}");
+                        return null;
+                    }
+                };
+
                 Application.EnableVisualStyles();
 
                 Log.Setup();
