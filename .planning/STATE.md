@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
-status: executing
-stopped_at: Completed 15-09-PLAN.md (A9 WS undo-crash null-guards)
-last_updated: "2026-06-13T02:05:25.043Z"
+status: verifying
+stopped_at: Completed 15-11-PLAN.md (gap-closure Release gate + reassembled content-verified injection build)
+last_updated: "2026-06-13T02:56:04.705Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 20
   completed_phases: 15
   total_plans: 81
-  completed_plans: 80
-  percent: 99
+  completed_plans: 81
+  percent: 100
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 15 (wave-2-editors-worldsnapshot-particle-presentation-residuals) — EXECUTING
-Plan: 3 of 11
-Status: Ready to execute
+Plan: 15-11 of 11 (gap-closure 15-09/15-10/15-11 complete) — phase awaiting maintainer 15-08 live smoke
+Status: Gap-closure complete; A9 re-verify pending under 15-08
 Last activity: 2026-06-13
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
@@ -153,6 +153,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 15 P07 | ~20min | 1 tasks | 2 files |
 | Phase 15 P15-09 | ~5 min | 2 tasks tasks | 4 files files |
 | Phase 15 P15-10 | ~20 min | 2 tasks | 9 (cross-repo) files |
+| Phase 15 P15-11 | ~39 min | 2 tasks | 1 doc + reassembled bin/Release build artifacts |
 
 ## Accumulated Context
 
@@ -195,6 +196,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: 15-07 (RESID-03 automatable half) COMPLETE: extended ReloadAssetClassifier with named WorldSnapshotExtensions{.ws}+ParticleExtensions{.prt} sets routing both to tier-(b) PendingNextSceneChange (D-14), backing the LOCKED WS 'Placements re-resolve on the next scene change.' + Particle DEGRADED 'Reloads on next scene change or relog.' badge copy; conservative unknown fallback preserved exactly. Particle LIVE-capable badge is a form-side runtime affordance (15-03 hook+Game.IsRunning), NOT a classifier tier. ParticleSnapshotReloadRoutingTests 9 facts incl honesty guard; dotnet test --filter ReloadRouting 15/15. Live SC3 render-on-reload is 15-08 smoke. Commit c63122a.
 - [Phase ?]: 15-09: A9 WS undo-crash closed — pure WorldSnapshotCommandGuard bail-on-null helper + all four WS IUndoCommand bodies guarded (ParentNode before LastChild). 696/696 managed suite green; sln Release|x86 exit 0; live A9 re-verify in 15-11->15-08.
 - [Phase 15]: 15-10: UndoRedoManager.Clear() public seam + IEditorPlugin Undo/Redo/ClearUndoStack delegates wired by FormMain; WorldSnapshotImpl clears stack+gizmo on Load/Unload/Reload+BulkDelete/RemoveNode; FormSnapshotPlacements Ctrl+Z/Y routes to editor undo with FIFO refresh-after-undo. Both repos Release|x86 green against the paired-rebuilt widened interface (binary-compat verified). A9 secondary half + GAP2 stale-gizmo closed; live re-verify in 15-11->15-08.
+- [Phase ?]: 15-11: gap-closure Release gate green (697 managed + 84/27 native + resid04 8/1, zero regression); reassembled bin/Release injection build content-verified (deployed UtinniCoreDotNet.dll defines WorldSnapshotCommandGuard + UndoRedoManager.Clear; TheJawaToolboxDotNet.dll references ClearUndoStack via reflection-only enumeration, not just mtime); A9 undo-crash re-verify pointer recorded in 15-SMOKE.md back to 15-08; phase still gated on maintainer live smoke.
 
 ### Pending Todos
 
@@ -250,8 +252,8 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-13T02:02:17.098Z
-Stopped at: Completed 15-09-PLAN.md (A9 WS undo-crash null-guards)
+Last session: 2026-06-13T02:54:59.005Z
+Stopped at: Completed 15-11-PLAN.md (gap-closure Release gate + reassembled content-verified injection build)
 Resume file: None
 
 ## Ingest Provenance

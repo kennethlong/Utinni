@@ -356,7 +356,7 @@ Plans:
 - [ ] 15-08-PLAN.md — Tier-4 maintainer live-SWG smoke: WS/Particle demo + RESID-04 matrix + RESID-03 SC3 (autonomous:false) [PROD-W2-WS/PRT, RESID-03/04] (Wave 4)
 - [x] 15-09-PLAN.md — GAP: null-guard all WS IUndoCommand Execute/Undo bodies + pure WorldSnapshotCommandGuard helper (fixes A9 undo-crash root cause) [PROD-W2-WS] (Wave 1, gap_closure)
 - [x] 15-10-PLAN.md — GAP: UndoRedoManager.Clear() + IEditorPlugin undo seam; clear stack + gizmo on snapshot Load/Unload/Reload; route Ctrl+Z from FormSnapshotPlacements [PROD-W2-WS] (Wave 1, gap_closure)
-- [ ] 15-11-PLAN.md — GAP: full Release gate + reassemble bin/Release injection build for the 15-08 A9 re-verify; record outcome in 15-SMOKE.md [PROD-W2-WS] (Wave 2, gap_closure)
+- [x] 15-11-PLAN.md — GAP: full Release gate + reassemble bin/Release injection build for the 15-08 A9 re-verify; record outcome in 15-SMOKE.md [PROD-W2-WS] (Wave 2, gap_closure)
 **Research flag**: yes — `.prt` codec format depth is MEDIUM-confidence; `swg-client-v2` is the spec reference but no Utinni fixtures exist yet (`/gsd:plan-phase --research-phase 15`).
 **UI hint**: yes
 
@@ -425,7 +425,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 12. Revive-feasibility spike (HARD GATE) + intro-skip crash | 0/TBD | Not started | - |
 | 13. Wrap compilers as CLI verbs + OT Tier-2 | 6/6 | Complete   | 2026-06-05 |
 | 14. Headless MCP server (`Utinni.Mcp`) | 5/5 | Complete   | 2026-06-07 |
-| 15. Wave-2 editors (WorldSnapshot, Particle) + residuals | 9/11 | In Progress|  |
+| 15. Wave-2 editors (WorldSnapshot, Particle) + residuals | 10/11 | In Progress|  |
 | 16. Live-injected MCP bridge + Blender boundary | 0/TBD | Not started | - |
 
 ## Backlog
