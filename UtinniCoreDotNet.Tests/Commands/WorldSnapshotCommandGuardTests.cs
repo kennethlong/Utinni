@@ -53,6 +53,25 @@ namespace UtinniCoreDotNet.Tests.Commands
             Assert.True(WorldSnapshotCommandGuard.ShouldApply(new object()));
         }
 
+        // Test 2a (15-14): explicit node-only semantics for the SetPosition/SetRotation revert path —
+        // a null LIVE node is the only true bail (nothing to revert), so the single-arg guard returns
+        // false and the undo body returns without touching the snapshot data.
+        [Fact]
+        public void WorldSnapshotCommandGuard_ShouldApply_NullNode_ReturnsFalse_BailNothingToRevert()
+        {
+            object liveNode = null;
+            Assert.False(WorldSnapshotCommandGuard.ShouldApply(liveNode));
+        }
+
+        // Test 2b (15-14): a resolved (non-null) LIVE node means the undo body proceeds to revert the
+        // node data — the in-world object is optional and is moved only when separately non-null.
+        [Fact]
+        public void WorldSnapshotCommandGuard_ShouldApply_NonNullNode_ReturnsTrue_ProceedToRevert()
+        {
+            object liveNode = new object();
+            Assert.True(WorldSnapshotCommandGuard.ShouldApply(liveNode));
+        }
+
         // Test 3: any combination involving at least one null -> two-arg ShouldApply returns false.
         [Theory]
         [InlineData(false, false)] // obj null,     node null

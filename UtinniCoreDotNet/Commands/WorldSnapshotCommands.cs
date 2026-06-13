@@ -159,25 +159,35 @@ namespace UtinniCoreDotNet.Commands
                 // before ANY dereference. Both native lookups return null when the object/node is not
                 // currently instantiated (e.g. Undo against a node whose live object is gone) — the
                 // old code dereferenced obj BEFORE node was even resolved -> 0xC0000005 client crash.
+                // 15-08 A9 fix: resolve the LIVE node by id from the live snapshot tree. Do NOT rely
+                // on the command's COPIED ParentNode linkage — a copied node carries no live parent
+                // pointer, so the prior parent-branch resolved null and Undo silently bailed at the
+                // guard (object stayed at the new position; table refresh still showed it). Mirror the
+                // working BulkMove resolution: GetNodeById, with a live-parent fallback for child nodes.
+                var rw = WorldSnapshotReaderWriter.Get();
+                var node = rw.GetNodeById(nodeCopy.Id);
+                if (node == null && nodeCopy.ParentId > 0)
+                {
+                    var parent = rw.GetNodeById(nodeCopy.ParentId);
+                    node = parent != null ? parent.GetChildById(nodeCopy.Id) : null;
+                }
+
                 var obj = Network.GetObjectById(nodeCopy.Id);
 
-                WorldSnapshotReaderWriter.Node node;
-                if (nodeCopy.ParentId > 0)
+                // Undo must revert the snapshot DATA (node) so the table/state reflect it; the in-world
+                // object is updated only when it is currently instantiated. A null node is the only true
+                // bail (nothing to revert) — a null obj just means there is no live visual to move yet,
+                // which must NOT block the data revert (and never null-derefs: the A9 crash guard holds).
+                if (!WorldSnapshotCommandGuard.ShouldApply(node))
                 {
-                    node = nodeCopy.ParentNode != null ? nodeCopy.ParentNode.GetChildById(nodeCopy.Id) : null;
-                }
-                else
-                {
-                    node = WorldSnapshotReaderWriter.Get().GetNodeById(nodeCopy.Id);
-                }
-
-                if (!WorldSnapshotCommandGuard.ShouldApply(obj, node))
-                {
-                    return; // bail gracefully: a missing object/node is skipped, never dereferenced
+                    return;
                 }
 
-                obj.Transform.Position = position;
-                obj.PositionAndRotationChanged(false, node.Transform.Position);
+                if (obj != null)
+                {
+                    obj.Transform.Position = position;
+                    obj.PositionAndRotationChanged(false, position); // target pos (matches BulkMove), not the stale pre-revert node pos
+                }
                 node.Transform.Position = position;
 
                 WorldSnapshot.DetailLevelChanged();
@@ -229,25 +239,29 @@ namespace UtinniCoreDotNet.Commands
             {
                 // 15-09 A9 fix: resolve object AND node FIRST, single guard before any deref (see
                 // SetPosition). The old code dereferenced obj before node was resolved -> null-deref AV.
+                // 15-08 A9 fix: resolve the LIVE node by id (see SetPosition) — the copied node's
+                // ParentNode is not live, which made rotation Undo silently bail at the guard too.
+                var rw = WorldSnapshotReaderWriter.Get();
+                var node = rw.GetNodeById(nodeCopy.Id);
+                if (node == null && nodeCopy.ParentId > 0)
+                {
+                    var parent = rw.GetNodeById(nodeCopy.ParentId);
+                    node = parent != null ? parent.GetChildById(nodeCopy.Id) : null;
+                }
+
                 var obj = Network.GetObjectById(nodeCopy.Id);
 
-                WorldSnapshotReaderWriter.Node node;
-                if (nodeCopy.ParentId > 0)
+                // node is the only true bail (nothing to revert); obj is optional (no live visual yet).
+                if (!WorldSnapshotCommandGuard.ShouldApply(node))
                 {
-                    node = nodeCopy.ParentNode != null ? nodeCopy.ParentNode.GetChildById(nodeCopy.Id) : null;
-                }
-                else
-                {
-                    node = WorldSnapshotReaderWriter.Get().GetNodeById(nodeCopy.Id);
+                    return;
                 }
 
-                if (!WorldSnapshotCommandGuard.ShouldApply(obj, node))
+                if (obj != null)
                 {
-                    return; // bail gracefully: a missing object/node is skipped, never dereferenced
+                    obj.Transform.CopyRotation(transform);
+                    obj.PositionAndRotationChanged(false, node.Transform.Position); // position unchanged on rotation
                 }
-
-                obj.Transform.CopyRotation(transform);
-                obj.PositionAndRotationChanged(false, node.Transform.Position);
                 node.Transform.CopyRotation(transform);
 
                 WorldSnapshot.DetailLevelChanged();
