@@ -4,14 +4,14 @@ milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
 status: executing
 stopped_at: Completed 15-05-PLAN.md (RESID-04 fullscreen suppress + no-Reset gate)
-last_updated: "2026-06-07T16:13:36.293Z"
-last_activity: 2026-06-07
+last_updated: "2026-06-13T01:43:00.163Z"
+last_activity: 2026-06-13 -- Phase 15 planning complete
 progress:
   total_phases: 20
   completed_phases: 15
-  total_plans: 78
+  total_plans: 81
   completed_plans: 78
-  percent: 100
+  percent: 96
 ---
 
 # Project State
@@ -29,7 +29,7 @@ Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 15 (wave-2-editors-worldsnapshot-particle-presentation-residuals) — EXECUTING
 Plan: 8 of 8
 Status: Ready to execute
-Last activity: 2026-06-07
+Last activity: 2026-06-13 -- Phase 15 planning complete
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 
