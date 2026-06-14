@@ -1,5 +1,5 @@
 ---
-resolves_phase: 15
+resolves_phase: 18
 title: SWG window resize / windowed↔fullscreen edge cases
 area: d3d9-presentation
 ---
