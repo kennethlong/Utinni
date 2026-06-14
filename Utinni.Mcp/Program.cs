@@ -81,9 +81,14 @@ var mcpBuilder = builder.Services
 //     WithTools<LiveTools>() registration, gated on serverArgs.EnableLive (--enable-live /
 //     UTINNI_MCP_ENABLE_LIVE). When the flag is OFF (default) the live tools are NOT advertised.
 //     The LivePipeClient singleton (the live tools' dispatch dependency) is also registered ONLY
-//     under this guard (C-13) — wired in Task 2 once LivePipeClient exists. Fail-closed by absence.
+//     under this guard (C-13). Fail-closed by absence on both.
+//
+//     NOTE: the live-tier security surface (dual-flag operator contract, root-reconciliation
+//     requirement, named-pipe ACL) is documented in
+//     .planning/phases/14-headless-mcp-server-utinni-mcp-the-centerpiece/MCP-SECURITY.md (C-11).
 if (serverArgs.EnableLive)
 {
+    builder.Services.AddSingleton(new LivePipeClient(LivePipeClient.PipeName));
     mcpBuilder.WithTools<LiveTools>();
 }
 

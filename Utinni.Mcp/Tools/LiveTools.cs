@@ -23,10 +23,14 @@
 **/
 // Implementation original to Utinni under MIT.
 
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
+using System.Text.Json;
 using System.Threading.Tasks;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
+using Utinni.Mcp.Server;
 
 namespace Utinni.Mcp.Tools;
 
@@ -77,18 +81,28 @@ public class LiveTools
                  "--root to confirm root alignment). Returns listening:false (never hangs) when no client " +
                  "is listening — the bridge requires BOTH --enable-live (this host) AND the in-client " +
                  "[Live] enableLiveBridge flag.")]
-    public static async Task<CallToolResult> LivePing()
+    public static async Task<CallToolResult> LivePing(LivePipeClient pipe)
     {
-        // Task 0 placeholder. Task 2 rewrites this signature to (LivePipeClient pipe) and fills the
-        // body (pipe.PingAsync + the clientRoot diagnostic mapping). The Task-0 gating test only
-        // enumerates the advertised tool list via McpClient.ListToolsAsync(), so a parameterless
-        // placeholder suffices to PROVE the registration-path lock here.
-        await Task.CompletedTask.ConfigureAwait(false);
-        return new CallToolResult
+        LivePingResult result = await pipe.PingAsync().ConfigureAwait(false);
+
+        // A protocolVersion skew / malformed ack surfaces as an in-band error result (CUR-NEW-5) so
+        // the agent sees a clear failure, never a silent wrong answer. A no-client is NOT an error —
+        // it is the honest listening:false answer (Pitfall 3).
+        if (result.Error != null)
         {
-            IsError = false,
-            Content = { new TextContentBlock { Text = "live_ping placeholder (Task 2 fills the body)." } }
+            return ErrorResult(result.Error);
+        }
+
+        // R3-3: surface the in-client resolved clientRoot diagnostic so an operator/agent can compare
+        // --root against the server's resolved client root (the root-reconciliation verification field).
+        var payload = new Dictionary<string, object?>
+        {
+            ["listening"] = result.Listening,
+            ["gameRunning"] = result.GameRunning,
+            ["pid"] = result.Pid,
+            ["clientRoot"] = result.ClientRoot,
         };
+        return JsonResult(payload, isError: false);
     }
 
     [McpServerTool(Name = "live_reload_asset", ReadOnly = false, Idempotent = false)]
@@ -98,16 +112,66 @@ public class LiveTools
                  "then the RELATIVE path is sent on the wire; the in-client server re-resolves it under " +
                  "its own pinned client root and returns the honest reload tier.")]
     public static async Task<CallToolResult> LiveReloadAsset(
+        ResolvedRoot root,
+        LivePipeClient pipe,
         [Description(PathParamDescription)] string relativePath)
     {
-        // Task 0 placeholder. Task 2 rewrites this signature to (ResolvedRoot root, LivePipeClient
-        // pipe, string relativePath) and fills the body (root.Resolve validate → send RELATIVE path →
-        // map ack tier/candor).
-        await Task.CompletedTask.ConfigureAwait(false);
+        // ROOT RECONCILIATION (CUR-NEW-1): VALIDATE the path is contained under the MCP-pinned root
+        // FIRST (the fail-closed boundary; throws on escape → the SDK maps that to a tool error). We
+        // then send the RELATIVE path on the wire (NOT the resolved absolute) — the in-client server
+        // re-resolves the SAME relative path under its OWN pinned client root via the same
+        // LooseOverridePath semantics, so an absolute path never crosses the pipe.
+        root.Resolve(relativePath); // throws on escape; the resolved absolute is intentionally discarded
+
+        string ext = Path.GetExtension(relativePath) ?? string.Empty;
+
+        LiveReloadResult result = await pipe.ReloadAssetAsync(relativePath, ext).ConfigureAwait(false);
+
+        // No-client / skew / malformed → in-band error result (the agent self-corrects / retries).
+        if (result.Error != null)
+        {
+            return ErrorResult(result.Error);
+        }
+
+        // CANDOR (C-14): the mapped result restates that queued != visible reload — transport-only
+        // until RESID-03 (reloadAttempted is always false this phase). The tier comes verbatim from
+        // the in-client ReloadAssetClassifier via the ack.
+        var payload = new Dictionary<string, object?>
+        {
+            ["accepted"] = result.Accepted,
+            ["tier"] = result.Tier,
+            ["queued"] = result.Queued,
+            ["reloadAttempted"] = result.ReloadAttempted,
+            ["path"] = result.Path,
+            ["note"] = result.Note,
+            ["candor"] = "queued != visible reload; transport-only until RESID-03 (reloadAttempted=false).",
+        };
+        return JsonResult(payload, isError: false);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Result mapping helpers (a thin local mirror of CliResultMapper's shape —
+    // the live tools do not route through utinni-cli, so they build their own).
+    // ─────────────────────────────────────────────────────────────────────
+
+    private static CallToolResult JsonResult(Dictionary<string, object?> payload, bool isError)
+    {
+        string json = JsonSerializer.Serialize(payload);
+        JsonElement structured = JsonDocument.Parse(json).RootElement.Clone();
         return new CallToolResult
         {
-            IsError = false,
-            Content = { new TextContentBlock { Text = "live_reload_asset placeholder (Task 2 fills the body)." } }
+            IsError = isError,
+            Content = { new TextContentBlock { Text = json } },
+            StructuredContent = structured,
+        };
+    }
+
+    private static CallToolResult ErrorResult(string message)
+    {
+        return new CallToolResult
+        {
+            IsError = true,
+            Content = { new TextContentBlock { Text = message } },
         };
     }
 }
