@@ -325,6 +325,56 @@ namespace UtinniCoreDotNet.Tests.Live
         // Lifecycle with BOUNDED timeouts (C-07 / CDX-NEW-7/8).
         // ─────────────────────────────────────────────────────────────────────
 
+        // ─────────────────────────────────────────────────────────────────────
+        // main.cs wiring source-assertions (16-02 Task 3; C-01 / CUR-NEW-1 / R3-2).
+        // The live in-client ping=listening:true is Tier-4 manual / non-gating (D-01); the GATED
+        // deliverable is that the WIRING exists, pins the CLIENT root (not injectRoot), and wires the
+        // game-thread cache refresh — code-asserted here.
+        // ─────────────────────────────────────────────────────────────────────
+
+        [Fact]
+        public void MainCs_WiresStartListener_AfterCallbacks_BeforeApplicationRun()
+        {
+            string main = ReadMainSource();
+            int iGameCallbacks = main.IndexOf("GameCallbacks.Initialize()", StringComparison.Ordinal);
+            int iStartListener = main.IndexOf("StartListener()", StringComparison.Ordinal);
+            int iAppRun = main.IndexOf("Application.Run(", StringComparison.Ordinal);
+            Assert.True(iGameCallbacks >= 0, "GameCallbacks.Initialize() not found in main.cs");
+            Assert.True(iStartListener >= 0, "StartListener() not wired in main.cs (C-01)");
+            Assert.True(iAppRun >= 0, "Application.Run not found in main.cs");
+            // post-Callbacks, pre-Application.Run.
+            Assert.True(iGameCallbacks < iStartListener, "StartListener must be wired AFTER GameCallbacks.Initialize");
+            Assert.True(iStartListener < iAppRun, "StartListener must be wired BEFORE Application.Run");
+        }
+
+        [Fact]
+        public void MainCs_PinsClientRoot_NotInjectRoot_AndGatesOnLiveFlag()
+        {
+            string main = ReadMainSource();
+            string code = StripComments(main);
+            // The server is constructed with ResolveClientRoot() (the client-root chain), NOT injectRoot.
+            Assert.Contains("ResolveClientRoot()", code);
+            Assert.Contains("new LivePipeServer(", code);
+            // The construction does not pass injectRoot as the containment root (CUR-NEW-1).
+            Assert.DoesNotContain("new LivePipeServer(injectRoot", code);
+            // Gated on the in-client enable flag (C-06, default OFF).
+            Assert.Contains("\"Live\"", code);
+            Assert.Contains("enableLiveBridge", code);
+        }
+
+        [Fact]
+        public void MainCs_WiresGameThreadRefresh_NativeReadGameThreadConfined()
+        {
+            string main = ReadMainSource();
+            string code = StripComments(main);
+            // The game-state refresh is invoked from a GameCallbacks/AddMainLoopCall context, not the
+            // accept loop (R3-2). The recurring refresh re-enqueues itself via AddMainLoopCall.
+            Assert.Contains("RefreshGameStateOnGameThread", code);
+            Assert.Contains("AddMainLoopCall(refresh)", code);
+            // The native probe is wired as () => Game.IsRunning (the only native read, game-thread-only).
+            Assert.Contains("Game.IsRunning", code);
+        }
+
         [Fact]
         public void StartListener_IsIdempotent_OneAcceptLoop()
         {
@@ -516,6 +566,23 @@ namespace UtinniCoreDotNet.Tests.Live
                 i++;
             }
             return sb.ToString();
+        }
+
+        // Reads the UtinniCoreDotNet/main.cs production source for the Task-3 wiring source-assertions.
+        private static string ReadMainSource()
+        {
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            DirectoryInfo dir = new DirectoryInfo(baseDir);
+            while (dir != null)
+            {
+                string candidate = Path.Combine(dir.FullName, "UtinniCoreDotNet", "main.cs");
+                if (File.Exists(candidate))
+                {
+                    return File.ReadAllText(candidate);
+                }
+                dir = dir.Parent;
+            }
+            throw new FileNotFoundException("Could not locate UtinniCoreDotNet/main.cs from " + baseDir);
         }
 
         private static int CountOccurrences(string haystack, string needle)

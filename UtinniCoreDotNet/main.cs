@@ -23,10 +23,12 @@
 **/
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows.Forms;
 using UtinniCoreDotNet.Callbacks;
+using UtinniCoreDotNet.Live;
 using UtinniCoreDotNet.PluginFramework;
 using UtinniCoreDotNet.UI.Forms;
 using UtinniCoreDotNet.Utility;
@@ -105,6 +107,59 @@ namespace UtinniCoreDotNet
                 // utinni_signal_launcher_ready for the wait/signal mechanics.
                 Native.SignalLauncherReady();
 
+                // 16-02 Task 3 (MCP-03; C-01 / CUR-NEW-1 / R3-2): start the in-client live-bridge
+                // named-pipe LISTENER here — AFTER the four *Callbacks.Initialize() calls above (so the
+                // GameCallbacks.AddMainLoopCall marshal seam + the game-thread cache-refresh seam are
+                // wired) and BEFORE the blocking Application.Run below (StartListener spawns a BACKGROUND
+                // thread, so it is non-blocking; placing it pre-Run is correct).
+                //
+                //   * CLIENT-ROOT PINNING (CUR-NEW-1): the containment root is the resolved SWG CLIENT
+                //     root (mirror FormIffEditor.ResolveClientRoot: MainModule dir → GetWorkingDirectory
+                //     → [TreBrowser] clientDir) — the SAME root the editor save path + the MCP --root
+                //     point at — NOT `injectRoot` (the Utinni DLL dir at main.cs above).
+                //   * GAME-STATE CACHE (R3-2): the production probe `() => Game.IsRunning` is injected,
+                //     but the native read is confined to the GAME THREAD — a recurring AddMainLoopCall
+                //     re-enqueues itself each tick and calls RefreshGameStateOnGameThread(); the pipe
+                //     worker reads ONLY the cached snapshot and never invokes the probe / Game.IsRunning.
+                //   * DUAL-FLAG (CUR-NEW-6 / C-06 defense-in-depth): gated on the in-client
+                //     `[Live] enableLiveBridge` config flag (default OFF, fail-closed), mirroring
+                //     `enableEditorMode` below. --enable-live on the MCP host (16-03) gates the tool
+                //     tier; BOTH must be ON for a working live path. Wrapped in try/catch (the
+                //     AssemblyResolve/PluginLoader precedent) so a failure logs and never throws into
+                //     the injection init path (D-04/D-06).
+                try
+                {
+                    if (UtinniCore.Utinni.utinni.GetConfig().GetBool("Live", "enableLiveBridge"))
+                    {
+                        string clientRoot = ResolveClientRoot();
+                        var liveServer = new LivePipeServer(
+                            clientRoot,
+                            gameStateProbe: () => UtinniCore.Utinni.Game.IsRunning, // native read — game-thread-only (below)
+                            enqueue: GameCallbacks.AddMainLoopCall,
+                            log: Log.InfoSimple);
+
+                        // Wire the game-state cache refresh to a recurring game-thread tick: the Action
+                        // runs on the game thread (AddMainLoopCall drains each frame), refreshes the
+                        // cache from the native probe, then re-enqueues itself. R3-2: this is the ONLY
+                        // path that reads native Game.IsRunning.
+                        Action refresh = null;
+                        refresh = () =>
+                        {
+                            liveServer.RefreshGameStateOnGameThread();
+                            GameCallbacks.AddMainLoopCall(refresh);
+                        };
+                        GameCallbacks.AddMainLoopCall(refresh);
+
+                        liveServer.StartListener(); // idempotent + background thread (non-blocking)
+                        Log.InfoSimple("LivePipeServer: listening on '" + liveServer.PipeName
+                            + "' (client root: " + (clientRoot ?? "(null)") + ").");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.InfoSimple("LivePipeServer: failed to start (live bridge disabled): " + ex.Message);
+                }
+
                 if (UtinniCore.Utinni.utinni.GetConfig().GetBool("Editor", "enableEditorMode"))
                 {
                     Application.Run(new FormMain(pluginLoader));
@@ -112,6 +167,47 @@ namespace UtinniCoreDotNet
 
             }
             return 0;
+        }
+
+        // 16-02 Task 3 (CUR-NEW-1 / R3-8): resolve the SWG CLIENT root the SAME way the editor save
+        // path does (mirror UtinniPlugins FormIffEditor.ResolveClientRoot — MainModule dir →
+        // GetWorkingDirectory → [TreBrowser] clientDir). This is the loose-override containment root the
+        // MCP --root ALSO points at — NOT `injectRoot` (the Utinni DLL dir). Returns null if none
+        // resolve (LivePipeServer's containment then rejects every relative path defensively).
+        private static string ResolveClientRoot()
+        {
+            // (1) Process module directory (= SWGEmu.exe dir under injection).
+            try
+            {
+                string exe = Process.GetCurrentProcess().MainModule.FileName;
+                string moduleDir = Path.GetDirectoryName(exe);
+                if (!string.IsNullOrEmpty(moduleDir) && Directory.Exists(moduleDir))
+                {
+                    return moduleDir;
+                }
+            }
+            catch { /* fall through */ }
+            // (2) GetWorkingDirectory.
+            try
+            {
+                string wd = UtinniCore.Utility.utility.GetWorkingDirectory();
+                if (!string.IsNullOrEmpty(wd) && Directory.Exists(wd))
+                {
+                    return wd;
+                }
+            }
+            catch { /* binding unavailable outside a live client */ }
+            // (3) ini fallback — sibling [TreBrowser] clientDir is the documented source.
+            try
+            {
+                string configured = UtinniCore.Utinni.utinni.GetConfig().GetString("TreBrowser", "clientDir");
+                if (!string.IsNullOrEmpty(configured) && Directory.Exists(configured))
+                {
+                    return configured;
+                }
+            }
+            catch { /* ini may not have the key yet */ }
+            return null;
         }
     }
 }
