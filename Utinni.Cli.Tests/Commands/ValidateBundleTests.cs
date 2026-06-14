@@ -376,7 +376,44 @@ namespace Utinni.Cli.Tests.Commands
             }
         }
 
-        // NOTE: the C-17 doc↔verb bucket-parity fact is added in Task 3 (it references the shipped
-        // ValidateBundleCommand.BucketFilenames table, which does not exist at the Task-1 boundary).
+        // ─────────────────────────────────────────────────────────────────────
+        // C-17 doc↔verb bucket-parity: every bucket filename in the verb's suffix→bucket table
+        // appears verbatim in blender-boundary-contract.md (keeps the doc + verb in lockstep).
+        // ─────────────────────────────────────────────────────────────────────
+
+        [Fact]
+        public void ContractDoc_ContainsEveryBucketFilenameFromVerbTable()
+        {
+            string[] bucketFilenames = Utinni.Cli.Commands.ValidateBundleCommand.BucketFilenames;
+            Assert.NotEmpty(bucketFilenames);
+
+            string docPath = LocateContractDoc();
+            Assert.True(File.Exists(docPath),
+                "blender-boundary-contract.md not found at " + docPath);
+            string doc = File.ReadAllText(docPath);
+
+            foreach (string filename in bucketFilenames)
+            {
+                Assert.Contains(filename, doc);
+            }
+        }
+
+        // The contract doc lives at <repo>/docs/ai/blender-boundary-contract.md. Walk up from the
+        // test base directory to the repo root (the dir containing Utinni.sln) — Windows-safe via
+        // dotnet, no git grep (C-19 / CUR-NEW-10).
+        private static string LocateContractDoc()
+        {
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (dir != null)
+            {
+                if (File.Exists(Path.Combine(dir.FullName, "Utinni.sln")))
+                {
+                    return Path.Combine(dir.FullName, "docs", "ai", "blender-boundary-contract.md");
+                }
+                dir = dir.Parent;
+            }
+            return Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
+                "docs", "ai", "blender-boundary-contract.md");
+        }
     }
 }
