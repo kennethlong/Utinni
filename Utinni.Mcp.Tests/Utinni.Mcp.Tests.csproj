@@ -38,4 +38,19 @@
     <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!--
+    16-03 Task 3 (A): link the CANONICAL pipe-name/framing fixture + the four GOLDEN WIRE
+    byte-vectors from Utinni.Cli.Tests/Fixtures/live/. Link form (not a fork) so the SAME
+    committed files the net472 server-side suite (16-02) asserts byte-exact against are ALSO the
+    files this net10 client-side suite asserts against — the cross-TFM agreement anchors (R3-1).
+    The net10 CanonicalJson must produce the request goldens + consume the ack goldens byte-exact.
+  -->
+  <ItemGroup>
+    <Content Include="..\Utinni.Cli.Tests\Fixtures\live\pipe-name.txt" Link="Fixtures\live\pipe-name.txt" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Utinni.Cli.Tests\Fixtures\live\wire-ping-request.json" Link="Fixtures\live\wire-ping-request.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Utinni.Cli.Tests\Fixtures\live\wire-ping-ack.json" Link="Fixtures\live\wire-ping-ack.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Utinni.Cli.Tests\Fixtures\live\wire-reload-request.json" Link="Fixtures\live\wire-reload-request.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Utinni.Cli.Tests\Fixtures\live\wire-reload-ack.json" Link="Fixtures\live\wire-reload-ack.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
