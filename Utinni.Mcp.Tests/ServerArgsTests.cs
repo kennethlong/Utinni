@@ -119,4 +119,102 @@ public class ServerArgsTests
         Assert.Equal(@"C:\x", result.Root);
         Assert.Null(result.CliPath);
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // --enable-live (16-02 Task 2; CUR-NEW-6 dual-flag contract, fail-closed default).
+    // ─────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void EnableLive_FlagPresent_IsTrue()
+    {
+        WithEnvCleared(() =>
+        {
+            var result = ServerArgs.Parse(new[] { "--enable-live" });
+            Assert.True(result.EnableLive);
+        });
+    }
+
+    [Fact]
+    public void EnableLive_FlagAbsent_DefaultsFalse()
+    {
+        WithEnvCleared(() =>
+        {
+            var result = ServerArgs.Parse(new[] { "--root", @"C:\x" });
+            Assert.False(result.EnableLive); // fail-closed by absence (D-04)
+        });
+    }
+
+    [Fact]
+    public void EnableLive_IsPresenceFlag_DoesNotConsumeFollowingValue()
+    {
+        WithEnvCleared(() =>
+        {
+            // The token after --enable-live is NOT consumed as its value; --root still parses.
+            var result = ServerArgs.Parse(new[] { "--enable-live", "--root", @"C:\x" });
+            Assert.True(result.EnableLive);
+            Assert.Equal(@"C:\x", result.Root);
+        });
+    }
+
+    [Fact]
+    public void EnableLive_CoexistsWithRootAndCliPath()
+    {
+        WithEnvCleared(() =>
+        {
+            var result = ServerArgs.Parse(new[] { "--root", @"C:\root", "--cli-path", @"C:\cli.exe", "--enable-live" });
+            Assert.Equal(@"C:\root", result.Root);
+            Assert.Equal(@"C:\cli.exe", result.CliPath);
+            Assert.True(result.EnableLive);
+        });
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("true")]
+    [InlineData("TRUE")]
+    [InlineData("yes")]
+    public void EnableLive_EnvVar_ExplicitTruthy_Enables(string envValue)
+    {
+        WithEnv(envValue, () =>
+        {
+            var result = ServerArgs.Parse(System.Array.Empty<string>());
+            Assert.True(result.EnableLive);
+        });
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("false")]
+    [InlineData("garbage")]
+    [InlineData("")]
+    public void EnableLive_EnvVar_NonTruthy_DoesNotEnable(string envValue)
+    {
+        WithEnv(envValue, () =>
+        {
+            var result = ServerArgs.Parse(System.Array.Empty<string>());
+            Assert.False(result.EnableLive); // not any-non-empty (Codex LOW)
+        });
+    }
+
+    // Runs the action with UTINNI_MCP_ENABLE_LIVE explicitly cleared, restoring it afterwards.
+    private static void WithEnvCleared(System.Action action)
+    {
+        WithEnv(null, action);
+    }
+
+    // Runs the action with UTINNI_MCP_ENABLE_LIVE set to the given value (null = unset), restoring it.
+    private static void WithEnv(string? value, System.Action action)
+    {
+        const string name = "UTINNI_MCP_ENABLE_LIVE";
+        string? prior = System.Environment.GetEnvironmentVariable(name);
+        try
+        {
+            System.Environment.SetEnvironmentVariable(name, value);
+            action();
+        }
+        finally
+        {
+            System.Environment.SetEnvironmentVariable(name, prior);
+        }
+    }
 }
