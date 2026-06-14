@@ -27,6 +27,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Utinni.Mcp.Server;
+using Utinni.Mcp.Tools;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Phase 14 — Utinni.Mcp generic-host bootstrap (the centerpiece).
@@ -66,11 +67,24 @@ var serverArgs = ServerArgs.Parse(args);
 var cliExePath = CliLocator.Resolve(serverArgs.CliPath);
 builder.Services.AddSingleton(new CliDispatcher(cliExePath));
 
-// (3) MCP server over stdio. The assembly scan finds no [McpServerTool] types yet — that is
-//     expected this wave; the tool plans (Wave-2/3) add them.
-builder.Services
+// (3) MCP server over stdio. WithToolsFromAssembly() registers every [McpServerToolType] class
+//     (the read / save / repack / verify tools). It deliberately does NOT pick up LiveTools — that
+//     class carries NO [McpServerToolType] attribute, so the scan skips it (D-04 fail-closed by
+//     absence; the registration-path lock is proven by the off-state enumeration assert in
+//     LivePipeProtocolTests).
+var mcpBuilder = builder.Services
     .AddMcpServer()
     .WithStdioServerTransport()
     .WithToolsFromAssembly();
+
+// (4) LIVE TIER (16-03, D-04): the live_* tools reach the SDK ONLY via this conditional
+//     WithTools<LiveTools>() registration, gated on serverArgs.EnableLive (--enable-live /
+//     UTINNI_MCP_ENABLE_LIVE). When the flag is OFF (default) the live tools are NOT advertised.
+//     The LivePipeClient singleton (the live tools' dispatch dependency) is also registered ONLY
+//     under this guard (C-13) — wired in Task 2 once LivePipeClient exists. Fail-closed by absence.
+if (serverArgs.EnableLive)
+{
+    mcpBuilder.WithTools<LiveTools>();
+}
 
 await builder.Build().RunAsync();
