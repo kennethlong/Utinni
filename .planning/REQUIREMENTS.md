@@ -118,7 +118,7 @@ Theme: *Utinni authors, not just edits.* Ship an MCP server so AI agents can dri
 
 - [x] **MCP-01**: An AI agent can READ any supported SWG asset (TRE/IFF/datatable/`.tab`/`.stf`/object-template) through a headless `Utinni.Mcp` server — a separate modern-.NET (net10) process, stdio transport, wrapping the existing `utinni-cli` JSON verbs.
 - [x] **MCP-02**: An AI agent can EDIT + SAVE assets via MCP write tools that default to the loose-override tier, with byte-exact verify-before-commit, a `dry_run` gate on destructive repack, and a `resolvedRoot` pinned fail-closed at server start — documented in an `MCP-SECURITY.md` threat register. No agent write can corrupt a source archive or escape the resolved root.
-- [ ] **MCP-03**: An AI agent can drive the LIVE-injected client over an MCP bridge (named-pipe IPC into the x86 host) to preview an edit in-client. *(Ambitious; sequenced last.)*
+- [x] **MCP-03**: An AI agent can drive the LIVE-injected client over an MCP bridge (named-pipe IPC into the x86 host) to preview an edit in-client. *(Ambitious; sequenced last.)*
 
 ### Authoring & compile pipeline (revive + wrap; lift-and-shift)
 

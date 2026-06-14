@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
-status: executing
+status: completed
 stopped_at: Completed 16-02-PLAN.md (MCP-03 in-client half)
-last_updated: "2026-06-14T15:59:54.418Z"
-last_activity: 2026-06-14
+last_updated: "2026-06-14T16:23:00.944Z"
+last_activity: 2026-06-14 -- 16-03 MCP-03 host half executed (net10 CanonicalJson re-impl byte-exact to 16-02 goldens + LivePipeClient never-hang twin + live_ping/live_reload_asset gated fail-closed on --enable-live proven via real ListToolsAsync + net472 real cross-impl wire round-trip + MCP-SECURITY.md live-tier addendum); net10 LivePipe 13/13 + net472 LiveBridgeIntegration 5/5 green
 progress:
   total_phases: 20
-  completed_phases: 15
+  completed_phases: 16
   total_plans: 94
-  completed_plans: 92
-  percent: 98
+  completed_plans: 94
+  percent: 100
 ---
 
 # Project State
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 16 (live-injected-mcp-bridge-blender-ecosystem-boundary) — EXECUTING
-Plan: 2 of 3 complete (16-02 MCP-03 in-client half DONE; 16-01 Task 4 cross-repo pointer note still pending human checkpoint; 16-03 host half next)
-Status: Ready to execute 16-03
-Last activity: 2026-06-14 -- 16-02 MCP-03 in-client half executed (CanonicalJson + LiveBridgeProtocol + golden byte-vectors + LivePipeServer + ServerArgs.EnableLive + main.cs StartListener wiring); 40 live tests + 23 ServerArgs green
+Plan: 3 of 3 execute-plans complete (16-02 MCP-03 in-client half DONE; 16-03 MCP-03 host half DONE → MCP-03 Tier-2 automated deliverable COMPLETE; 16-01 Task 4 cross-repo pointer note still pending human checkpoint; ECO-01 Blender boundary still to plan/execute)
+Status: 16-03 complete; Phase 16 still has ECO-01 + the 16-01 Task-4 checkpoint before phase-complete
+Last activity: 2026-06-14 -- 16-03 MCP-03 host half executed (net10 CanonicalJson re-impl byte-exact to 16-02 goldens + LivePipeClient never-hang twin + live_ping/live_reload_asset gated fail-closed on --enable-live proven via real ListToolsAsync + net472 real cross-impl wire round-trip + MCP-SECURITY.md live-tier addendum); net10 LivePipe 13/13 + net472 LiveBridgeIntegration 5/5 green
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 
@@ -162,6 +162,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 15 P15-17 | ~22 min | 2 tasks | 1 doc + reassembled bin/Release build artifacts |
 | Phase 16 P16-01 | ~85 min | 3 of 4 tasks (Task 4 = blocking-human checkpoint) | 9 created + 4 modified |
 | Phase 16 P02 | ~60 min | 4 tasks | 13 files |
+| Phase 16 P03 | ~15 min | 4 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -213,6 +214,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase 16]: 16-01 (ECO-01 Blender boundary) Tasks 1-3 COMPLETE 2026-06-14 (commits 1cf0415/d6c60c6/9b0f9ee). Utinni-authoritative `docs/ai/blender-boundary-contract.md` documents all four D-06 surfaces sourced verbatim from the real exporter (rsp_builder.py + export_manifest.py + export_bundle.as_dict): the `.rsp` `{rel} @ {ABSOLUTE}` line format + 7 suffix->bucket->filename rules, the swg_export_manifest.json schema with `client_cfg` nested INSIDE `assets` (R3-5) + unknown-field tolerance, the TRE version matrix mirroring TreVersion.cs (5000 READABLE not encrypted, 6000 enumerate-only, no COT2000-as-version), bundle layout, anti-coupling (DEC-A3 no geometry codec), and the exit/valid semantics (exit-0-with-findings; agents read `valid`/`hasRejectedRefs`, CDX-NEW-9). New `validate-bundle` CLI verb (thin TEXT-only; manifest+.rsp+.cfg parse + File.Exists on CONTAINED refs; NO binary codec) routes BOTH relative + absolute ref branches through ONE shared `LooseOverridePath.IsContainedUnderRoot(canonicalRoot, canonicalCandidate)` predicate EXTRACTED from Resolve's tail (R3-6 preferred path): contained-absolute allowed+probed (CUR-NEW-3), escaping ref recorded-not-probed (C-15/T-16-01). Pinned frn_all_bed_sm_s1_l0.msh + retail_mini_0005.tre in-repo (no LFS) with SHA-256 manifest asserted by a golden test (T-16-04 drift guard); doc<->verb bucket-parity test (C-17, Windows-safe no git grep). **CV-1 cross-validation FINDING:** the pinned `retail_mini_0005.tre` is a SYNTHETIC reader-unit fixture whose v0005 TOC is crc-first (swg-blender-plugin tre_reader.py `<Iiiiii`), DISAGREEING with Utinni's size-first v0005 reader -> parse-tre exits 2 UnknownCompressor; documented (not a reader bug — real exports come from size-first TreeFileBuilder), the .msh path is the working D-08 proof (decode-iff count-only: 139 verts/1 shader). 263 Utinni.Cli.Tests pass / 2 skip; 19 LooseOverridePath tests still green after the predicate extraction. **Task 4 (cross-repo pointer note in D:/Code/swg-blender-plugin/REFERENCES.md) is a blocking-human checkpoint** — third repo outside standing authority, awaiting approval. DEVIATIONS: CV-1 plan-premise correction (assert real exit-2 not false exit-0), MSBuild+`dotnet test --no-build` recipe (MSB3823), help/no-args golden refresh for the new verb.
 - [Phase 15]: 15-16: three deferred managed-only polish defects closed in UtinniPlugins (TJT Release|x86 MSBuild exit 0; Generated/UtinniCore.cs untouched, C#-only build). B4/B5: FormParticleEditor.AfterModelMutated now re-calls BindParamGrid(currentParamNode) after emitterTree.RefreshMutable so a raw-hex leaf edit (and Undo/Redo, which share AfterModelMutated) re-renders the edited cell immediately — no reselect. currentParamNode tracks the MutableIffNode MODEL object (set in BindParamGrid), which survives RefreshMutable because IffChunkTree.LoadMutable rebuilds only TreeNode wrappers from the SAME MutableIffDocument — so a direct re-bind is correct, no id/path re-resolve. B6: new PreviewNoHookTooltip ("Live preview isn't wired this build — edits show on the next scene change or relog.") selected in RefreshButtonsState by Game.IsRunning (running-but-no-hook -> no-hook copy; !running -> existing no-client PreviewUnavailableTooltip); honest, no implied hook, consistent with LOCKED ReloadBadgeDegraded; LOCKED badge constants untouched. A7: FormSnapshotPlacements delete-confirm appends "The in-world object stays visible until the next scene change." (matches LOCKED WS badge, no instant-de-spawn over-promise) keeping the undoable clause + heading/verbs; WorldSnapshotImpl.BulkDelete adds WorldSnapshot.DetailLevelChanged() inside its AddUpdateLoopCall like BulkMove/BulkRetemplate for immediate grid refresh while retaining the GAP-2 DisableGizmo()/UpdateSelectedNodeControls(null) clear. Live B4/B5/B6/A7 re-verify gated to 15-18 against the 15-17 reassembled build. Commits UtinniPlugins 02bfc46, 9180250.
 - [Phase ?]: 16-02: live-wire bytes via Utinni-owned hand-rolled CanonicalJson (BCL-only, no STJ — C-03); four golden byte-vectors byte-exact produce+consume on net472 (R3-1); gameIsRunning is a game-thread-updated volatile cache the pipe worker reads but never natively probes (R3-2); StartListener wired into main.cs pinned to SWG CLIENT root not injectRoot (CUR-NEW-1).
+- [Phase ?]: 16-03: MCP-03 host half COMPLETE — net10 CanonicalJson field-for-field re-impl byte-exact to 16-02 goldens (R3-1); LivePipeClient never-hang twin (relative-on-wire, skew structured-error, clientRoot diagnostic); live_ping/live_reload_asset gated fail-closed on --enable-live proven via real ListToolsAsync (D-04); net472 real cross-impl wire round-trip (C-02); MCP-SECURITY.md live-tier addendum. Commits 13db929/33abf4c/77e6087/abce1e4.
 
 ### Pending Todos
 
@@ -268,7 +270,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-14T15:59:48.238Z
+Last session: 2026-06-14T16:22:08.077Z
 Stopped at: Completed 16-02-PLAN.md (MCP-03 in-client half)
 Resume file: None
 

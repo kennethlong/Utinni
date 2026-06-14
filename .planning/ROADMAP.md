@@ -38,7 +38,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 14: Headless MCP server (`Utinni.Mcp`) — the centerpiece** — A separate net10 stdio MCP process shelling `utinni-cli`: read tools over the existing verbs + write/SAVE tools defaulting to loose-override with byte-exact verify-before-commit, fail-closed `resolvedRoot`, and a first-class `MCP-SECURITY.md` threat register.
  (completed 2026-06-07)
 - [x] **Phase 15: Wave-2 editors (WorldSnapshot, Particle) + presentation residuals** — Ship the WorldSnapshot/object-placement SubPanel (zero new deps) then the Particle/client-effect SubPanel (new `.prt` codec) as TJT MEF SubPanels; enumerate + fix the SWG window-resize/fullscreen edge cases (RESID-04) and confirm SC3 live-reload candor (RESID-03). **CLOSED 2026-06-13** (approved-with-deferred-residual; RESID-03 live render-on-reload deferred, gated on the disabled loose searchPath).
-- [ ] **Phase 16: Live-injected MCP bridge + Blender ecosystem boundary** — Add the optional named-pipe IPC live bridge so an agent can preview an edit in the injected client (MCP-03); formalize the Utinni ↔ `swg-blender-plugin` file-format / `.rsp` search-path contract (ECO-01).
+- [x] **Phase 16: Live-injected MCP bridge + Blender ecosystem boundary** — Add the optional named-pipe IPC live bridge so an agent can preview an edit in the injected client (MCP-03); formalize the Utinni ↔ `swg-blender-plugin` file-format / `.rsp` search-path contract (ECO-01). (completed 2026-06-14)
 
 ## Phase Details
 
@@ -384,8 +384,8 @@ Plans:
 **Plans**: 3 plans (2 waves; ECO-01 and the MCP-03 in-client track parallelize in Wave 1; the MCP-03 host wiring lands in Wave 2)
 **Plans**:
 - [~] 16-01-PLAN.md — ECO-01 Blender boundary: contract doc (`.rsp`/version-matrix/bundle-layout/anti-coupling, D-06) + thin `validate-bundle` CLI verb + pinned cross-validation fixtures/golden + cross-repo pointer note (autonomous:false) [ECO-01] (Wave 1) — Tasks 1-3 DONE (1cf0415/d6c60c6/9b0f9ee); Task 4 (cross-repo pointer note) at blocking-human checkpoint. Cross-validation finding CV-1 surfaced (Blender crc-first vs Utinni size-first v0005 TOC).
-- [ ] 16-02-PLAN.md — MCP-03 in-client half: managed `LivePipeServer` in `UtinniCoreDotNet` (background accept loop + game-thread `mainLoopCallQueue` marshal + `ReloadAssetClassifier` ack tier) + shared protocol/pipe-name + `ServerArgs.EnableLive` fail-closed flag + pure-managed Wave-0 tests [MCP-03] (Wave 1)
-- [ ] 16-03-PLAN.md — MCP-03 host half: `LivePipeClient` (CliDispatcher twin, never-hang) + `live_ping`/`live_reload_asset` tools + D-04 conditional `WithTools<LiveTools>()` gating + loopback protocol test + MCP-SECURITY.md live-tier addendum [MCP-03] (Wave 2)
+- [x] 16-02-PLAN.md — MCP-03 in-client half: managed `LivePipeServer` in `UtinniCoreDotNet` (background accept loop + game-thread `mainLoopCallQueue` marshal + `ReloadAssetClassifier` ack tier) + shared protocol/pipe-name + `ServerArgs.EnableLive` fail-closed flag + pure-managed Wave-0 tests [MCP-03] (Wave 1)
+- [x] 16-03-PLAN.md — MCP-03 host half: `LivePipeClient` (CliDispatcher twin, never-hang) + `live_ping`/`live_reload_asset` tools + D-04 conditional `WithTools<LiveTools>()` gating + loopback protocol test + MCP-SECURITY.md live-tier addendum [MCP-03] (Wave 2)
 **Research flag**: addressed — 16-RESEARCH.md resolved the IPC mechanism (managed `System.IO.Pipes` server in the already-hosted CLR; the pipe is the arch boundary, no in-proc SDK).
 
 ## V2 Scope Boundary
@@ -440,7 +440,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 13. Wrap compilers as CLI verbs + OT Tier-2 | 6/6 | Complete   | 2026-06-05 |
 | 14. Headless MCP server (`Utinni.Mcp`) | 5/5 | Complete   | 2026-06-07 |
 | 15. Wave-2 editors (WorldSnapshot, Particle) + residuals | 19/21 | In Progress|  |
-| 16. Live-injected MCP bridge + Blender boundary | 1/3 | In Progress|  |
+| 16. Live-injected MCP bridge + Blender boundary | 3/3 | Complete   | 2026-06-14 |
 
 ## Backlog
 
