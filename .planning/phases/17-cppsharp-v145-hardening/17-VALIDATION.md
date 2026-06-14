@@ -1,9 +1,9 @@
 ---
 phase: 17
 slug: cppsharp-v145-hardening
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: planned
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-14
 ---
 
@@ -83,4 +83,4 @@ created: 2026-06-14
 - [ ] Feedback latency < 90s
 - [ ] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** plans 17-01/02/03 created; AbiSurfaceTests + FrozenPluginComposeTests scaffolded in plan 17-03 (Wave-0 gaps closed in-plan)

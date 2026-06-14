@@ -80,7 +80,10 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
   2. The VS2019-14.29 parser-include redirect is documented in-repo as the *supported* binding-generation configuration — explicit, not silently load-bearing.
   3. CI fails fast on either unblock/regression signal: (a) UtinniCore C++ adopting a C++23 STL header the 14.29 redirect cannot parse, and (b) a CppSharp release shipping clang ≥20.
   4. A binding regen that changes the generated public C# surface is caught before inject: a per-block-hash ABI diff (separating a real ABI change from the known reorder churn) plus a frozen-DLL MEF-compose fixture gate the surface, and TJT/Sytner rebuild in lockstep (standing cross-repo authority).
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 17-01-PLAN.md — CPPS-01 clang-capability spike + CPPS-02 supported-config doc (de-stale regen-bindings.md, Program.cs doc pointer)
+- [ ] 17-02-PLAN.md — CPPS-03 CI tripwires: C++23-header HARD-FAIL scan + clang-20 WARN-loud committed-pin
+- [ ] 17-03-PLAN.md — CPPS-04 ABI gate: per-block-hash diff + --rebless + frozen TJT MEF-compose fixture + lockstep rebuild
 **Research-phase**: yes — the clang-capability spike outcome determines whether the phase is harden-redirect or harden+net9-modernization; acceptance criteria cannot be fixed until the spike resolves.
 
 ### Phase 18: Render-Backend Seam + Dx9Backend
@@ -172,7 +175,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 14. Headless MCP server | v2.0 | 5/5 | ✅ Complete | 2026-06-07 |
 | 15. Wave-2 editors + residuals | v2.0 | 21/21 | ✅ Complete | 2026-06-13 |
 | 16. Live MCP bridge + Blender | v2.0 | 3/3 | ✅ Complete | 2026-06-14 |
-| 17. CppSharp / v145 Hardening | v2.1 | 0/? | Not started | - |
+| 17. CppSharp / v145 Hardening | v2.1 | 0/3 | Planned | - |
 | 18. Render-Backend Seam + Dx9Backend | v2.1 | 0/? | Not started | - |
 | 19. Dx11Backend + Detection + Resize | v2.1 | 0/? | Not started | - |
 | 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 0/? | Not started | - |
