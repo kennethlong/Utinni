@@ -1,14 +1,16 @@
 ---
 phase: 13-wrap-revived-compilers-as-cli-verbs-close-ot-tier-2
 verified: 2026-06-04T00:00:00Z
-status: human_needed
-score: 5/5 success criteria verified in code (2 MET, 3 MET-WITH-GATE-FINDING)
+status: passed
+human_verification_closed: 2026-06-14   # RESID-01 Tier-4 visual maintainer-confirmed via 13-UAT.md Test 5
+score: 5/5 success criteria verified in code (2 MET, 3 MET-WITH-GATE-FINDING); RESID-01 Tier-4 visual confirmed 2026-06-14
 overrides_applied: 0
 re_verification: # none — initial verification
 human_verification:
   - test: "OT editor typed list/struct param display against a live client (RESID-01 Tier-4 visual)"
     expected: "Open a draft-schematic (slots/attributes) or creature/hair template; slots/attributes/hair render as STRUCTURED typed rows (named sub-fields), NOT a Consolas hex blob; the rare/exotic multi-chunk tail shows a typed LABEL + hex (graceful), not bare hex; editing+saving a scalar still byte-exact round-trips (no Phase-11 codec regression)."
     why_human: "WinForms host visual rendering; FlaUI deliberately skipped (CON-TT-03 documented maintainer-in-the-loop residual). Harvested from PLAN 13-06 task 13-06-03 checkpoint:human-verify gate=blocking."
+    status: CONFIRMED 2026-06-14 (13-UAT.md Test 5, maintainer pass)
 ---
 
 # Phase 13: Wrap revived compilers as CLI verbs + close OT Tier-2 — Verification Report
