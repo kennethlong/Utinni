@@ -1,179 +1,183 @@
 # Project Research Summary
 
-**Project:** Utinni - milestone v2.0 "AI-Assisted SWG Tools"
-**Domain:** AI-drivable (MCP) modding-tool authoring pipeline + legacy-C++ build-tool revival + first DCC-style editors, layered onto shipped Utinni V1 (`v1.0.0`)
-**Researched:** 2026-06-01
-**Confidence:** HIGH
-
-> Detailed research lives in `STACK.md`, `FEATURES.md`, `ARCHITECTURE.md`, `PITFALLS.md` (this folder). This file synthesizes them for the requirements + roadmap consumers. The existing V1 stack/architecture (UtinniCore x86 + CppSharp bridge + net472 WinForms/MEF host + `UtinniCoreDotNet` byte-exact codecs + `Utinni.Cli` JSON verbs) is **validated and out of scope** - do not re-research or change it.
+**Project:** Utinni - v2.1 "Wave-2 Editors + Foundation Hardening"
+**Domain:** Injected-DLL SWG modding tool (x86 in-process UtinniCore C++17/20 + .NET Framework WinForms host + CppSharp CLR bridge + MEF IEditorPlugin plugins; out-of-proc net10 CLI/MCP)
+**Researched:** 2026-06-14
+**Confidence:** HIGH for the render-backend + CppSharp/ABI findings (grounded in this project captured incidents + direct inspection of directx9.cpp and the swg-client-v2 D3D11 source); MEDIUM for the .trn/effects codec scope (format-shape verified against swg-client-v2/sharedTerrain, but no v2.1 fixtures exist yet).
 
 ## Executive Summary
 
-v2.0 turns Utinni from a tool that *edits* SWG assets into one that *authors* them, and makes the whole pipeline drivable by an AI agent. The research converges hard on a single shape: **a separate modern-.NET (net10.0) MCP server process (`Utinni.Mcp`) that shells out to the already-shipped `utinni-cli.exe` and a small set of revived SWG build CLIs.** The MCP server owns no format logic - every capability is a `utinni-cli` verb first (golden-tested, the DEC-C3 Tier-2 pattern), then a one-line MCP dispatcher. This is the "thin shim over byte-exact verbs" the milestone describes, and it keeps the modern-.NET transport loop off the fragile net472/x86 injected surface. Headless-first (file edits with no client running) captures ~90% of the agent value; live-injected MCP is an explicit, optional, later increment behind a named-pipe IPC.
+v2.1 is a foundation-before-features milestone on an already-shipped system. Two new asset editors (procedural Terrain .trn and one adjacent Effects-family .iff) ride on top of two pieces of enabling debt that must land first: a parallel D3D11 render-path foundation (so the in-client overlay/live-preview survives the SWG client eventual D3D9->D3D11 flip) and a v145-toolset / CppSharp-bump reckoning. The most important conclusions are negative and scope-altering, and they should drive requirements re-scoping before the roadmapper commits to phase acceptance criteria.
 
-The single most important correction the research surfaces is the **revive-feasibility picture**: PROJECT.md and `toolchain-inventory.md` frame the build work as a "v143->v145 port" Utinni must do itself, anticipating CppSharp-style modern-STL pain. On-disk inspection of `swg-client-v2` contradicts this. The revive targets are **already** `PlatformToolset=v145` + `LanguageStandard=stdcpp20` with native MSVC STL (STLport 4.5.3 is *gone from disk*, surviving only as a dead `.rsp` line). The actual remaining work is small and mechanical - verify a standalone build, strip the dead Perforce/Alienbrain vestige, produce a per-tool dependency manifest - **not** a toolset port. Critically, the status is **not uniform per tool**: `TemplateCompiler.vcxproj` has built v145 Debug objects on disk (likely-green), while `TreeFileBuilder.vcxproj` is also v145 but has *no build output* (unverified). The CppSharp v145 block is a *vendored-clang-parsing-MSVC-STL* problem that does **not** predict native-tool difficulty - do not conflate them. **This correction must flow back into PROJECT.md / toolchain-inventory.md, which currently overstate the effort.**
+The single biggest scope correction: the milestone named goal - "finish a REAL CppSharp upgrade so UtinniCoreDotNetGen runs natively on MSVC 14.5x STL, retiring the parser-include redirect" - is NOT achievable in v2.1. v145 STL hard-requires clang 20 (yvals_core.h STL1000 guard); no released CppSharp ships a clang newer than 19 (v1.2, reaching only 14.4x/v143). The correct v2.1 deliverable is therefore: a clang-capability spike FIRST -> harden the existing, working VS2019-14.29 parser redirect + add a C++23-STL-header tripwire + a clang-20-CppSharp release tripwire, with an OPTIONAL net9/10 generator-pipeline modernization scored separately (it still needs a redirect, just to 14.4x). Flag this for requirements re-scoping explicitly - framing the bump as "retires the redirect" sets an unmeetable acceptance criterion.
 
-The dominant risk is no longer the build - it is **write safety**. An MCP write surface lets an agent loop, and a byte-exact writer producing a *well-formed-but-wrong* archive is invisible to every parser. The mitigation is a 5-layer defense-in-depth model (advisory annotations -> elicitation/human-in-loop -> loose-override-by-default -> byte-exact verify-before-commit -> backup/recovery), and the structural advantage is that **4 of the 5 layers are already-shipped V1 primitives** (`LooseOverridePath`, `TreBackupPath`, `TreRepackLock`, the roundtrip goldens). The net-new code is small but the *security contract must be first-class at design time*, not a later hardening pass - and the one genuinely new write surface is a **SAVE verb the CLI lacks today** (`Utinni.Cli` is read+roundtrip only).
+The D3D11 work is a parallel path selected by config, not a cutover: SWG loads its renderer as a swappable DLL gl%02d_r.dll keyed on ConfigClientGraphics::getRasterMajor() (5-7 -> D3D9 gl05_r.dll; 11 -> D3D11 gl11_r.dll), so backend detection is a one-call GetModuleHandle check and installing both hooks is harmful (double input, two ImGui contexts). The seam is a small IRenderBackend interface in UtinniCore/swg/graphics/; the ~1000-line API-neutral imgui_impl.cpp stays single-sourced. Terrain is the critical path and the only long pole - .trn is a procedural TerrainGenerator graph (NOT a heightmap), and v1 scope is deliberately bounded to decode->navigable tree + typed read of common tags + scalar-leaf edit/save. Effects is cheap adjacent reuse of the shipped Particle codec pattern, and both editors are zero-new-framework. The dominant risks are all already-captured Utinni incidents re-surfacing (D3D9 Reset on a third-party device, per-frame heap alloc crashing scene change, CppSharp regen silently breaking pre-built plugin DLLs, codecs aborting on unfixtured format variants) plus one milestone-existential external risk: the swg-client-v2 x64bit-Upgrade branch, which would break the entire x86 injection stack if it lands before/with D3D11.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The v2.0 additions are deliberately dependency-flat. The MCP server is the only place new packages land; the revived CLIs add *no* package installs (pure lift-and-shift of MSVC C++); the new editors need *format codecs inside `UtinniCoreDotNet`*, not new NuGet/vcpkg packages. See `STACK.md`.
+The v2.1 stack delta is tiny: one new vcpkg feature flag, one new pair of C++ source files, and a build-config decision - not new third-party dependencies. Almost everything needed already ships (DetourXS, imgui 1.92.6 via vcpkg, CppSharp 0.10.5, the dummy-device D3D9 vtable-harvest pattern). The most important stack findings are negative: no released CppSharp reaches v145, and .trn needs no heightmap library.
 
-**Core technologies (NEW for v2.0):**
-- **ModelContextProtocol 1.3.0** (C# MCP SDK) - exposes Utinni's verbs as agent tools - official Microsoft-collaborated SDK; `[McpServerTool]` discovery + `WithStdioServerTransport()` is exactly the thin-shim shape. **Targets net8/9/10 + netstandard2.0 - NO net4xx target.** This single fact drives the separate-process decision.
-- **.NET 10.0 (LTS) host** for `Utinni.Mcp` - matches the `Microsoft.Extensions.* 10.x` floor the SDK pulls anyway (avoids binding-redirect skew); free to run x64, crash-isolated from the live game. (net8.0 is an acceptable wider-floor alternative.)
-- **stdio transport** - canonical for a local single-client desktop tool; HTTP/SSE adds a network + auth surface this use case does not need (SSE is deprecated - never pick it).
-- **MSVC v145 / `/std:c++20`** for the revived CLIs - *already* the upstream config on the lifted source; match it, do not downgrade. v140-v145 are ABI-compatible (link newest).
-- **Vendored leaf externals only** - `zlib` (TreeFileBuilder), `pcre/4.1` (TemplateCompiler). Do **not** drag STLport453 (gone), Perforce/Alienbrain (dead SCM vestige), or the renderer (these tools are headless - no D3D/D3DX).
+**Core technologies (the actual deltas):**
+- **imgui DX11 backend** (imgui_impl_dx11) - the renderer half of the D3D11 overlay; ships inside the already-vendored imgui 1.92.6. Add the dx11-binding vcpkg feature - no new dependency.
+- **DetourXS (existing, vendored)** - detour IDXGISwapChain::Present (vtbl idx 8) + ResizeBuffers (idx 13) by-address, exactly as the 7 D3D9 hooks do. Do NOT add MinHook - it duplicates proven trampoline machinery.
+- **DXGI / D3D11 SDK headers** (Windows SDK 10.0.19041+, already installed) - compile the new directx11.cpp; GetProcAddress("D3D11CreateDeviceAndSwapChain") to mirror the existing dynamic Direct3DCreate9 load.
+- **CppSharp stays 0.10.5 (clang 11) + the VS2019-14.29 redirect for v2.1** - no released CppSharp parses v145; any move off forces UtinniCoreDotNetGen net4.7.2->net9/10 and still needs a redirect.
+- **System.Drawing.Bitmap + LockBits (framework built-in)** - the only terrain-visualization library needed, and only if/when a 2D sampled-map preview lands. The .trn heightmap is generated, not stored; no 3D engine / mesh viewer / heightmap library (violates the locked live-in-client preview decision + DEC-A3).
 
 ### Expected Features
 
-The theme is *Utinni authors, not just edits*. Four capability groups: (A) MCP server, (B) revive+wrap compile CLIs, (C) DCC-style editors, (D) formalize the Blender boundary. See `FEATURES.md`.
+.trn is a serialized TerrainGenerator (top tag TGEN/PTAT): six shared palettes (Shader/Flora/Radial/Environment/Fractal/Bitmap) + a tree of Layers, each holding Boundaries (BCIR/BREC/BPOL/...) + Filters (FHGT/FSLP/...) + ~25 Affectors (AHCN/ASCN/AFSC/...) + nested sub-layers. The original SOE editor is a 100+-file MFC app - which is exactly why a full clone is NOT v1.
 
 **Must have (table stakes):**
-- stdio MCP server skeleton + read tools wrapping the 9 existing `Utinni.Cli` verbs - agents must *see* assets first; lowest cost.
-- MCP write tools defaulting to **loose-override**, with the full safety model (annotations + elicitation gate + verify-before-commit + backup) - the corruption defense; the centerpiece differentiator. **Needs a new CLI SAVE verb.**
-- Revive `TemplateDefinitionCompiler` (`.tdf`/`.tpd` -> param->type schema) and `TemplateCompiler` (`.tpf` -> object-template `.iff`) - author-new-template gap; the definition compiler also unblocks OT Tier-2.
-- OT Tier-2 typed list-param display - closes the carried residual, cheaply, once the definition compiler's param->type map exists.
+- Terrain: decode .trn -> navigable layer tree (TGEN -> Layers -> Boundaries/Filters/Affectors/sub-layers, names + active flags, six shared palettes read-only) - the headline; the bulk of the work; degrade the long-tail tags to a generic field list.
+- Terrain: typed read for common tags (height/shader/color/flora affectors; circle/rect boundaries; height/slope filters) - generic field-list fallback for the rest.
+- Terrain: edit + save scalar/enum leaves + active-toggle via the loose-override D-05 save matrix (MutableIffDocument/IffWriter) - earns editor.
+- Terrain: open from TRE Browser / loose override - consistency via TreArchiveIndex + TrePayloadResolver.
+- One effects editor (recommend ClientEffect - a flat command-list .iff): decode + edit + save + reference-validation + open-from-TRE - cheap adjacent reuse of the shipped Particle codec.
+- (Foundation) D3D11 render-path + the v145/CppSharp hardening - enabling debt landed first so live preview survives the client renderer flip.
 
-**Should have (competitive / differentiators):**
-- **Byte-exact verify-before-commit as a first-class guarantee** - "the agent cannot return a corrupt success"; most MCP servers can't claim this. Infra already exists.
-- **Loose-override-by-default write model** - agent edits never touch source archives unless explicitly escalated; structural, not bolted-on, safety.
-- Revive `TreeFileBuilder` (build-from-source `.tre`, not just repack) wired as an MCP pack tool.
-- First DCC-style editor SubPanel (Terrain or Particle, modder-demand-driven) + its new `UtinniCoreDotNet` codec; WorldSnapshot editor by growing the existing Snapshot panel (lowest-risk, injection-native already).
-- MCP prompts for canned pipelines (edit -> compile -> repack -> validate).
+**Should have (competitive differentiators):**
+- Terrain live-in-client regen on save - the marquee differentiator (no SOE tool edited a live planet); honestly degraded if a full live regen is not reachable (Particle precedent). NEVER a standalone Utinni renderer.
+- MCP/CLI verb for .trn + effects - falls out of verbs-first (DEC-V2-VERBS-FIRST).
+- Quick win 999.3 - TRE override/version-history view - composes on TreArchiveIndex/TrePayloadResolver/CotMasterIndex; a P2.
+- Quick win 999.2 - user-definable IFF chunk templates - composes on IffPayloadCursor; byte-exact encode round-trip is the hidden risk; a P2.
 
-**Defer (post-v2.0):**
-- Live-in-client preview via MCP (live-patch tier is infra-ready but user-disabled - high risk, opt-in).
-- Animation live-preview coordinated with the Blender suite.
-- DataTableTool compile path, item-exporter wrappers, second/third DCC editors.
+**Defer (v1.x / v2.2+):**
+- Terrain 2D sampled-map preview (needs the Sampler port) - high value, too big for v1.
+- Terrain structural authoring / boundary painting - the full SOE 100-file surface; a milestone of its own.
+- Terrain long-tail affector typed coverage (river/road/ribbon/environment/exclude/passable).
+- Second + third effects editors (Lightning, Swoosh) - finish the clientParticle family later.
 
-**Anti-features (locked):** HTTP/SSE remote transport; a raw "exec arbitrary CLI" tool; auto-approving writes; trusting `destructiveHint` for *enforcement* (spec says hints are advisory); 3D mesh/skeleton/animation/texture authoring (DEC-A3 - Blender's lane).
+**Anti-features (locked out):** standalone Utinni terrain renderer / 3D fly-through; a C# reimplementation of the procedural generator for preview; editing baked heightmaps (terrain is procedural - there is none); server-side terrain regen (DEC-A1).
 
 ### Architecture Approach
 
-Four integration forks, all resolved (see `ARCHITECTURE.md`). The load-bearing fact that makes headless-first possible: `UtinniCoreDotNet`'s `Formats/`+`Editing/`+`Saving/` are pure-managed and run with **no native DLL load** - `utinni-cli` already exercises them headless. The MCP server bolts on without disturbing the injected client at all in v2.0.
+The substrate is FIXED (swg::* shim -> utinni::* facade -> CppSharp CLR bridge -> MEF IEditorPlugin -> TJT WinForms host; tools/ CLIs -> utinni-cli verbs -> net10 Utinni.Mcp). v2.1 bolts on with zero new framework - both editors follow the exact three-layer pattern the v2.0 Particle editor proved: Formats/<X> codec -> Utinni.Cli verb (DEC-V2-VERBS-FIRST) -> Utinni.Mcp read tool -> TJT IEditorPlugin SubPanel. .trn is the heaviest codec but is IFF-structured, so Formats/Iff primitives carry it.
 
-**Major components:**
-1. **`Utinni.Mcp`** (NEW, separate net10.0 process, x64) - MCP stdio server; tool schema + arg validation; maps each tool call to a `Process.Start` of `utinni-cli.exe` (or a revived CLI), parses the JSON envelope back. Owns *zero* format/business logic.
-2. **`utinni-cli.exe`** (EXISTING, net472 x86, extended) - headless READ + byte-exact EDIT verbs over `UtinniCoreDotNet`; **gains new verbs**: compile-template, build-tre, and a **SAVE verb** (the key net-new write surface).
-3. **Revived build CLIs in repo-local `tools/`** (NEW, lift-and-shift @ v145) - `TemplateCompiler`, `TemplateDefinitionCompiler`, `TreeFileBuilder`; source->binary transforms emitting `.iff`/`.tre` the existing readers consume.
-4. **New TJT SubPanels** (NEW, UtinniPlugins repo) - Terrain/Particle/WorldSnapshot as `IEditorPlugin.GetSubPanels()` MEF parts - the *unchanged* Wave-1 (DEC-C4) seam; no new mechanism.
+**Major components (deltas):**
+1. UtinniCore/swg/graphics/render_backend.{h,cpp} (NEW) - a small IRenderBackend seam (newFrame/renderDrawData/onPreResize/onPostResize/renderTargetWidth/Height); detect-and-install one backend at hook-install time.
+2. directx9.cpp -> Dx9Backend (carved) + directx11.cpp -> Dx11Backend (NEW) - hook fork, ImGui-backend fork, and resize-semantics fork live ONLY here (~4 backend calls + vtbl-harvest + resize). The 7 D3D9-only SWG detours (wireframe, depth-texture, s207_r.dll shader override) STAY in directx9.cpp with no D3D11 twin.
+3. imgui_impl.cpp (carved, single-sourced) - WndProc subclass (Issue #11 chat-context routing), RT-space input mapping, gizmo, renderCallbacks bus all stay shared and API-neutral; only the four backend-touching lines call THROUGH the seam.
+4. Formats/Terrain/ + Formats/Effects/ (NEW managed codecs) + Utinni.Cli trn-*/effect-* verbs (NEW) + Utinni.Mcp read tools (NEW, zero format logic) + TJT TerrainSubPanel/EffectsSubPanel (NEW).
+5. UtinniCoreDotNetGen (MODIFIED) - CppSharp hardening; the OUTPUT keeps targeting net4.7.2 (the injected host is pinned to net4.7.2 x86 by the hosted CLR - it CANNOT move).
 
-**Two resolved forks worth restating for requirements:**
-- **Compiler vs writer = coexistence by verb ownership (no double implementation).** BUILD-from-source -> revived compiler; EDIT-existing-binary -> byte-exact `UtinniCoreDotNet` writer. They write at different lifecycle stages; name the MCP tools `compile_*`/`build_*` vs `edit_*` so the LLM picks correctly.
-- **Two distinct template compilers, frequently conflated.** `TemplateDefinitionCompiler` (`.tdf`/`.tpd` -> per-class param->type *schema*) is the **cheap path to OT Tier-2**. `TemplateCompiler` (`.tpf` -> object-template `.iff`) is the author-new-template path and depends on the definition compiler's output.
+**Backend module-name reconciliation:** the two researcher leads named different modules to check. Architecture said Direct3d11.dll (the swg-client-v2 application project); Pitfalls said gl11_r.dll grounded in clientGraphics/Graphics.cpp:195-253 (gl%02d_r.dll loaded by getRasterMajor()). Prefer the source-grounded gl%02d_r.dll naming - GetModuleHandleA("gl11_r.dll") -> D3D11, else gl05/06/07_r.dll -> D3D9 - and check the Direct3d11.dll/d3d11.dll names as a fallback only. Confirm the final contract against swg-client-v2 before coding (it is actively churning).
 
 ### Critical Pitfalls
 
-Top items from `PITFALLS.md` (anchored to *this* shipped system, not generic mistakes):
-
-1. **Agent writes a well-formed-but-semantically-wrong asset into a live archive** - byte-exactness is *correctness, not safety*; no parser flags it. Avoid: default every write tool to loose-override; gate `.tre` repack behind a distinct, off-by-default, `destructiveHint`+`dry_run`-annotated tool; always write through `TreBackupPath`.
-2. **Over-broad write scope (one `write_asset(path, bytes)` tool)** - gives the agent disk-wide authority; un-retrofittable once agents depend on the tool shape. Avoid: split read/write into per-format scoped tools; **pin `resolvedRoot` at server startup, canonicalize once, route every write through `LooseOverridePath.Resolve` - never accept an absolute path from the agent; fail closed if no root configured.**
-3. **Tool-poisoning / prompt-injection via untrusted asset content** - mod files are attacker-influenceable; an LLM doesn't distinguish data from instructions the way a ListView does. Avoid: write tools take *typed structured args only* (record index, column id, typed value), never "apply the change you inferred"; audit-log every write invocation.
-4. **Lift-and-shift drags the transitive + dead dependency graph** - `TemplateCompiler.vcxproj` carries ~25 ProjectReferences and a *dead* `perforce/include` path (present, not `#included`). Avoid: spike the real `#include` closure, prune dead include dirs, ship a per-tool dependency manifest as a deliverable.
-5. **Mis-judging the v143->v145 port (both directions)** - assuming it's unsolved wastes weeks; assuming all tools are equally done is wrong (`TemplateCompiler` likely-green, `TreeFileBuilder` unverified). Avoid: per-tool "compiles + links + round-trips at v145" gate; treat "is v145 in the vcxproj" and "actually builds" as different facts.
-6. **Coupling the build to a moving `swg-client-v2` checkout** - it's actively churning on branch `koogie-msvc-cpp20-base` mid-D3D9->D3D11 migration, with a live `x64bit-Upgrade` branch. Avoid: copy into a Utinni-owned location, **record the exact lifted-from SHA** (pin a SHA, not a branch HEAD), never `#include`/ProjectReference across into the live tree. **Watch x64 vs Utinni's hard x86 constraint (CON-P-02)** - the tools are `Win32`/x86 today matching Utinni; an upstream x64 migration would diverge.
-7. **Scope creep into 3D mesh/skel/anim authoring (DEC-A3 anti-goal)** - "preview the animation" quietly becomes "author it." Avoid: encode a one-sentence preview-vs-author test per editor; Animation deliverable is read-only live-preview of a Blender-exported anim.
+1. **D3D11 hook acquisition is fundamentally different from D3D9 - not a backend swap.** D3D9 patches shared .text in d3d9.dll; DXGI has no shared .text for Present. Hook IDXGISwapChain::Present (vtbl idx 8) acquired from a throwaway D3D11CreateDeviceAndSwapChain (hooking D3D11CreateDevice is too early). Rebind the backbuffer RTV every frame - the SWG flip-model device unbinds the RTV after Present.
+2. **Detect the backend and install exactly ONE path.** Both hooks live = doubled input + two fighting ImGui contexts + dummy-device leaks. One GetModuleHandle("gl11_r.dll") check at install; log the detected backend once (30-second ground truth beats a multi-day why-is-input-doubled hunt).
+3. **DXGI resize semantics are inverted from D3D9.** No Reset; resize is IDXGISwapChain::ResizeBuffers (idx 13). Release/recreate the cached RTV inside the ResizeBuffers hook - holding a stale buffer fails with DXGI_ERROR_INVALID_CALL, the DXGI analog of the forbidden D3D9 Reset crash. Do NOT carry the D3D9 never-Reset/stretch-the-window rules verbatim.
+4. **A CppSharp bump silently changing generated public C# signatures detonates every pre-built plugin DLL at MEF compose** (MissingMethodException/CompositionException at inject). Gate with a per-block hash diff (separate real ABI change from the known reorder churn), rebuild TJT/Sytner in the SAME wave (standing cross-repo authority), add the frozen-DLL MEF-compose fixture, and live-smoke the inject (the only place this surfaces).
+5. **The CppSharp upgrade not actually reaching v145 - the Path-2 dead-end.** Make the clang-capability spike the FIRST task; if no shipping CppSharp clears v145 14.5x STL (it will not), keep the redirect, document it as supported, and re-scope to harden-redirect + C++23-header-tripwire rather than sinking days into a TFM migration that does not unblock removal.
+6. **Per-frame heap alloc in a live-preview/callback hook re-triggers the 0x0051fb0a scene-change crash.** Terrain regenerates on zone change, so a terrain-preview callback fires exactly during the fragile GroundScene construction window. Use the stack-allocated dispatchSnapshot (kInlineCap=16); push preview data on-edit, not per-frame; default to save-then-reload preview.
+7. **A codec that aborts on unfixtured multi-chunk/version variants - the OT/IFF/TRE rework tax, x3 already paid.** Port from swg-client-v2/sharedTerrain (not guesswork); raw-fallback passthrough on unknown chunks (never hard-abort); golden-fixture BOTH SWGEmu and Restoration lineages; byte-exact roundtrip-* verb before the UI.
 
 ## Implications for Roadmap
 
-The combined research yields an unusually clear build order: a **hard-gate revive-feasibility spike first**, then cheap revive+wrap (which also unblocks OT Tier-2), then the headless MCP centerpiece, then the meatier editors, with live-injected MCP explicitly last and optional. This front-loads the highest-leverage, lowest-cost work and de-risks the one genuine unknown (the build) before anything depends on it.
+Suggested ~6-phase structure, foundation-before-features. (1)->(2)->(3) is a strict foundation chain; (4) is offline and gated only on (1); (5)+(6) are the user-visible payoff. Quick wins (999.2/999.3) are independent P2s that slot anywhere staffing allows.
 
-### Phase 1: Revive-Feasibility Spike (hard gate - Wave 0)
-**Rationale:** The entire revive+wrap strategy is contingent on the lifted tools actually building standalone at v145. This is the *named* spike in PROJECT.md and the single biggest gating risk. It is cheap and must run before any wrap design. **Corrects the overstated "v143->v145 port" framing** - the real work is verify-build + strip-dead-deps + manifest, not a toolset port.
-**Delivers:** Per-tool build-status verification (`TemplateCompiler` likely-green from on-disk objs; `TreeFileBuilder` unverified - build it independently); a verified per-tool **dependency manifest** with dead `perforce`/`alienbrain` paths pruned; the **recorded lifted-from `swg-client-v2` SHA** (pin SHA, not branch); a Utinni-owned `tools/Utinni.Tools.sln`.
-**Addresses:** Authoring-pipeline table stakes (the revive prerequisite).
-**Avoids:** Pitfalls 4 (transitive/dead deps), 5 (mis-judged port), 6 (moving-checkout coupling, x64 watch).
+### Phase 1: CppSharp / v145 Hardening (clang-spike -> harden-redirect)
+**Rationale:** FOUNDATION. Pure toolchain; settles the build surface before any new native (directx11.cpp) headers are added. Independent of everything else. Re-scope from the milestone stated retire-the-redirect goal - that is not achievable (no clang-20 CppSharp). The clang-capability spike is the FIRST task; the honest outcome is harden-the-redirect.
+**Delivers:** documented clang-capability spike result; hardened + documented VS2019-14.29 parser redirect; C++23-STL-header CI tripwire; clang-20-CppSharp release tripwire; (optional, scored separately) net9/10 generator-pipeline modernization.
+**Addresses:** the foundation half of the milestone goal.
+**Avoids:** Pitfalls 4 (per-block hash gate + frozen-DLL fixture + lockstep TJT/Sytner rebuild - the primary acceptance gate) and 5 (spike-first, do not chase v145-native).
 
-### Phase 2: Wrap Revived Compilers as CLI Verbs + OT Tier-2
-**Rationale:** Once the tools compile, wrapping them as `utinni-cli` verbs is pure, low-risk wrapping over golden fixtures (DEC-C3 Tier-2). `TemplateDefinitionCompiler`'s param->type map is the cheapest route to closing the OT Tier-2 carried residual - so this phase pays a centerpiece feature *and* a residual in one.
-**Delivers:** `compile-template`, `compile-definition`, `build-tre` CLI verbs + goldens; the param->type schema surfaced; OT Tier-2 typed list-param display closed.
-**Uses:** Revived `TemplateDefinitionCompiler`/`TemplateCompiler`/`TreeFileBuilder` (Phase 1); existing `Utinni.Cli` golden-fixture harness.
-**Implements:** Architecture Pattern 2 (revive-and-wrap) + Pattern 3 (coexistence by verb ownership).
+### Phase 2: Render-Backend Seam (carve) + Dx9Backend
+**Rationale:** FOUNDATION. Refactor imgui_impl.cpp/directx9.cpp behind IRenderBackend with the EXISTING D3D9 overlay behaviorally unchanged - must precede Dx11 so the interface is settled. Depends on (1) only for a clean build.
+**Delivers:** render_backend.{h,cpp} seam; Dx9Backend with the carve verified by the existing live-smoke (overlay still renders/inputs); the ~1000-line shared overlay logic single-sourced.
+**Uses:** existing DetourXS + the dummy-device getVtbl() harvest.
+**Implements:** the IRenderBackend component.
+**Avoids:** the fork-imgui_impl.cpp anti-pattern; calling Reset/destabilizing the D3D9 device during the refactor (preserve the no-Reset, Present-stretch contract verbatim).
 
-### Phase 3: Headless MCP Server (`Utinni.Mcp`) - read + edit + build + SAVE
-**Rationale:** The centerpiece. Everything it dispatches now exists as a CLI verb. It is a thin dispatcher with no business logic. The one net-new code item - a **SAVE verb** - lands here, because `Utinni.Cli` is read+roundtrip only today and the write surface is what "authors, not just edits" requires.
-**Delivers:** net10.0 stdio MCP server; read tools over the 9 existing verbs; build tools over Phase-2 verbs; **write tools defaulting to loose-override with the full 5-layer safety model** (annotations + elicitation + verify-before-commit + backup); a first-class `MCP-SECURITY.md` threat register mirroring Phase-7's.
-**Addresses:** MCP table stakes + the two headline differentiators (byte-exact verify, loose-override-default).
-**Avoids:** Pitfalls 1 (live-archive corruption), 2 (over-broad scope - pin root, per-format tools, fail-closed), 3 (tool-poisoning - typed args + audit log).
-**Uses:** ModelContextProtocol 1.3.0, net10.0, stdio (STACK.md).
+### Phase 3: Dx11Backend + Config-Based Backend Detection + Resize
+**Rationale:** FOUNDATION completion. New directx11.cpp + detectAndInstall(). Stand up + test against OS d3d11.dll via the dummy-device harness even without a routine D3D11 SWG build. Depends on (2).
+**Delivers:** Dx11Backend hooking IDXGISwapChain::Present (idx 8) + ResizeBuffers (idx 13); per-frame RTV rebind; release/recreate RTV inside ResizeBuffers; gl11_r.dll detection installing exactly one path with a one-shot diagnostic log.
+**Uses:** imgui dx11-binding vcpkg feature; DXGI/D3D11 SDK headers.
+**Avoids:** Pitfalls 1 (acquisition model), 2 (install-one), 3 (flip-model resize). Confirm hard-cutover vs runtime-switch AND the x64 question with swg-client-v2 FIRST.
 
-### Phase 4: First DCC Editor - WorldSnapshot, then Terrain/Particle
-**Rationale:** Editors are the meatier lift (UI + format depth), so they come after the cheap headless base. **WorldSnapshot first** - it grows the existing Snapshot panel, is injection-native already (Utinni's origin), and needs **zero new deps**. Terrain/Particle follow because they require *new format codecs* (`.trn`/`.prt`) in `UtinniCoreDotNet`.
-**Delivers:** WorldSnapshot/object-placement SubPanel (extend Snapshot panel, transform gizmo, four-tier save); then Terrain or Particle SubPanel + its new codec; matching MCP edit/save tools.
-**Addresses:** "New editor (replace)" features; mirrors the Wave-1 MEF SubPanel seam (DEC-C4) unchanged.
-**Avoids:** Pitfall 7 (preview-vs-author boundary gate per editor).
+### Phase 4: Terrain .trn Codec + Verbs + MCP Tool
+**Rationale:** FEATURE core, the critical path / only long pole. Pure managed/offline - depends on (1) for clean bindings but NOT on the D3D11 work (could parallelize with 2-3 if staffed). Get decode right first; every other Terrain feature sits on it.
+**Delivers:** Formats/Terrain/ codec (decode->navigable layer tree, typed read for common tags, scalar-leaf edit/save) + decode-trn/roundtrip-trn/apply-save-trn verbs + MCP read tool, golden-tested across SWGEmu + Restoration fixtures.
+**Uses:** ported swg-client-v2/sharedTerrain (pinned SHA, read-only); Formats/Iff primitives.
+**Avoids:** Pitfall 7 (raw-fallback on unknown chunks; both lineages fixtured; verbs-first byte-exact round-trip; inherit IFF no-pad behavior).
 
-### Phase 5 (optional, last): Live-Injected MCP Bridge
-**Rationale:** Only after headless MCP proves the tool ergonomics. Requires a NEW named-pipe IPC into the x86 injected process - the biggest new-mechanism risk - and reconciling the modern-.NET MCP host with the in-proc x86 client.
-**Delivers:** Live in-client preview as an MCP tool (live-patch tier, gated/opt-in).
-**Avoids:** Anti-Pattern 1 (never host the SDK in-proc; cross only via narrow IPC).
+### Phase 5: Terrain TJT SubPanel (+ optional live-in-client preview)
+**Rationale:** FEATURE. TerrainSubPanel consumes the (4) codec; optional live in-client regen-on-save rides the (2)/(3) backend seam - the payoff for foundation-first. Depends on (4); benefits from (2)/(3).
+**Delivers:** TerrainSubPanel (IEditorPlugin) with layer tree + property grid; open-from-TRE; loose-override save; live preview honestly degraded if not heap-free-reachable.
+**Avoids:** Pitfall 6 (heap-free hot path; save-then-reload default), 8 (Dock.Fill front-most / nested SplitContainers; guard the ctor against MEF silent-reject), 9 (vanilla-baseline-first before live-smoke bisects).
 
-### Parallel (any wave): Formalize the Blender Boundary
-**Rationale:** Pure documentation + reuse of existing readers; runs alongside any phase.
-**Delivers:** Documented `.iff`/`.tre` format-version contract; open/preview verbs for Blender exports; cross-test `UtinniCoreDotNet` (C#) and `swg_iff` (Python) against shared golden fixtures.
-**Avoids:** Pitfall 7 (the boundary is a *file-format seam*, not a shared authoring surface - DEC-A3 ratified).
+### Phase 6: One Adjacent Effects Editor (codec + verb + SubPanel)
+**Rationale:** FEATURE, lowest risk, pattern fully proven by now. Recommended target ClientEffect (flat command-list .iff); Lightning/Swoosh are alternates - the choice is a requirements-scoping user call with no stack divergence.
+**Delivers:** Formats/Effects/ codec + effect-* verbs + MCP tool + EffectsSubPanel, with reference-validation against the load order.
+**Avoids:** Pitfalls 7 (IFF no-pad, multi-chunk variants), 8 (SubPanel layout/MEF).
 
 ### Phase Ordering Rationale
-
-- **Hard dependency chain:** Phase 1 gates Phase 2 (can't wrap a tool that won't compile) -> Phase 2 gates Phase 3's build tools *and* unblocks OT Tier-2 -> Phase 3 gates the optional Phase 5.
-- **Cheap-before-meaty:** revive+wrap and headless MCP are low-cost/high-leverage; editors are costlier (UI + new codecs) and sequenced after a stable base - they're *expensive*, not *blocked*.
-- **Lowest-risk editor first:** WorldSnapshot (zero new deps, injection-native) precedes Terrain/Particle (new codecs).
-- **Safety is design-time:** the MCP security contract (Pitfalls 1-3) is a Phase-3 first-class deliverable, not a later pass - over-broad tool shapes are un-retrofittable once agents depend on them.
+- (1)->(2)->(3) is a strict foundation chain: clean build surface -> settle the seam with the SAFE D3D9 carve (verifiable by existing live-smoke) -> add the RISKY D3D11 twin last. This is the milestone explicit foundation-before-features intent.
+- (4) is offline and gated only on (1) - Terrain codec can start the moment the bump lands; it is the critical path, so starting it early de-risks the milestone.
+- (5)+(6) are the user-visible payoff and depend on their codecs plus (for live preview) the backend seam - which is precisely why foundation goes first: live preview breaks the moment the client flips to D3D11 if the seam is not there.
+- Quick wins (999.2/999.3) are independent P2s - they touch only existing IFF/TRE Formats + UI, no foundation dependency, slot anywhere.
 
 ### Research Flags
 
-Phases likely needing `/gsd:plan-phase --research-phase <N>` during planning:
-- **Phase 1 (revive spike):** the genuine unknown - actual dependency closure + per-tool build status. The research here is *empirical (a build pass)*, not literature; budget the spike accordingly.
-- **Phase 4 (Terrain/Particle codecs):** `.trn`/`.prt` format depth is MEDIUM-confidence; `swg-client-v2` is the format-spec reference but no Utinni fixtures exist yet.
-- **Phase 5 (live-injected MCP):** named-pipe-vs-socket IPC mechanism + reconciling modern-.NET host with x86 in-proc client - deferred, open.
+Phases likely needing /gsd:plan-phase --research-phase <N> during planning:
+- **Phase 1 (CppSharp):** the clang-capability spike outcome determines whether the phase is harden-redirect or harden+net9-modernization - needs a spike before acceptance criteria can be fixed.
+- **Phase 3 (Dx11Backend):** depends on an externally-churning swg-client-v2 Direct3d11.dll/gl11_r.dll contract; the hard-cutover-vs-runtime-switch and x64 questions need confirmation before design lock.
+- **Phase 4 (Terrain codec):** .trn is the most variant-rich SWG format Utinni has tackled; the per-tag typed-coverage matrix and the SWGEmu-vs-Restoration version dispatch need format research against sharedTerrain.
 
 Phases with standard patterns (skip research-phase):
-- **Phase 2 (wrap as CLI verbs):** well-trodden DEC-C3 Tier-2 golden-fixture pattern; pure wrapping.
-- **Phase 3 (MCP server):** HIGH-confidence - SDK shape, transport, and safety model are all verified; the thin-dispatcher pattern is settled.
-- **Phase 4 (WorldSnapshot):** extends an existing panel on the unchanged MEF SubPanel seam; no new mechanism.
+- **Phase 2 (seam carve):** pure refactor of read-in-full source behind a thin interface; behavior-preserving, well-understood.
+- **Phase 5 / Phase 6 (SubPanels + effects editor):** the Particle editor proved the exact three-layer pattern; ClientEffect is a flat command list.
+
+### Watch Out For (this project captured pitfalls - carry forward into every phase)
+- Never call D3D9 Reset on the SWG third-party device (DEVICELOST + crash); the seam preserves no-Reset/Present-stretch verbatim.
+- RT-space input mapping + AddMousePosEvent (imgui 1.87+) - the embedded-window-stretch mapping is API-neutral and stays shared.
+- Heap-free callback hot paths - dispatchSnapshot stack-snapshot pattern; never per-frame std::vector/new/std::string on the render/update thread.
+- Generated/UtinniCore.cs reorders every build - always git checkout -- it, never commit; and a REAL ABI break can hide inside that reorder churn (the Pitfall-4 per-block hash gate exists to catch it).
+- Byte-exact round-trip across BOTH SWGEmu and Restoration fixtures - the user mods both clients; one-file coverage is not coverage.
+- Vanilla-baseline-first before any live-smoke bisect - priority-27 searchPath_NN_27 loose overrides shadow data machine-wide (the 06-12 phantom-walk).
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | MCP SDK runtime decision + revive build surface verified against current NuGet metadata *and* direct on-disk `swg-client-v2` `.vcxproj`/`.rsp` inspection. MEDIUM only for which editor codec lands first. |
-| Features | HIGH | MCP model + safety grounded in MCP spec 2025-11-25 (Context7) + multiple security sources; compiler semantics from on-disk source census. MEDIUM for editor UX expectations (no Context7 anchor). |
-| Architecture | HIGH | Existing topology read from source; the four integration forks resolved against verified SDK framework support; new editors reuse a shipped+demoed V1 seam. MEDIUM only on the v145 revive feasibility (the named Phase-1 spike). |
-| Pitfalls | HIGH | Anchored to direct codebase + `swg-client-v2`-tree inspection (vcxproj toolset, dead include paths, build-output presence, active branches). MCP guidance MEDIUM but consistent across OWASP/MCP-spec/multiple sources. |
+| Stack | HIGH | D3D11 backend + CppSharp state verified (Context7 + repo + upstream nuget/github 2026-06-14); terrain-visualization recommendation is a design call (no single canonical library), graded MEDIUM within an otherwise HIGH section. |
+| Features | HIGH | Format facts grounded in swg-client-v2/sharedTerrain/clientEffect/clientParticle + the original SOE TerrainEditor; LOW only on relative modder-demand ranking within the effects family. |
+| Architecture | HIGH | All integration points verified against current D:/Code/Utinni + swg-client-v2 source; the D3D11 runtime-detection design is MEDIUM (depends on a churning swg-client-v2 renderer-DLL contract). |
+| Pitfalls | HIGH | Render-path + CppSharp/ABI pitfalls anchored to this project captured incidents + direct source inspection; .trn/effects codec pitfalls MEDIUM (format-shape verified, no v2.1 fixtures yet). |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
-
-- **Per-tool v145 build status (the prime gate):** `TemplateCompiler` likely-green (objs on disk), `TreeFileBuilder` unverified (no objs). Resolve empirically in Phase 1 - a build pass, not more reading. Fallback if a tool refuses v145: build *that* tool at v143 in `tools/` and still wrap it (the subprocess seam is toolset-agnostic; the lift-and-shift constraint forbids building *in* `swg-client-v2`, not building at v143 in our own tree).
-- **Doc correction owed:** PROJECT.md "Toolchain bump (v145)" + `toolchain-inventory.md` revive note both overstate the port as a v143->v145 delta Utinni must author. The targets are already v145/stdcpp20. Flag for correction when v2.0 requirements are written.
-- **The new SAVE verb:** the single biggest net-new code item for the MCP write surface; `Utinni.Cli` is read+roundtrip today. Specify its shape (per-format, loose-override-default, structured `{written,path,bytesWritten,backupPath,validated}` result) in Phase 3 requirements.
-- **`resolvedRoot` provenance headless:** existing `LooseOverridePath.Resolve` requires a correct root, and TJT callers feed raw non-canonical paths. A headless MCP server has *no* injected client to harvest a root from - require explicit config, canonicalize once at startup, fail closed.
-- **Lifted-from SHA + x64 watch:** `swg-client-v2` is churning on `koogie-msvc-cpp20-base` with a live `x64bit-Upgrade` branch. Record the exact x86 SHA; an upstream x64 migration collides with CON-P-02.
-- **Blender `.rsp`/search-path manifest contract:** exact published-bundle location + discovery is deferred to the Blender-boundary work; `swg_pipeline/rsp_builder.py` is the reference.
+- No released CppSharp reaches v145 (clang 20). The milestone retire-the-redirect goal must be re-scoped at requirements time to harden-the-redirect + tripwires. Resolve via the Phase-1 clang-capability spike before fixing acceptance criteria.
+- swg-client-v2 D3D11 renderer-DLL contract is actively churning. Confirm before Phase 3: (1) final module name (gl11_r.dll source-grounded vs Direct3d11.dll), (2) hard-cutover vs runtime-switch, (3) whether the x64bit-Upgrade branch lands before/with D3D11 - an x64 SWG client breaks the ENTIRE x86 injection stack, not just the overlay (milestone-existential, confirm early).
+- No v2.1 .trn/effects fixtures exist yet. Build synthesized <=200-byte fixtures (DEC-C3) across BOTH SWGEmu and Restoration lineages during Phase 4/6; coverage must be a fixture matrix, not one-file.
+- CommandLineParser verb-count ceiling. The tree is at 23 *Command.cs files (prior cap was 16); confirm the dispatcher registers cleanly before adding trn-*/effect-* verbs.
+- 2D sampled-map preview needs a Sampler port (deferred). If/when it lands, System.Drawing.Bitmap + LockBits suffices - no new dependency.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- On-disk `D:/Code/swg-client-v2`: `swg.sln` (VS2026/`VisualStudioVersion = 18.1`); `TemplateCompiler.vcxproj` (v145, `stdcpp20`, Win32, ~25 ProjectReferences, **built Debug objs present**); `sharedTemplate.vcxproj` (**dead** `perforce/include` path, not `#included`); `TreeFileBuilder.vcxproj` (v145, **no build output**); STLport453 **absent** from `external/3rd/library/`; per-target `.rsp` lib closures; git log (Phase-18 D3D9 to D3D11 churn; branches `koogie-msvc-cpp20-base`, `MSVC-CPP20-Upgrade`, `x64bit-Upgrade`). **Direct file evidence.**
-- ModelContextProtocol on NuGet (`/1.3.0`, 2026-05-08) - target frameworks net8/9/10 + netstandard2.0, **no net4xx**; deps `Microsoft.Extensions.* >= 10.0.7`.
-- MCP specification 2025-11-25 (Context7 `/websites/modelcontextprotocol_io_specification_2025-11-25`) - ToolAnnotations (+ "hints are advisory/untrusted" caveat), Tools/Resources/Prompts, Elicitation, stdio transport.
-- `/modelcontextprotocol/csharp-sdk` (Context7 + GitHub) + .NET Blog "Build an MCP server in C#" - `Host.CreateApplicationBuilder` + `WithStdioServerTransport().WithToolsFromAssembly()` + `[McpServerTool]` bootstrap.
-- C++ Team Blog "C++ Language Updates in MSVC v14.50" + MS Learn upgrade-issues - v145 conformance deltas (`/Zc:enumEncoding`, mandatory `template` keyword, `std::auto_ptr` removal `_HAS_AUTO_PTR_ETC`, two-phase lookup `/Zc:twoPhase-`); v140-v145 ABI-compatible.
-- `swg-client-v2/docs/research/` - `swg-tools-and-likely-studio-toolchain.md` (653-line census: TemplateCompiler vs TemplateDefinitionCompiler, dependency map), `blender-mcp-vs-addon.md` (Utinni to Blender boundary, "format knowledge in shared lib / MCP as thin shell", "always IFF, Viewer is ground truth").
-- Utinni repo: `docs/ai/architecture.md`/`toolchain-inventory.md`, `Utinni.Cli/**` (verb surface, headless pipeline, PE-probe-without-LoadLibrary), `UtinniCoreDotNet/Saving/{LooseOverridePath,TreRepackLock,TreBackupPath}.cs`, `.planning/phases/07-.../07-SECURITY.md`, `.planning/PROJECT.md`.
+- /ocornut/imgui (Context7) - DX11 backend Init/NewFrame/RenderDrawData contract; ID3D11Device*+ID3D11DeviceContext* init signature.
+- nuget.org/packages/CppSharp + github.com/mono/CppSharp/releases (2026-06-14) - latest v1.2 = clang 19 (reaches 14.4x only); no clang-20/v145 release; latest TFM net9.0, no net472/x86.
+- D:/Code/Utinni/UtinniCore/swg/graphics/directx9.cpp + swg/ui/imgui_impl.cpp - dummy-device vtable-harvest + DetourXS DETOUR_TYPE_PUSH_RET pattern; the 7 D3D9 detours; hkReset bracket; s207_r.dll guard (read in full).
+- D:/Code/swg-client-v2/.../clientGraphics/.../Graphics.cpp:195-253 - gl%02d_r.dll backend selection by getRasterMajor() (5-7 D3D9, 11 D3D11).
+- D:/Code/swg-client-v2/.../Direct3d11/.../Direct3d11_Device.cpp - D3D11CreateDevice + CreateSwapChainForHwnd, DXGI_SWAP_EFFECT_FLIP_DISCARD, RTV-unbind-after-Present, DEVICE_REMOVED = restart.
+- D:/Code/swg-client-v2/.../sharedTerrain/.../generator/TerrainGenerator.h + Affector*/Boundary/Filter/*Group + SamplerProceduralTerrainAppearance (SHA d6496005e) - .trn procedural structure + tag set; clientEffect/ClientEffectTemplate.h + clientParticle/{Lightning,Swoosh}AppearanceTemplate.h.
+- D:/Code/Utinni/UtinniCoreDotNet/Formats/Particle/* - the proven Wave-2 codec/panel template; Formats/{Iff,Tre}/* the reuse surfaces; Utinni.Cli/Commands/* (23 verbs) + Utinni.Mcp/Tools/*.
+- Utinni captured incidents (auto-memory) - feedback_d3d9_reset_third_party, feedback_imgui_embedded_d3d9_rt_space, feedback_caller_attrs_binary_compat, project_utinnicore_cs_regen_churn, project_vs2026_cppsharp_block, project_rh_snapshot_no_heap_alloc, project_ot_multichunk_list_params, project_swg_iff_no_pad, project_tre_version_support_gap, project_swg_client_loose_overrides, feedback_winforms_dockfill_zorder.
+- .planning/PROJECT.md (milestone scope, CON-H/N/M/T, DEC-V2/DEC-A/DEC-C locks) + docs/ai/toolchain-inventory.md (revive/replace cross-walk, Wave-2 census, locked live-in-client preview).
 
 ### Secondary (MEDIUM confidence)
-- MCP write-safety / security patterns (multiple sources agree): human-in-the-loop elicitation, fail-closed destructive ops, read/write split, least-privilege scoping, annotation-driven UX vs server-side enforcement - Zeo, 4sysops, WRITER, Towards Data Science, PolicyLayer, OWASP (MCP Tool Poisoning), SOC Prime, isMalicious, MCP security best-practices.
-- stdio-as-correct-local-transport / SSE-deprecated - apigene.ai, mcpcat.io, padiso.co.
+- RenderHook / DX11-ImGui-HookKit / Niemand DX11+ImGui writeup - DXGI Present=vtbl 8, ResizeBuffers=vtbl 13, dummy-device harvest (community, multi-source agreement).
+- TRN (FileFormat) SWGANH Wiki + PCG Wiki - .trn = procedural graph not stored heightmap (cross-checked against on-disk source).
+- swg-client-v2/.../application/Direct3d11/ existence (HIGH for existence; MEDIUM for final contract - actively churning per .planning/research/CONSULT-19..23).
 
 ### Tertiary (LOW confidence)
-- DCC-editor UX expectations for Terrain/Particle/WorldSnapshot - training data + SWG tool census, no Context7 anchor; validate against `swg-client-v2` format specs during Phase-4 planning.
+- Relative modder-demand ranking within the effects family (ClientEffect vs Lightning vs Swoosh) - a requirements-scoping user call, no stack divergence either way.
 
 ---
-*Research completed: 2026-06-01*
+*Research completed: 2026-06-14*
 *Ready for roadmap: yes*

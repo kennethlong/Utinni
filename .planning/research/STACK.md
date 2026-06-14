@@ -1,190 +1,122 @@
 # Stack Research
 
-**Domain:** v2.0 "AI-Assisted SWG Tools" — MCP server + revive/wrap SWG build-chain CLIs + first DCC-style SubPanels, layered onto the shipped Utinni V1 (x86 injected `UtinniCore.dll` + .NET FW 4.7.2 WinForms host + `UtinniCoreDotNet` codecs + `Utinni.Cli`).
-**Researched:** 2026-06-01
-**Confidence:** HIGH for the MCP-runtime decision and the revive-build surface (both verified against current NuGet metadata + the on-disk `swg-client-v2` tree); MEDIUM for the new-editor deps (depends on which editor lands first).
+**Domain:** v2.1 "Wave-2 Editors + Foundation Hardening" — additions to an existing 32-bit native-injection + .NET Framework WinForms + MEF plugin app (Utinni). Scope: Terrain (`.trn`) editor, one adjacent Effects editor, D3D11 render-path foundation, real CppSharp v145 upgrade.
+**Researched:** 2026-06-14
+**Confidence:** HIGH for D3D11 backend + CppSharp state (Context7 + repo + upstream verified); HIGH for terrain format (reference source on disk); MEDIUM for terrain-visualization recommendation (a design call, not a single canonical library).
 
-> **Scope note.** This file covers ONLY the NEW v2.0 capabilities. The existing V1 stack
-> (UtinniCore C++ x86, CppSharp bridge, .NET FW 4.7.2 WinForms, MEF, vcpkg catch2/spdlog/imgui/imguizmo,
-> VS2026/v145, self-hosted CI) is validated and out of scope — do NOT re-research or change it.
-
----
-
-## Headline decisions (read these first)
-
-1. **The MCP server must be a SEPARATE process targeting modern .NET (net10.0), NOT in-process in the
-   .NET Framework 4.7.2 WinForms host, and NOT in the x86-injected DLL.** The official
-   `ModelContextProtocol` SDK ships no `net4xx` target and transitively requires
-   `Microsoft.Extensions.*` 10.x. It is testable/supported only on .NET 8+. (Verified — see below.)
-
-2. **Transport = stdio.** Local, single-client desktop tool driving a local CLI/library. stdio is the
-   canonical choice; HTTP/SSE adds a network stack and auth surface you don't need. (Verified.)
-
-3. **The "v143 → v145 port" in the milestone framing is largely ALREADY DONE upstream.** The on-disk
-   `swg-client-v2` revive targets are *already* at `PlatformToolset = v145`, `LanguageStandard = stdcpp20`,
-   native MSVC STL (STLport dropped). This materially shrinks the revive-build effort and corrects an
-   assumption in `PROJECT.md`/`toolchain-inventory.md` (which assumed swg-client-v2 sits at VS2022/v143).
-   Lift-and-shift still applies for D3D11-churn decoupling — but you're lifting *already-modernized* source.
+> **Framing.** This is a *subsequent-milestone* stack delta. Almost everything Utinni needs already ships (DetourXS, ImGui 1.92.6 via vcpkg, CppSharp 0.10.5, WinForms host, the dummy-device D3D9 vtable-harvest pattern). The v2.1 "additions" are mostly **one new vcpkg feature flag, one new pair of C++ source files, and a build-config decision** — not new third-party dependencies. The most important findings are *negative*: no released CppSharp reaches v145, and `.trn` needs no heightmap library. Both are spelled out below.
 
 ---
 
 ## Recommended Stack
 
-### Core Technologies (NEW for v2.0)
+### Core Technologies (the actual v2.1 deltas)
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| **ModelContextProtocol** (C# SDK) | **1.3.0** (stable, 2026-05-08) | The MCP server: exposes Utinni's read+edit+save verbs as agent tools | Official Microsoft-collaborated SDK; `[McpServerTool]` attribute discovery + `WithStdioServerTransport()` is exactly the "thin shim over verbs" shape we want. Latest stable confirmed on NuGet. |
-| **ModelContextProtocol.Core** | 1.3.0 | Minimal-dependency MCP primitives if you want to skip the `Microsoft.Extensions.Hosting` generic host | Use only if you deliberately avoid the generic host; the full `ModelContextProtocol` meta-package is the normal path. |
-| **.NET runtime for the MCP server** | **net10.0** (LTS) | Host process for the MCP server | SDK targets net8/9/10 + netstandard2.0; net10.0 is current LTS, matches the `Microsoft.Extensions.* 10.x` the SDK pulls anyway, and avoids version-skew binding redirects. (net8.0 also fine if you want a wider-installed-base floor.) |
-| **Microsoft.Extensions.Hosting** | 10.0.x (tracks SDK) | Generic host / DI / logging for the MCP server `Program.cs` | The canonical MCP server bootstrap (`Host.CreateApplicationBuilder` → `AddMcpServer().WithStdioServerTransport().WithToolsFromAssembly()`). Brought in transitively; pin to the SDK's floor. |
-| **MSVC v145 toolset** (already Utinni's) | VS2026 / 14.5x | Compile the lifted-and-shifted revive CLIs | Same toolset Utinni already builds on; **and** the same toolset `swg-client-v2` already applied to these targets — so the lifted source compiles as-is, modulo path/lib fixups. |
-| **C++20 (`/std:c++20`)** | — | Language standard for the revive CLIs | The upstream revive `.vcxproj`s are already `stdcpp20`; match it. Don't downgrade. |
+| **ImGui DX11 backend** (`imgui_impl_dx11.cpp/.h`) | ships **inside imgui 1.92.6** (already vendored via vcpkg) | The renderer half of the parallel D3D11 overlay path | It is the exact peer of the `imgui_impl_dx9` Utinni already uses. Same `NewFrame`/`RenderDrawData` contract; only the init signature differs (`ID3D11Device*` + `ID3D11DeviceContext*` instead of `IDirect3DDevice9*`). **No new dependency** — just add the `dx11-binding` feature to the existing vcpkg `imgui` entry. (Context7 `/ocornut/imgui`) |
+| **DetourXS** (vendored `external/DetourXS`) | current vendored copy | Detour `IDXGISwapChain::Present` + `ResizeBuffers` (the D3D11 equivalents of D3D9 `Present`/`Reset`) | **Already in the repo and already the hooking mechanism.** Its `Create(LPVOID lpFuncOrig, ...)` by-address overload is exactly what a DXGI vtable-harvest needs (verified in `detourxs.h`). The same `DETOUR_TYPE_PUSH_RET` + `Detour::CheckPointer` pattern the 7 D3D9 hooks use transfers 1:1. **Do NOT introduce MinHook** — see "What NOT to Use." |
+| **DXGI / D3D11 SDK headers** (`<d3d11.h>`, `<dxgi.h>`/`<dxgi1_2.h>`) | Windows SDK 10.0.19041+ (already installed; used by the CppSharp redirect) | Compile the new `directx11.cpp` hook + dummy-device vtable harvest | Ships with the Windows 10 SDK already on the box. Link `d3d11.lib`/`dxgi.lib`, or `GetProcAddress("D3D11CreateDeviceAndSwapChain")` dynamically to mirror the existing `Direct3DCreate9` dynamic-load (avoids adding libs to the x86 link line). |
+| **CppSharp** (vendored `external/CppSharp`) | **stays 0.10.5 (clang 11)** for v2.1 | Binding generator (`UtinniCoreDotNetGen`) | **There is no CppSharp release that parses v145 (MSVC 14.5x) STL.** Newest is v1.2 / NuGet `1.1.84.17100` (2025-11-19, **clang 19**), which reaches only v143/14.4x. v145's STL hard-requires **clang 20**, which no CppSharp ships. So the "real upgrade retiring the parser-include redirect" the milestone names **cannot be delivered by a stock CppSharp bump in v2.1.** See question (b) below for the honest options. (Verified: nuget.org/packages/CppSharp + github.com/mono/CppSharp/releases, 2026-06-14.) |
 
-### Supporting Libraries
+### Supporting Libraries (terrain + effects editors)
 
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| **System.Text.Json** | (in-box on net10.0) | Parse the structured sorted-key JSON the existing `Utinni.Cli` verbs already emit | The MCP tool handlers shell out to `utinni-cli.exe` (or P/Invoke `UtinniCoreDotNet`) and re-surface its JSON. In-box; no extra package on net10.0. |
-| **zlib** | (vendored in swg-client-v2 `external/3rd/library/zlib`) | TRE compression for `TreeFileBuilder` | Required lib for the TRE-build revive target. Lift the prebuilt `zlib.lib` alongside the source. |
-| **PCRE 4.1** | (vendored, `external/3rd/library/pcre/4.1`) | Regex used by `TemplateCompiler` (`sharedRegex`) | Needed only by the `TemplateCompiler` revive target, not `TreeFileBuilder`. |
-| **(Editors) ImGui + ImGuizmo** | (already vendored via vcpkg: imgui 1.92.8) | Terrain/Particle/WorldSnapshot SubPanel rendering if done as in-overlay HUD | Only if a DCC editor is built as an injected ImGui overlay rather than a WinForms SubPanel. Reuse the existing vcpkg deps; add nothing. |
+| **swg-client-v2 `sharedTerrain`** (read-only reference at `D:/Code/swg-client-v2`, SHA `d6496005e`) | pinned SHA | The `.trn` (PTAT/TGEN) format spec to port: `TerrainGenerator`, `Affector*`, `Boundary`, `Filter`, `*Group` (Shader/Flora/Radial/Fractal/Environment), `SamplerProceduralTerrainAppearance` (the CPU heightmap sampler) | Port the **parse/serialize + CPU-sample** logic into managed `UtinniCoreDotNet/Formats` for the Terrain editor. Read-only reference, **no runtime dependency** (DEC-V2-LIFT-SHIFT: do not `#include`/ProjectReference the live tree). |
+| **`System.Drawing` `Bitmap` + `LockBits`** | net4.7.2 framework-built-in | Render a generated heightmap / shader-mask / flora-density 2D preview inside the WinForms SubPanel | The terrain heightmap is **not stored** in `.trn` — it is *generated* by running the affector graph (`SamplerProceduralTerrainAppearance`). Sample to a `float[,]`, map to a `Bitmap` via `LockBits`, blit into a `PictureBox`/owner-drawn panel. **Zero new dependency.** This is the right "3D-ish 2D" visualization for a procedural editor — height as grayscale/colormap, slope/flora as overlays. |
+| **ImGuizmo** (vendored, vcpkg `imguizmo >=1.10`) | already present | In-client gizmo for terrain *boundary*/layer manipulation and effects-node placement, if the live-preview path is built | Already wired in `imgui_impl.cpp` for the WorldSnapshot gizmo. Reusable for terrain boundary polylines / effect emitter transforms with no new dep. |
 
 ### Development Tools
 
 | Tool | Purpose | Notes |
 |------|---------|-------|
-| `swg.sln` (swg-client-v2, VS2026) | Reference build for the revive targets | Open `src/build/win32/swg.sln` to see the already-v145 `.vcxproj`s. Copy the per-tool `.vcxproj` + source + needed `shared*` libs into a Utinni-owned `tools/` solution; do NOT build in-place. |
-| MCP Inspector (`@modelcontextprotocol/inspector`) | Manual smoke of the MCP server over stdio | Lets you exercise tool list/call without wiring a full agent host. Fits the project's "invent a harness over manual smoke" preference. |
-| Existing self-hosted CI (v145, VS2026) | Builds the revive CLIs + runs MCP server golden tests | Add a CLI-golden lane for the MCP tools mirroring the existing Tier-2 `Utinni.Cli.Tests` pattern. |
+| **VS 2026 MSBuild (Dev18, v145)** | Build the new `directx11.cpp` + terrain/effects code | Already the local default. Build C++ via MSBuild, run xUnit via `dotnet test --no-build` (the WinForms `.resx` MSB3823 constraint is unchanged). |
+| **VS 2019 BuildTools 14.29 STL (the parser-include redirect)** | Keep `UtinniCoreDotNetGen` codegen working at v145 build-time | **Stays in force for v2.1** unless the milestone accepts a CppSharp net9 migration that still won't reach v145 (see below). The redirect (`ConfigureCppSharpParserStl()`) is the only path that produces correct bindings against a v145 build today. |
+| **vcpkg (manifest mode)** | Pulls imgui+dx11 backend | One-line manifest edit (add `dx11-binding` feature); no new top-level dependency. |
+
+---
+
+## Question-by-Question Findings
+
+### (a) D3D11 overlay: which ImGui backend + Present-hook approach pairs with the existing DetourXS D3D9 hook?
+
+**Recommendation: a parallel `swg/graphics/directx11.cpp` that mirrors `directx9.cpp` exactly — DetourXS by-address detours on a DXGI vtable harvested from a dummy device — plus `imgui_impl_dx11`.** No new hooking library.
+
+The existing D3D9 path (`directx9.cpp`) already does the hard part in a way that transfers directly:
+1. **Dummy-device vtable harvest.** `getVtbl()` creates a throwaway `IDirect3DDevice9` via the public API, `memcpy`s its 119-entry vtable, releases the device, and detours the function bodies in `d3d9.dll`'s `.text`. The D3D11 analogue is identical: call `D3D11CreateDeviceAndSwapChain` against a hidden 1×1 `HWND`, snapshot the **`IDXGISwapChain` vtable** (and optionally the `ID3D11DeviceContext` vtable), release, detour the bodies. This is the standard, well-documented overlay pattern (RenderHook, DX11-ImGui-HookKit, Niemand's writeup — all use exactly this).
+2. **Detour mechanism is unchanged.** `Detour::Create((LPVOID)addr, hkPresentDXGI, DETOUR_TYPE_PUSH_RET)` works on the harvested DXGI addresses just as it does on the D3D9 ones. The `Detour::CheckPointer` null-guard and `DETOUR_LEN_AUTO` discipline (memory: DetourXS explicit-length trap) carry over verbatim.
+3. **Hook targets:** `IDXGISwapChain::Present` is **vtable index 8**; `IDXGISwapChain::ResizeBuffers` is **index 13** (the DXGI equivalent of D3D9 `Reset` — handle window/back-buffer resize here, *not* a D3D9-style `Reset`; memory: d3d9-reset-third-party applies, DXGI has clean `ResizeBuffers` semantics so this is actually *easier* than the D3D9 case).
+4. **ImGui backend swap.** `hkPresentDXGI` calls `imgui_impl::renderDx11()` which uses `ImGui_ImplDX11_NewFrame()` / `ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData())`. Init needs `ID3D11Device*` + `ID3D11DeviceContext*` (pull `ID3D11Device` from `swapChain->GetDevice(...)`, then `GetImmediateContext`), and a render-target view built from `swapChain->GetBuffer(0)`. `imgui_impl_win32` (the input/wndproc half) is **shared unchanged** between both paths.
+5. **Runtime path selection.** At `utinni_init`, detect which graphics DLL the host loaded: `GetModuleHandle("d3d11.dll")`/`dxgi.dll` present → install the D3D11 path; else the existing D3D9 path. This is the cleanest way to honor the open question in [[project-d3d11-migration]] ("concurrent vs hard cutover") without committing to either — the foundation supports both, only one installs per session.
+
+**Integration cost:** one new `.cpp/.h` pair structurally cloned from `directx9.cpp`, a `renderDx11()` sibling in `imgui_impl.cpp`, and a `dx11-binding` vcpkg feature. The `depthTexture`/post-processing D3D9 surfaces (`depth_texture.h`, `post_processing.cpp`) are **D3D9-only and do not port in v2.1** — the foundation goal is "overlay + live-preview keep rendering," not full D3D11 post-processing parity. Scope that out explicitly.
+
+**RT-space mouse mapping** (memory: imgui-embedded-d3d9-rt-space) is reusable: the same DisplaySize/mouse scaling logic in `imgui_impl::render()` applies because the embedded-window-stretch problem is API-agnostic.
+
+### (b) CppSharp clang vs MSVC v145 — does any release reach v145? What TFM does the latest require?
+
+**Honest answer: NO released CppSharp parses v145 (MSVC 14.5x) STL, and none is on the horizon.** This is the single most important finding in this document, because the milestone names "finish a REAL CppSharp upgrade so UtinniCoreDotNetGen runs natively on MSVC 14.5x STL, retiring the parser-include redirect" as a target — and **that specific deliverable is not achievable with a stock CppSharp in v2.1.**
+
+The chain of facts (all verified 2026-06-14):
+
+| Fact | Evidence |
+|------|----------|
+| Newest CppSharp = **v1.2 / NuGet `1.1.84.17100`**, published **2025-11-19**, bundling **clang 19** | nuget.org/packages/CppSharp; github.com/mono/CppSharp/releases — no release newer than v1.2 exists |
+| clang 19 reaches MSVC **14.4x (v143)** STL only | v1.2 release notes "clang 19 for modern MSVC support"; VS 2022 17.13 STL requires clang 19 |
+| v145 (MSVC 14.51/14.52) STL **hard-requires clang 20** | `yvals_core.h` in 14.51/14.52: `_EMIT_STL_ERROR(STL1000, "...expected Clang 20 or newer.")` (verified in the prior research, local headers) |
+| **No CppSharp ships clang 20** | confirmed via releases page; the leading edge is still clang 19 |
+| Latest CppSharp NuGet TFM = **net9.0 (win-x64)** / net10.0 (linux-x64); **no net4.7.2, no win-x86** | nupkg contents in prior research; nuget.org page shows net6.0+ |
+
+**Therefore the v2.1 options, ranked:**
+
+1. **KEEP the parser-include redirect (Path 1), and re-scope the milestone's "retire the redirect" goal.** The redirect (clang 11 ↔ VS 2019 14.29 STL while the build links v145) is *already working and shipped* (commit `2f57dfa`, `d69988d` baseline). It produces bindings byte-identical to the v142 baseline. **This is the correct v2.1 recommendation:** the redirect is not debt to be paid this milestone — it is the only mechanism that works, *because the upstream piece (clang 20 CppSharp) does not exist yet.* Recommend the roadmap reframe D-09 from "retire the redirect" to "harden + document the redirect, and add a CI tripwire for the clang-20 CppSharp release."
+2. **Upgrade to CppSharp v1.2 (clang 19) + migrate `UtinniCoreDotNetGen` net4.7.2→net9.0, but pin the parser STL to VS 2022 14.4x.** This is a *partial* modernization: it gets off clang 11 and onto a maintained CppSharp, and narrows the STL-version gap from "VS 2019" to "VS 2022" — but it **still does not parse v145 natively** (clang 19 ≠ clang 20), so a redirect (now to 14.4x instead of 14.29) is still required. Net cost: the net9 migration (SDK-style csproj, drop App.config, PostBuildEvent → `dotnet UtinniCoreDotNetGen.dll` or self-contained publish, regen + diff bindings, lockstep-validate UtinniPlugins). 1–2 days, MEDIUM-HIGH risk (5-year jump in generator semantics). **Worth doing as "modernize the build pipeline," NOT as "reach v145 natively" — those are different goals and only the first is attainable.**
+3. **Wait for a clang-20 CppSharp release.** Microsoft's v145/14.5x STL is the leading edge; CppSharp historically trails MSVC STL by ~1 toolset (clang 16→VS2022 in v1.1; clang 19→14.4x in v1.2). A clang-20 CppSharp that natively parses v145 is *plausible but unscheduled* — the prior research notes "Phase 6's encounter with this is plausibly the leading edge." Add a tripwire; do not block v2.1 on it.
+
+**TFM impact, stated plainly:** any move *off* the vendored 0.10.5 forces `UtinniCoreDotNetGen` from **net4.7.2 → net9.0/net10.0** (no modern CppSharp targets .NET Framework). That migration is real work and pulls a .NET 9/10 runtime requirement onto dev/CI boxes. Since it buys *no* native v145 capability (option 2 still needs a redirect), **defer it** unless the milestone independently wants the build-pipeline modernization.
+
+### (c) Libraries for terrain heightmap / "3D-ish 2D" visualization in WinForms
+
+**Recommendation: none — use `System.Drawing.Bitmap` + `LockBits` (framework built-in), feeding from a ported `SamplerProceduralTerrainAppearance` CPU sampler.** Optionally, the live in-client preview (the differentiator) renders the *real* terrain via the injected engine.
+
+The decisive format fact: **`.trn` stores a procedural *graph*, not a heightmap.** It is a `PTAT` IFF form wrapping a `TGEN` (TerrainGenerator) sub-form of **layers** containing **affectors** (height/color/shader/flora/radial-flora/road/river/ribbon), **filters** (slope/height/shader/direction/fractal), **boundaries** (region shapes), and **families/groups** (shader/flora/radial/fractal/environment). The visible heightmap is *computed* by evaluating that graph at sample points — that is what `SamplerProceduralTerrainAppearance` (CPU) and `ClientProceduralTerrainAppearance` (GPU chunks) do. So a Terrain editor's job is: (1) parse/edit the PTAT/TGEN graph (a tree editor, the bulk of the work), and (2) *render a preview* by sampling the graph.
+
+Given that, the visualization need is "rasterize a `float[,]` (height) — plus optional `byte[,]` masks for shader/flora/slope — into a 2D image." The standard, dependency-free WinForms answer is `Bitmap` + `LockBits` for fast pixel writes, blitted into a panel. This is "3D-ish 2D" done right for a procedural editor (grayscale/colormap height, hillshade via slope, flora-density overlay). **Do not pull a 3D engine, a charting library, or a mesh viewer for this** — it would duplicate the in-client preview and violate the SIE "live preview = in-client via the real engine" decision (toolchain-inventory.md) and DEC-A3 (no 3D mesh/anim authoring).
+
+If a *true 3D* terrain preview is later wanted, the locked answer is **live in-client** (inject, let the real SWG engine render the `.trn`), not a standalone renderer — same rationale that governs the IFF/appearance preview.
+
+---
 
 ## Installation
 
-```bash
-# --- MCP server project (NEW, separate net10.0 process) ---
-dotnet new console -n Utinni.Mcp -f net10.0
-dotnet add Utinni.Mcp package ModelContextProtocol --version 1.3.0
-dotnet add Utinni.Mcp package Microsoft.Extensions.Hosting   # tracks SDK's 10.0.x floor
-# System.Text.Json is in-box on net10.0 — no package needed.
-
-# --- Revive CLIs: NO package install ---
-# Lift-and-shift: copy TreeFileBuilder/TemplateCompiler source + shared* libs + vendored
-# zlib/pcre out of swg-client-v2 into a Utinni-owned tools/ tree; build with v145 (already applied upstream).
-```
-
-Minimal MCP server shape (the "thin shim"):
-
-```csharp
-// Program.cs (net10.0)
-var builder = Host.CreateApplicationBuilder(args);
-builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace); // stdout is the protocol channel
-builder.Services.AddMcpServer().WithStdioServerTransport().WithToolsFromAssembly();
-await builder.Build().RunAsync();
-
-[McpServerToolType]
-public static class UtinniTools
+```jsonc
+// vcpkg.json — add the dx11-binding feature to the EXISTING imgui entry.
+// (No new top-level dependency; imgui is already >=1.92.6.)
 {
-    [McpServerTool, Description("Decode an .iff to structured JSON.")]
-    public static string DecodeIff(string path) => RunCli("decode-iff", path); // shells out to utinni-cli.exe
+  "name": "imgui",
+  "features": [
+    "docking-experimental",
+    "dx9-binding",
+    "dx11-binding",   // <-- ADD: pulls imgui_impl_dx11.cpp/.h
+    "win32-binding"
+  ],
+  "version>=": "1.92.6"
 }
 ```
 
----
+```text
+// Windows SDK libs for the new directx11.cpp (or GetProcAddress them, mirroring Direct3DCreate9):
+//   d3d11.lib, dxgi.lib   — already available in the installed Windows 10 SDK (10.0.19041+)
+// No NuGet / vcpkg additions beyond the imgui feature flag.
+```
 
-## The MCP-server-runtime decision (the architecture fork — flagged explicitly)
-
-**Verdict: separate `net10.0` process. NOT in-process in the WinForms host (net472). NOT in the injected x86 DLL.**
-
-### Evidence
-
-- The `ModelContextProtocol` 1.3.0 NuGet package lists target frameworks **net8.0 / net9.0 / net10.0 / netstandard2.0** — **no `net4xx` target**; NuGet's framework-compatibility table shows no .NET Framework support. (nuget.org, verified 2026-06-01.)
-- Its dependencies are `Microsoft.Extensions.Caching.Abstractions >= 10.0.7`, `Microsoft.Extensions.Hosting.Abstractions >= 10.0.7`, `ModelContextProtocol.Core >= 1.3.0`. Those `Microsoft.Extensions.* 10.x` assemblies are built/tested for modern .NET; the SDK itself carries a `TimeProvider.Testing net472` warning-suppression, i.e. net472 is a known-rough edge, not a supported config.
-- The SDK hit v1.0 (2026-03-05) and 1.3.0 (2026-05-08) targeting modern .NET; the canonical bootstrap is the `Microsoft.Extensions.Hosting` generic host.
-
-### Why not force it in-process on .NET FW 4.7.2
-
-The netstandard2.0 face means it *can technically restore* against net472, but you'd be fighting
-`Microsoft.Extensions.* 10.x` binding redirects, shipping a config the SDK doesn't test, and bolting an
-async generic host into a 32-bit WinForms message-pump that's already injected into a live game. High
-fragility, zero upside.
-
-### Why a separate process is actually *better* here (not just forced)
-
-| Concern | In-proc (net472 host / x86 DLL) | Separate net10.0 process (recommended) |
-|---------|--------------------------------|----------------------------------------|
-| SDK support | Unsupported / binding-redirect hell | First-class, tested |
-| Bitness | Locked to x86 (SWG constraint) | Free to be x64; no 32-bit memory ceiling |
-| Crash isolation | An agent-driven tool fault could take down the injected session | MCP server crash can't touch the live game |
-| Coupling to existing code | Tight | Loose — it shells out to the **already-shipped** `utinni-cli.exe`, the exact "thin shim" the milestone describes |
-| Lifecycle | Tied to game/host lifetime | Independent; agent can drive it with SWG not even running (pure file edits) |
-
-The existing `Utinni.Cli` is the perfect seam: the MCP server is a thin net10.0 wrapper that invokes
-`utinni-cli.exe <verb>` and forwards its sorted-key JSON. No new codec code, no CppSharp, no x86.
-**Tradeoff to accept:** any MCP tool that needs *live* in-client editing (live-patch / live-reload) can't
-P/Invoke the injected DLL directly across the process boundary — it must go through a Utinni-side IPC
-(named pipe / localhost) or be deferred. For v2.0's read+edit+**save-to-disk** pipeline that's a non-issue;
-flag live-preview-over-MCP as a later increment.
-
----
-
-## The revive build (lift-and-shift) — approach & surface
-
-### Separate `.sln` vs CMake: use a **separate VS `.sln`**, not CMake
-
-`swg-client-v2` builds with `swg.sln` / per-tool `.vcxproj` (MSBuild), already on v145. CMake would mean
-re-authoring the build graph for ~6 shared static libs — pure cost. Lift the relevant `.vcxproj`s into a
-new Utinni-owned `tools/Utinni.Tools.sln` and fix up relative paths. (Core3 uses CMake, but that's the
-*server*, not these client tools.)
-
-### Per-target shared-lib pull-in (verified from on-disk `.rsp`/`.vcxproj`)
-
-| Revive target | External libs | Shared static libs (the lift-and-shift cargo) | Renderer? |
-|---------------|---------------|-----------------------------------------------|-----------|
-| **`TreeFileBuilder`** (source→`.tre`) | `zlib.lib` only | `sharedCompression, sharedDebug, sharedFile, sharedFoundation, sharedFoundationTypes, sharedIoWin, sharedMemoryManager, sharedSynchronization, sharedThread` + `fileInterface` | **No** — clean console tool |
-| **`TemplateCompiler` / `TemplateDefinitionCompiler`** (`.tpf`/`.tpd`→`.iff` + param→type map) | `ws2_32, libpcre, zlib`, SOE `libclient/librpc/libsupp` | the above **plus** `sharedMath(+Archive), sharedObject, sharedRandom, sharedRegex, sharedTemplate, sharedTemplateDefinition, sharedUtility`; vendored `archive, localization, unicode, pcre/4.1`, and a **Perforce** include (`p4` in settings) | **No**, but heavier dep cone + a P4 vestige to stub/strip |
-
-**Recommended order:** `TreeFileBuilder` first (smallest cone, unblocks build-from-source `.tre`), then
-`TemplateCompiler` (heavier, but it's the one that yields the OT Tier-2 param→type map and the
-`.tpf`/`.tpd` compile). Both are headless — no D3D/D3DX dependency to drag along (confirms the
-toolchain-inventory "no renderer" claim).
-
-### The realistic v143→v145 port surface (CORRECTED — much smaller than assumed)
-
-The milestone docs assume you port a v143→v145 delta yourself. **On-disk evidence contradicts that:** the
-revive `.vcxproj`s are *already* `v145` + `stdcpp20` + native MSVC STL. swg-client-v2 has already absorbed:
-
-- **STLport 4.5.3 removal.** The `external/3rd/library/stlport453` dir is **absent from disk**; the
-  `stlport` entry survives only as a dead line in legacy `.rsp` files. The modern `.vcxproj` uses native
-  `<stdcpp20>` STL. (This was historically the single biggest 2003-era-SWG port risk — it's already done.)
-- The general "2003 code on modern MSVC" modernization (the thing the milestone wanted to *borrow*).
-
-So the **actual** remaining surface for Utinni is small and mechanical:
-1. **Path/structure fixups** when lifting `.vcxproj`s out of the deep `swg-client-v2` tree into `tools/`.
-2. **Strip/stub the Perforce vestige** in `TemplateCompiler` (don't drag `external/3rd/library/perforce`/Alienbrain into a sovereign build).
-3. **Vendor the leaf externals** you actually use: `zlib`, `pcre/4.1`. (zlib only for TreeFileBuilder.)
-4. **Watch the v14.5x conformance tightening** (real but narrow): `/Zc:enumEncoding`, mandatory `template`
-   keyword on dependent template-ids, rejected ill-formed friend explicit specializations, constexpr
-   overflow now rejected. These bite legacy code — but if upstream already compiles these targets at v145,
-   they're already paid; budget only for path/lib drift.
-
-> **Carry-over caution (from MEMORY):** the CppSharp/clang-11 STL-pin pain (`project-vs2026-cppsharp-block`)
-> is a *CppSharp parser* problem and does NOT apply here — these revive CLIs are pure MSVC C++ with no
-> CppSharp in the loop. Don't conflate the two.
-
----
-
-## New-editor dependencies (Terrain / Particle / WorldSnapshot)
-
-| Editor | Likely new dep | Notes |
-|--------|----------------|-------|
-| WorldSnapshot / object-placement | **None new** | Extends the existing Snapshot WinForms SubPanel; reuses `UtinniCoreDotNet` IFF/object-template codecs already shipped. Lowest-risk "replace" target — start here. |
-| Terrain (`.trn`) | **None new** (format work, not lib work) | Needs a `.trn` codec in `UtinniCoreDotNet` (new format support, not a new third-party lib). Rendering reuses existing ImGui/imguizmo (vcpkg) if done as overlay, or WinForms GDI for a 2D heightmap. |
-| Particle / client-effects (`.prt`, effect `.iff`) | **None new** | Same: codec work over existing IFF infra; preview reuses existing render path. |
-
-**Net:** the editors need **format codecs inside `UtinniCoreDotNet`, not new NuGet/vcpkg packages.** Keep
-the dependency surface flat. The `swg-blender-plugin` boundary stays a *file-format* contract (`.iff`/`.tre`),
-not a runtime dependency — Utinni opens/previews what Blender's Python suite exports; no Python interop,
-no shared process.
+```text
+// CppSharp: NO install change recommended for v2.1.
+//   Keep external/CppSharp 0.10.5 + the VS2019 14.29 parser-include redirect.
+//   (Upgrade to NuGet CppSharp 1.1.84.17100 only if doing the net9 build-pipeline
+//    modernization — and note it still needs a redirect, just to 14.4x.)
+```
 
 ---
 
@@ -192,58 +124,67 @@ no shared process.
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| Separate `net10.0` MCP process | In-proc MCP on net472 host via netstandard2.0 + binding redirects | Never for v2.0. Only if a hard requirement forced single-process — then expect to fight `Microsoft.Extensions 10.x` redirects and run an unsupported config. |
-| `net10.0` (LTS) for MCP server | `net8.0` | If you need the widest already-installed runtime floor on modder machines and don't want to bundle the net10 runtime. SDK supports both. |
-| stdio transport | Streamable HTTP | Only if the MCP server must serve a *remote* agent or multiple concurrent clients. Not the local-desktop use case. SSE is deprecated — never pick SSE for new work. |
-| Hand-written MCP tool handlers shelling to `utinni-cli.exe` | P/Invoke `UtinniCoreDotNet` directly from the MCP process | Use direct library calls if CLI process-spawn latency per tool-call becomes a bottleneck; costs you the clean shim boundary and re-introduces bitness coupling. Start with shell-out. |
-| Separate VS `.sln` for revive CLIs | CMake | If you later unify with Core3's CMake world or want non-MSVC builds. Not worth it for v2.0 — upstream is already MSBuild+v145. |
+| **DetourXS by-address DXGI hook** (reuse existing) | **MinHook** (used by most public DX11-ImGui kits) | Only if DetourXS proves unable to relocate a DXGI prologue cleanly on a given Windows build. Given DetourXS already drives all 7 D3D9 hooks + the s207 shader detour in production, this is unlikely. Mixing two hooking libs adds a dep and a second trampoline allocator for no benefit. |
+| **Keep CppSharp 0.10.5 + parser redirect** | **CppSharp 1.2 (clang 19) + net9 generator** | When the goal shifts to "modernize the build pipeline / get off clang 11," AND the team accepts that it *still* needs a parser redirect (to 14.4x) because clang 19 ≠ clang 20. Not a v145-native win. |
+| **`System.Drawing` Bitmap+LockBits heightmap** | **In-client live 3D preview via the injected engine** | When a *true 3D* terrain walkthrough is wanted. This is the locked long-term answer (live preview = real engine), but it is heavier than the 2D sampled preview and depends on injection being live; ship the 2D preview first. |
+| **Port `sharedTerrain` parse/sample into managed** | **Revive+wrap the MFC `TerrainEditor.exe`** | Never for the editor itself — toolchain-inventory.md classifies interactive editors as REPLACE, not revive. (Revive+wrap is only for headless build CLIs.) The MFC app is reference, not a shippable component. |
+
+---
 
 ## What NOT to Use
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| Hosting the MCP server inside the x86 injected `UtinniCore.dll` | Locks MCP to 32-bit, no SDK support, an agent fault could crash the live game | Separate net10.0 (x64) process shelling to `utinni-cli.exe` |
-| MCP SSE transport | Deprecated in favor of Streamable HTTP; two-connection model, no resumability | stdio (local) |
-| Building revive CLIs in-place against `swg-client-v2` | That tree has an active D3D9→D3D11 migration; in-place builds couple you to their churn (lift-and-shift is LOCKED) | Copy source + `shared*` libs into a Utinni-owned `tools/` solution |
-| Re-doing a "v143→v145 port" from scratch | The targets are **already** v145/stdcpp20 upstream; you'd be redoing solved work | Borrow the already-modernized source; budget only path/lib/Perforce-stub fixups |
-| Dragging STLport453 into the revive build | It's gone from disk; the modern `.vcxproj` uses native STL; the `.rsp` reference is dead | Native MSVC `/std:c++20` STL |
-| Dragging Perforce/Alienbrain includes into `TemplateCompiler` | SOE-internal SCM vestige; irrelevant to a sovereign build | Stub/strip the P4 include; it's not needed for the compile transform |
-| Adding Python interop for the Blender boundary | The Utinni↔Blender contract is file formats, not a runtime link | `.iff`/`.tre` file interchange only |
+| **MinHook (as a new dependency)** | Utinni already hooks via DetourXS; the public DX11-overlay kits use MinHook only because they start from scratch. Adding it duplicates the trampoline/relocation machinery already proven in `directx9.cpp`. | The existing `Detour::Create(addr, hk, DETOUR_TYPE_PUSH_RET)` on harvested DXGI vtable addresses. |
+| **A 3D engine / mesh viewer / OpenTK / Helix Toolkit for terrain preview** | Violates "live preview = in-client via the real engine" (toolchain-inventory.md) and DEC-A3; duplicates the differentiator a standalone editor structurally can't match; heavy new dependency. | `Bitmap`+`LockBits` 2D sampled preview now; in-client live 3D later. |
+| **A stock CppSharp bump as the "v145-native" deliverable** | No released CppSharp ships clang 20; v1.2 reaches 14.4x only. Framing the bump as "retires the redirect" sets an unmeetable acceptance criterion. | Keep + harden the parser-include redirect; add a clang-20-CppSharp release tripwire; treat any CppSharp bump as *pipeline modernization*, scored separately. |
+| **D3D9 `IDirect3DDevice9::Reset` semantics carried into D3D11** | DXGI uses `ResizeBuffers`, not `Reset`; the third-party-Reset corruption (memory: d3d9-reset-third-party) is D3D9-specific. | `IDXGISwapChain::ResizeBuffers` (vtable idx 13) with RTV teardown/rebuild; cleaner than the D3D9 case. |
+| **Dragging swg-client-v2's renderer / `clientTerrain` GPU path into Utinni** | DEC-V2-LIFT-SHIFT: never `#include`/ProjectReference the live tree; it's mid D3D9→D3D11 churn. | Port only the headless `sharedTerrain` parse + `SamplerProceduralTerrainAppearance` CPU-sample logic into managed code, pinned to SHA `d6496005e`. |
+
+---
 
 ## Stack Patterns by Variant
 
-**If the first MCP tools are read+edit+save-to-disk only (v2.0 baseline):**
-- Separate net10.0 process shelling to `utinni-cli.exe`; SWG need not be running.
-- Because all the codec/save logic already exists in `UtinniCoreDotNet` behind stable JSON verbs.
+**If SWG Source ships D3D11 as a hard cutover (D3D9 gone):**
+- Install only the D3D11 path; the D3D9 `depthTexture`/post-processing surfaces are dead and can be left dormant.
+- Because [[project-d3d11-migration]] flags this as an open question, build the foundation as runtime-selected (detect loaded graphics DLL), so a cutover needs no code change — only the D3D11 branch fires.
 
-**If an MCP tool later needs live in-client editing (live-patch/reload):**
-- Add a Utinni-side IPC endpoint (named pipe / localhost) the MCP process calls; do NOT move the MCP server into the injected DLL.
-- Because crossing into the x86 injected session must stay an explicit, isolated boundary.
+**If SWG Source keeps D3D9 selectable alongside D3D11:**
+- Both `directx9.cpp` and `directx11.cpp` install conditionally on the detected graphics DLL; `imgui_impl_win32` and the WinForms host are shared. One overlay path is live per session.
 
-**If a DCC editor ships as an injected ImGui overlay rather than a WinForms SubPanel:**
-- Reuse the existing vcpkg `imgui`/`imguizmo`; add no new render dep.
-- Because the V1 overlay path (RT-space mapping) is already validated against the live client.
+**If the team wants build-pipeline modernization this milestone:**
+- Take CppSharp 1.2 + net9 `UtinniCoreDotNetGen`, redirect parser to VS 2022 14.4x STL (clang 19's pairing). Accept it is NOT v145-native. Lockstep-revalidate UtinniPlugins binding compat. Otherwise, keep 0.10.5 + the 14.29 redirect untouched.
+
+**If `.trn` versions diverge (SWGEmu vs Restoration/newer):**
+- Mirror the TRE version-support stance (memory: tre-version-support-gap): the PTAT/TGEN loader in `sharedTerrain` carries explicit version branches (`ProceduralTerrainAppearanceTemplate.cpp` has many `version` checks) — port the version dispatch, enumerate-only on unparseable/encrypted variants.
+
+---
 
 ## Version Compatibility
 
 | Package A | Compatible With | Notes |
 |-----------|-----------------|-------|
-| ModelContextProtocol 1.3.0 | net8.0 / net9.0 / **net10.0** / netstandard2.0 | **No net4xx target** — this is the load-bearing fact driving the separate-process decision. |
-| ModelContextProtocol 1.3.0 | Microsoft.Extensions.Hosting.Abstractions >= 10.0.7, ModelContextProtocol.Core >= 1.3.0 | The 10.x floor is why net10.0 avoids binding-redirect skew vs. older runtimes. |
-| Revive CLIs | v145 (VS2026) + `/std:c++20`, native MSVC STL | Already the upstream config on disk; v140–v145 are ABI-compatible (link with the newest). |
-| Revive CLIs | `swg-client-v2` `shared*` static libs | Lift the matching libs; they're plain C++ console deps, no renderer. |
+| imgui 1.92.6 + `dx11-binding` | DetourXS (vendored) | `imgui_impl_dx11` is renderer-only; hooking stays DetourXS. `imgui_impl_win32` shared with the D3D9 path. |
+| imgui 1.92.6 `dx11-binding` | Windows SDK 10.0.19041+ d3d11/dxgi | DX11 backend needs `<d3d11.h>`/`<dxgi.h>` already present. |
+| CppSharp 0.10.5 (clang 11) | MSVC v145 build + VS 2019 14.29 STL parser redirect | The ONLY combination that yields correct bindings at v145 build today. Shipped + baseline-pinned (`d69988d`). |
+| CppSharp 1.2 (clang 19) | MSVC ≤14.4x (v143) STL parse | Does **not** parse v145/14.5x. Requires net9/net10 generator (no net4.7.2). |
+| `System.Drawing` | net4.7.2 WinForms host | Built-in; `LockBits` for fast heightmap raster. No NuGet. |
+| swg-client-v2 `sharedTerrain` @ `d6496005e` | read-only reference | Pin the SHA (DEC-V2-LIFT-SHIFT); master is `d6496005e` today and actively churning. |
+
+---
 
 ## Sources
 
-- `/modelcontextprotocol/csharp-sdk` (Context7 resolve, reputation High) — official C# SDK identity/scope.
-- https://www.nuget.org/packages/ModelContextProtocol/ and `/1.3.0` — version 1.3.0 (2026-05-08), target frameworks (net8/9/10 + netstandard2.0, **no net4xx**), deps `Microsoft.Extensions.* >= 10.0.7`. **HIGH.**
-- https://github.com/modelcontextprotocol/csharp-sdk — package split (`.Core` / meta / `.AspNetCore`), maintained with Microsoft. **HIGH.**
-- https://devblogs.microsoft.com/dotnet/build-a-model-context-protocol-mcp-server-in-csharp/ — canonical `Host.CreateApplicationBuilder` + `WithStdioServerTransport().WithToolsFromAssembly()` + `[McpServerTool]` bootstrap. **HIGH.**
-- apigene.ai / mcpcat.io / padiso.co (2026) — stdio is the recommended transport for local single-client; SSE deprecated. **MEDIUM** (multiple sources agree).
-- https://devblogs.microsoft.com/cppblog/c-language-updates-in-msvc-build-tools-v14-50/ — v14.50 (v145) conformance tightening: `/Zc:enumEncoding`, mandatory `template` keyword, friend-specialization diagnostics, constexpr overflow rejection. **HIGH.**
-- learn.microsoft.com C++ binary-compat — v140–v145 ABI compatible; link newest. **HIGH.**
-- On-disk `D:/Code/swg-client-v2`: `swg.sln` (`VisualStudioVersion = 18.1` / VS2026); `TreeFileBuilder.vcxproj` + `sharedFoundation` `.vcxproj` = **`PlatformToolset=v145`, `LanguageStandard=stdcpp20`**; STLport453 **absent** from `external/3rd/library/`; per-target `libraries.rsp`/`includePaths.rsp` (TreeFileBuilder→zlib only; TemplateCompiler→pcre/zlib/SOE libs + Perforce vestige). **HIGH — direct file evidence.**
+- `/ocornut/imgui` (Context7) — DX11 backend Init/NewFrame/RenderDrawData contract; `ID3D11Device*`+`ID3D11DeviceContext*` init signature — HIGH
+- [nuget.org/packages/CppSharp](https://www.nuget.org/packages/CppSharp/) — latest `1.1.84.17100` (2025-11-19), net9.0/net6.0, no net472 — HIGH
+- [github.com/mono/CppSharp/releases](https://github.com/mono/CppSharp/releases) — no release newer than v1.2; v1.2 = clang 19; **no clang 20 / v145 release** — HIGH
+- [TRN (FileFormat) — SWGANH Wiki](http://wiki.swganh.org/index.php/TRN_(FileFormat)) + [PCG Wiki: SWG](http://pcg.wikidot.com/pcg-games:star-wars-galaxies) — `.trn` = procedural affector/filter/boundary graph, not stored heightmap — MEDIUM (cross-checked against on-disk source)
+- `D:/Code/swg-client-v2` `sharedTerrain` (SHA `d6496005e`) — PTAT/TGEN IFF form, `Affector*`/`Boundary`/`Filter`/`*Group`, `SamplerProceduralTerrainAppearance` CPU sampler; `TerrainEditor` MFC app = reference only — HIGH (source on disk)
+- `D:/Code/Utinni/UtinniCore/swg/graphics/directx9.cpp` + `swg/ui/imgui_impl.cpp` — existing dummy-device vtable-harvest + DetourXS `DETOUR_TYPE_PUSH_RET` pattern the D3D11 path clones — HIGH (repo)
+- `D:/Code/Utinni/external/DetourXS/detourxs.h` — by-address `Create()` overload confirms DXGI-address detour support — HIGH (repo)
+- `.planning/research/cppsharp-msvc-14.5-upgrade.md` + memory [[project-vs2026-cppsharp-block]] — prior v2.0 CppSharp analysis; Path 1 redirect shipped (`2f57dfa`/`d69988d`) — HIGH
+- [RenderHook](https://github.com/Jakhb/RenderHook), [DX11-ImGui-HookKit](https://github.com/Piotrixek/DX11-ImGui-HookKit), [Niemand: Hook DX11+ImGui](https://niemand.com.ar/2019/01/01/how-to-hook-directx-11-imgui/) — DXGI Present=vtbl 8, ResizeBuffers=vtbl 13, dummy-device harvest pattern — MEDIUM (community, multi-source agreement)
 
 ---
-*Stack research for: Utinni v2.0 AI-Assisted SWG Tools (MCP server + revive/wrap CLIs + first DCC SubPanels)*
-*Researched: 2026-06-01*
+*Stack research for: Utinni v2.1 "Wave-2 Editors + Foundation Hardening" — Terrain editor, Effects editor, D3D11 render-path foundation, CppSharp v145 upgrade*
+*Researched: 2026-06-14*

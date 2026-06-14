@@ -1,277 +1,204 @@
 # Feature Research
 
-**Domain:** AI-drivable SWG asset-modding pipeline (MCP server + revived compile CLIs + DCC-style editors) on top of Utinni V1's byte-exact codecs
-**Researched:** 2026-06-01
-**Confidence:** HIGH for MCP model + safety (Context7 / MCP spec 2025-11-25 + multiple security sources); HIGH for compiler semantics (swg-client-v2 source census, on-disk); MEDIUM for editor UX expectations (training data + SWG tool census, no Context7 anchor); HIGH for the Blender boundary (swg-client-v2 `blender-mcp-vs-addon.md`, on-disk precedent).
-
-> **Scope note.** This milestone adds to shipped Utinni V1. The five Wave-1 editors, `UtinniCoreDotNet` byte-exact codecs (TRE/IFF/datatable/stf/object-template), and the `Utinni.Cli` JSON verbs already exist and are NOT re-researched here. V2.0 = (1) MCP server, (2) revive+wrap SWG compile CLIs, (3) new DCC-style editors, (4) formalize the Utinni ↔ swg-blender boundary. Theme: *Utinni authors, not just edits.*
-
-> **Existing Utinni capabilities this milestone builds on** (dependency anchors):
-> - `Utinni.Cli` verbs (9): `parse-tre`, `list-objects`, `inspect-iff`, `decode-iff`, `roundtrip-iff`, `roundtrip-tab`, `roundtrip-stf`, `roundtrip-ot`, `validate-plugin` — stable sorted-key JSON envelopes (`schemaVersion`/`command`). **Read + roundtrip only; no save-to-archive verb exists yet.**
-> - `UtinniCoreDotNet` editing/saving layer: `IffWriter`/`TreWriter` byte-exact serializers, `MutableIffDocument`, `IffEditController` (+ undo/redo), and the four-tier D-05 save matrix: **loose-override file**, **Save/Save-As**, **in-memory live-patch** (infra-ready, user-disabled), **`.tre` archive repack**. Safety primitives already shipped: `LooseOverridePath`, `TreBackupPath`, `TreRepackLock`, `TreRecordIndexResolver`, `LivePatchValidator`, `ReloadAssetClassifier`, path-traversal canonicalization (WR-01..07).
-> - Byte-exact roundtrip goldens under CI for all five formats.
+**Domain:** SWG client asset editors (Wave-2) — procedural Terrain `.trn`, effects-family `.iff`, plus two IFF/TRE quick-win surfaces — shipped inside The Jawa Toolbox as `IEditorPlugin` subpanels.
+**Researched:** 2026-06-14
+**Confidence:** HIGH (format facts grounded in the `swg-client-v2` `sharedTerrain` / `clientParticle` / `clientEffect` reference source + the original SOE `TerrainEditor`; product framing grounded in PROJECT.md, toolchain-inventory.md, ROADMAP backlog 999.2/999.3, and the SIE comparison). LOW only on relative modder-demand ranking *within* the effects family.
 
 ---
 
-## Part A — MCP Server ("AI-drivable modding pipeline")
+## Format ground-truth (so the scoping below is real, not guessed)
 
-### The MCP model (grounding, HIGH confidence — MCP spec 2025-11-25)
+**`.trn` is NOT a heightmap.** A `.trn` is a serialized `TerrainGenerator` (top tag `TGEN`) — a *procedural recipe* the engine runs at chunk-load time to synthesize height, color, shader/texture, flora (static + radial/dynamic), and environment per tile. Its structure (from `sharedTerrain/.../generator/TerrainGenerator.h`):
 
-An MCP server exposes three primitive kinds over JSON-RPC 2.0:
+- **Six shared "groups"** (palettes referenced by index): `ShaderGroup`, `FloraGroup`, `RadialGroup`, `EnvironmentGroup`, `FractalGroup`, `BitmapGroup`. These are the families a layer's rules point at.
+- **A list of `Layer`s** (tag `LAYR`), each an ordered tree of four child-kinds, all subclasses of `LayerItem` (each carries `active`/`name`/`tag`):
+  - **Boundaries** (`BCIR` circle, `BREC` rectangle, `BPOL` polygon, `BPLN` polyline, `BSPL` spline, `BALL`) — *where* the layer applies, with a feather function + distance.
+  - **Filters** (`FHGT` height, `FSLP` slope, `FFRA` fractal, `FSHD` shader, `FDIR` direction, `FBIT` bitmap) — *conditions* gating the layer.
+  - **Affectors** (~25 tags: `AHCN`/`AHTR`/`AHFR`/`AHBM` height-constant/terrace/fractal/bitmap; `ACCN`/`ACRH`/`ACRF`/`ACBM` color; `ASCN`/`ASRP`/`ASBM` shader; `AFSC`/`AFSN`/`AFDN`/`AFDF` flora static-collidable/static-noncollidable/dynamic-near/dynamic-far; `AENV` environment; `AEXC` exclude; `APAS` passable; `ARIV`/`ARIB`/`AROA` river/ribbon/road) — *what the layer does* to each affected map.
+  - **Sub-layers** (recursion) — layers nest, forming the tree.
+- Versioned chunks throughout (`load_0000..0004`, per-affector versions). The original SOE editor is a 100+ -file MFC app (`TerrainEditor/`) with a `FormBaseLayer`-derived property page **per affector/boundary/filter type** — that's the surface area, and it's the reason a full clone is NOT a v1.
 
-| Primitive | What it is | Who drives it | Utinni use |
-|-----------|------------|---------------|------------|
-| **Tools** | Model-callable functions with `inputSchema` (+ optional `outputSchema`) JSON Schema; return `content[]` + optional `structuredContent` + `isError`. | Model decides when to call (model-controlled). | read/edit/save/compile/pack/validate verbs |
-| **Resources** | Read-only addressable data (URI-identified), listable + readable. | App/user-controlled; provide context. | browse a `.tre` TOC, fetch an asset's decoded JSON, expose the param→type schema |
-| **Prompts** | Server-authored parameterized prompt templates. | User-controlled (e.g. slash-commands). | canned workflows: "compile this template and repack into a test .tre" |
+**Effects family** (clientParticle / clientEffect):
+- **ClientEffect `.cef`/`.iff`** (`ClientEffectTemplate`, versions `0001..0003`) — a flat **command list**: CreateAppearance, PlaySound, CreateLight, CameraShake, ForceFeedback. Simple, datatable-like; the easiest of the three.
+- **Lightning** (`LightningAppearanceTemplate`) and **Swoosh** (`SwooshAppearanceTemplate`) — appearance templates living in the **same `clientParticle` library the Particle/`.prt` editor already shipped against** (v2.0 PROD-W2-PRT). Scalar/color/waveform-ish parameter blocks, not geometry authoring.
 
-- **Discovery:** client calls `tools/list`, `resources/list`, `prompts/list`; each tool advertises name, `title`, `description`, `inputSchema`, optional `outputSchema`, and `annotations`.
-- **Transport:** **stdio is the correct choice for a local tool** — the server is a child process spoken to over stdin/stdout framed JSON-RPC; no network surface, no auth complexity, runs on the modder's machine next to the game files. (Streamable HTTP exists but is for remote/multi-client servers — not this use case.)
-- **Structured results:** define `outputSchema` so the agent gets validated `structuredContent` (e.g. a save result `{ written: bool, path, bytesWritten, backupPath }`) instead of having to parse prose. Utinni's existing sorted-key JSON envelopes map almost 1:1 onto `structuredContent`.
-
-### MCP WRITE-TOOL SAFETY MODEL (the key differentiator — detailed)
-
-The risk: *an agent silently corrupts a game archive.* A `.tre` is a packed binary that the live client loads; a bad write can brick a modder's client install or destroy hand-authored assets. The mitigation is layered — **the MCP spec's own hints are necessary but NOT sufficient**, and Utinni's existing V1 primitives close the gap.
-
-**Layer 1 — Tool annotations (advisory, for the client UI).** Each tool declares `ToolAnnotations`:
-- `readOnlyHint: true` on `parse-tre`, `inspect-iff`, `decode-iff`, `list-objects`, `validate-*`, resource reads → client MAY auto-approve.
-- `readOnlyHint: false` + `destructiveHint: true` on archive-repack / overwrite tools → client SHOULD prompt.
-- `destructiveHint: false` on additive ops (loose-override write — it creates an override file, doesn't mutate the source archive).
-- `idempotentHint: true` on deterministic compiles (`.tpf` → `.iff` is a pure transform).
-- **Critical caveat (MCP spec, verbatim):** *"all properties in ToolAnnotations are hints and should not be used for critical decision-making when received from untrusted servers."* So annotations drive UX, not enforcement. Real safety is server-side (Layers 2-5).
-
-**Layer 2 — Human-in-the-loop via MCP elicitation.** For any destructive write, the server issues an `elicitation/create` request (`form` mode, with a `requestedSchema` for the confirmation) describing the *concrete* outcome — "repack `objects.tre`, replacing record `object/tangible/foo.iff` (+412 bytes), backup → `objects.tre.bak`" — and the user accepts / declines / cancels before the byte is written. **Fail-closed:** if the connected client doesn't support elicitation, destructive tools refuse rather than silently proceeding. (Community consensus across multiple security writeups; aligns with MCP spec's elicitation primitive.)
-
-**Layer 3 — Default to non-destructive surfaces (Utinni's structural advantage).** Utinni already ships the **loose-override** save tier: writes go to a parallel override file the client search-path picks up, leaving the source `.tre` untouched. The MCP server should make loose-override the **default write path** and treat archive-repack (in-place mutation) as the explicitly-confirmed, rarely-needed escalation. This is a bigger safety lever than any annotation: most agent edits never touch the original archive.
-
-**Layer 4 — Verify-before-commit (Utinni's byte-exact moat).** Every write tool runs the existing roundtrip/validate path before returning success: re-decode the written bytes, structurally validate the IFF/datatable/stf, and (for repack) confirm the archive TOC resolves. `LivePatchValidator` bounds-checks live patches today; the same discipline applies to file/archive writes. Return `isError: true` + the validation failure rather than reporting a corrupt success.
-
-**Layer 5 — Recoverability.** `TreBackupPath` already produces a `.bak` before repack; `TreRepackLock` serializes concurrent repacks. The MCP save-result `structuredContent` surfaces `backupPath` so an agent (or human) can roll back. Path-traversal canonicalization (WR-01..07, already shipped) prevents an agent from writing outside the mod root.
-
-> **Net:** the write-safety story is *defense-in-depth* — advisory hints for the client UI, in-band elicitation for human confirmation, loose-override-by-default to avoid touching source archives, byte-exact re-validation before reporting success, and backups for recovery. Utinni can credibly claim "an agent cannot silently corrupt a game archive" because four of the five layers are already-shipped V1 primitives, not new code.
-
-### Feature Landscape — MCP
-
-#### Table Stakes (an "AI-drivable modding pipeline" is incomplete without these)
-
-| Feature | Why Expected | Complexity | Notes / Dependency |
-|---------|--------------|------------|--------------------|
-| stdio MCP server skeleton (init, `tools/list`, `tools/call`) | The baseline of any local MCP server | LOW | Thin host process; .NET MCP SDK or hand-rolled JSON-RPC |
-| Read tools wrapping the 9 `Utinni.Cli` verbs | Agents must *see* assets before editing | LOW | Direct shim over existing CLI/`UtinniCoreDotNet`; envelopes → `structuredContent` |
-| Resources for TRE TOC + decoded-asset fetch | Standard MCP context surface; lets the agent browse without burning tool calls | LOW-MED | Backed by `parse-tre` / `decode-iff` |
-| JSON-Schema'd inputs for every tool | Agents can't reliably call un-schema'd tools | LOW | Schemas mirror existing CLI options |
-| `readOnlyHint`/`destructiveHint`/`idempotentHint` annotations | Lets clients auto-approve reads, gate writes | LOW | Per Layer 1 above |
-| Write tools (loose-override default) | "Authors, not just edits" requires writing | MED | Wraps existing save tiers; **needs a save verb the CLI lacks today** |
-| Elicitation-gated destructive writes | Industry-standard guardrail; the corruption defense | MED | Per Layer 2; fail-closed if unsupported |
-| Verify-before-commit on writes | Trust requires it; cheap given roundtrip goldens | LOW-MED | Reuses roundtrip/validate path |
-| Structured save/compile results (`outputSchema`) | Agents act on results programmatically | LOW | `{written,path,bytesWritten,backupPath,validated}` |
-
-#### Differentiators (set Utinni's MCP apart)
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| **Byte-exact verify-before-commit as a first-class guarantee** | "The agent cannot return a corrupt success" — most MCP servers can't claim this | LOW (infra exists) | The V1 roundtrip goldens become a runtime safety check |
-| **Loose-override-by-default write model** | Agent edits never touch source archives unless explicitly escalated | LOW (tier exists) | Structural, not bolted-on, safety |
-| Compile/pack tools (`.tpf`→`.iff`, source→`.tre`) exposed as MCP tools | Agent can drive the *full* author→build→pack pipeline, not just edit | MED-HIGH | Depends on Part B revive landing |
-| Prompts for canned pipelines ("edit → compile → repack → validate") | One-call multi-step workflows; lowers agent error rate | LOW-MED | Server-authored prompt templates |
-| Live-preview tool (inject edit into running client) | Agent edits and *sees the result in-game* — unique to Utinni's injection model | HIGH | Live-patch tier is infra-ready but user-disabled; gated, opt-in |
-| `validate-plugin` / structural-validate as standalone agent tool | Agent self-checks its own output | LOW | Verb exists |
-
-#### Anti-Features — MCP
-
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| HTTP/SSE remote transport | "Make it accessible / multi-user" | Adds auth, network attack surface, deployment burden for a local single-user modding tool | stdio only; revisit only if a hosted scenario appears |
-| Auto-approve all writes for "agent autonomy" | Faster agent loops | Defeats the entire corruption-safety model | Auto-approve reads; always gate destructive writes |
-| A raw "run arbitrary CLI / exec" tool | Maximum flexibility | Unbounded blast radius; the agent can do anything to the filesystem | Curated, schema'd tools only — each maps to a known safe operation |
-| Trusting `destructiveHint` for enforcement | "The spec has a flag for it" | Spec explicitly says hints are advisory, untrusted | Enforce server-side (elicitation + validate + backup) |
-| Exposing in-place archive repack as the default write | "It's what they edited" | Highest-corruption-risk path as the path of least resistance | Loose-override default; repack is explicit escalation |
-| MCP tools for 3D mesh/skeleton/anim authoring | "Complete the pipeline" | That's the Blender suite's lane (DEC-A3) | See Part D boundary |
+**Key reuse implication:** the v2.0 Particle editor already established the codec + panel pattern for `clientParticle` appearance templates. ClientEffect/Lightning/Swoosh are the *adjacent* members of that same family — which is exactly why "one adjacent effects editor" is the right second feature.
 
 ---
 
-## Part B — SWG Asset Compile CLIs (revive + wrap)
+## Feature Landscape — A) Terrain Editor (`.trn`) — the headline
 
-### What each compiler actually does (grounding, HIGH — swg-client-v2 source census, on-disk)
-
-There are **two distinct template compilers**, frequently conflated; the distinction matters for OT Tier-2:
-
-| Tool | Input → Output | What it produces | Audience (historical) |
-|------|----------------|------------------|----------------------|
-| **`TemplateDefinitionCompiler`** | `.tdf`/`.tpd` template *definition* → generated C++ template classes **+ the per-class param→type schema** | The **schema** ("for class `tangible`, param `volume` is an int, `scale` is a float…") | engine/gameplay engineers (build-time) |
-| **`TemplateCompiler`** | `.tpf` template *instance* source (+ the definitions above) → object-template **`.iff`** | The actual binary object template the client loads; can also generate a default `.tpf` from a `.tdf` | designers/engineers |
-| **`DataTableTool`** (compile path) | `.tab`/XML spreadsheet → datatable **`.iff`** | Binary datatable (Utinni edits existing ones; CSV import exists, full compile doesn't) | designers, build engineers |
-| **`TreeFileBuilder` / `TreeFileRspBuilder`** | source tree (+ `.rsp` response/manifest) → **`.tre`** archive | A `.tre` **built from a directory of loose assets** (Utinni only *repacks* an existing archive today) | build engineers |
-| **Exporters** (`ArmorExporterTool`, `WeaponExporterTool`, `CoreWeaponExporterTool`, `SwgSchematicXmlParser`) | schematic datatable `.iff` / XML → server+shared `.tpf` (then compile templates) | Generated `.tpf` instances for tangibles/schematics, then their `.iff` | systems designers |
-
-**Why this unblocks OT Tier-2 (key dependency):** the Object Template Editor's Tier-2 typed list-param display needs to know *what type each param is per class*. That map is exactly what **`TemplateDefinitionCompiler`** emits when it processes the `.tdf` definitions. Reviving it is the cheapest route to OT Tier-2 — confirmed in PROJECT.md and toolchain-inventory.md.
-
-**Revive blockers (HIGH — source census):**
-- `TemplateCompiler`/`TemplateDefinitionCompiler` link the **Perforce C++ API** and use **PCRE 4.1**; `MayaExporter` adds **Alienbrain**. The Perforce/Alienbrain submit/check-out paths are source-control integration, **not** the compile logic — they must be **decoupled/stubbed** so the compile/use path builds without the legacy asset-DB SDKs.
-- `TreeFileBuilder`/`DataTableTool` link **zlib** (straightforward) and **libxml2 2.6.7** (old, vendored).
-- All revives are subject to the **lift-and-shift + v143→v145 toolchain port** constraint (locked in PROJECT.md) — copy source into a Utinni-owned build location, borrow swg-client-v2's SOE-source modernization, port the v143→v145 delta. Watch for modern-STL friction (cf. CppSharp clang-11 pin). **Feasibility of this port is a separate research spike — see STACK/feasibility, not assumed here.**
-
-### Feature Landscape — Compile pipeline
-
-#### Table Stakes
-
-| Feature | Why Expected | Complexity | Notes / Dependency |
-|---------|--------------|------------|--------------------|
-| `.tpf` → object-template `.iff` compile | The core author-new-template gap; Utinni edits but can't compile | MED (revive) + LOW (wrap) | `TemplateCompiler`; gated on lift-and-shift port |
-| `.tpd`/`.tdf` → param→type schema | Unblocks OT Tier-2 typed display | MED (revive) | `TemplateDefinitionCompiler`; **dependency of the OT Tier-2 residual** |
-| source-tree → `.tre` build | Repack ≠ build; authoring new content needs build-from-source | MED (revive) | `TreeFileBuilder` (+ `.rsp` manifest understanding) |
-| Datatable compile (XML/CSV → `.iff`) | Round out the datatable editor's author story | MED | `DataTableTool` compile path |
-| Decouple Perforce/Alienbrain from compile path | The tools won't build with the legacy asset-DB SDKs | MED | Stub the source-control integration; keep transform logic |
-
-#### Differentiators
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Compilers wired as MCP write/build tools | Agent drives author→compile→pack end-to-end | LOW (once revived) | The revive's payoff; per Part A |
-| Param→type schema surfaced as an MCP **resource** | Agent (and OT editor) get typed template knowledge | LOW | Reuses `TemplateDefinitionCompiler` output |
-| Item-exporter wrappers (armor/weapon/schematic) | One-call "generate the `.tpf` for this weapon row" | MED | Niche but high-leverage for content modders |
-
-#### Anti-Features — Compile pipeline
-
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| Reimplement the template compiler from scratch in C# | "Byte-exact, no legacy deps" | Large port; the `.tpf`/`.tdf` grammar + per-class schema is substantial; revive+wrap is the locked strategy | Revive+wrap the original `.exe`; reimplement later only where live-editing/byte-exact round-trip demands |
-| Revive the Perforce/Alienbrain submit paths | "Full original behavior" | Dead SDKs, no modern relevance, hardest legacy dep | Stub them; modders use git/filesystem |
-| Build in-place against the swg-client-v2 tree | "Reuse their build" | Couples Utinni to their active D3D9→D3D11 churn (lift-and-shift constraint, locked) | Copy source into Utinni-owned build location |
-| Revive `MayaExporter` | "We need an exporter" | Maya7+Alienbrain, unbuildable; superseded | swg-blender-plugin owns export (Part D) |
-
----
-
-## Part C — DCC-style Editors (replace)
-
-### UX expectations (grounding, MEDIUM — SWG tool census + general DCC-editor conventions)
-
-The litmus from toolchain-inventory.md: *interactive editor → replace with a themed, undo/redo, live-injectable Utinni SubPanel*; the original 2003 MFC/Qt editors are not worth reviving. The three V2.0 targets:
-
-| Editor | Format | What modders expect (table-stakes UX) | Differentiator only Utinni can offer |
-|--------|--------|----------------------------------------|--------------------------------------|
-| **Terrain** | `.trn` | Layer/shader-rule tree, height/fractal/filter affectors, flora/radial rules, a 2D map view; edit a rule and see the heightmap region change | **Live in-client preview** of the terrain edit via injection |
-| **Particle / client-effect** | `.prt`, effect `.iff` | Emitter list, curve/ramp editors (size/color/alpha over age), texture ref, timeline scrub, a preview pane | **Preview the effect in the running client**, not a mock viewport |
-| **WorldSnapshot / object-placement** | snapshot `.iff` | Object list, transform gizmo (move/rotate/scale), parent/cell nesting, add/remove objects, save snapshot — *extend the existing Snapshot save panel into a full viewer+editor* | Already injection-native (Utinni's origin is the Jawa world-snapshot editor); gizmo editing in the live scene |
-
-### Feature Landscape — Editors
-
-#### Table Stakes (per editor)
+### Table Stakes (a `.trn` editor is broken without these)
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Themed WinForms SubPanel inside TJT | Consistency with the five Wave-1 editors (DEC-C4 pattern) | LOW-MED | `IEditorPlugin` subpanel; nested SplitContainers (per WinForms Dock.Fill memory) |
-| Undo/redo | Every Wave-1 editor has it; modders expect it | MED | Mirror `IffEditController` command pattern |
-| Open / Save / Save-As + loose-override | The shipped four-tier save matrix | MED | Reuse `UtinniCoreDotNet` saving layer |
-| Read the format via existing/extended codecs | Can't edit what you can't parse | MED-HIGH | `.trn`/`.prt`/snapshot codecs — **new codec work in `UtinniCoreDotNet`** |
-| WorldSnapshot: transform gizmo | Object placement is inherently spatial | MED | Utinni already has gizmo editing (its origin) |
+| **Decode `.trn` → layer tree view** (TGEN → Layers → Boundaries/Filters/Affectors/Sub-layers, with names + active flags) | The whole point: a `.trn` is the layer tree. Hex is useless here. | HIGH | New `TerrainGenerator` codec over the existing **`IffReader`**. Versioned chunks per type — must handle `load_0000..0004` variants. This is the bulk of the work. |
+| **Browse the six shared groups** (Shader/Flora/Radial/Environment/Fractal/Bitmap) as palettes | Affectors reference these by index; unreadable groups = unreadable rules | MEDIUM | Read-only display is enough for v1; each group is a flat list of named entries. |
+| **Show each layer item's parameters** (read-only, typed per tag) | A height-constant affector showing "0x3F800000" is a non-starter; modders need "height = 1.0m" | HIGH | One typed view per tag family (~37 tags). The long pole. Mitigate by covering the **common** tags first (height/shader/color/flora affectors; circle/rect boundaries; height/slope filters) and degrading the rest to a generic field list. |
+| **Open a `.trn` from the TRE Browser / loose override** | Consistency with every other Wave-1/2 editor | LOW | Reuses **`TreArchiveIndex` + `TrePayloadResolver`** exactly as the other editors do. |
+| **Edit scalar/enum leaf parameters + save** (e.g. an affector's height, a feather distance, a flora density, active on/off) | "Editor" not "viewer"; the whole product promise is see+edit+save | MEDIUM-HIGH | Round-trips through **`MutableIffDocument` + `IffWriter`** + the four-tier D-05 save matrix (loose-override default), like IFF/OT editors. Scalar edits are tractable; tree-structure mutation is NOT (see deferred). |
+| **Live-in-client preview of the edited terrain** | Utinni's locked differentiator: preview = the real SWG engine, never a standalone renderer | MEDIUM-HIGH | Save to loose override → trigger the client to reload/regenerate the planet's terrain. Honest-degrade if a full live regen isn't reachable this milestone (precedent: v2.0 Particle live-preview shipped degraded). NOT a Utinni-side terrain renderer — that violates the locked appearance-preview decision. |
 
-#### Differentiators
+### Differentiators (where Terrain beats the 2003 SOE tool / a standalone editor)
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Live in-client preview** (terrain/particle/snapshot) | See edits in the running game, no rebuild/repack loop — Utinni's core moat | HIGH | Live-patch/reload tier; per-format reload classifier |
-| Terrain 2D map + affector visualization | Beats a flat property grid | HIGH | Custom rendering |
-| Particle curve/timeline editors | Effects are time-based; grids are painful | MED-HIGH | Custom curve control |
-| MCP tools mirroring each editor's read/edit/save | Agent can drive terrain/particle/placement edits too | LOW (once codec + save exist) | Reuses Part A model |
+| **Live regenerate-in-client on save** | No SOE tool could edit a live planet; injection makes this uniquely Utinni | HIGH | The marquee differentiator *if* reachable. Gate behind feasibility; ship the save-tier even if live-regen degrades. |
+| **2D top-down map / bitmap preview of generated output** (height or shader map) | The SOE editor's core view was a 2D sampled map; gives modders spatial feedback without running the game | HIGH | Requires porting the **`Sampler`** path (`SamplerProceduralTerrainAppearance`) to rasterize a region offline. High value, high cost — a strong **v1.x**, likely too big for v1. |
+| **MCP/CLI verb to read+edit a `.trn`** (per DEC-V2-VERBS-FIRST) | Lets an AI agent inspect/tweak terrain rules; extends the v2.0 MCP surface | MEDIUM | Falls out naturally if the codec lands as a `utinni-cli` verb first (which the locked verbs-first discipline requires anyway). |
+| **Layer/affector search + "what affects height here?" filtering** | Tarkin/Corellia `.trn`s have hundreds of layers; navigation is the real pain | MEDIUM | Tree filter over the decoded model; cheap once decode exists. |
 
-#### Anti-Features — Editors
+### Anti-Features (tempting, wrong for v1 — or ever)
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| **3D mesh / skeleton / animation authoring** | "Editors should do everything" | **DEC-A3 anti-goal (LOCKED); Blender's lane** | Open/preview Blender exports only (Part D) |
-| Full sculpt-brush terrain like a modern DCC | "Make it like World Machine" | Massive scope; `.trn` is rule-based (affectors), not a heightmap canvas | Edit the affector/shader rules; preview the result |
-| Revive the original MFC/Qt editors | "They already exist" | 2003 toolkits, unmaintainable, not injection-native | Replace with Utinni SubPanels (locked strategy) |
-| Texture / shader authoring inside the particle editor | "Effects need textures" | DCC/texture-tool lane; scope creep | Reference existing `.dds`/`.sht`; author textures elsewhere |
-| Animation authoring in the snapshot editor | "Place + animate" | Blender owns skeletal/anim (DEC-A3) | Animation *live-in-client preview* only, coordinated with Blender suite |
+| **Standalone Utinni terrain renderer / 3D fly-through** | "I want to see the planet in the editor" | Violates the **locked** appearance-preview decision (live-in-client only); re-implements the engine's procedural generator + renderer = months; the exact trap SIE fell into | Live-in-client regen; optional offline 2D sampled map as the visual, not a 3D renderer |
+| **Full tree authoring** (create/delete/reorder layers, add new affectors/boundaries from scratch, paint boundaries on a map) | "A real terrain editor lets me build a planet" | Each of ~37 item types needs a typed create-form + the boundary-painting UI is a whole sub-app; this is the 100-file MFC tool. Unbounded for v1 | v1 = inspect + edit existing leaves + toggle active; defer structural authoring to a later milestone |
+| **Procedural-generation engine in C#** (reimplement affect/filter math to preview) | "Preview without the client" | Re-deriving the generator is a multi-month port and a correctness minefield; duplicates the engine Utinni already has live | Live-in-client (the engine itself) for fidelity; sampled-map (ported `Sampler`) only if offline preview is needed |
+| **Editing baked `.ans`/heightmap data** | Confusion that terrain = heightmap | SWG terrain is procedural; there is no baked heightmap to edit | Educate via the layer-tree UI; the recipe IS the terrain |
+| **Server-side terrain collision/pathing regen** | "My edits should update the server too" | Server-side is DEC-A1 (out of scope); `.trn` is shared but server regen is swg-main's job | Client-side preview only; note the server-publish step is external |
 
 ---
 
-## Part D — Utinni ↔ swg-blender-plugin Boundary (formalize)
+## Feature Landscape — B) Effects Editor (one adjacent Wave-2, ClientEffect / Lightning / Swoosh)
 
-**The boundary (HIGH — swg-client-v2 `blender-mcp-vs-addon.md` + `maya-exporter-reference.md`, on-disk; DEC-A3 LOCKED):**
+### Table Stakes
 
-| Owns | Utinni | swg-blender-plugin |
-|------|--------|--------------------|
-| Domain | binary/format read·edit·save + **live in-client** preview/injection; TRE/IFF/datatable/stf/object-template; compile/pack CLIs | DCC authoring: mesh/skeleton/animation/shader **export** (`.msh`/`.mgn`/`.skt`/`.lod`/`.pob`/`.sat`/`.apt`/`.lmg`/`.ans`) |
-| Interface | MCP server + WinForms SubPanels | Blender MCP (`execute_blender_code`) + thin Python addon + `swg_iff`/`swg_blender` shared libs |
-| Meet point | **shared file formats** (`.iff`/`.tre`) — Utinni opens/previews what Blender exports |
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| **Decode the chosen effect `.iff` into a typed editor** | Same see+edit promise as every other editor | LOW-MEDIUM | **ClientEffect is the cheapest target**: a flat command list (CreateAppearance/PlaySound/CreateLight/CameraShake/ForceFeedback), versions 0001-0003. Lightning/Swoosh are parameter blocks in the **already-touched `clientParticle` lib**. |
+| **Edit + save effect parameters** (sound name, light RGB/attenuation, shake magnitude, appearance ref, scales/durations) | Editor not viewer | LOW-MEDIUM | Reuses `MutableIffDocument`/`IffWriter` + D-05 save matrix. ClientEffect fields are mostly scalars/strings — datatable-grade. |
+| **Open from TRE / loose override** | Consistency | LOW | Reuses the TRE index surface. |
+| **Reference validation** (does the named appearance/sound template exist in the load order?) | Dangling refs are the #1 effect bug | LOW-MEDIUM | Cross-check names against `TreArchiveIndex`; cheap and high-value. |
 
-**Formalization features:**
+### Differentiators
 
-| Feature | Category | Complexity | Notes |
-|---------|----------|------------|-------|
-| Utinni opens/previews Blender-exported `.iff` (mesh/skeleton/anim) | Table stakes | MED | Read + in-client preview; no authoring |
-| Documented format-version contract between the two suites | Table stakes | LOW | Both build on the same `.iff`/`.tre` understanding; avoid drift |
-| Animation live-in-client preview coordinated with Blender | Differentiator | HIGH | Utinni previews; Blender authors |
-| `TreeFileBuilder` (Utinni-revived) as the pack step Blender shells out to | Differentiator | LOW (once revived) | swg-blender's `rsp_builder.py` reimplements the `.rsp` format; Utinni's revived builder is the C++ ground-truth alternative |
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **Live-in-client play/trigger of the edited effect** | See the muzzle flash / lightning fire in the real engine after edit | MEDIUM-HIGH | Aligns with the locked live-preview model; degrade honestly like Particle did. |
+| **Shared effects-family panel** (Particle + ClientEffect + Lightning + Swoosh under one codec pattern) | Compounds the v2.0 Particle work; one mental model for the whole `clientParticle` family | MEDIUM | Architectural payoff — pick the target that maximizes reuse of the shipped Particle codec/panel. |
+| **MCP/CLI verb for the effect format** | Extends agent-drivable surface | LOW-MEDIUM | Verbs-first anyway. |
 
-**Anti-feature (the load-bearing boundary):** Utinni must **NOT** own 3D mesh/skeleton/animation/texture authoring (DEC-A3). The precedent doc's rule — *"put format knowledge in the shared lib; MCP and addon are thin shells"* and *"never target FBX/glTF as final format, always IFF"* — applies symmetrically: Utinni stays the format+live-injection tool; Blender stays the DCC. The in-client **Viewer is ground truth**, which is Utinni's natural contribution to the Blender export loop.
+### Anti-Features
+
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| **Particle-system geometry/curve authoring from scratch in the effects panel** | "Make new effects" | That's the Particle editor's domain (already shipped) + DCC territory for meshes | Edit existing templates; reference Blender-authored appearances by name |
+| **Doing all three (ClientEffect + Lightning + Swoosh) in this milestone** | "Finish the family" | Triples the surface; milestone scope is explicitly *one* adjacent editor | Ship one (recommend ClientEffect — cheapest, broadest use); fast-follow the other two |
+
+---
+
+## Feature Landscape — C) Quick Win: User-definable IFF chunk templates (Backlog 999.2)
+
+### Table Stakes
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| **Define a chunk schema** (ordered fields of primitives: int8/16/32, float, bool, string) | The minimum that turns "any chunk" into "a readable struct" | MEDIUM | New schema model + a schema-driven decode pass over **`IffPayloadCursor`**. The reader already exists; this is the decode/encode layer + a definition UI. |
+| **Auto-decode matching chunks** (apply schema by chunk tag) | The payoff: open an unknown `.iff`, see fields not hex | MEDIUM | Match on tag; fall back to hex when no schema (current behavior preserved). |
+| **Edit + save through the schema** | Editor not viewer | MEDIUM | Encode pass must round-trip byte-exact; this is the correctness risk. |
+
+### Differentiators
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **Rich field types** (color/PackedRgb, Vector, Quaternion, Matrix, fixed + count-prefixed arrays, nested structs) | This is SIE's standout power feature; covers most real SWG chunk shapes | MEDIUM-HIGH | The differentiator vs a flat primitive list. Arrays/structs add real parser complexity. |
+| **Schema-derivable-by-MCP** | An agent can author a schema and read/edit an unknown chunk | MEDIUM | Falls out of verbs-first: schema decode as a CLI verb the MCP layer dispatches. |
+| **Shareable schema library** (save/load schema files) | Modders crowdsource format knowledge | LOW | Just (de)serialize the schema model. |
+
+### Anti-Features
+
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| **Turing-complete / conditional schemas** (if field A == x then layout B) | "Real formats branch on a version byte" | A schema DSL with control flow is a parser-generator project; unbounded | Tag+version-keyed schemas (pick schema by chunk version), not in-schema branching |
+| **Auto-infer schema from bytes** | "Guess the format for me" | Inference is unreliable; produces confidently-wrong layouts | Human-authored schemas; optional heuristics as *hints* only |
+
+---
+
+## Feature Landscape — D) Quick Win: TRE override / version-history view (Backlog 999.3)
+
+### Table Stakes
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| **Show every version of a logical path across the load order** (which `.tre`/`.toc` provides it, in priority order) | The exact modder pain: "which archive is actually winning?" | LOW-MEDIUM | **`TreArchiveIndex` already resolves logical paths across the load order** + `CotMasterIndex` for COT. The new piece is *exposing the full resolution chain* instead of just the winner. |
+| **Open/extract any historical version** (not just the winning one) | The point of a history view | LOW | `TrePayloadResolver` already fetches a record's bytes; parameterize by source archive. |
+| **Indicate the winner** (which version the client actually loads) | Without this it's just a list | LOW | The index already computes the winner; surface it. |
+
+### Differentiators
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **Diff base vs override** (binary, and structured for known formats) | The natural payoff of seeing two versions | MEDIUM | Binary diff is cheap; structured diff (IFF-aware) reuses the IFF reader and is higher-value. |
+| **"Open in the right editor" from any version** | One click from history to the IFF/datatable/OT editor | LOW | Dispatch to the existing editor subpanels by extension. |
+| **Load-order doctor** (flag shadowed-by-loose-override, duplicate paths, encrypted-payload v6000+ enumerate-only) | Surfaces the exact class of bug from the 06-12 phantom-walk memory | MEDIUM | Composes the index + TreVersion; high diagnostic value for this codebase specifically. |
+
+### Anti-Features
+
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| **Edit/repack across the whole archive set** | "Fix the override here" | Cross-archive repack is heavy + the repack path has known latent bugs (compressed-bytes) | History view is read/extract/diff; edits go through loose override (the existing write model) |
+| **Decrypt v6000+ retail payloads to diff content** | "Diff Restoration archives" | v6000+ payloads are encrypted → enumerate-only (locked reality) | Show metadata/presence diff; mark payload encrypted, don't pretend to decode |
 
 ---
 
 ## Feature Dependencies
 
 ```
-TemplateDefinitionCompiler (revive)
-    └──produces──> param→type schema
-                       └──unblocks──> OT Tier-2 typed list-param display (carried residual)
-                       └──feeds──────> MCP resource: template schema
+[Terrain v1: layer-tree decode] ──requires──> [existing IffReader / IffPayloadCursor]
+        └──requires──> [TreArchiveIndex + TrePayloadResolver]  (open from TRE/override)
+        └──enables───> [Terrain edit+save] ──requires──> [MutableIffDocument + IffWriter + D-05 save matrix]
+                              └──enables──> [Terrain live-in-client regen preview]  (degradable)
+        └──enables───> [Terrain CLI/MCP verb]   (verbs-first)
+        └──enables───> [2D sampled-map preview] ──requires──> [ported Sampler*]  (v1.x — heavy)
 
-TemplateCompiler (revive) ──requires──> TemplateDefinitionCompiler output
-    └──produces──> .tpf → object-template .iff
-                       └──exposed-as──> MCP compile/write tool
+[Effects editor] ──reuses──> [v2.0 Particle codec/panel pattern (clientParticle family)]
+        └──requires──> [IffReader/Writer + TRE index]  (same base as Terrain)
+        └──enables───> [live-in-client effect trigger]  (degradable)
 
-lift-and-shift + v143→v145 toolchain port  ──gates──>  ALL Part B revives
-    (separate feasibility spike — STACK.md / FEASIBILITY)
+[IFF chunk templates] ──requires──> [IffPayloadCursor]  +  [new schema model + decode/encode pass]
+        └──enhances──> [every editor]  (unknown chunks become readable)
 
-Utinni.Cli verbs (exist) ──wrapped-by──> MCP read tools (low cost)
-UtinniCoreDotNet save tiers (exist) ──wrapped-by──> MCP write tools
-    └──requires──> a NEW save/compile CLI verb (CLI is read+roundtrip today)
+[TRE history view] ──requires──> [TreArchiveIndex (already resolves load order) + CotMasterIndex + TrePayloadResolver]
+        └──enhances──> [IFF chunk templates]  (diff any version with a user schema)
 
-MCP write tools ──require──> elicitation gate + verify-before-commit + backup
-    (Layers 2/4/5 — Layers 4/5 reuse shipped V1 primitives)
-
-New editors (terrain/particle/snapshot)
-    └──require──> NEW format codecs in UtinniCoreDotNet (.trn/.prt/snapshot)
-    └──reuse─────> IffEditController pattern, four-tier save matrix
-    └──enhanced-by──> live-patch/reload tier (HIGH complexity)
-
-Blender boundary ──requires──> Utinni read+preview of Blender .iff exports
-    └──enhanced-by──> TreeFileBuilder revive (shared pack step)
+[D3D11 render-path foundation]  &  [v145/CppSharp bump]  ──underpin──> [all live-preview features]
+        (foundation-before-features: land these before the live-preview editors lean on them)
 ```
 
 ### Dependency Notes
 
-- **OT Tier-2 depends on `TemplateDefinitionCompiler`:** the typed param map is the definition compiler's output — reviving it is the cheapest path to closing the carried residual.
-- **MCP write tools need a CLI save verb:** `Utinni.Cli` is read+roundtrip today; the write surface lives in `UtinniCoreDotNet`'s editing/saving layer driven by the editors. The MCP server can call `UtinniCoreDotNet` directly OR a new CLI save verb — the latter keeps the "thin shim over CLI" architecture consistent. **This gap is the single biggest net-new code item for Part A.**
-- **All Part B revives are gated on the toolchain port** being feasible — do not assume; it's the first concrete milestone-research spike (PROJECT.md).
-- **New editors need new codecs** (`.trn`/`.prt`/snapshot) — the editors are downstream of `UtinniCoreDotNet` codec work, mirroring how Wave-1 editors sat on TRE/IFF/datatable/stf/OT codecs.
+- **Terrain decode is the critical path** — every other Terrain feature (edit, save, preview, CLI, search) sits on the `TerrainGenerator` codec. Get decode right first; it's the long pole and the milestone risk.
+- **Effects reuses Particle** — the second editor is deliberately *adjacent* to the shipped Particle/`.prt` work; choosing ClientEffect (or a Lightning/Swoosh that maximally reuses the `clientParticle` codec) keeps cost low. This is the cheap second feature, not a second long pole.
+- **Both quick wins compose on existing surfaces** — 999.2 on `IffPayloadCursor`, 999.3 on `TreArchiveIndex`. They are genuinely "quick" *relative to* Terrain, but 999.2's byte-exact encode round-trip is the hidden risk (same class as the v2.0 canonical-writer / golden-vector work).
+- **Live preview depends on the hardened base** — per PROJECT.md's foundation-before-features strategy, the D3D11 path + v145 bump should land before the live-preview editors rely on them; otherwise preview breaks the moment the client flips to D3D11.
 
 ---
 
 ## MVP Definition
 
-### Launch With (v2.0 core — validates "Utinni authors, not just edits")
+### Launch With (v2.1)
 
-- [ ] **MCP server skeleton (stdio) + read tools** over the 9 existing CLI verbs — lowest cost, immediate "agent can see SWG assets" value.
-- [ ] **MCP write tools (loose-override default) with the full safety model** — annotations + elicitation gate + verify-before-commit + backup. *The centerpiece differentiator.* Needs a save verb/path.
-- [ ] **Revive `TemplateDefinitionCompiler` + `TemplateCompiler`** — unblocks OT Tier-2 AND gives the agent a real compile tool; validates the revive+wrap strategy and the lift-and-shift port.
-- [ ] **OT Tier-2 typed list-param display** — closes the carried residual using the revived definition compiler.
+- [ ] **Terrain: decode `.trn` → navigable layer tree** (TGEN → Layers → Boundaries/Filters/Affectors/Sub-layers, names + active flags, six shared groups read-only) — the headline; without decode there is no editor.
+- [ ] **Terrain: typed read view for the common item types** (height/shader/color/flora affectors; circle/rect boundaries; height/slope filters), generic field-list fallback for the rest — usable, not exhaustive.
+- [ ] **Terrain: edit + save scalar/enum leaf params + active toggle** through loose override (D-05) — earns "editor."
+- [ ] **Terrain: open from TRE Browser / loose override** — table-stakes consistency.
+- [ ] **One effects editor (recommend ClientEffect)**: decode + edit + save the command list, reference validation, open from TRE — the adjacent Wave-2 feature.
+- [ ] **(Foundation) D3D11 render-path + v145/CppSharp bump** — enabling debt landed first so live preview survives the client's D3D9→D3D11 flip.
 
-### Add After Validation (v2.x)
+### Add After Validation (v1.x / fast-follow)
 
-- [ ] **Revive `TreeFileBuilder`** (build-from-source `.tre`) + wire as MCP pack tool — once the first compile revive proves the toolchain port.
-- [ ] **First DCC-style editor** (terrain or particle — high modder demand) as a TJT SubPanel + its `UtinniCoreDotNet` codec.
-- [ ] **WorldSnapshot editor** — extend the existing Snapshot panel (lowest-risk editor; injection-native already).
-- [ ] **MCP prompts** for canned pipelines (edit → compile → repack → validate).
-- [ ] **DataTableTool compile path** + exporter wrappers.
+- [ ] **Terrain live-in-client regen on save** — promote from degraded once the reload path is proven (mirrors the Particle live-preview trajectory).
+- [ ] **Terrain 2D sampled-map preview** (ported `Sampler`) — the offline visual; high value, too big for v1.
+- [ ] **Terrain: typed coverage for the long-tail affector tags** (river/road/ribbon/environment/exclude/passable).
+- [ ] **Second + third effects editors** (Lightning, Swoosh) — finish the `clientParticle` family.
+- [ ] **IFF chunk templates (999.2)** — schema model + rich field types; gate on the byte-exact encode round-trip.
+- [ ] **TRE history view (999.3)** — resolution chain + extract + diff + load-order doctor.
 
-### Future Consideration (post-v2.0)
+### Future Consideration (v2.2+)
 
-- [ ] **Live-in-client preview** as an MCP tool (live-patch tier is infra-ready but user-disabled — high risk, opt-in).
-- [ ] **Animation live-preview** coordinated with the Blender suite.
-- [ ] Second/third DCC editors; Wave-2 editor backlog (shader, UI, sound, lightning, swoosh).
+- [ ] **Terrain structural authoring** (create/delete/reorder layers, add items, paint boundaries on a map) — the full SOE-editor surface; a milestone of its own.
+- [ ] **Remaining Wave-2 editors** (Animation, Shaders/Textures, Sound, UI) — per toolchain-inventory priority order.
 
 ---
 
@@ -279,53 +206,45 @@ Blender boundary ──requires──> Utinni read+preview of Blender .iff expor
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| MCP read tools (wrap CLI verbs) | HIGH | LOW | P1 |
-| MCP write tools + safety model (loose-override, elicitation, verify, backup) | HIGH | MEDIUM | P1 |
-| Revive TemplateDefinitionCompiler (param→type schema) | HIGH | MEDIUM | P1 |
-| Revive TemplateCompiler (.tpf→.iff) | HIGH | MEDIUM | P1 |
-| OT Tier-2 typed display (residual) | MEDIUM | LOW (given schema) | P1 |
-| Revive TreeFileBuilder (source→.tre) | HIGH | MEDIUM | P2 |
-| First DCC editor (terrain or particle) + codec | HIGH | HIGH | P2 |
-| WorldSnapshot editor (extend Snapshot panel) | MEDIUM | MEDIUM | P2 |
-| MCP prompts (canned pipelines) | MEDIUM | LOW | P2 |
-| DataTableTool compile + exporters | MEDIUM | MEDIUM | P2 |
-| Blender-export open/preview + boundary doc | MEDIUM | MEDIUM | P2 |
-| Live-in-client preview via MCP | HIGH | HIGH | P3 |
-| Animation live-preview | MEDIUM | HIGH | P3 |
+| Terrain: `.trn` layer-tree decode + view | HIGH | HIGH | P1 |
+| Terrain: typed common-tag params (read) | HIGH | HIGH | P1 |
+| Terrain: edit+save scalar leaves + active toggle | HIGH | MEDIUM | P1 |
+| Terrain: open from TRE/override | MEDIUM | LOW | P1 |
+| Effects (ClientEffect) decode+edit+save+ref-check | HIGH | LOW-MEDIUM | P1 |
+| Foundation: D3D11 path + v145/CppSharp bump | HIGH (enabler) | HIGH | P1 |
+| Terrain: live-in-client regen on save | HIGH | HIGH | P2 |
+| TRE history view (resolution chain + extract + diff) | HIGH | LOW-MEDIUM | P2 |
+| IFF chunk templates (schema decode/edit) | HIGH | MEDIUM-HIGH | P2 |
+| Terrain: 2D sampled-map preview | MEDIUM-HIGH | HIGH | P3 |
+| Effects: Lightning + Swoosh | MEDIUM | MEDIUM | P3 |
+| Terrain: long-tail affector typed coverage | MEDIUM | MEDIUM | P3 |
+| Terrain: structural authoring / boundary painting | MEDIUM | VERY HIGH | P3 (later milestone) |
 
-**Priority key:** P1 = must-have for v2.0 launch · P2 = add when possible · P3 = future.
+**Priority key:** P1 = must have for v2.1 launch · P2 = should have, add when possible · P3 = nice to have / future.
 
 ---
 
-## Competitor / Precedent Feature Analysis
+## Competitor Feature Analysis
 
-| Aspect | SWG original toolchain (2003) | swg-blender-plugin (sibling) | Utinni v2.0 (our plan) |
-|--------|-------------------------------|------------------------------|------------------------|
-| Asset edit | MFC/Qt standalone editors | n/a (DCC export only) | Themed injection-native SubPanels |
-| Compile | `TemplateCompiler` etc. (P4/Alienbrain-coupled) | shells out to native CLIs | Revive+wrap the same CLIs, decoupled from P4 |
-| Pack | `TreeFileBuilder` (+ `.rsp`) | `rsp_builder.py` reimpl | Revive `TreeFileBuilder` as shared ground-truth |
-| AI/agent surface | none | Blender MCP (`execute_blender_code`) + thin addon | **MCP server over byte-exact pipeline w/ write-safety model** |
-| Live preview | run the client manually | in-client Viewer = ground truth | **live in-client injection preview** (the moat) |
-| 3D authoring | MayaExporter | **owns it** (mesh/skel/anim) | **explicitly out (DEC-A3)** |
-
-The MCP write-safety model and live-in-client preview are the two features no precedent tool offers; the Blender suite establishes the "MCP-as-thin-shell-over-shared-format-lib" pattern Utinni's MCP server should mirror.
+| Feature | SOE `TerrainEditor` (2003 MFC) | Sytner's IFF Editor (SIE) | Utinni v2.1 approach |
+|---------|-------------------------------|---------------------------|----------------------|
+| `.trn` layer-tree edit | Full authoring (create/edit/reorder, per-type forms, boundary painting) — 100+ files | None (general IFF editor) | v1: inspect + edit leaves + toggle; defer structural authoring |
+| Terrain visual preview | 2D sampled maps + 3D viewport (own renderer) | None | **Live-in-client via the real engine** (locked differentiator); optional 2D sampled-map as v1.x — never a standalone 3D renderer |
+| Effects editing | Separate ClientEffect/Lightning/Swoosh editors | None | One adjacent editor reusing the shipped Particle/`clientParticle` codec |
+| User-defined chunk templates | N/A | **Standout feature** (auto-applied schemas) | Match + extend (rich field types, MCP-derivable) — 999.2 |
+| TRE override/version history | `TreeFileExtractor` (single archive) | **Repository view: show/extract any version in override history** | Match + extend (winner-marking, diff, load-order doctor) — 999.3 |
+| Live, injected editing | No (offline tools) | No (standalone, own renderer) | **Yes — the structural differentiator a standalone editor can't match** |
 
 ---
 
 ## Sources
 
-- MCP specification 2025-11-25 (Context7 `/websites/modelcontextprotocol_io_specification_2025-11-25`): ToolAnnotations (`readOnlyHint`/`destructiveHint`/`idempotentHint`/`openWorldHint` + the "hints are advisory / untrusted" caveat), Tools (`inputSchema`/`outputSchema`/`structuredContent`/`isError`), Resources, Prompts, Elicitation (`elicitation/create`, form/url modes, `requestedSchema`, accept/decline/cancel), stdio transport — HIGH.
-- `D:/Code/swg-client-v2/docs/research/swg-tools-and-likely-studio-toolchain.md` (653-line tool census, on-disk): TemplateCompiler vs TemplateDefinitionCompiler semantics, `.tpf`/`.tdf` flow, exporter chain, Perforce/Alienbrain/PCRE/libxml2/zlib dependency map — HIGH.
-- `D:/Code/swg-client-v2/docs/research/blender-mcp-vs-addon.md` (on-disk): Utinni↔Blender boundary, "format knowledge in shared lib / MCP as thin shell" rule, "always IFF, Viewer is ground truth" — HIGH.
-- `D:/Code/Utinni/docs/ai/toolchain-inventory.md`: revive-vs-replace litmus, partial-coverage gaps, lift-and-shift constraint — HIGH (project doc).
-- `D:/Code/Utinni/.planning/PROJECT.md` + `Utinni.Cli/Program.cs` (verb surface) + MEMORY (save-tier primitives): existing-capability dependency anchors — HIGH.
-- MCP write-tool safety patterns (WebSearch, MEDIUM, multiple sources agree): human-in-the-loop elicitation, fail-closed destructive ops, concrete-outcome confirmations, annotation-driven UX vs server-side enforcement —
-  [Zeo: Human-in-the-Loop Controls](https://zeo.org/resources/blog/mcp-server-safety-human-in-the-loop-controls-risk-assessment),
-  [4sysops: MCP tool annotations](https://4sysops.com/archives/mcp-tool-annotations-securing-mcp-servers-against-the-lethal-trifecta/),
-  [WRITER: MCP security](https://writer.com/engineering/mcp-security-considerations/),
-  [Towards Data Science: MCP Security Survival Guide](https://towardsdatascience.com/the-mcp-security-survival-guide-best-practices-pitfalls-and-real-world-lessons/),
-  [PolicyLayer: MCP Security](https://policylayer.com/mcp-security).
+- `D:/Code/swg-client-v2/src/engine/shared/library/sharedTerrain/.../generator/TerrainGenerator.h`, `TerrainGeneratorType.h`, `Affector*.h`, `Boundary.h`, `Filter.h` — `.trn` procedural structure + tag set (HIGH).
+- `D:/Code/swg-client-v2/src/engine/client/application/TerrainEditor/` (`How To.txt`, `Form*`, `*View` files) — original SOE editor surface area = the "don't clone this as v1" baseline (HIGH).
+- `D:/Code/swg-client-v2/src/engine/client/library/clientGame/.../clientEffect/ClientEffectTemplate.h` — ClientEffect command-list format (HIGH); `clientParticle/.../LightningAppearanceTemplate.h`, `SwooshAppearanceTemplate.h` — effects-family appearance templates in the already-shipped Particle library (HIGH).
+- `D:/Code/Utinni/UtinniCoreDotNet/Formats/` — existing surfaces this builds on: `Iff/IffReader.cs`, `IffWriter.cs`, `MutableIffDocument.cs`, `Decoders/IffPayloadCursor.cs`, `IffStructureSummary.cs`; `Tre/TreArchiveIndex.cs`, `TrePayloadResolver.cs`, `CotMasterIndex.cs`, `TreVersion.cs`; `Particle/*` (the codec/panel precedent) (HIGH).
+- `.planning/PROJECT.md` (Core Value, anti-goals DEC-A1..A4, v2.1 milestone goal/strategy), `docs/ai/toolchain-inventory.md` (Wave-2 priority order + locked live-in-client appearance-preview decision + SIE comparison), `.planning/ROADMAP.md` (Backlog 999.2 / 999.3 / 999.4 / 999.5 context) (HIGH).
 
 ---
-*Feature research for: AI-Assisted SWG asset-modding pipeline (Utinni v2.0)*
-*Researched: 2026-06-01*
+*Feature research for: SWG Wave-2 asset editors (Terrain `.trn` + one effects editor) + IFF/TRE quick wins*
+*Researched: 2026-06-14*
