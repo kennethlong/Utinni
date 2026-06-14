@@ -1,0 +1,1 @@
+{"schemaVersion":1,"protocolVersion":1,"op":"reload-asset","result":{"accepted":true,"tier":"PendingNextSceneChange","queued":false,"reloadAttempted":false,"path":"appearance/mesh/foo.msh","note":"transport-only until RESID-03; queued != visible reload"}}

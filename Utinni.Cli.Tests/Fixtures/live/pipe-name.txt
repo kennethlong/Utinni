@@ -1,0 +1,2 @@
+utinni-live-bridge
+frame=len32le+utf8json;maxframe=65536;protocol=1;json=camelCase;tier=stringnames

@@ -4,6 +4,10 @@ Utinni.Cli.Tests/Fixtures/**/*.expected.json text eol=lf
 Utinni.Cli.Tests/Fixtures/**/*.expected.txt  text eol=lf
 Utinni.Cli.Tests/Fixtures/**/*.json          text eol=lf
 
+# 16-02: the live-bridge pipe-name/framing fixture is a 2-line canonical agreement
+# anchor both pipe ends parse; pin LF so the line split is deterministic across checkouts.
+Utinni.Cli.Tests/Fixtures/live/pipe-name.txt text eol=lf
+
 # Phase 5 (post-execution fix per 05-VERIFICATION.md): preserve upstream LF
 # byte-equivalence on vendored Catch2 amalgamated files so the SHA-256 hashes
 # documented in external/catch2/README.md match Get-FileHash output on Windows.
