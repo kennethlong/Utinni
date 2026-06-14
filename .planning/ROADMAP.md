@@ -381,8 +381,12 @@ Plans:
   2. The live bridge runs the MCP host out-of-proc and crosses to the injected client only via the named pipe — the SDK is never hosted inside SWG.exe.
   3. The Utinni ↔ `swg-blender-plugin` boundary is formalized as a documented `.iff`/`.tre` format-version + `.rsp` search-path contract, with open/preview verbs for Blender exports and no runtime coupling in either direction (ECO-01).
   4. `UtinniCoreDotNet` (C#) and the Blender side cross-validate against shared golden fixtures, confirming the file-format seam holds.
-**Plans**: TBD
-**Research flag**: yes — named-pipe-vs-socket IPC mechanism + reconciling the modern-.NET MCP host with the x86 in-proc client is deferred/open (`/gsd:plan-phase --research-phase 16`).
+**Plans**: 3 plans (2 waves; ECO-01 and the MCP-03 in-client track parallelize in Wave 1; the MCP-03 host wiring lands in Wave 2)
+**Plans**:
+- [ ] 16-01-PLAN.md — ECO-01 Blender boundary: contract doc (`.rsp`/version-matrix/bundle-layout/anti-coupling, D-06) + thin `validate-bundle` CLI verb + pinned cross-validation fixtures/golden + cross-repo pointer note (autonomous:false) [ECO-01] (Wave 1)
+- [ ] 16-02-PLAN.md — MCP-03 in-client half: managed `LivePipeServer` in `UtinniCoreDotNet` (background accept loop + game-thread `mainLoopCallQueue` marshal + `ReloadAssetClassifier` ack tier) + shared protocol/pipe-name + `ServerArgs.EnableLive` fail-closed flag + pure-managed Wave-0 tests [MCP-03] (Wave 1)
+- [ ] 16-03-PLAN.md — MCP-03 host half: `LivePipeClient` (CliDispatcher twin, never-hang) + `live_ping`/`live_reload_asset` tools + D-04 conditional `WithTools<LiveTools>()` gating + loopback protocol test + MCP-SECURITY.md live-tier addendum [MCP-03] (Wave 2)
+**Research flag**: addressed — 16-RESEARCH.md resolved the IPC mechanism (managed `System.IO.Pipes` server in the already-hosted CLR; the pipe is the arch boundary, no in-proc SDK).
 
 ## V2 Scope Boundary
 
@@ -436,7 +440,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 13. Wrap compilers as CLI verbs + OT Tier-2 | 6/6 | Complete   | 2026-06-05 |
 | 14. Headless MCP server (`Utinni.Mcp`) | 5/5 | Complete   | 2026-06-07 |
 | 15. Wave-2 editors (WorldSnapshot, Particle) + residuals | 19/21 | In Progress|  |
-| 16. Live-injected MCP bridge + Blender boundary | 0/TBD | Not started | - |
+| 16. Live-injected MCP bridge + Blender boundary | 0/3 | Planned | - |
 
 ## Backlog
 
