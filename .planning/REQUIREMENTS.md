@@ -132,7 +132,7 @@ Theme: *Utinni authors, not just edits.* Ship an MCP server so AI agents can dri
 ### Product Capability — Wave-2 editors
 
 - [x] **PROD-W2-WS**: A modder can view + edit object placements in a world snapshot via a Utinni SubPanel (extends the existing Snapshot panel; reuses shipped codecs — zero new format work).
-- [x] **PROD-W2-PRT**: A modder can open + edit a particle / client-effect asset in a Utinni SubPanel, with live in-client preview when injected. *(The flashy AI-assist showcase; Terrain `PROD-W2-TRN` deferred to v2.1.)* — **format codec half delivered 15-02 (headless `.prt`/FORM PEFT codec, byte-exact + degrade-don't-abort); editor SubPanel + live preview remain in a later Wave-2 plan.**
+- [x] **PROD-W2-PRT**: A modder can open + edit a particle / client-effect asset in a Utinni SubPanel, with live in-client preview when injected. *(The flashy AI-assist showcase; Terrain `PROD-W2-TRN` deferred to v2.1.)* — **DELIVERED + Validated 2026-06-13:** headless `.prt`/FORM PEFT codec (15-02, byte-exact + degrade-don't-abort) + FormParticleEditor SubPanel (emitter tree / typed grid / hex / AI Explain-effect) + honest live-capable-vs-degraded Preview candor reachable by hover+click (B6 closed 15-19); live preview hook itself remains honestly degraded (no reachable native hot-retrigger this build, per the 15-03 spike).
 
 ### Ecosystem
 
@@ -205,10 +205,10 @@ Each requirement maps to exactly one phase. Phase numbers refer to ROADMAP.md.
 | RESID-01 (OT Tier-2 typed list-param display) | Phase 13 | Pending |
 | MCP-01 (Headless MCP READ tools) | Phase 14 | Complete |
 | MCP-02 (MCP write/SAVE + MCP-SECURITY.md threat register) | Phase 14 | Complete |
-| PROD-W2-WS (WorldSnapshot / object-placement editor) | Phase 15 | Pending |
-| PROD-W2-PRT (Particle / client-effect editor) | Phase 15 | In Progress (codec half done 15-02) |
-| RESID-03 (SC3 live-reload candor) | Phase 15 | Pending |
-| RESID-04 (Window-resize / fullscreen edge cases) | Phase 15 | Pending |
+| PROD-W2-WS (WorldSnapshot / object-placement editor) | Phase 15 | Validated (2026-06-13 live sign-off) |
+| PROD-W2-PRT (Particle / client-effect editor) | Phase 15 | Validated (2026-06-13; editor + Preview candor live-verified, B6 closed) |
+| RESID-03 (SC3 live-reload candor) | Phase 15 | Validated save-tier (2026-06-13, D-ii closed); live render-on-reload tracked DEFERRED (loose searchPath disabled) |
+| RESID-04 (Window-resize / fullscreen edge cases) | Phase 15 | Validated (2026-06-13; C3 PASS, no device Reset) |
 | MCP-03 (Live-injected MCP bridge) | Phase 16 | Pending |
 | ECO-01 (Blender file-format / `.rsp` boundary) | Phase 16 | Pending |
 
