@@ -34,9 +34,22 @@ namespace UtinniCoreDotNet.Callbacks
     // C-04 class of bug (typo'd queue drain) cannot recur. Closes the IN-05
     // carry-over from Phase 02.1.
     //
-    // The outer Count > 0 check from the original code was dropped because
-    // TryDequeue already returns false on an empty queue, and the Count read was
-    // racey under concurrent producers anyway.
+    // SNAPSHOT-BOUND drain (Phase 16 fix): each call processes only the items
+    // PRESENT AT ENTRY — captured once via the Count snapshot — and stops, even if
+    // a drained callback enqueues more work. Items enqueued DURING the drain (e.g. a
+    // per-frame callback that re-enqueues ITSELF for the next tick) are left for the
+    // NEXT drain rather than run again this frame.
+    //
+    // Why this matters: an earlier unbounded `while (TryDequeue) func()` looped until
+    // the queue was empty, so a self-re-enqueuing callback (the live-bridge game-state
+    // refresh, main.cs) made the queue never empty -> infinite loop on the game thread
+    // -> client froze on load. Every other caller enqueues one-shots, so bounding the
+    // drain to a single frame's snapshot is behavior-preserving for them and makes the
+    // documented "re-enqueues itself each tick" pattern actually safe.
+    //
+    // Count on a ConcurrentQueue is an O(1)-ish snapshot (no allocation, hot-path safe);
+    // under concurrent producers it is merely an upper bound on this frame's work, which
+    // is exactly the intended semantics — late arrivals wait for the next drain.
     //
     // Visibility note: Drain is `internal` (mirrors the prior per-class shape) so
     // [InternalsVisibleTo("UtinniCoreDotNet.Tests")] in AssemblyInfo.cs makes it
@@ -45,7 +58,9 @@ namespace UtinniCoreDotNet.Callbacks
     {
         internal static void Drain(ConcurrentQueue<Action> queue)
         {
-            while (queue.TryDequeue(out var func))
+            // Snapshot the count at entry; drain at most that many. Re-enqueues during
+            // the drain do NOT extend this pass (prevents the self-re-enqueue hang).
+            for (int remaining = queue.Count; remaining > 0 && queue.TryDequeue(out var func); remaining--)
             {
                 func();
             }
