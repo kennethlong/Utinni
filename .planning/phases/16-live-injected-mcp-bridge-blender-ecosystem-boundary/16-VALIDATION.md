@@ -2,7 +2,7 @@
 phase: 16
 slug: live-injected-mcp-bridge-blender-ecosystem-boundary
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-06-13
 ---
@@ -46,10 +46,11 @@ created: 2026-06-13
 | MCP-03 | `--enable-live` OFF ⇒ `live_*` tools NOT registered (fail-closed, D-04) | unit | `dotnet test Utinni.Mcp.Tests --filter ServerArgs` | ❌ W0 | ⬜ pending |
 | MCP-03 | In-client server: envelope parse → `ReloadAssetClassifier` tier → enqueue (game-state injected) | unit (pure-managed) | `dotnet test UtinniCoreDotNet.Tests --filter LivePipeServer` | ❌ W0 | ⬜ pending |
 | MCP-03 | Pipe framing edge cases (partial read / oversize / server-close) → hard error, no hang | integration | `dotnet test Utinni.Mcp.Tests --filter LivePipe` | ❌ W0 | ⬜ pending |
+| MCP-03 | Cross-plan pipe-name agreement: both ends' `PipeName` byte-equal the canonical `pipe-name.txt` fixture | unit (both lanes) | `dotnet test UtinniCoreDotNet.Tests --filter LivePipeServer` + `dotnet test Utinni.Mcp.Tests --filter LivePipe` | ❌ W0 (fixture pin) | ⬜ pending |
 | MCP-03 | Live in-client confirmation (visible/queued reload) | **Tier-4 manual** | — (maintainer smoke; non-gating per D-01) | n/a | ⬜ pending |
 | ECO-01 | `parse-tre` opens the pinned Blender golden `.tre` | golden | `dotnet test Utinni.Cli.Tests --filter Blender` | ❌ W0 (fixture pin) | ⬜ pending |
 | ECO-01 | `decode-iff` summarizes the pinned `.msh` (MESH appearance, count-only, DEC-A3-clean) | golden | `dotnet test Utinni.Cli.Tests --filter Blender` | ⚠️ decoder exists; fixture+assert new | ⬜ pending |
-| ECO-01 | `validate-bundle`/`validate-rsp` accepts a pinned `.rsp` against the contract rules | golden | `dotnet test Utinni.Cli.Tests --filter ValidateBundle` | ❌ W0 (new verb) | ⬜ pending |
+| ECO-01 | `validate-bundle` accepts a pinned `.rsp`/manifest against the contract rules | golden | `dotnet test Utinni.Cli.Tests --filter ValidateBundle` | ❌ W0 (new verb) | ⬜ pending |
 | ECO-01 | Contract doc exists + Blender pointer note exists | doc/presence | (presence check / review) | n/a | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
@@ -58,12 +59,13 @@ created: 2026-06-13
 
 ## Wave 0 Requirements
 
-- [ ] `Utinni.Mcp.Tests/LivePipeProtocolTests.cs` — loopback ping + reload-asset + framing edge cases (covers MCP-03).
+- [ ] `Utinni.Cli.Tests/Fixtures/live/pipe-name.txt` — the canonical pipe-name + framing-descriptor fixture (16-02); both pipe ends assert byte-equality against it (cross-plan agreement anchor). Linked into `UtinniCoreDotNet.Tests` (net472) and `Utinni.Mcp.Tests` (net10).
+- [ ] `Utinni.Mcp.Tests/LivePipeProtocolTests.cs` — loopback ping + reload-asset + framing edge cases + the net10 `PipeName` fixture byte-equality assertion (covers MCP-03).
 - [ ] `Utinni.Mcp.Tests/ServerArgsTests.cs` (extend) — `--enable-live` parse + gated-registration assertion.
-- [ ] `UtinniCoreDotNet.Tests/LivePipeServerTests.cs` — pure-managed envelope→tier→enqueue (game-state injected).
-- [ ] `Utinni.Cli.Tests/Commands/BlenderBoundaryGoldenTests.cs` — pinned `.tre`/`.msh`/`.rsp` cross-validation.
-- [ ] `Utinni.Cli.Tests/Fixtures/blender/` — pinned `frn_all_bed_sm_s1_l0.msh` (~6099 B) + `retail_mini_0005.tre` (~119 B) + a sample `.rsp` (in-repo, no LFS — CON-O-09).
-- [ ] `Utinni.Cli.Tests/Commands/ValidateBundleTests.cs` — the new thin verb (if a `validate-bundle`/`validate-rsp` verb is planned).
+- [ ] `UtinniCoreDotNet.Tests/LivePipeServerTests.cs` — pure-managed envelope→tier→enqueue (game-state injected) + the in-client `PipeName` fixture byte-equality assertion.
+- [ ] `Utinni.Cli.Tests/Commands/BlenderBoundaryGoldenTests.cs` — pinned `.tre`/`.msh` cross-validation (already-shipped verbs; compiles + passes at the Task-1 boundary).
+- [ ] `Utinni.Cli.Tests/Fixtures/blender/` — pinned `frn_all_bed_sm_s1_l0.msh` (~6099 B) + `retail_mini_0005.tre` (~119 B) + a sample `.rsp`/`.cfg`/manifest (in-repo, no LFS — CON-O-09).
+- [ ] `Utinni.Cli.Tests/Commands/ValidateBundleTests.cs` — the new thin `validate-bundle` verb, driven via the `InProcessCliRunner.Run` STRING runner (no Task-2 type reference; assembly compiles at the Task-1 boundary, RED until the verb registers).
 
 *(The MESH/SKMG appearance decoders and the `parse-tre`/`decode-iff`/`inspect-iff` read paths already exist and are golden-tested — only the Blender-specific fixtures + asserts and the thin `validate-bundle` verb are net-new.)*
 
@@ -79,11 +81,11 @@ created: 2026-06-13
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 90s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 90s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** 2026-06-13
