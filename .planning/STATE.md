@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: planning
-last_updated: "2026-06-14T22:29:31.557Z"
-last_activity: 2026-06-14
+status: "Roadmap created — awaiting `/gsd:plan-phase 17`"
+stopped_at: Phase 17 context gathered
+last_updated: "2026-06-14T23:34:50.872Z"
+last_activity: 2026-06-14 — v2.1 roadmap created (Phases 17–23, 18 requirements, 100% coverage)
 progress:
-  total_phases: 7
+  total_phases: 16
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 0
 ---
 
 # Project State
@@ -307,9 +307,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-14T16:22:08.077Z
-Stopped at: Completed 16-02-PLAN.md (MCP-03 in-client half)
-Resume file: None
+Last session: 2026-06-14T23:34:50.844Z
+Stopped at: Phase 17 context gathered
+Resume file: .planning/phases/17-cppsharp-v145-hardening/17-CONTEXT.md
 
 ## Ingest Provenance
 
