@@ -78,6 +78,11 @@ Copyright (c) 2005 - 2020 Giacomo Stelluti Scala & Contributors
                         (FORM PEFT); assert byte-exact identity on the whole
                         file.
 
+  validate-bundle       Validate a Blender export bundle
+                        (swg_export_manifest.json + .rsp + .cfg) as TEXT - no
+                        3D/IFF codec. Emits a JSON envelope with explicit
+                        valid/hasRejectedRefs fields.
+
   help                  Display more information on a specific command.
 
   version               Display version information.

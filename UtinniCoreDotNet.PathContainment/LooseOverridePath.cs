@@ -129,25 +129,22 @@ namespace UtinniCoreDotNet.Saving
                 }
             }
 
-            // Normalize the root: append the OS separator if the caller didn't, so the
-            // StartsWith gate cannot be defeated by a prefix-match attack (e.g.
-            // 'C:\swg-clientx\loot' StartsWith 'C:\swg-client' would otherwise return true).
-            // (WR-07: operates on the now-canonicalized resolvedRoot.)
-            string rootWithSep = resolvedRoot;
-            if (rootWithSep[rootWithSep.Length - 1] != Path.DirectorySeparatorChar
-                && rootWithSep[rootWithSep.Length - 1] != Path.AltDirectorySeparatorChar)
-            {
-                rootWithSep = rootWithSep + Path.DirectorySeparatorChar;
-            }
-
             // Normalize input separators to the OS-native form before combining.
             string normalizedRel = relAssetPath.Replace(
                 Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
 
             // Combine + canonicalize. Path.GetFullPath collapses any residual '.'/duplicate
             // separators — the explicit segment scan above already rejected '..' so any
-            // canonicalization here is benign.
-            string combined = Path.Combine(rootWithSep, normalizedRel);
+            // canonicalization here is benign. Append the OS separator to the root so Combine
+            // anchors correctly even when the caller passed a no-trailing-separator root.
+            string rootForCombine = resolvedRoot;
+            if (rootForCombine[rootForCombine.Length - 1] != Path.DirectorySeparatorChar
+                && rootForCombine[rootForCombine.Length - 1] != Path.AltDirectorySeparatorChar)
+            {
+                rootForCombine = rootForCombine + Path.DirectorySeparatorChar;
+            }
+
+            string combined = Path.Combine(rootForCombine, normalizedRel);
             string full;
             try
             {
@@ -160,18 +157,72 @@ namespace UtinniCoreDotNet.Saving
                     "relAssetPath", ex);
             }
 
-            // (d) StartsWith gate — on Windows we use OrdinalIgnoreCase because the filesystem
-            // is case-insensitive. The trailing-separator guard on rootWithSep prevents a sibling
-            // directory like 'C:\swg-clientx' from passing the prefix check.
-            if (!full.StartsWith(rootWithSep, StringComparison.OrdinalIgnoreCase))
+            // (d) Final containment gate — the SAME shared IsContainedUnderRoot predicate the
+            // absolute-ref branch (e.g. validate-bundle's CUR-NEW-3 path) routes through, so the
+            // two branches provably cannot drift (R3-6). resolvedRoot is already canonical here.
+            if (!IsContainedUnderRoot(resolvedRoot, full))
             {
                 throw new ArgumentException(
                     "relAssetPath escapes resolvedRoot after normalization (got '" + full
-                    + "', expected to start with '" + rootWithSep + "').",
+                    + "', expected to be contained under '" + resolvedRoot + "').",
                     "relAssetPath");
             }
 
             return full;
+        }
+
+        /// <summary>
+        /// The single shared containment predicate (R3-6 / WR-07): returns true when
+        /// <paramref name="canonicalCandidate"/> lies inside <paramref name="canonicalRoot"/>.
+        ///
+        /// <para>This is the source-of-truth gate used by BOTH <see cref="Resolve"/> (the relative
+        /// branch) AND callers that already hold an absolute candidate (the validate-bundle
+        /// absolute-ref branch, CUR-NEW-3) — routing both through one predicate means the absolute
+        /// branch cannot drift from the shipped algorithm.</para>
+        ///
+        /// <para>Defenses: the root is RE-CANONICALIZED defensively (so a messy root like
+        /// <c>C:\bundle\..\bundle</c> still matches a contained candidate — WR-07), the candidate
+        /// is canonicalized, and the comparison is a trailing-separator-anchored
+        /// <see cref="StringComparison.OrdinalIgnoreCase"/> <c>StartsWith</c> so a sibling-prefix
+        /// directory (<c>C:\bundleX\...</c> vs root <c>C:\bundle</c>) is NOT falsely accepted. A
+        /// candidate equal to the root itself is considered contained. Containment is LEXICAL — it
+        /// does not follow symlinks/junctions (out of scope for the text validators; the live tier's
+        /// runtime root containment is the enforcement boundary).</para>
+        /// </summary>
+        /// <param name="canonicalRoot">The bundle/client root. Re-canonicalized internally.</param>
+        /// <param name="canonicalCandidate">An absolute candidate path. Re-canonicalized internally.</param>
+        /// <returns>True when the candidate is the root or lies beneath it; false otherwise.</returns>
+        public static bool IsContainedUnderRoot(string canonicalRoot, string canonicalCandidate)
+        {
+            if (canonicalRoot == null || canonicalRoot.Length == 0) return false;
+            if (canonicalCandidate == null || canonicalCandidate.Length == 0) return false;
+
+            string root;
+            string candidate;
+            try
+            {
+                root = Path.GetFullPath(canonicalRoot);
+                candidate = Path.GetFullPath(canonicalCandidate);
+            }
+            catch
+            {
+                return false;
+            }
+
+            // A candidate exactly equal to the root is contained.
+            if (string.Equals(root, candidate, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            string rootWithSep = root;
+            if (rootWithSep[rootWithSep.Length - 1] != Path.DirectorySeparatorChar
+                && rootWithSep[rootWithSep.Length - 1] != Path.AltDirectorySeparatorChar)
+            {
+                rootWithSep = rootWithSep + Path.DirectorySeparatorChar;
+            }
+
+            return candidate.StartsWith(rootWithSep, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

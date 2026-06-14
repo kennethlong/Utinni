@@ -358,9 +358,10 @@ namespace Utinni.Cli.Tests.Commands
         {
             using (var b = BuildBundle(includeRspAbsoluteContainedLine: true))
             {
-                string sibling = (b.Root + "X").Replace('\\', '/') + "/evil.msh";
+                // RHS canonicalizes to a SIBLING dir "<root>X\..." — must NOT pass the prefix gate.
+                string sibling = (b.Root + "X").Replace('\\', '/') + "/siblingevil.msh";
                 File.AppendAllText(b.RspPath,
-                    "appearance/mesh/sibling.msh @ " + sibling + "\n");
+                    "appearance/mesh/sib.msh @ " + sibling + "\n");
 
                 var result = InProcessCliRunner.Run("validate-bundle", b.ManifestPath);
 
@@ -369,8 +370,9 @@ namespace Utinni.Cli.Tests.Commands
                 JToken r = root["result"];
                 Assert.False(r["valid"].Value<bool>());
                 Assert.True(r["hasRejectedRefs"].Value<bool>());
+                // The escaping sibling RHS is recorded in rejectedRefs (rejected, not probed).
                 string blob = r["rejectedRefs"].ToString();
-                Assert.Contains("sibling.msh", blob);
+                Assert.Contains("siblingevil.msh", blob);
             }
         }
 
