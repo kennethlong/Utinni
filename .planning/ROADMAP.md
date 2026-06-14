@@ -37,7 +37,7 @@ Decimal phases appear between their surrounding integers in numeric order.
  (completed 2026-06-05)
 - [x] **Phase 14: Headless MCP server (`Utinni.Mcp`) — the centerpiece** — A separate net10 stdio MCP process shelling `utinni-cli`: read tools over the existing verbs + write/SAVE tools defaulting to loose-override with byte-exact verify-before-commit, fail-closed `resolvedRoot`, and a first-class `MCP-SECURITY.md` threat register.
  (completed 2026-06-07)
-- [ ] **Phase 15: Wave-2 editors (WorldSnapshot, Particle) + presentation residuals** — Ship the WorldSnapshot/object-placement SubPanel (zero new deps) then the Particle/client-effect SubPanel (new `.prt` codec) as TJT MEF SubPanels; enumerate + fix the SWG window-resize/fullscreen edge cases (RESID-04) and confirm SC3 live-reload candor (RESID-03).
+- [x] **Phase 15: Wave-2 editors (WorldSnapshot, Particle) + presentation residuals** — Ship the WorldSnapshot/object-placement SubPanel (zero new deps) then the Particle/client-effect SubPanel (new `.prt` codec) as TJT MEF SubPanels; enumerate + fix the SWG window-resize/fullscreen edge cases (RESID-04) and confirm SC3 live-reload candor (RESID-03). **CLOSED 2026-06-13** (approved-with-deferred-residual; RESID-03 live render-on-reload deferred, gated on the disabled loose searchPath).
 - [ ] **Phase 16: Live-injected MCP bridge + Blender ecosystem boundary** — Add the optional named-pipe IPC live bridge so an agent can preview an edit in the injected client (MCP-03); formalize the Utinni ↔ `swg-blender-plugin` file-format / `.rsp` search-path contract (ECO-01).
 
 ## Phase Details
@@ -344,7 +344,7 @@ Plans:
   3. Both SubPanels load inside TJT against a live SWG client and follow the Wave-1 MEF SubPanel seam unchanged.
   4. The SWG window-resize / windowed↔fullscreen edge cases are enumerated and fixed without a device Reset (RESID-04).
   5. SC3 live-reload semantics for string-table + object-template reload are confirmed and honestly stated in the editor reload-candor UI (RESID-03).
-**Plans**: 18 plans (7 waves; 15-09..15-11 gap closure from the 15-SMOKE A9 undo-crash; 15-12..15-18 defect-driven gap closure from the 2026-06-13 15-SMOKE live smoke)
+**Plans**: 21 plans (9 waves; 15-09..15-11 gap closure from the 15-SMOKE A9 undo-crash; 15-12..15-18 defect-driven gap closure from the 2026-06-13 15-SMOKE live smoke; 15-19..15-21 round-3 gap closure for B6 + D-ii)
 **Plans**:
 - [x] 15-01-PLAN.md — WorldSnapshot editor: placements table + multi-select bulk move/delete/retemplate (FormSnapshotPlacements companion window; WorldSnapshotBulkComposer) [PROD-W2-WS] (Wave 1)
 - [x] 15-02-PLAN.md — .prt/PEFT typed codec in Formats/Particle (WaveForm/ColorRamp/EMTR) + degrade-dont-abort raw-preserve + byte-exact round-trip [PROD-W2-PRT] (Wave 1)
@@ -353,7 +353,7 @@ Plans:
 - [x] 15-05-PLAN.md — RESID-04: suppress exclusive-fullscreen mode switch (direct_input.cpp) + no-Reset regression gate (D-12/D-13) [RESID-04] (Wave 2)
 - [x] 15-06-PLAN.md — FormParticleEditor: emitter tree + typed grid + hex fallback + AI Explain-effect (reuses 15-04 read path) + state-encoded Preview [PROD-W2-PRT] (Wave 3)
 - [x] 15-07-PLAN.md — RESID-03: route .ws/.prt to honest tier-(b) reload candor + routing tests (D-14) [RESID-03] (Wave 3)
-- [ ] 15-08-PLAN.md — Tier-4 maintainer live-SWG smoke: WS/Particle demo + RESID-04 matrix + RESID-03 SC3 (autonomous:false) [PROD-W2-WS/PRT, RESID-03/04] (Wave 4)
+- [~] 15-08-PLAN.md — Tier-4 maintainer live-SWG smoke: WS/Particle demo + RESID-04 matrix + RESID-03 SC3 (autonomous:false) [PROD-W2-WS/PRT, RESID-03/04] (Wave 4) — SUPERSEDED: the live smoke was executed across the gap-closure re-smokes 15-18 + 15-21 (defects found → fixed → re-verified); closure signed in 15-SMOKE.md
 - [x] 15-09-PLAN.md — GAP: null-guard all WS IUndoCommand Execute/Undo bodies + pure WorldSnapshotCommandGuard helper (fixes A9 undo-crash root cause) [PROD-W2-WS] (Wave 1, gap_closure)
 - [x] 15-10-PLAN.md — GAP: UndoRedoManager.Clear() + IEditorPlugin undo seam; clear stack + gizmo on snapshot Load/Unload/Reload; route Ctrl+Z from FormSnapshotPlacements [PROD-W2-WS] (Wave 1, gap_closure)
 - [x] 15-11-PLAN.md — GAP: full Release gate + reassemble bin/Release injection build for the 15-08 A9 re-verify; record outcome in 15-SMOKE.md [PROD-W2-WS] (Wave 2, gap_closure)
@@ -364,6 +364,9 @@ Plans:
 - [x] 15-16-PLAN.md — GAP: managed polish — Particle param-grid rebind (B4/B5), honest no-hook preview tooltip (B6), delete-confirm candor + BulkDelete DetailLevelChanged (A7) [PROD-W2-PRT, PROD-W2-WS, RESID-03] (Wave 5, gap_closure)
 - [x] 15-17-PLAN.md — GAP: full Release gate + reassemble bin/Release with netstandard.dll + utinni-cli.exe, content-verified [PROD-W2-WS/PRT, RESID-03/04] (Wave 6, gap_closure)
 - [x] 15-18-PLAN.md — GAP: Tier-4 maintainer live re-smoke (B5-B8 + Checklist C incl C3 + Checklist D); sign-off gates closure (autonomous:false) [PROD-W2-WS/PRT, RESID-03/04] (Wave 7, gap_closure)
+- [x] 15-19-PLAN.md — GAP: Particle `Preview in client` no-hook candor reachable (btnPreview enabled-on-doc + click surfaces LOCKED copy, no retrigger) — fixes B6 [PROD-W2-PRT] (Wave 8, gap_closure)
+- [x] 15-20-PLAN.md — GAP: pure `LogicalAssetPath` helper (12 facts) wired into the SaveLooseOverride sites so raw-`Open…` loose overrides preserve the logical subpath — fixes D-ii [RESID-03, PROD-W2-PRT] (Wave 8, gap_closure)
+- [x] 15-21-PLAN.md — GAP: reassemble + content-verify bin/Release with the B6+D-ii fixes; live re-verify both (windows-mcp) + final Maintainer Sign-Off — Phase 15 CLOSED approved-with-deferred-residual (autonomous:false) [PROD-W2-PRT, RESID-03, RESID-04, PROD-W2-WS] (Wave 9, gap_closure)
 **Research flag**: yes — `.prt` codec format depth is MEDIUM-confidence; `swg-client-v2` is the spec reference but no Utinni fixtures exist yet (`/gsd:plan-phase --research-phase 15`).
 **UI hint**: yes
 

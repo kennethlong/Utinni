@@ -476,6 +476,23 @@ WinForms editor surface (the in-game chat scene-change was the only part not exe
 **Core gap-round goals (B5, B7, C3, A9) all PASSED live.** Open defects: **B6**, **D-ii**. Deferred
 residuals: D-render (config), fullscreen mouse-mapping, codec hard-abort-on-edited-count.
 
+## 15-21 ROUND-3 RE-VERIFY RESULTS (2026-06-13 — Claude-driven via windows-mcp, maintainer delegated "take it")
+
+Re-verify of the two open defects (B6, D-ii) against the content-verified round-3 `bin/Release/` (15-21
+Task 1: both solutions Release|x86 MSBuild exit 0; `UtinniCoreDotNet.Tests` 718/718 incl. 12 new
+`LogicalAssetPath` facts; deployed PEs content-verified to carry `LogicalAssetPath` + the 15-19 Preview-candor
+change). Injected live on Tatooine (Mos Eisley), SWG running, GOD MODE. Claude drove every action by
+coordinate-click off screenshots (UIA labels did not surface, as expected); bypass-permissions on (no focus theft).
+
+| Check | Result |
+|-------|--------|
+| **B6** Particle `Preview in client` no-hook candor reachable | ✅ **PASS** — opened `loose\appearance\pt_airport_race_light.prt`; the button is now **enabled** (15-19 `btnPreview.Enabled = hasDoc`). **Hover** renders the LOCKED tooltip *"Live preview isn't wired this build — edits show on the next scene change or relog."* (unreachable before on the disabled control); **click** surfaces the same LOCKED copy in the status line (dimmed/informational), **no retrigger attempted**, no error, tree intact. No dead explanation-less button. |
+| **D-ii** raw-`Open…` `.stf` loose-override subpath preserved | ✅ **PASS** — opened the **source** `string\en\ui_auc.stf` via the raw `Open…` dialog (244 entries), edited `accept_bid` → `"Accept Bid (D-ii test)"`, `Save ▾ → Save as loose override` → status *"Saved ui_auc.stf (loose override)"*. Headless on-disk check: the override landed at `D:\SWGEmu-Client\SWGEmu\loose\string\en\ui_auc.stf` (**subpath preserved**, created 20:26, was ABSENT pre-save), content-verified to carry the edited string (UTF-16LE). The old flat `loose\ui_auc.stf` defect artifact was **untouched** — no re-flatten. |
+
+**Both round-3 defects FIXED and re-verified live.** RESID-03 live render-on-reload remains **DEFERRED**
+(loose searchPath disabled this build — unchanged by this round). Deferred residual todos (D-render config,
+fullscreen mouse-mapping, particle codec hard-abort-on-edited-count) remain tracked, out of phase scope.
+
 ## Maintainer Sign-Off
 
 - [x] Checklist A (WS demo) completed — A1–A9 PASS (A9 re-verified earlier; finalized diagnostic-free by 15-14)
@@ -485,7 +502,20 @@ residuals: D-render (config), fullscreen mouse-mapping, codec hard-abort-on-edit
 - [x] `swg-window-resize-fullscreen-edge-cases.md` updated (C3 PASS + fullscreen mouse-mapping residual)
 - [x] `phase10-stringtable-sc3-live-reload-residual.md` updated (D-render config blocker + D-ii subpath flatten)
 
-**Disposition:** **defects — see notes** (Phase 15 NOT closed; routes to a new `--gaps` round)
+**Disposition (15-18 round):** **defects — see notes** (routed to the round-3 `--gaps` plans 15-19/15-20/15-21)
+
+**Signed:** Kenneth Long (maintainer)  **Date:** 2026-06-13
+
+### Round-3 closure (15-21, 2026-06-13)
+
+- [x] **B6 FIXED + re-verified PASS** — Particle `Preview in client` enabled-on-doc; honest no-hook LOCKED candor reachable by hover AND click; no retrigger when no hook (15-19)
+- [x] **D-ii FIXED + re-verified PASS** — raw-`Open…` `.stf` loose override lands at `loose\string\en\ui_auc.stf` (subpath preserved, content-verified); flat artifact untouched (15-20)
+- [x] Re-verified live (Claude-driven via windows-mcp, maintainer delegated) against the content-verified round-3 `bin/Release/`
+
+**Final Disposition:** **approved-with-deferred-residual** — Phase 15 CLOSED. PROD-W2-PRT and RESID-03 save-tier
+re-verified Validated. RESID-03 **live render-on-reload remains a tracked DEFERRED residual** (gated on the
+disabled priority-27 loose searchPath; re-enabling re-introduces the phantom-walk shadow). Out-of-phase
+deferred todos: fullscreen mouse-mapping offset, particle codec hard-abort-on-edited-count.
 
 **Signed:** Kenneth Long (maintainer)  **Date:** 2026-06-13
 

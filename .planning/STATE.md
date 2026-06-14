@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
 status: executing
-stopped_at: Completed 15-20-PLAN.md (D-ii LogicalAssetPath open-side subpath preservation — 12/12 xUnit facts green, both Utinni.sln + TheJawaToolbox.sln Release|x86 MSBuild exit 0, 718/718 full Tests green; live on-disk re-verify gated to 15-21)
-last_updated: "2026-06-14T01:00:00.000Z"
-last_activity: "2026-06-13 -- 15-20 executed: LogicalAssetPath.TryFromAbsolute (PathContainment, BCL-only, 12 facts) wired into the two SaveLooseOverride flatten sites (IffSaveTargets + StringTableSaveTargets) — fix landed at the actual save-time derivation site, NOT the plan-named form Open… handler (loose relAssetPath is re-derived from loose.Path); all 5 editors covered; commits 8343136 (Utinni) + b13c251 (UtinniPlugins)"
+stopped_at: Completed 15-21-PLAN.md — Phase 15 CLOSED. Round-3 bin/Release reassembled + content-verified (both fixes present; 718/718 Tests); B6 + D-ii re-verified LIVE on Tatooine (Claude-driven via windows-mcp, maintainer delegated): B6 Particle Preview no-hook candor reachable by hover+click; D-ii raw-Open .stf loose override landed at loose\string\en\ui_auc.stf (subpath preserved, content-verified). Maintainer Sign-Off signed approved-with-deferred-residual.
+last_updated: "2026-06-13T20:35:00.000Z"
+last_activity: "2026-06-13 -- 15-21 executed + Phase 15 CLOSED: reassembled/content-verified the round-3 injection build, live-re-verified B6 (Preview candor reachable) + D-ii (loose subpath preserved at loose\string\en\ui_auc.stf) via windows-mcp on a live Tatooine session, signed the Maintainer Sign-Off approved-with-deferred-residual. RESID-03 live render-on-reload remains a tracked deferred residual (loose searchPath disabled). PROD-W2-PRT + RESID-03 save-tier Validated. Next: Phase 16 (live-injected MCP bridge + Blender boundary)."
 progress:
   total_phases: 20
-  completed_phases: 15
+  completed_phases: 16
   total_plans: 91
-  completed_plans: 90
-  percent: 99
+  completed_plans: 91
+  percent: 100
 ---
 
 # Project State
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 ## Current Position
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
-Phase: 15 (wave-2-editors-worldsnapshot-particle-presentation-residuals) — EXECUTING
-Plan: gap-closure round 3 IN PROGRESS — 15-19 (B6 Preview-candor reachable) DONE; 15-20 (D-ii LogicalAssetPath subpath preserve) DONE; 15-21 (reassembly + re-verify + final sign-off) remains. Round 2 (15-12..15-18) executed; B5/B7/C3/A9 PASS live; B6 + D-ii defects routed here and now code-closed.
-Status: EXECUTING round 3 — 15-19 + 15-20 complete (wave 8); 15-21 (wave 9) pending. Requirements NOT Validated until 15-21 sign-off (live on-disk re-verify of B6 + D-ii).
-Last activity: 2026-06-13 -- 15-20 executed: LogicalAssetPath.TryFromAbsolute (PathContainment, BCL-only, 12 facts green) wired into the two SaveLooseOverride flatten sites; raw-Open loose-override now preserves the logical subpath (loose\string\en\ui_auc.stf, not flat). Fix landed at the save-time derivation site, not the plan-named form Open… handler. Live on-disk re-verify gated to 15-21
+Phase: 15 (wave-2-editors-worldsnapshot-particle-presentation-residuals) — ✅ CLOSED 2026-06-13 (approved-with-deferred-residual)
+Plan: gap-closure round 3 COMPLETE — 15-19 (B6 Preview-candor reachable), 15-20 (D-ii LogicalAssetPath subpath preserve), 15-21 (reassembly + live re-verify + signed sign-off) all DONE. Round 2 (15-12..15-18) found B6 + D-ii defects → round 3 fixed + live-re-verified them.
+Status: Phase 15 CLOSED. B6 + D-ii re-verified PASS live (windows-mcp, Tatooine); Maintainer Sign-Off signed approved-with-deferred-residual. PROD-W2-WS / PROD-W2-PRT / RESID-04 Validated; RESID-03 save-tier Validated, RESID-03 live render-on-reload a tracked DEFERRED residual (loose searchPath disabled). Next: Phase 16 (MCP-03 live-injected bridge + ECO-01 Blender boundary).
+Last activity: 2026-06-13 -- 15-21 executed + Phase 15 CLOSED: round-3 bin/Release reassembled + content-verified (both fixes present, 718/718 Tests); live-re-verified B6 (Preview candor reachable by hover+click, no retrigger) + D-ii (loose override at loose\string\en\ui_auc.stf, subpath preserved, content-verified UTF-16LE) via windows-mcp on a live Tatooine session; signed the Maintainer Sign-Off approved-with-deferred-residual
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 
