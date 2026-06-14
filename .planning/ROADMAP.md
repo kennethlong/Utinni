@@ -115,3 +115,60 @@ view for debugging load order.
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.4: Complete VS2026 v145 toolset bump — CppSharp upgrade (BACKLOG)
+
+**Goal:** Finish the toolchain bump so the binding generator (`UtinniCoreDotNetGen`) runs natively on
+v145, removing the VS 2019 14.29 STL parser-include redirect (Path 1) currently keeping CppSharp's
+clang 11 alive.
+
+**Context (captured 2026-06-14, from `[[project-vs2026-cppsharp-block]]` + `[[project-vs2026-toolchain]]`; D-09):**
+- v2.0 ships green on **v145** for the C++ build, but the vendored **CppSharp 0.10.5 (clang 11)** can't
+  parse the MSVC 14.5x STL. Path 1 (Wave-2, commit `d69988d`) works around this by pointing CppSharp's
+  *parser* at the VS 2019 14.29 STL while the build itself uses v145 — a redirect, not a real bump.
+- The clean fix needs a CppSharp upgrade: **Path 2** = vendored CppSharp → v1.2 (clang 19), but that only
+  reaches v143 (no CppSharp release ships clang 20+ yet for v145) **and** forces a net4.7.2 → net9.0
+  migration of `UtinniCoreDotNetGen`. So this is genuinely blocked on upstream CppSharp + a generator
+  TFM migration — a Phase-6-class project, not a quick edit.
+- Couples to **999.5 (D3D11)** — a newer toolset has better DXGI/D3D11 header hygiene (v144+).
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.5: D3D11 render-path migration (BACKLOG)
+
+**Goal:** Add a parallel D3D11 hook/overlay path alongside the existing D3D9 one, so Utinni keeps
+rendering its ImGui overlay + live-preview when the SWG client runs on D3D11.
+
+**Context (captured 2026-06-14, from `[[project-d3d11-migration]]`):**
+- SWG Source (`swg-client-v2`) has an **active D3D9→D3D11 migration** (`Direct3d11` project, incomplete).
+  Utinni hooks **D3D9 explicitly** (pattern-scan + `Present`/`Reset` detours, not an API-abstracted
+  renderer), so a D3D11 client needs a second, parallel hook path — not a config flag.
+- Future **R-letter** (rework) item; was explicitly out of Phase 3 scope. Don't volunteer as a refactor
+  target during unrelated work.
+- Sequencing note: may coincide with / benefit from **999.4** (the v145+ toolset has cleaner D3D11
+  headers). The lift-and-shift revive boundary already keeps Utinni decoupled from `swg-client-v2`'s
+  D3D11 churn, so this is additive, not a forced migration.
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.6: 3D-asset authoring parity — re-evaluate Maya-write boundary (BACKLOG)
+
+**Goal:** Revisit whether Utinni should own any 3D mesh/skeleton/animation **write/authoring** parity
+(the old `MayaExporter` lane), or whether that stays entirely with the Blender suite.
+
+**Context (captured 2026-06-14, from `[[project-swg-client-v2-reference]]` + `[[project-swg-toolchain-crosswalk]]`; re-opens DEC-A3):**
+- **Locked v2.0 decision (do NOT silently override):** Utinni does NOT own 3D mesh/skeleton/anim
+  authoring — that's **`D:/Code/swg-blender-plugin`**'s job (Python + Blender; import/export for static,
+  skeletal, animation; `.msh/.mgn/.skt/.lod/.pob/.sat/.apt/.lmg/.ans`). The locked appearance-preview
+  decision is **live-in-client via the real SWG engine**, NOT a standalone renderer (the path Sytner's
+  IFF Editor took). See `docs/ai/toolchain-inventory.md` §"Maya → Blender export path".
+- **Why this is a backlog item, not settled:** "Maya WRITE / authoring parity" is recorded as a
+  *deferred post-V1 milestone that re-opens DEC-A3*. Promoting it means explicitly re-deciding the
+  Utinni-vs-Blender boundary — only do so if Blender parity stalls or a format gap forces Utinni's hand.
+  Default disposition remains **keep it Blender's lane**; this stub exists so the deferral is visible,
+  not so we build it by default.
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
