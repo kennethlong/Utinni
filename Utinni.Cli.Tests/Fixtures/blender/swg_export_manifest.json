@@ -1,0 +1,26 @@
+{
+  "pipeline_version": "3.009",
+  "exported_at": "2026-05-27T00:00:00+00:00",
+  "bundle_type": "static",
+  "output_dir": "D:/swg_dev_bundle",
+  "author": "",
+  "notes": "",
+  "assets": {
+    "output_dir": "D:/swg_dev_bundle",
+    "mesh": "appearance/mesh/frn_all_bed_sm_s1_l0.msh",
+    "shaders": [],
+    "textures": [],
+    "manifest": "D:/swg_dev_bundle/swg_export_manifest.json",
+    "rsp_files": [
+      "rsp/data_compressed_mesh_static.rsp"
+    ],
+    "client_cfg": "client_search_paths.cfg"
+  },
+  "rsp_files": [
+    "rsp/data_compressed_mesh_static.rsp"
+  ],
+  "client_test_notes": [
+    "Mount this folder as a TreeFile filesystem search path for loose dev assets.",
+    "Example (add to client_d.cfg [SharedFile] section): searchPath0=D:/swg_dev_bundle"
+  ]
+}

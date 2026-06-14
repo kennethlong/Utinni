@@ -1,0 +1,11 @@
+# SHA-256 provenance manifest for the pinned Blender BINARY goldens (ECO-01, D-08).
+#
+# Format: {lowercase-hex-sha256}  {filename}
+# Asserted by BlenderBoundaryGoldenTests — a golden test FAILS if a fixture's bytes
+# drift from these hashes (Codex fixture-provenance finding / T-16-04).
+#
+# Source of truth: D:/Code/swg-blender-plugin/tests/golden/ (Blender writes, Utinni reads).
+# Only the BINARY goldens are hashed here. The .rsp/.cfg/manifest TEXT fixtures are
+# human-authored reference shapes and may be edited deliberately, so they are NOT pinned.
+c0deba2cf00a620040b9d67611586cb4287cbeb0fd254336e480addc854db248  frn_all_bed_sm_s1_l0.msh
+7110791be50048def916fcc1ca3d1656de280daa0da4736991e7f647367ef689  retail_mini_0005.tre
