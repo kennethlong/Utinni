@@ -102,6 +102,8 @@ near-term work-list (15 critical bugs, 8 reworks, sequencing to a 1.0).
 | [Tutorial: your first editor plugin](tutorial.md)| New plugin authors.               |
 | [Internals: hooks, RVAs, patches](internals.md)  | Core contributors, reversers.     |
 | [Regenerating bindings](regen-bindings.md)       | Core contributors.                |
+| [Hard-won lessons](lessons.md)                   | Everyone — the traps that cost real time. |
+| [Toolchain inventory & cross-walk](toolchain-inventory.md) | SWG tool → Utinni coverage map; Wave-2 priority order. |
 | [Glossary](glossary.md)                          | Reference.                        |
 
 ## Conventions in this docset
