@@ -113,6 +113,10 @@ view for debugging load order.
 - Why it matters: load-order/override debugging is a top modder pain point ("which `.tre` is actually winning for this path?"). A diff between base and override is the natural payoff.
 - Composes on `TreArchiveIndex` (already resolves logical paths across the load order) + `TrePayloadResolver`; the new piece is exposing the full per-path resolution chain + a versions/diff UI.
 
+> **Deferred at v2.1 scoping (2026-06-14):** a separate WIP **TRE diff tool** (~1 day from MVP) is
+> solving the same load-order-resolution + diff problem. Hold 999.3 in backlog and revisit once that
+> tool reaches MVP so this view can reuse its design. 999.2 (above) WAS pulled into v2.1.
+
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
 
