@@ -88,14 +88,6 @@ TRE override/version-history view) are strong candidates.
 
 Unsequenced ideas parked for a future milestone (999.x). Promote with `/gsd:review-backlog`.
 
-### Phase 999.1: MCP server for Utinni (BACKLOG — REALIZED)
-
-**Goal:** Expose Utinni's asset pipeline as an MCP server so Claude/agents can drive the verified,
-byte-exact codecs programmatically.
-
-> **Note (2026-06-14):** REALIZED by v2.0 Phases 14 (headless MCP) + 16 (live-injected MCP). Retained
-> here as the original capture; close via `/gsd:review-backlog`.
-
 ### Phase 999.2: User-definable IFF chunk templates (BACKLOG)
 
 **Goal:** Let a modder *describe the binary layout* of an arbitrary IFF chunk (a schema of primitives,
