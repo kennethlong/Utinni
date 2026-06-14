@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-06-14T22:29:31.557Z"
 last_activity: 2026-06-14
 progress:
-  total_phases: 0
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -24,10 +24,26 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 17 — CppSharp / v145 Hardening (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-14 — Milestone v2.1 started
+Status: Roadmap created — awaiting `/gsd:plan-phase 17`
+Last activity: 2026-06-14 — v2.1 roadmap created (Phases 17–23, 18 requirements, 100% coverage)
+
+**v2.1 milestone (Phases 17–23) — foundation-before-features:**
+
+| Phase | Goal | Requirements |
+|-------|------|--------------|
+| 17 | CppSharp / v145 hardening — clang-capability spike → harden-the-redirect + C++23/clang-20 tripwires + per-block-hash ABI diff & frozen-DLL MEF-compose gate (lockstep TJT/Sytner rebuild) | CPPS-01..04 |
+| 18 | Render-backend seam — carve `IRenderBackend` in `swg/graphics/`; D3D9 overlay behaviorally unchanged; single-source imgui_impl.cpp | RNDR-01 |
+| 19 | Dx11Backend — DXGI `Present` (vtbl 8) + `ResizeBuffers` (vtbl 13) hooks; one-backend-per-session `gl%02d_r.dll` detect; per-frame RTV rebind | RNDR-02, RNDR-03, RNDR-04 |
+| 20 | Terrain `.trn` codec — decode→navigable layer tree, typed tags + raw-fallback, scalar-leaf edit/save; verbs-first + MCP; SWGEmu+Restoration fixtures (critical path) | PROD-W2-TRN-01..04 |
+| 21 | Terrain TJT SubPanel — consumes Phase 20 codec; live regen-on-save rides the seam, degrades honestly (heap-free hot path) | PROD-W2-TRN-05 |
+| 22 | ClientEffect editor — command-list `.iff` codec + verbs + MCP + SubPanel (lowest risk; Particle pattern proven) | PROD-W2-CFX-01, -02 |
+| 23 | User-definable IFF chunk templates — schema-driven decode/encode (byte-exact round-trip) + manage-from-UI; quick win (ex-Backlog 999.2) | PROD-IFFT-01..03 |
+
+**Coverage:** 18/18 v2.1 requirements mapped, no orphans, no duplicates.
+**Research flags:** Phase 17 (clang spike sets acceptance), Phase 19 (churning D3D11 DLL contract + milestone-existential x64 question), Phase 20 (most variant-rich SWG format) — plan with `--research-phase`.
+**Carried locks:** byte-exact round-trip across BOTH SWGEmu + Restoration fixtures; verbs-first (DEC-V2-VERBS-FIRST); editors as TJT SubPanels (DEC-C4); live preview never a standalone renderer (DEC-A3 + live-in-client lock); confirm the CommandLineParser verb-count ceiling before adding `trn-*`/`effect-*` verbs.
 
 ## Deferred Items
 

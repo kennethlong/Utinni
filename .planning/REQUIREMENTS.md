@@ -97,9 +97,11 @@ REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 ca
 
 ## Milestone risks / assumptions (confirm during execution)
 
-- **x64 injection-stack risk (milestone-existential):** swg-client-v2's `x64bit-Upgrade` branch — an x64
-  SWG client breaks the ENTIRE x86 injection stack, not just the overlay. Confirm before Phase 19 whether
-  it lands before/with D3D11.
+- **x64 is OUT of scope for v2.1 (32-bit only; user-locked 2026-06-14).** v2.1 targets the 32-bit client;
+  Phase 19's D3D11 work is for the 32-bit SWG-Source client. swg-client-v2's `x64bit-Upgrade` is a
+  deliberate later milestone paired with the entry-point-advertisement mechanism (Backlog 999.7) — NOT a
+  v2.1 risk to confirm. Entry-point discovery in v2.1 stays today's RVA/pattern-scan model on both clients
+  (the advertisement contract is future, and SWG-Source-only; the SWGEmu client always keeps RE discovery).
 - **swg-client-v2 D3D11 DLL contract is churning:** confirm the final module name (`gl11_r.dll`
   source-grounded vs `Direct3d11.dll`) and hard-cutover-vs-runtime-switch before Phase 19 design lock.
 - **CommandLineParser verb-count ceiling:** the CLI is at 23 `*Command.cs` files (prior cap was 16);
@@ -109,4 +111,27 @@ REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 ca
 
 ## Traceability
 
-_Filled by the roadmapper — each requirement maps to exactly one phase (Phases 17–23)._
+Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no orphans, no duplicates.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| CPPS-01 | Phase 17 — CppSharp / v145 Hardening | Pending |
+| CPPS-02 | Phase 17 — CppSharp / v145 Hardening | Pending |
+| CPPS-03 | Phase 17 — CppSharp / v145 Hardening | Pending |
+| CPPS-04 | Phase 17 — CppSharp / v145 Hardening | Pending |
+| RNDR-01 | Phase 18 — Render-Backend Seam + Dx9Backend | Pending |
+| RNDR-02 | Phase 19 — Dx11Backend + Config Detection + Resize | Pending |
+| RNDR-03 | Phase 19 — Dx11Backend + Config Detection + Resize | Pending |
+| RNDR-04 | Phase 19 — Dx11Backend + Config Detection + Resize | Pending |
+| PROD-W2-TRN-01 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Pending |
+| PROD-W2-TRN-02 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Pending |
+| PROD-W2-TRN-03 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Pending |
+| PROD-W2-TRN-04 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Pending |
+| PROD-W2-TRN-05 | Phase 21 — Terrain TJT SubPanel (+ live preview) | Pending |
+| PROD-W2-CFX-01 | Phase 22 — ClientEffect Editor | Pending |
+| PROD-W2-CFX-02 | Phase 22 — ClientEffect Editor | Pending |
+| PROD-IFFT-01 | Phase 23 — User-Definable IFF Chunk Templates | Pending |
+| PROD-IFFT-02 | Phase 23 — User-Definable IFF Chunk Templates | Pending |
+| PROD-IFFT-03 | Phase 23 — User-Definable IFF Chunk Templates | Pending |
+
+**Coverage:** 18/18 v2.1 requirements mapped ✓ · no orphans · no duplicates.
