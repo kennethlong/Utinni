@@ -1,13 +1,137 @@
 ﻿---
 phase: 16
-review_round: 2
+review_round: 3
 reviewers: [codex, cursor]
-reviewed_at: 2026-06-14T14:10:15Z
+reviewed_at: 2026-06-14T14:55:32Z
 plans_reviewed: [16-01-PLAN.md, 16-02-PLAN.md, 16-03-PLAN.md]
 self_skipped: claude (running inside Claude Code - skipped for reviewer independence)
 unavailable: [gemini, coderabbit, opencode, qwen]
-prior_round: round 1 (C-01..C-19) preserved in Appendix below
+prior_rounds: round 2 + round 1 preserved below
 ---
+# Cross-AI Plan Review â€” Phase 16 (Round 3, post round-2 replan)
+
+Third cross-AI review round, run against the round-2-replanned 16-01/16-02/16-03 plans (commit `4d1f2f4`). Two independent external CLIs (Codex `codex exec`; Cursor agent via `cursor-agent.cmd`); `claude` self-skipped for independence; Gemini/CodeRabbit/OpenCode/Qwen not installed.
+
+**Both reviewers agree the plans are largely execution-ready and the round-2 HIGH fixes are load-bearing, not decorative** â€” but neither will rubber-stamp. They independently converged on a real weakness the round-2 fix *introduced*: the cross-TFM wire proof relies on **byte-exact JSON equality across two different serializers** (`JavaScriptSerializer` vs `System.Text.Json`), which is fragile/under-specified. And both flag that the `gameIsRunning` fix is source-level (no `Game.IsRunning` token in the loop) but **semantically** still risks an off-game-thread native read.
+
+**Round-2 fix verdict (both reviewers):** item 2 (client-root containment) = **CLOSED**; item 3 (contained-absolute `.rsp`) = **CLOSED**; item 1 (cross-TFM wire proof) = **PARTIAL**.
+
+> Rounds 1 (C-01..C-19) and 2 (CDX-NEW-*/CUR-NEW-*) are preserved in the Appendix below.
+
+---
+
+## Codex Review (Round 3)
+
+**Summary** â€” Mostly execution-ready, but not clean. The plans materially address the Round-2 HIGH items and are much stronger, especially around relative-on-wire, server-side containment, fail-closed live gating, and committed wire fixtures. The main remaining risk is execution complexity: the serializer/golden-vector plan is feasible but brittle unless canonical JSON serialization is explicitly owned rather than left to serializer reflection order, and the MCP root vs in-client client-root relationship is still operationally assumed rather than handshake-verified.
+
+**Round-2 fix verification:** wire proof = **PARTIAL** (byte-exact JSON across `JavaScriptSerializer` and `System.Text.Json` is fragile unless property order, whitespace, escaping, enum string encoding, and null omission are explicitly canonicalized); client-root containment = **CLOSED**; contained-absolute `.rsp` = **CLOSED**.
+
+**Strengths**
+- D-01 candor preserved (`reloadAttempted=false`, queued â‰  visible reload, render non-gating).
+- Fail-closed live tier tested through real MCP tool enumeration, not a branch assertion.
+- Server-side containment is defense-in-depth against direct same-user pipe callers.
+- MCP SDK correctly never hosted in-process.
+- ECO-01 stays thin (docs, text validation, reader reuse, no geometry decoder).
+- Dual-flag operator contract now visible in the right places.
+
+**Concerns**
+- **R3-1 HIGH â€” Golden JSON byte-exactness is underspecified and may be flaky.** `JavaScriptSerializer` has no naming policy, enum-string policy, or canonical ordering guarantee equivalent to STJ. camelCase via lowercase C# member names can work, and string tier via string DTO fields can work, but byte-exact equality still depends on member declaration/reflection order and escaping. The plan sometimes says "key-order-independent equality" and elsewhere "byte-exact" â€” that contradiction weakens the proof.
+- **R3-2 MEDIUM â€” Root reconciliation is still operational, not protocol-verified.** MCP validates under `--root`, sends a relative path; the injected server resolves under its own client root. Safe from escape, but if the roots differ the agent may preview a different file than MCP validated. Same/different-root cases are tested, but there's no runtime handshake/diagnostic exposing the server's pinned root.
+- **R3-3 MEDIUM â€” Task verification uses `--no-build` after adding new files.** Several tasks add `.cs`/`.csproj` entries then verify with `dotnet test --no-build` â†’ can pass stale binaries or fail confusingly. Undercuts the acceptance gates.
+- **R3-4 MEDIUM â€” 16-02 Task 1 is too large and failure-prone.** Combines protocol DTOs, framing, pipe ACLs, server lifecycle, timeouts, containment, golden fixtures, JS serialization, game-thread marshal, and many tests in one batch.
+- **R3-5 MEDIUM â€” `Game.IsRunning` boundary wording still ambiguous.** Production `Func<bool>` "reads `Game.IsRunning` at the marshal boundary," but the decision returns the ack immediately and enqueue happens separately. If the accept loop invokes the Func before enqueue, it violates the intent. Make the production shape explicit: a game-thread-cached scalar, or native read only inside a game-thread action.
+- **R3-6 LOW â€” Golden fixtures cover JSON payloads, not full frame bytes** (omit the 4-byte length prefix) â€” the "golden byte-vector" label is slightly overstated.
+- **R3-7 LOW â€” `validate-bundle` manifest contract may expand beyond real Blender output** (unknown-field tolerance, version behavior, bucket parity) â€” risks designing a new contract before the exporter commits to it.
+
+**Suggestions**
+- Define a tiny canonical JSON writer for the live wire on both sides (or manually emit ordered fields) so byte-exact fixtures become deterministic instead of serializer-order dependent.
+- Compare exact UTF-8 bytes for all four payloads on both TFMs, and separately test semantic parse with reordered JSON for reader tolerance.
+- Add `live_ping` debug fields (`serverClientRoot`/`serverClientRootHash`) or a mismatch note so root mismatches are visible.
+- Replace task-level `dotnet test --no-build` with `dotnet test` whenever a task creates/edits source/project files.
+- Split 16-02 Task 1 into protocol/goldens, server core, lifecycle/pipe tests, and main wiring.
+- For `Game.IsRunning`, require a source assertion that no production path invokes it from the accept/read thread â€” not just "loop body contains no reference."
+
+**Risk Assessment: MEDIUM.** Architecture is directionally sound; prior HIGHs mostly addressed. Remaining risk is execution risk (deterministic cross-serializer JSON, complex pipe lifecycle tests, root-mismatch diagnostics). With canonical serialization and corrected build gates, this drops to LOW-MEDIUM.
+
+---
+
+## Cursor Review (Round 3)
+
+**Summary** â€” After two rounds, the plans are substantively improved and largely execution-ready; round-2 HIGH fixes are concrete tasks/tests/acceptance criteria, not prose. ECO-01 is well-scoped; MCP-03 correctly reuses shipped seams and closes the TFM wall with shared fixtures + a net472 cross-impl test. Would not rubber-stamp: two areas can still fail during execution without plan tweaks â€” (a) byte-exact JSON agreement across the two serializers, and (b) the `gameIsRunning` threading contract is internally inconsistent.
+
+**Round-2 fix verification:** wire proof = **PARTIAL** (strategy is real, but byte-exact across two serializers is fragile â€” key order, enum encoding, escaping; the cross-impl test uses net472 protocol code, not `LivePipeClient`, so the proof is indirect: net10 bytes == goldens == net472 bytes == integration client); client-root containment = **CLOSED**; contained-absolute `.rsp` = **CLOSED** (verified against `rsp_builder.py:58,62-64`).
+
+**Strengths**
+- Round-2 fixes are load-bearing (golden fixtures, client-root pinning, contained-absolute branch, `valid`/`hasRejectedRefs` envelope, D-04 gating locked in Task 0 via real `McpClient.ListToolsAsync`).
+- Strong reuse discipline (no new codecs, no STJ on net472, no in-proc SDK, containment via shipped `LooseOverridePath`).
+- Thoughtful test boundaries (Task-1 RED scaffolds compile without Task-2 types; SHA-256 pinning; docâ†”verb parity replaces bash grep).
+- Threat models cite proving tests; D-01/D-02/D-04 preserved; ECO-01 matches real Blender output.
+
+**Concerns**
+- **R3-1 HIGH â€” Byte-exact golden vectors across JS vs STJ is fragile.** Key ordering not guaranteed across serializers even with matching declaration order; `JsonStringEnumConverter` can emit `"pendingNextSceneChange"` not `"PendingNextSceneChange"` unless configured carefully; escaping/number/nested-`result` order can diverge on ack bodies. The cross-impl test drives the server with net472 serialization, not `LivePipeClient`, so a net10-only wire bug could slip through if golden tests are brittle. Real risk for nested ack shapes.
+- **R3-2 HIGH â€” `gameIsRunning` / CDX-NEW-2 threading gap.** The plan forbids `Game.IsRunning` literally in the accept loop but requires the ack to set `queued`/tier/`gameRunning` before returning â€” implying `getGameIsRunning()` is called on the worker thread. If the production `Func<bool>` reads native-backed `Game.IsRunning`, that still violates Pitfall 2; the fix is source-level, not semantic. The "game-thread-owned cached bool" is mentioned but not required in acceptance criteria. Biggest remaining MCP-03 correctness risk.
+- **R3-3 MEDIUM â€” MCP `--root` vs in-client auto-resolved client root can diverge** (CWD drift, ini override). Root-reconciliation tests prove independent containment, not alignment; no runtime diagnostic (e.g. `live_ping` reporting resolved roots).
+- **R3-4 MEDIUM â€” 16-02 Task 1 scope/size risk** (protocol DTOs + framing + full server + ACL + lifecycle + timeouts + dispose + ~15 test categories in one atomic task).
+- **R3-5 MEDIUM â€” Manifest schema fixture fidelity.** Real Blender shape uses top-level `pipeline_version`/`exported_at`/`bundle_type`/`output_dir`/`assets` + optional `rsp_files`/`tre_files`, with `client_cfg` inside `assets`. If Task 1 fixtures simplify this, `validate-bundle` risks becoming fixture-shaped despite CDX-NEW-10 intent.
+- **R3-6 MEDIUM â€” Mirrored absolute containment can drift from `LooseOverridePath`.** Relative refs delegate; absolute refs mirror the tail algorithm in hand-written code (must duplicate WR-07 root re-canonicalization). No shared helper or paired test asserts mirror â‰¡ helper for contained absolutes with messy roots (`C:\bundle\..\bundle`).
+- **R3-7 LOW â€” Ping ack "key-order-independent AND byte-exact" tension** â€” pick one contract per message type.
+- **R3-8 LOW â€” External `FormIffEditor` line-number drift** (`:1596-1630` cited; source lives in UtinniPlugins) â€” executor must grep, not trust line numbers.
+- **R3-9 LOW â€” 16-01 Task 2 `--no-build` verify** after Task 1 full build â€” local "tests only" runs can false-green stale binaries.
+
+**Suggestions**
+1. Lock the wire contract before Task 1 goldens: generate once from net472 `JavaScriptSerializer`; net10 use a string-typed `tier` property (not `JsonStringEnumConverter`), `JsonNamingPolicy.CamelCase`, no indentation, fixed member order. If byte-exact remains required for **requests only**, make ack goldens **consume-only** on net10 (deserialize + field assert), not re-serialize byte-exact â€” reduces fragility while preserving cross-TFM read compatibility.
+2. Amend 16-02 acceptance (CDX-NEW-2): require a game-thread-updated cached snapshot (`volatile bool`/`Interlocked`) for `gameIsRunning`; worker reads cache only; explicitly forbid a `getGameIsRunning()` that P/Invokes on the pipe thread; add a test counting Func invocations on worker vs game thread.
+3. Split 16-02 Task 1 into (A) protocol + fixtures + golden serialization tests and (B) `LivePipeServer` + lifecycle.
+4. Manifest schema table in Task 3 sourced verbatim from `export_manifest.py` + `assets` block; Task 1 fixture must match.
+5. Operator alignment: document that `--root` MUST equal the in-client resolved client root; optionally expose resolved client root in the ping ack for debugging.
+6. Extract a shared `IsContainedUnderRoot(canonicalRoot, canonicalCandidate)` used by both the `LooseOverridePath` tail and the `validate-bundle` absolute branch â€” or a paired test running the same cases through both.
+
+**Risk Assessment: MEDIUM.** ECO-01 = LOW (clear scope, shipped helpers, Blender contract verified). MCP-03 protocol/security = MEDIUM (threading + cross-serializer wire proof are execution traps). Task sizing = MEDIUM (16-02 Task 1 heavy). D-01/D-06 regression = LOW (explicitly preserved). Bottom line: close R3-1 and R3-2 in the plan text (wire contract + cached `gameIsRunning`) and execution can proceed with confidence.
+
+---
+
+## Consensus Summary
+
+Two independent reviewers, very strong convergence. The round-2 replan genuinely closed two of its three HIGH items (client-root containment, contained-absolute `.rsp`). The third (cross-TFM wire proof) is **PARTIAL by unanimous verdict** â€” the chosen mechanism (byte-exact equality across two different serializers) is the weak link. This round's findings are execution-detail-level, not architectural reversals.
+
+### Round-2 fix verdict (both reviewers agree)
+| Round-2 HIGH | Verdict |
+|---|---|
+| Client-root containment (not injectRoot), relative-on-wire + server-side `LooseOverridePath.Resolve` | **CLOSED** |
+| `validate-bundle` allows contained-absolute `.rsp`, rejects only escapes | **CLOSED** |
+| Cross-TFM wire proof via golden byte-vectors | **PARTIAL** |
+
+### Agreed Concerns (raised by both â€” highest priority)
+1. **[HIGH â€” both] Byte-exact JSON across `JavaScriptSerializer` and `System.Text.Json` is fragile/under-specified** (Codex R3-1, Cursor R3-1). Two different serializers are not guaranteed to emit identical bytes (key order, enum-string casing, escaping, whitespace, null omission), and the plan contradicts itself ("key-order-independent equality" vs "byte-exact"). **Both propose the same class of fix:** either own a tiny canonical JSON writer on both sides so output is deterministic, OR split the contract â€” byte-exact for the simple **requests**, and **consume-only/semantic** assertion for the nested **acks** (net10 deserializes the committed ack goldens + asserts fields, rather than re-serializing byte-exact). Resolve the byte-exact-vs-key-order-independent contradiction explicitly.
+2. **[HIGH Cursor / MEDIUM Codex] The `gameIsRunning` fix is source-level, not semantic** (Cursor R3-2, Codex R3-5). Forbidding the `Game.IsRunning` *token* in the loop doesn't help if the worker invokes a `Func<bool>` that P/Invokes native `Game.IsRunning` before enqueue. **Both propose:** require a game-thread-updated cached scalar (`volatile`/`Interlocked`) that the worker reads, forbid a P/Invoking Func on the pipe thread, and add an acceptance criterion / test asserting the native read only happens on the game thread (Cursor: invocation-thread counting test; Codex: source assertion that no production path invokes it from the accept thread).
+3. **[MEDIUM â€” both] Root reconciliation is operational, not verified** (Codex R3-2, Cursor R3-3). `--root` and the in-client auto-resolved client root can diverge at runtime (CWD drift, ini override) â†’ the agent previews a *different file* than MCP validated. Tests prove independent containment, not alignment. **Both propose:** expose the server's resolved client root (or a hash) in the `live_ping` ack as a runtime diagnostic, and document the alignment requirement.
+4. **[MEDIUM â€” both] 16-02 Task 1 is too large** (Codex R3-4, Cursor R3-4). Split into protocol+goldens / server-core+lifecycle (+ keep the acceptance criteria). This is the one structural change both reviewers independently recommend.
+5. **[MEDIUM Codex / LOW Cursor] `--no-build` verify after adding files** (Codex R3-3, Cursor R3-9) â€” can false-green stale binaries; use full `dotnet test` for tasks that add/edit source or csproj.
+6. **[MEDIUM Cursor / LOW Codex] `validate-bundle` manifest schema fidelity / over-contracting** (Cursor R3-5, Codex R3-7) â€” source the schema verbatim from the real `export_manifest.py`/`export_bundle.py` shape (`client_cfg` lives inside `assets`); don't invent a contract the exporter hasn't committed to.
+
+### Reviewer-Unique (worth noting)
+- **[LOW, Codex] R3-6** â€” golden fixtures hold JSON payloads only (no 4-byte length prefix); "byte-vector" is slightly overstated (the framing fixture + integration test cover the prefix).
+- **[MEDIUM, Cursor] R3-6** â€” extract a shared `IsContainedUnderRoot` so the mirrored absolute-containment branch can't drift from `LooseOverridePath` (incl. WR-07 root re-canonicalization for messy roots like `C:\bundle\..\bundle`).
+- **[LOW, Cursor] R3-8** â€” `FormIffEditor` line numbers cited (`:1596-1630`) live in the UtinniPlugins repo and may drift; executor must grep.
+
+### Divergent Views
+- Only severity weighting differs: Cursor rates the `gameIsRunning` threading gap HIGH, Codex MEDIUM. Both rate the cross-serializer JSON HIGH. Both land overall **MEDIUM** and both say the same two items (wire contract + cached game-state) are the gate to confident execution.
+
+### Recommendation
+Both reviewers say: **fix R3-1 (wire contract) and R3-2 (cached `gameIsRunning`) in the plan text, and the wave is execution-ready.** These are now narrow, well-understood execution details â€” not architecture. This is round 3; the architecture has been stable across all three rounds and the remaining items are the kind normally caught in code review or a single rework loop. Reasonable paths:
+
+- **Targeted replan (one more `--reviews` pass)** to bake in the wire-contract decision (canonical writer or request-byte-exact + ack-consume-only), the cached-game-state acceptance criterion, the 16-02 Task 1 split, the `--no-build`â†’`dotnet test` fixes, the `live_ping` root diagnostic, and the manifest-schema-from-source fix. Cheap relative to hitting them mid-execution.
+- **Accept and handle at execution time** as planned deviations â€” viable given the architecture is sound and the fixes are local, but the cross-serializer byte-exact assumption is the one most likely to cause a real rework loop if not decided up front.
+
+Feed into planning with: `/gsd:plan-phase 16 --reviews`
+
+
+---
+
+# Earlier Rounds (Round 2 + Round 1)
+
+_Preserved verbatim below. Round 1 = C-01..C-19; Round 2 = CDX-NEW-*/CUR-NEW-* (all incorporated into the current plans)._
+
 # Cross-AI Plan Review â€” Phase 16 (Round 2, post re-plan)
 
 Second cross-AI review round, run against the **re-planned** 16-01/16-02/16-03 plans (commit `1de4883`) that already incorporated Round-1 findings C-01..C-19. Two independent external CLIs reviewed all three plans (Codex `codex exec`; Cursor agent via `cursor-agent.cmd`). `claude` was skipped for reviewer independence (orchestrated from inside Claude Code). Gemini, CodeRabbit, OpenCode, and Qwen are not installed.
@@ -364,4 +488,5 @@ To incorporate this feedback into planning:
 ```
 /gsd:plan-phase 16 --reviews
 ```
+
 
