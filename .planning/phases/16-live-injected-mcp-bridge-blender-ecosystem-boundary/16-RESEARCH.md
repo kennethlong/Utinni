@@ -517,7 +517,7 @@ Utinni (READS)
 
 *All other claims in this research are `[VERIFIED]` against the codebase / golden bytes or `[CITED]` to the official MCP SDK docs.*
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the in-client `LivePipeServer` listener be gated by its own in-client flag, in addition to the `--enable-live` MCP-host gate?**
    - What we know: D-04 gates the *tools* (the agent can't reach the pipe when off). The in-client server could always-listen on a fixed pipe and rely on the tool gate + ACL.
