@@ -432,7 +432,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 12. Revive-feasibility spike (HARD GATE) + intro-skip crash | 0/TBD | Not started | - |
 | 13. Wrap compilers as CLI verbs + OT Tier-2 | 6/6 | Complete   | 2026-06-05 |
 | 14. Headless MCP server (`Utinni.Mcp`) | 5/5 | Complete   | 2026-06-07 |
-| 15. Wave-2 editors (WorldSnapshot, Particle) + residuals | 17/18 | In Progress|  |
+| 15. Wave-2 editors (WorldSnapshot, Particle) + residuals | 18/21 | In Progress|  |
 | 16. Live-injected MCP bridge + Blender boundary | 0/TBD | Not started | - |
 
 ## Backlog

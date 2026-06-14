@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
 status: executing
-stopped_at: 15-18 live re-smoke COMPLETE — DEFECTS disposition (B5/B7/C3/A9 PASS live; B6 + D-ii defects → gaps round 2); Phase 15 NOT closed
-last_updated: "2026-06-13T22:30:00.000Z"
-last_activity: 2026-06-13 -- 15-18 maintainer live re-smoke (Claude-driven via windows-mcp): B5/B7/C3/A9 PASS; B6 (disabled-button tooltip) + D-ii (.stf loose-override subpath flatten) defects → new --gaps round; D-render deferred (loose searchPath disabled); fullscreen mouse-mapping residual logged
+stopped_at: Completed 15-19-PLAN.md (B6 Particle Preview no-hook/no-client candor made reachable — PRIMARY approach, TJT Release|x86 MSBuild exit 0; live re-verify gated to 15-21)
+last_updated: "2026-06-13T00:00:00.000Z"
+last_activity: "2026-06-13 -- 15-19 executed: enabled btnPreview on hasDoc + OnPreviewClicked surfaces LOCKED degraded candor on click (no retrigger w/o hook); UtinniPlugins 446ea8e pushed; B6 read-confirmed reachable, live re-verify deferred to 15-21"
 progress:
   total_phases: 20
   completed_phases: 15
-  total_plans: 88
-  completed_plans: 86
+  total_plans: 92
+  completed_plans: 90
   percent: 98
 ---
 
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 15 (wave-2-editors-worldsnapshot-particle-presentation-residuals) — EXECUTING
-Plan: gap-closure round 3 PLANNED — 15-19 (B6 Preview-candor reachable), 15-20 (D-ii LogicalAssetPath subpath preserve), 15-21 (reassembly + re-verify + final sign-off). Round 2 (15-12..15-18) executed; B5/B7/C3/A9 PASS live; B6 + D-ii defects routed here.
-Status: READY TO EXECUTE round 3 — run `/gsd:execute-phase 15 --gaps-only` (picks up 15-19/15-20 wave 8, 15-21 wave 9). Requirements NOT Validated until 15-21 sign-off.
+Plan: gap-closure round 3 IN PROGRESS — 15-19 (B6 Preview-candor reachable) DONE; 15-20 (D-ii LogicalAssetPath subpath preserve) and 15-21 (reassembly + re-verify + final sign-off) remain. Round 2 (15-12..15-18) executed; B5/B7/C3/A9 PASS live; B6 + D-ii defects routed here.
+Status: EXECUTING round 3 — 15-19 complete (wave 8); 15-20 (wave 8) + 15-21 (wave 9) pending. Requirements NOT Validated until 15-21 sign-off.
 Last activity: 2026-06-13 -- 15-18 maintainer live re-smoke (Claude-driven via windows-mcp): B5/B7/C3/A9 PASS; B6 + D-ii defects → new --gaps round; D-render deferred (loose searchPath disabled); fullscreen mouse-mapping residual logged
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
