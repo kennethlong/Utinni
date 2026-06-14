@@ -1,18 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: "AI-Assisted SWG Tools"
-milestone_status: shipped
-status: milestone_complete
-stopped_at: v2.0 milestone closed + archived (tag v2.0); v1.0 retroactively archived
-last_updated: "2026-06-14T21:30:00.000Z"
-last_activity: 2026-06-14 -- /gsd:complete-milestone v2.0 — archived v2.0 (and retroactively v1.0) to milestones/, created MILESTONES.md + RETROSPECTIVE.md, reorganized ROADMAP.md, evolved PROJECT.md, resolved/triaged 10 open artifacts, removed REQUIREMENTS.md (fresh for next milestone), tagged v2.0
+milestone: v2.1
+milestone_name: Wave-2 Editors + Foundation Hardening
+status: planning
+last_updated: "2026-06-14T22:29:31.557Z"
+last_activity: 2026-06-14
 progress:
-  total_phases: 20
-  completed_phases: 16
-  total_plans: 94
-  completed_plans: 94
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -26,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 
 ## Current Position
 
-Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16) — ✅ SHIPPED 2026-06-14 (tag `v2.0`)
-Status: milestone complete + archived. v1.0 (Phases 1–11) retroactively archived at the same close.
-Next: `/clear` then `/gsd:new-milestone` to start v2.1+.
-Last activity: 2026-06-14 -- /gsd:complete-milestone v2.0 (archived both milestones, reorganized ROADMAP, evolved PROJECT, tagged v2.0).
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-06-14 — Milestone v2.1 started
 
 ## Deferred Items
 

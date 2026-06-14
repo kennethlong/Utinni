@@ -27,10 +27,8 @@ net10 `Utinni.Mcp` server (11 tools, loose-override-default writes, byte-exact v
 fail-closed `resolvedRoot`, `MCP-SECURITY.md`); two Wave-2 editors (WorldSnapshot, Particle/`.prt`); the
 named-pipe live-injected MCP bridge; and the documented Utinni ↔ swg-blender-plugin contract.
 
-**Next milestone:** to be defined via `/gsd:new-milestone`. Candidate scope: Terrain editor
-(`PROD-W2-TRN`, the v2.1 lead), the remaining Wave-2 plugins (Conversation, Quest, Buildout, UI Page,
-Shader), Wave-3 plugins (Mod Manager, Packager, Community Hub, Asset Diff), the Tier-3 mock-D3D9 harness,
-and the schema-driven IFF chunk templates / TRE override-history Backlog ideas.
+**Next milestone:** v2.1 "Wave-2 Editors + Foundation Hardening" — started 2026-06-14 (Phases 17+).
+See the Current Milestone section below.
 
 <details>
 <summary>v2.0 milestone goal + target features (shipped — archived for reference)</summary>
@@ -54,6 +52,29 @@ and the schema-driven IFF chunk templates / TRE override-history Backlog ideas.
 
 </details>
 
+## Current Milestone: v2.1 "Wave-2 Editors + Foundation Hardening"
+
+**Goal:** Ship the highest-demand Wave-2 DCC-style editor (Terrain) plus one adjacent editor, on a
+hardened rendering/toolchain base — so the live-preview editors survive SWG Source's D3D9→D3D11 flip and
+the v145 toolset bump is real (a native CppSharp upgrade), not a parser-include redirect.
+
+**Target features:**
+- **Terrain editor** (`.trn`) — Wave-2 #1 by modder demand, the milestone headline (`PROD-W2-TRN`).
+- **One adjacent Wave-2 editor** — Effects family next (ClientEffect/Lightning/Swoosh; Particle already
+  shipped in v2.0), exact target confirmed at requirements scoping.
+- **D3D11 render-path foundation** — a parallel hook/overlay path alongside the existing D3D9 one so the
+  ImGui overlay + live preview keep rendering when the SWG client runs D3D11 (from Backlog 999.5).
+- **v145 toolset bump completion** — finish the real CppSharp upgrade and retire the VS2019-14.29-STL
+  parser-include redirect (D-09, from Backlog 999.4).
+- **Optional quick wins** — user-definable IFF chunk templates (999.2), TRE override/version-history view
+  (999.3).
+
+**Strategy:** Foundation-before-features — land the enabling debt (D3D11 path, v145 bump) early so the
+new live-preview editors build on a stable base. Prioritization source: `docs/ai/toolchain-inventory.md`
+(SWG toolchain cross-walk + 2026-06-02 SIE comparison). Deferred to v2.2+: remaining Wave-2 editors
+(Animation, Shaders/Textures, Sound, UI) and the Maya-write boundary re-eval (999.6, re-opens DEC-A3).
+The v2.0 locks (DEC-V2-LIFT-SHIFT, DEC-V2-MCP-OOP, DEC-V2-VERBS-FIRST) stay in force.
+
 ## Requirements
 
 ### Validated
@@ -74,7 +95,10 @@ and the schema-driven IFF chunk templates / TRE override-history Backlog ideas.
 
 <!-- Next milestone (v2.1+) scope — define via /gsd:new-milestone. REQUIREMENTS.md was archived at the v2.0 close; a fresh one is created with the next milestone. -->
 
-_None active — v2.0 shipped 2026-06-14. The next milestone's requirements are defined by `/gsd:new-milestone`._ Candidate scope (from the V2 boundary + Backlog): Terrain editor (`PROD-W2-TRN`); remaining Wave-2 plugins (Conversation, Quest, Buildout, UI Page, Shader); Wave-3 plugins (Mod Manager, Packager, Community Hub, Asset Diff); Tier-3 mock-D3D9 harness; schema-driven IFF chunk templates; TRE override/version-history view.
+v2.1 "Wave-2 Editors + Foundation Hardening" requirements are being defined in `REQUIREMENTS.md` (this
+`/gsd:new-milestone` run). Scope: Terrain editor (`PROD-W2-TRN`) + one adjacent Wave-2 editor, on a
+hardened base (D3D11 render-path foundation + v145 toolset bump completion), with optional quick wins
+(IFF chunk templates, TRE override-history). See the Current Milestone section above and `REQUIREMENTS.md`.
 
 ### Out of Scope (V1)
 
@@ -159,5 +183,24 @@ Eight inherited open questions (CON-O-01..CON-O-08 from assessment.md) plus thre
 
 Additional non-locked candidate decisions (D-02 foundations-before-features, D-05 wave-1-plugin-set, D-07 CI-before-anything-else-strategic, D-09 ~6–8 person-week effort estimate) are encoded as **roadmap phase ordering** in ROADMAP.md rather than as ADRs. D-03 (sovereign fork) and D-06 (Jawa Toolbox `*Impl` separation as canonical) are captured here as the Sovereign-Fork Stance section above and as CON-T-05 respectively.
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd:complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-06-14 after v2.0 milestone — v2.0 "AI-Assisted SWG Tools" SHIPPED (`v2.0`, Phases 12–16: revived SOE compilers as `utinni-cli` verbs + headless net10 MCP server + Wave-2 editors + live MCP bridge + Blender boundary; DEC-V2-LIFT-SHIFT / MCP-OOP / VERBS-FIRST locked). v1.0 retroactively archived at the same close (was tagged but never run through `/gsd:complete-milestone`). Previous updates: 2026-06-01 — V1 shipped (`v1.0.0`); 2026-05-29 — Phase 8 complete (PROD-W1-IFF validated); 2026-05-23 (Phase 4 + DEC-C3 LOCKED); 2026-05-17 (Phase 2 + DEC-C4 locked); initial creation via `/gsd:new-project` after `/gsd:ingest-docs` synthesis of vision.md + assessment.md + test-harness-plan.md.*
+*Last updated: 2026-06-14 — v2.1 "Wave-2 Editors + Foundation Hardening" milestone started (Phases 17+:
+Terrain + one adjacent Wave-2 editor on a hardened D3D11/v145 base; optional IFF-chunk-template + TRE-
+history quick wins). Previous: 2026-06-14 after v2.0 milestone — v2.0 "AI-Assisted SWG Tools" SHIPPED (`v2.0`, Phases 12–16: revived SOE compilers as `utinni-cli` verbs + headless net10 MCP server + Wave-2 editors + live MCP bridge + Blender boundary; DEC-V2-LIFT-SHIFT / MCP-OOP / VERBS-FIRST locked). v1.0 retroactively archived at the same close (was tagged but never run through `/gsd:complete-milestone`). Previous updates: 2026-06-01 — V1 shipped (`v1.0.0`); 2026-05-29 — Phase 8 complete (PROD-W1-IFF validated); 2026-05-23 (Phase 4 + DEC-C3 LOCKED); 2026-05-17 (Phase 2 + DEC-C4 locked); initial creation via `/gsd:new-project` after `/gsd:ingest-docs` synthesis of vision.md + assessment.md + test-harness-plan.md.*
