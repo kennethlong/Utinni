@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
 status: executing
-stopped_at: Phase 16 context gathered
-last_updated: "2026-06-14T14:01:28.841Z"
-last_activity: 2026-06-14 -- Phase 16 planning complete
+stopped_at: 16-01 Tasks 1-3 done; Task 4 (cross-repo pointer note) at blocking-human checkpoint
+last_updated: "2026-06-14T16:00:00.000Z"
+last_activity: 2026-06-14 -- 16-01 ECO-01 Tasks 1-3 executed (contract doc + validate-bundle verb + pinned goldens); Task 4 awaiting human checkpoint
 progress:
   total_phases: 20
   completed_phases: 15
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-01)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 15 — wave-2-editors-worldsnapshot-particle-presentation-residuals
+**Current focus:** Phase 16 — live-injected-mcp-bridge-blender-ecosystem-boundary
 
 ## Current Position
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
-Phase: 15 (wave-2-editors-worldsnapshot-particle-presentation-residuals) — ✅ CLOSED 2026-06-13 (approved-with-deferred-residual)
-Plan: gap-closure round 3 COMPLETE — 15-19 (B6 Preview-candor reachable), 15-20 (D-ii LogicalAssetPath subpath preserve), 15-21 (reassembly + live re-verify + signed sign-off) all DONE. Round 2 (15-12..15-18) found B6 + D-ii defects → round 3 fixed + live-re-verified them.
-Status: Ready to execute
-Last activity: 2026-06-14 -- Phase 16 planning complete
+Phase: 16 (live-injected-mcp-bridge-blender-ecosystem-boundary) — EXECUTING
+Plan: 1 of 3 (16-01 Tasks 1-3 complete; Task 4 cross-repo pointer note pending human checkpoint)
+Status: Executing Phase 16
+Last activity: 2026-06-14 -- 16-01 ECO-01 Tasks 1-3 executed; Task 4 awaiting human checkpoint
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 
@@ -160,6 +160,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 15 P15-15 | ~12 min | 1 task | 1 file (cross-repo) |
 | Phase 15 P15-16 | ~25 min | 2 tasks | 3 files (cross-repo) |
 | Phase 15 P15-17 | ~22 min | 2 tasks | 1 doc + reassembled bin/Release build artifacts |
+| Phase 16 P16-01 | ~85 min | 3 of 4 tasks (Task 4 = blocking-human checkpoint) | 9 created + 4 modified |
 
 ## Accumulated Context
 
@@ -208,6 +209,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase 15]: 15-15: B7 packaging/probe gap closed (probe-path half). ParticleReadAssist.LocateCli now probes the Utinni inject root in addition to the executing-assembly dir + host-process dir: candidate 3 = two levels up from asmDir (Plugins/TheJawaToolbox -> Plugins -> bin/Release, nested Path.GetDirectoryName null-guarded), then a bounded (<=3-parent) walk-up that probes the CLI directly OR detects an inject-root marker (Launcher.exe / UtinniCoreDotNet.dll) and probes the CLI there. ROOT CAUSE: under injection the host-process dir is SWGEmu.exe's, not the Utinni deploy, so the prior two-candidate probe never found a deployed utinni-cli.exe -> Explain effect (D-08 read-assist) couldn't shell decode-iff (15-SMOKE B7). Whole probe stays inside the existing try/catch (never throws into the click handler); null-return CLI-absent path + 'was not found next to the editor' copy + decode-iff dispatch all unchanged (T-15-15-02 accepted: read-only decode-iff over the trusted maintainer-launched deploy). TheJawaToolbox.sln Release|x86 MSBuild exit 0; Generated/UtinniCore.cs not regenerated (C#-only build). Physical deploy of utinni-cli.exe + net472 dependency closure into bin/Release is finalized by 15-17; live B7 confirm gated to 15-18. Commit UtinniPlugins b6d0129.
 - [Phase ?]: 15-11: gap-closure Release gate green (697 managed + 84/27 native + resid04 8/1, zero regression); reassembled bin/Release injection build content-verified (deployed UtinniCoreDotNet.dll defines WorldSnapshotCommandGuard + UndoRedoManager.Clear; TheJawaToolboxDotNet.dll references ClearUndoStack via reflection-only enumeration, not just mtime); A9 undo-crash re-verify pointer recorded in 15-SMOKE.md back to 15-08; phase still gated on maintainer live smoke.
 - [Phase 15]: 15-17: wave-5 gap-closure Release gate green (706 managed + 84/27 native + resid04 8/1, zero regression); reassembled + COMPLETED bin/Release injection build with the two previously-missing files (netstandard.dll B5 façade + utinni-cli.exe + full net472 closure B7); deployed PEs content-verified via reflection-only enumeration + byte-string grep (UtinniCoreDotNet.dll defines InjectedAssemblyResolver + WorldSnapshotCommandGuard + UndoRedoManager.Clear, no A9-diag; netstandard.dll/utinni-cli.exe/TheJawaToolboxDotNet.dll present) — not just mtime; 15-SMOKE.md annotated with the wave-5 (15-12..15-17) note + 15-18 re-smoke pointer (original B5/B7/C3 + A9 0xC0000005 evidence preserved, Sign-Off still unsigned); Generated/UtinniCore.cs reverted; phase still gated on the 15-18 maintainer live re-smoke.
+- [Phase 16]: 16-01 (ECO-01 Blender boundary) Tasks 1-3 COMPLETE 2026-06-14 (commits 1cf0415/d6c60c6/9b0f9ee). Utinni-authoritative `docs/ai/blender-boundary-contract.md` documents all four D-06 surfaces sourced verbatim from the real exporter (rsp_builder.py + export_manifest.py + export_bundle.as_dict): the `.rsp` `{rel} @ {ABSOLUTE}` line format + 7 suffix->bucket->filename rules, the swg_export_manifest.json schema with `client_cfg` nested INSIDE `assets` (R3-5) + unknown-field tolerance, the TRE version matrix mirroring TreVersion.cs (5000 READABLE not encrypted, 6000 enumerate-only, no COT2000-as-version), bundle layout, anti-coupling (DEC-A3 no geometry codec), and the exit/valid semantics (exit-0-with-findings; agents read `valid`/`hasRejectedRefs`, CDX-NEW-9). New `validate-bundle` CLI verb (thin TEXT-only; manifest+.rsp+.cfg parse + File.Exists on CONTAINED refs; NO binary codec) routes BOTH relative + absolute ref branches through ONE shared `LooseOverridePath.IsContainedUnderRoot(canonicalRoot, canonicalCandidate)` predicate EXTRACTED from Resolve's tail (R3-6 preferred path): contained-absolute allowed+probed (CUR-NEW-3), escaping ref recorded-not-probed (C-15/T-16-01). Pinned frn_all_bed_sm_s1_l0.msh + retail_mini_0005.tre in-repo (no LFS) with SHA-256 manifest asserted by a golden test (T-16-04 drift guard); doc<->verb bucket-parity test (C-17, Windows-safe no git grep). **CV-1 cross-validation FINDING:** the pinned `retail_mini_0005.tre` is a SYNTHETIC reader-unit fixture whose v0005 TOC is crc-first (swg-blender-plugin tre_reader.py `<Iiiiii`), DISAGREEING with Utinni's size-first v0005 reader -> parse-tre exits 2 UnknownCompressor; documented (not a reader bug — real exports come from size-first TreeFileBuilder), the .msh path is the working D-08 proof (decode-iff count-only: 139 verts/1 shader). 263 Utinni.Cli.Tests pass / 2 skip; 19 LooseOverridePath tests still green after the predicate extraction. **Task 4 (cross-repo pointer note in D:/Code/swg-blender-plugin/REFERENCES.md) is a blocking-human checkpoint** — third repo outside standing authority, awaiting approval. DEVIATIONS: CV-1 plan-premise correction (assert real exit-2 not false exit-0), MSBuild+`dotnet test --no-build` recipe (MSB3823), help/no-args golden refresh for the new verb.
 - [Phase 15]: 15-16: three deferred managed-only polish defects closed in UtinniPlugins (TJT Release|x86 MSBuild exit 0; Generated/UtinniCore.cs untouched, C#-only build). B4/B5: FormParticleEditor.AfterModelMutated now re-calls BindParamGrid(currentParamNode) after emitterTree.RefreshMutable so a raw-hex leaf edit (and Undo/Redo, which share AfterModelMutated) re-renders the edited cell immediately — no reselect. currentParamNode tracks the MutableIffNode MODEL object (set in BindParamGrid), which survives RefreshMutable because IffChunkTree.LoadMutable rebuilds only TreeNode wrappers from the SAME MutableIffDocument — so a direct re-bind is correct, no id/path re-resolve. B6: new PreviewNoHookTooltip ("Live preview isn't wired this build — edits show on the next scene change or relog.") selected in RefreshButtonsState by Game.IsRunning (running-but-no-hook -> no-hook copy; !running -> existing no-client PreviewUnavailableTooltip); honest, no implied hook, consistent with LOCKED ReloadBadgeDegraded; LOCKED badge constants untouched. A7: FormSnapshotPlacements delete-confirm appends "The in-world object stays visible until the next scene change." (matches LOCKED WS badge, no instant-de-spawn over-promise) keeping the undoable clause + heading/verbs; WorldSnapshotImpl.BulkDelete adds WorldSnapshot.DetailLevelChanged() inside its AddUpdateLoopCall like BulkMove/BulkRetemplate for immediate grid refresh while retaining the GAP-2 DisableGizmo()/UpdateSelectedNodeControls(null) clear. Live B4/B5/B6/A7 re-verify gated to 15-18 against the 15-17 reassembled build. Commits UtinniPlugins 02bfc46, 9180250.
 
 ### Pending Todos
