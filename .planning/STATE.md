@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
 status: executing
-stopped_at: Completed 15-19-PLAN.md (B6 Particle Preview no-hook/no-client candor made reachable — PRIMARY approach, TJT Release|x86 MSBuild exit 0; live re-verify gated to 15-21)
-last_updated: "2026-06-13T00:00:00.000Z"
-last_activity: "2026-06-13 -- 15-19 executed: enabled btnPreview on hasDoc + OnPreviewClicked surfaces LOCKED degraded candor on click (no retrigger w/o hook); UtinniPlugins 446ea8e pushed; B6 read-confirmed reachable, live re-verify deferred to 15-21"
+stopped_at: Completed 15-20-PLAN.md (D-ii LogicalAssetPath open-side subpath preservation — 12/12 xUnit facts green, both Utinni.sln + TheJawaToolbox.sln Release|x86 MSBuild exit 0, 718/718 full Tests green; live on-disk re-verify gated to 15-21)
+last_updated: "2026-06-14T01:00:00.000Z"
+last_activity: "2026-06-13 -- 15-20 executed: LogicalAssetPath.TryFromAbsolute (PathContainment, BCL-only, 12 facts) wired into the two SaveLooseOverride flatten sites (IffSaveTargets + StringTableSaveTargets) — fix landed at the actual save-time derivation site, NOT the plan-named form Open… handler (loose relAssetPath is re-derived from loose.Path); all 5 editors covered; commits 8343136 (Utinni) + b13c251 (UtinniPlugins)"
 progress:
   total_phases: 20
   completed_phases: 15
-  total_plans: 92
+  total_plans: 91
   completed_plans: 90
-  percent: 98
+  percent: 99
 ---
 
 # Project State
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 
 Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
 Phase: 15 (wave-2-editors-worldsnapshot-particle-presentation-residuals) — EXECUTING
-Plan: gap-closure round 3 IN PROGRESS — 15-19 (B6 Preview-candor reachable) DONE; 15-20 (D-ii LogicalAssetPath subpath preserve) and 15-21 (reassembly + re-verify + final sign-off) remain. Round 2 (15-12..15-18) executed; B5/B7/C3/A9 PASS live; B6 + D-ii defects routed here.
-Status: EXECUTING round 3 — 15-19 complete (wave 8); 15-20 (wave 8) + 15-21 (wave 9) pending. Requirements NOT Validated until 15-21 sign-off.
-Last activity: 2026-06-13 -- 15-18 maintainer live re-smoke (Claude-driven via windows-mcp): B5/B7/C3/A9 PASS; B6 + D-ii defects → new --gaps round; D-render deferred (loose searchPath disabled); fullscreen mouse-mapping residual logged
+Plan: gap-closure round 3 IN PROGRESS — 15-19 (B6 Preview-candor reachable) DONE; 15-20 (D-ii LogicalAssetPath subpath preserve) DONE; 15-21 (reassembly + re-verify + final sign-off) remains. Round 2 (15-12..15-18) executed; B5/B7/C3/A9 PASS live; B6 + D-ii defects routed here and now code-closed.
+Status: EXECUTING round 3 — 15-19 + 15-20 complete (wave 8); 15-21 (wave 9) pending. Requirements NOT Validated until 15-21 sign-off (live on-disk re-verify of B6 + D-ii).
+Last activity: 2026-06-13 -- 15-20 executed: LogicalAssetPath.TryFromAbsolute (PathContainment, BCL-only, 12 facts green) wired into the two SaveLooseOverride flatten sites; raw-Open loose-override now preserves the logical subpath (loose\string\en\ui_auc.stf, not flat). Fix landed at the save-time derivation site, not the plan-named form Open… handler. Live on-disk re-verify gated to 15-21
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 
