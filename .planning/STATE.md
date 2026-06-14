@@ -1,11 +1,12 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: — "AI-Assisted SWG Tools
-status: completed
-stopped_at: Completed 16-02-PLAN.md (MCP-03 in-client half)
-last_updated: "2026-06-14T16:23:00.944Z"
-last_activity: 2026-06-14 -- 16-03 MCP-03 host half executed (net10 CanonicalJson re-impl byte-exact to 16-02 goldens + LivePipeClient never-hang twin + live_ping/live_reload_asset gated fail-closed on --enable-live proven via real ListToolsAsync + net472 real cross-impl wire round-trip + MCP-SECURITY.md live-tier addendum); net10 LivePipe 13/13 + net472 LiveBridgeIntegration 5/5 green
+milestone_name: "AI-Assisted SWG Tools"
+milestone_status: shipped
+status: milestone_complete
+stopped_at: v2.0 milestone closed + archived (tag v2.0); v1.0 retroactively archived
+last_updated: "2026-06-14T21:30:00.000Z"
+last_activity: 2026-06-14 -- /gsd:complete-milestone v2.0 — archived v2.0 (and retroactively v1.0) to milestones/, created MILESTONES.md + RETROSPECTIVE.md, reorganized ROADMAP.md, evolved PROJECT.md, resolved/triaged 10 open artifacts, removed REQUIREMENTS.md (fresh for next milestone), tagged v2.0
 progress:
   total_phases: 20
   completed_phases: 16
@@ -18,18 +19,40 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-01)
+See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 16 — live-injected-mcp-bridge-blender-ecosystem-boundary
+**Current focus:** Between milestones — v2.0 shipped 2026-06-14. Next: `/gsd:new-milestone` to define v2.1+.
 
 ## Current Position
 
-Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16)
-Phase: 16 (live-injected-mcp-bridge-blender-ecosystem-boundary) — EXECUTING
-Plan: 3 of 3 execute-plans complete (16-02 MCP-03 in-client half DONE; 16-03 MCP-03 host half DONE → MCP-03 Tier-2 automated deliverable COMPLETE; 16-01 Task 4 cross-repo pointer note still pending human checkpoint; ECO-01 Blender boundary still to plan/execute)
-Status: 16-03 complete; Phase 16 still has ECO-01 + the 16-01 Task-4 checkpoint before phase-complete
-Last activity: 2026-06-14 -- 16-03 MCP-03 host half executed (net10 CanonicalJson re-impl byte-exact to 16-02 goldens + LivePipeClient never-hang twin + live_ping/live_reload_asset gated fail-closed on --enable-live proven via real ListToolsAsync + net472 real cross-impl wire round-trip + MCP-SECURITY.md live-tier addendum); net10 LivePipe 13/13 + net472 LiveBridgeIntegration 5/5 green
+Milestone: v2.0 "AI-Assisted SWG Tools" (Phases 12–16) — ✅ SHIPPED 2026-06-14 (tag `v2.0`)
+Status: milestone complete + archived. v1.0 (Phases 1–11) retroactively archived at the same close.
+Next: `/clear` then `/gsd:new-milestone` to start v2.1+.
+Last activity: 2026-06-14 -- /gsd:complete-milestone v2.0 (archived both milestones, reorganized ROADMAP, evolved PROJECT, tagged v2.0).
+
+## Deferred Items
+
+Items acknowledged and deferred at the v2.0 milestone close on 2026-06-14. All are bookkeeping or
+documented accepted-debt (no feature work blocking ship). The two resolvable debug sessions + the
+loader-lock flake todo were RESOLVED at close (not deferred).
+
+| Category | Item | Status / Disposition |
+|----------|------|----------------------|
+| accepted-debt | AUTH-03 byte-exact compile-template *success* golden | A1 gate-finding — no canonical SOE `.tpf` asset; seam proven via real native runs; harness staged |
+| accepted-debt | AUTH-06 export-armor/weapon full-chain *success* golden | A1 gate-finding — no canonical `tools.cfg`/source asset |
+| residual | RESID-03 live render-on-reload | Config-gated — priority-27 loose searchPath disabled after the 2026-06-12 phantom-walk; save-tier candor delivered |
+| residual | Particle live-preview hook | Honestly degraded — no reachable native hot-retrigger this build (15-03 spike) |
+| residual | MCP-03 Tier-4 live in-client ping | Non-gating per D-01 (automated wire/loopback/gating tiers complete) |
+| checkpoint | ECO-01 cross-repo pointer note in `swg-blender-plugin` | Pending human checkpoint — third-party repo, outside both Utinni repos |
+| finding | CV-1: Blender crc-first vs Utinni size-first v0005 TOC | Recorded contract finding; reader unchanged |
+| todo | phase09-datatable-editor-review-warnings | Deferred code-quality (7 Warning + 5 Info; none corrupt byte-exact save) |
+| todo | phase10-stringtable-sc3-live-reload-residual | Same root as RESID-03 (disabled loose searchPath); needs a live session |
+| todo | swg-window-resize-fullscreen-edge-cases | RESID-04 C3 closed; residual fullscreen RT-space mouse-offset + cursor-clip deadzone remain |
+| detector-artifact | Phase 02/03/09 HUMAN-UAT "gaps" | All PASSED, 0 pending scenarios (status field not normalized to the detector's pass-list) |
+| detector-artifact | Phase 02.1 CONTEXT open questions (3) | v1.0-era disassembly Qs (CR-02 network::cast, WR-03 DepthTexture init, CoInitializeEx consumer) resolved during 02.1 execution |
+
+**Resolved at close (not deferred):** `debug/chat-open-d3d9-fullscreen` (RESID-04 fix), `debug/codex-consult-ground-scene-av` (R-H heap-free snapshot fix), `todos/loader-lock-harness-flake-fix` (06-04 OPT-A best-of-3 min).
 
 ## v2.0 Roadmap Summary (created 2026-06-01)
 
