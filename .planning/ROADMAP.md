@@ -307,3 +307,37 @@ are paired and sequenced after v2.1.
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.8: Remaining Wave-2 editors (BACKLOG)
+
+**Goal:** Finish the Wave-2 interactive-editor set — the DCC-style TJT SubPanels not covered by v2.0
+(WorldSnapshot, Particle) or v2.1 (Terrain, ClientEffect). The standing marker for "the rest of Wave-2."
+
+**Context (captured 2026-06-14; source `docs/ai/toolchain-inventory.md` §"Replace-next Wave-2 candidates"):**
+- Remaining by modder-demand order: **Animation** (`AnimationEditor`; `.lat`/`.ash` state machines,
+  skeletal anim) → **Shaders/Textures** (`ShaderBuilder`, `CreateShaderTemplate`, `TextureBuilder`;
+  `.dds`, shader templates — some are CLI-ish, candidates for revive+wrap) → **Sound** (`SoundEditor`) →
+  **UI** (`UiBuilder`; UI `.iff`).
+- Also finish the **Effects family** v2.1 started: **Lightning**, **Swoosh** (`clientParticle` lib; same
+  pattern as the shipped Particle + v2.1 ClientEffect editors — no stack divergence).
+- All follow the proven three-layer pattern (Formats codec → `utinni-cli` verb → MCP tool → TJT
+  SubPanel) and the locked live-in-client preview decision (never a standalone renderer; DEC-A3).
+- Split into per-editor phases when a future milestone scopes this (likely 1–2 editors per milestone).
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.9: Wave-3 plugins (BACKLOG)
+
+**Goal:** The ecosystem/distribution layer beyond per-format editors — the standing marker for "Wave-3."
+
+**Context (captured 2026-06-14; from the V2 boundary + PROJECT.md Out-of-Scope deferrals):**
+- **Mod Manager** (enable/disable/order installed mods) · **Packager** (one-click mod packaging) ·
+  **Community Hub** (publish/consume mods) · **Asset Diff** (cross-archive/version diff — overlaps the
+  WIP TRE diff tool and Backlog 999.3; coordinate).
+- These are tool/workflow surfaces, not asset-format codecs; several touch packaging + distribution
+  policy (`CON-D-01`: never default users into a specific shard's infra). Scope per-plugin when a future
+  milestone reaches the distribution layer.
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
