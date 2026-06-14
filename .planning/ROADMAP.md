@@ -341,3 +341,24 @@ Plans:
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.10: Utinni installer / one-click onboarding app (BACKLOG)
+
+**Goal:** A real end-user installer for **Utinni itself** — so a modder can download, run a setup, and be
+ready to inject, instead of building from source + injecting by hand (maintainer-only today). Makes the
+PROJECT.md Core Value ("downloads Utinni, installs once") literally true.
+
+**Context (discussed earlier; first captured 2026-06-14):**
+- **Distinct from 999.9's Packager** — 999.9 packages *mods*; this onboards *Utinni* (UtinniCore +
+  The Jawa Toolbox + official plugins + the launcher/injector) as one installable bundle.
+- **Handles prerequisites + config:** the .NET Framework runtime (TJT/UtinniCoreDotNet net4.7.2), the
+  VC++ redist (UtinniCore x86), first-run SWG client-path selection, and the loose-override config — plus
+  optional **auto-update**.
+- **Honors distribution policy `CON-D-01`:** ship blank server host/port; never default a user into any
+  specific shard's infrastructure.
+- **Why a marker now:** the build-and-inject-only reality is the gate between "maintainer tool" and
+  "distributable tool"; broad adoption needs a packaged installer. Tech options to weigh at scoping:
+  Inno Setup / NSIS / WiX / MSIX. Pairs naturally with a Wave-3 / 1.0-public-release milestone.
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
