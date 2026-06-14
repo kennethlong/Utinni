@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — "AI-Assisted SWG Tools
-status: executing
-stopped_at: Completed 15-21-PLAN.md — Phase 15 CLOSED. Round-3 bin/Release reassembled + content-verified (both fixes present; 718/718 Tests); B6 + D-ii re-verified LIVE on Tatooine (Claude-driven via windows-mcp, maintainer delegated): B6 Particle Preview no-hook candor reachable by hover+click; D-ii raw-Open .stf loose override landed at loose\string\en\ui_auc.stf (subpath preserved, content-verified). Maintainer Sign-Off signed approved-with-deferred-residual.
-last_updated: "2026-06-13T20:35:00.000Z"
-last_activity: "2026-06-13 -- 15-21 executed + Phase 15 CLOSED: reassembled/content-verified the round-3 injection build, live-re-verified B6 (Preview candor reachable) + D-ii (loose subpath preserved at loose\string\en\ui_auc.stf) via windows-mcp on a live Tatooine session, signed the Maintainer Sign-Off approved-with-deferred-residual. RESID-03 live render-on-reload remains a tracked deferred residual (loose searchPath disabled). PROD-W2-PRT + RESID-03 save-tier Validated. Next: Phase 16 (live-injected MCP bridge + Blender boundary)."
+status: verifying
+stopped_at: Phase 16 context gathered
+last_updated: "2026-06-14T02:55:37.516Z"
+last_activity: "2026-06-13 -- 15-21 executed + Phase 15 CLOSED: round-3 bin/Release reassembled + content-verified (both fixes present, 718/718 Tests); live-re-verified B6 (Preview candor reachable by hover+click, no retrigger) + D-ii (loose override at loose\string\en\ui_auc.stf, subpath preserved, content-verified UTF-16LE) via windows-mcp on a live Tatooine session; signed the Maintainer Sign-Off approved-with-deferred-residual"
 progress:
   total_phases: 20
-  completed_phases: 16
+  completed_phases: 15
   total_plans: 91
   completed_plans: 91
   percent: 100
@@ -264,9 +264,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-13T21:00:00.000Z
-Stopped at: Completed 15-17-PLAN.md (wave-5 Release gate + reassembled COMPLETE bin/Release injection build, content-verified; 15-SMOKE wave-5 note recorded)
-Resume file: None
+Last session: 2026-06-14T02:55:37.494Z
+Stopped at: Phase 16 context gathered
+Resume file: .planning/phases/16-live-injected-mcp-bridge-blender-ecosystem-boundary/16-CONTEXT.md
 
 ## Ingest Provenance
 
