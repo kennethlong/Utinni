@@ -136,7 +136,7 @@ Theme: *Utinni authors, not just edits.* Ship an MCP server so AI agents can dri
 
 ### Ecosystem
 
-- [ ] **ECO-01**: The Utinni ↔ `swg-blender-plugin` boundary is formalized as a documented file-format / `.rsp` search-path contract — Utinni opens/previews what Blender exports; no runtime coupling (honors DEC-A3, the no-3D-authoring anti-goal).
+- [x] **ECO-01**: The Utinni ↔ `swg-blender-plugin` boundary is formalized as a documented file-format / `.rsp` search-path contract — Utinni opens/previews what Blender exports; no runtime coupling (honors DEC-A3, the no-3D-authoring anti-goal). *(Validated Phase 16: docs/ai/blender-boundary-contract.md 4-surface contract + `validate-bundle` verb + pinned Blender goldens cross-validated; cross-repo pointer note in swg-blender-plugin.)*
 
 ### Residuals (carried from V1)
 
@@ -209,8 +209,8 @@ Each requirement maps to exactly one phase. Phase numbers refer to ROADMAP.md.
 | PROD-W2-PRT (Particle / client-effect editor) | Phase 15 | Validated (2026-06-13; editor + Preview candor live-verified, B6 closed) |
 | RESID-03 (SC3 live-reload candor) | Phase 15 | Validated save-tier (2026-06-13, D-ii closed); live render-on-reload tracked DEFERRED (loose searchPath disabled) |
 | RESID-04 (Window-resize / fullscreen edge cases) | Phase 15 | Validated (2026-06-13; C3 PASS, no device Reset) |
-| MCP-03 (Live-injected MCP bridge) | Phase 16 | Pending |
-| ECO-01 (Blender file-format / `.rsp` boundary) | Phase 16 | Pending |
+| MCP-03 (Live-injected MCP bridge) | Phase 16 | Validated (2026-06-14; Tier-2 cross-impl bridge proven, fail-closed gated; live in-client ping = Tier-4 manual residual per D-01) |
+| ECO-01 (Blender file-format / `.rsp` boundary) | Phase 16 | Validated (2026-06-14; 4-surface contract + validate-bundle + cross-validated goldens) |
 
 **Coverage:**
 - v1 requirements: 15 total — mapped 15, unmapped 0 ✓
