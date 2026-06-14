@@ -2,7 +2,9 @@
 
 > Captured 2026-05-23 after the R-A heap-free migration live smoke. The smoke itself passed (many warps, no scene-change AV at `0x0051fb0a`), but pressing Enter to open chat reliably triggers a D3D9 device mode switch to true exclusive fullscreen. The SWG window detaches from its embedded spot in the Utinni editor and is never returned. Chat input itself works post-fullscreen (user can type and send), so Phase H functionally succeeded — but with this unwanted side effect.
 
-Status: **queued, not blocking**. R-A migration verified; next planned work is Phase 4 (CLI shim). This issue is the most likely follow-up phase after Phase 4 unless severity escalates.
+Status: **RESOLVED 2026-06-14** (closed at v2.0 milestone close). Root cause = SWG's exclusive-fullscreen D3D9 mode switch detaching the embed; fixed as RESID-04 in Phase 15: `15-05` suppresses the exclusive-fullscreen mode switch at the DirectInput cooperative-level layer (`direct_input.cpp` `hkSetCooperativeLevel` rewrites `DISCL_EXCLUSIVE`→`DISCL_NONEXCLUSIVE`), and `15-13` adds a window-side watchdog that re-asserts the owned-popup embed on SWG's window-level fullscreen restyle (no device `Reset`). C3 embed-survives confirmed live 2026-06-13. Residual fullscreen RT-space mouse-offset is tracked separately in `todos/pending/swg-window-resize-fullscreen-edge-cases.md`.
+
+> ORIGINAL (2026-05-23): queued, not blocking. R-A migration verified; next planned work is Phase 4 (CLI shim). This issue is the most likely follow-up phase after Phase 4 unless severity escalates.
 
 ---
 

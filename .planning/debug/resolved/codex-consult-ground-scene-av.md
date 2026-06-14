@@ -1,5 +1,7 @@
 # CODEX Consult: scene-change AV at SWG `0x0051fb0a` after Phase 3 R-A in `ground_scene.cpp`
 
+> **Status: RESOLVED** (closed at v2.0 milestone close 2026-06-14). This was the consult-prompt companion to debug session `03-scene-change-av-0x0051fb0a.md` (also resolved). Root cause = per-frame `std::vector::reserve()` heap allocation in the new R-A/R-H callback dispatch fragmenting SWG's allocator and crashing scene change at `0x0051fb0a`. Fix = stack-allocated fixed-size snapshot (`kInlineCap=16`) `dispatchSnapshot` template in `ground_scene.cpp` (heap-free hot-path dispatch), preserving the R-A handle API + CR-01 per-registry mutex + R-H snapshot pattern. See auto-memory `[[project_rh_snapshot_no_heap_alloc]]`.
+
 > Paste this into CODEX with the same project root (`D:\Code\Utinni`). CODEX can read files directly — paths below are relative to that root.
 
 ## What you're being asked

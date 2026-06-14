@@ -9,7 +9,20 @@ related:
   - Utinni.LoaderLockHarness/main.cpp                                    # threshold lives here
   - UtinniCoreDotNet.Tests/LoaderLockHarnessTests.cs                     # test that asserts on exit code
 suggested_resolves_phase: 6  # STAB-03 stability hardening is the natural home; user may route elsewhere
+status: completed
+resolved: 2026-06-14
 ---
+
+## Resolution (2026-06-14, confirmed at v2.0 milestone close)
+
+**RESOLVED in Phase 6 wave 06-04 (OPT-A best-of-3 minimum).** `Utinni.LoaderLockHarness/main.cpp`
+now measures the DllMain load 3× and compares the **minimum** sample to the 50 ms threshold
+(`main.cpp:34,110-120`, per `06-04-FLAKE-INVESTIGATION.md`). Contention only ever ADDS time, so the
+min-of-3 is immune to the parallel-build/cold-disk variance that caused the spurious red on SHA
+`727250b` — while still catching a real heavy-DllMain regression (proven by the anti-trivial section
+that re-runs DllMain to inflate all three samples). This is option B (median→min variant) + the
+elapsed-ms surfacing of option C, both from the matrix below. See auto-memory
+`[[project_loader_lock_harness_ci_flake]]`.
 
 ## Problem
 
