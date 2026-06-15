@@ -27,6 +27,7 @@
 #include "swg/client/client.h"
 #include "swg/ui/cui_manager.h"
 #include "directx9.h"
+#include "directx11.h" // Phase 19 / RNDR-02: directX11::kickoff() (free-function decls only)
 
 #include <mutex>
 #include <vector>
@@ -610,9 +611,16 @@ bool __cdecl hkInstall()
 
     directX::detour();
 
+    // Phase 19 / RNDR-02: the SINGLE owned DX11 kick-off site (mirrors directX::detour()).
+    // kickoff() subscribes a per-frame tryInstall() poll to the existing prePresent tick;
+    // the poll acquires the client's advertised DXGI swapchain (GetHookPoints) and installs
+    // the D3D11 overlay once it latches. A DXGI Present detour cannot exist before the
+    // swapchain exists, so the kick-off MUST be this already-installed prePresent callback.
+    directX11::kickoff();
+
     if (firstFire)
     {
-        utinni::log::info("hkInstall: directX::detour returned; EXIT");
+        utinni::log::info("hkInstall: directX::detour + directX11::kickoff returned; EXIT");
     }
 
     return result;
