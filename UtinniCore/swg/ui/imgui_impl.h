@@ -44,6 +44,11 @@ UTINNI_API extern void enableInternalUi(bool enable);
 extern void setup(HWND hwnd);
 extern void render();
 extern bool isRendering();
+// WR-04: true once setup() has installed the overlay (latches the file-scope
+// isSetup flag). hkPresent reads this to run its one-shot device-stash + setup
+// hand-off only until the overlay is installed, keeping the per-frame
+// GetCreationParameters COM call off the render hot path thereafter.
+extern bool isReady();
 // Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09).
 UTINNI_API extern int subscribeRenderCallback(void (*func)());
 UTINNI_API extern bool unsubscribeRenderCallback(int handle);

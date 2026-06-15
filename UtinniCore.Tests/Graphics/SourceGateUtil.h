@@ -88,9 +88,13 @@ inline std::string readFile(const std::string& path)
 //   - full-line `//` comments (after leading whitespace)
 //   - the trailing `// ...` portion of any line
 //   - lines inside `/* ... */` block comments
-// This is intentionally conservative: it errs toward stripping, which can only
-// make the gate STRICTER (it never hides a real symbol, because a real
-// `IDirect3DDevice9 dev;` statement is code, not a comment).
+// The scan is STRING-LITERAL-AWARE (WR-02): a `//` or `/*` that appears inside a
+// `"..."` or '...' literal is NOT treated as a comment start, so a real banned
+// symbol sitting after an in-string `//` (e.g. `const char* u = "http://x";
+// directX::getDevice();`) is preserved and can still trip the gate. Without this
+// the stripper would truncate the line at the in-string `//`, silently discarding
+// the trailing real symbol and letting it slip the gate (a false PASS). Escaped
+// quotes (`\"`, `\'`) inside a literal do not end the literal.
 inline std::string stripComments(const std::string& src)
 {
     std::string out;
@@ -102,6 +106,8 @@ inline std::string stripComments(const std::string& src)
     while (std::getline(lines, line))
     {
         std::string kept;
+        bool inString = false; // inside a "..." literal
+        bool inChar = false;   // inside a '...' literal
         for (size_t i = 0; i < line.size(); ++i)
         {
             if (inBlockComment)
@@ -114,6 +120,28 @@ inline std::string stripComments(const std::string& src)
                 continue;
             }
 
+            // Inside a string/char literal: copy verbatim, only watching for the
+            // (unescaped) closing delimiter. A `//` or `/*` here is literal text,
+            // never a comment.
+            if (inString || inChar)
+            {
+                kept.push_back(line[i]);
+                if (line[i] == '\\' && i + 1 < line.size())
+                {
+                    // Escape sequence: copy the escaped char too so an escaped
+                    // quote does not prematurely close the literal.
+                    kept.push_back(line[i + 1]);
+                    ++i;
+                    continue;
+                }
+                if (inString && line[i] == '"')
+                    inString = false;
+                else if (inChar && line[i] == '\'')
+                    inChar = false;
+                continue;
+            }
+
+            // Not in a literal or comment: a comment can start here, OR a literal.
             if (i + 1 < line.size() && line[i] == '/' && line[i + 1] == '/')
             {
                 break; // rest of line is a line comment
@@ -124,6 +152,10 @@ inline std::string stripComments(const std::string& src)
                 ++i; // consume '*'
                 continue;
             }
+            if (line[i] == '"')
+                inString = true;
+            else if (line[i] == '\'')
+                inChar = true;
             kept.push_back(line[i]);
         }
         out += kept;

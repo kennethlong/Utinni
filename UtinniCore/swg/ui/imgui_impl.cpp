@@ -292,7 +292,15 @@ void setup(HWND hwnd)
     const HWND backendWindow = render_backend::dx9Singleton()->init(nullptr);
     if (backendWindow == nullptr)
     {
+        // WR-01: symmetric partial-init teardown. At this bail point the only
+        // imgui-side state that has been created is the ImGuiContext from line
+        // 279 (Win32 platform init is step (4), still ahead of us, so there is
+        // no ImGui_ImplWin32_Shutdown to issue yet). Destroying the context here
+        // -- and undoing the step (1) backend install -- means a later frame
+        // re-enters setup() from a CLEAN slate instead of stacking a second
+        // CreateContext() on a leaked first one (isSetup stays false on bail).
         render_backend::set(nullptr);
+        ImGui::DestroyContext();
         return;
     }
 
@@ -618,6 +626,14 @@ void render()
 bool isRendering()
 {
     return rendering;
+}
+
+// WR-04: one-shot setup gate accessor. hkPresent uses this to stop re-running
+// the per-frame device-stash + GetCreationParameters COM call once the overlay
+// has been installed. Reflects the same `isSetup` latch setup() flips true.
+bool isReady()
+{
+    return isSetup;
 }
 
 // Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09.

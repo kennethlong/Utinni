@@ -71,6 +71,16 @@ const std::vector<std::string>& dx9Tokens()
         "LPDIRECT3DDEVICE9",
         "LPDIRECT3D",
         "D3DDEVICE_CREATION_PARAMETERS",
+        // WR-03: the factory/swapchain/present/texture/surface/format reach-in
+        // types LPDIRECT3D did NOT cover. These are concrete symbol forms (not the
+        // bare "D3D9"/"DX9" strings Pitfall 5 forbids), so a future DX9 reach-in
+        // via any of them is caught by the neutrality gate.
+        "IDirect3D9",
+        "IDirect3DSwapChain9",
+        "IDirect3DTexture9",
+        "IDirect3DSurface9",
+        "D3DPRESENT_PARAMETERS",
+        "D3DFORMAT",
         "ImGui_ImplDX9_",                 // prefix: _Init/_NewFrame/_RenderDrawData/_Invalidate/_Create
         "directX::",                      // the DX9 namespace reach-in (getDepthTexture/getDevice)
     };
@@ -97,6 +107,23 @@ TEST_CASE("D-06 imgui_impl is fully DX9-API-neutral after the carve", "[rndr01][
         REQUIRE(countSubstr(sample, "IDirect3DDevice9") == 1);
         REQUIRE(countSubstr(sample, "ImGui_ImplDX9_") == 1);
         REQUIRE(countSubstr(sample, "directX::") == 1);
+
+        // WR-02 regression guard: a banned token sitting AFTER an in-string `//`
+        // must NOT be stripped. A string-literal-blind stripper would truncate at
+        // the `//` inside "http://x" and silently drop the trailing real symbol,
+        // letting it slip the gate (a false PASS). The literal-aware stripper
+        // preserves it so the gate can still trip.
+        const std::string inStringSample =
+            "const char* url = \"http://x\"; IDirect3DDevice9 dev;\n";
+        REQUIRE(countSubstr(stripComments(inStringSample), "IDirect3DDevice9") == 1);
+        // And the in-string `//` text itself survives (it is literal, not a comment).
+        REQUIRE(countSubstr(stripComments(inStringSample), "http://x") == 1);
+        // An escaped quote inside a literal must not prematurely end the literal,
+        // so a `//`-bearing token after it is still inside the string and the real
+        // symbol after the closing quote is still preserved.
+        const std::string escapedQuoteSample =
+            "const char* s = \"a\\\"b//c\"; IDirect3DTexture9 t;\n";
+        REQUIRE(countSubstr(stripComments(escapedQuoteSample), "IDirect3DTexture9") == 1);
     }
 
     SECTION("imgui_impl.cpp contains zero DX9 symbols (extended token set)")

@@ -366,7 +366,16 @@ HRESULT __stdcall hkPresent(LPDIRECT3DDEVICE9 pDevice, const RECT* pSourceRect, 
     // init() consumes it as the PRIMARY source. Guard against a null device or a
     // failed creation-parameters query / null focus window: bail without installing
     // (no overlay rather than a crash) -- setup() also re-guards the null HWND.
-    if (pDevice != nullptr)
+    // WR-04: this hand-off is a ONE-SHOT. Gate it on !isReady() so the
+    // GetCreationParameters COM call + device re-stash run only until setup()
+    // installs the overlay, not on every presented frame for the life of the
+    // process. setup() itself already early-returns once isSetup latches, but
+    // the surrounding per-frame COM query is wasted work on the render hot path
+    // (the values are stable and the stash is read only once). The isReady()
+    // gate fronts setup()'s own isSetup gate; the render()-before-setup()
+    // ordering above (locked) is unaffected -- this only stops redoing the
+    // one-shot device stash every frame.
+    if (!imgui_impl::isReady() && pDevice != nullptr)
     {
         D3DDEVICE_CREATION_PARAMETERS cParam = {};
         if (SUCCEEDED(pDevice->GetCreationParameters(&cParam)) && cParam.hFocusWindow != nullptr)
