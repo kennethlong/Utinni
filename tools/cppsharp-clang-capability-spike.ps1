@@ -111,13 +111,25 @@ $rows = New-Object System.Collections.Generic.List[object]
 foreach ($root in $roots) {
     Get-ChildItem -Path $root -Directory -ErrorAction SilentlyContinue | ForEach-Object {
         $gate = Get-YvalsClangGate -ToolsetDir $_.FullName
-        $vendoredOk = if ($gate -ne $null) { $VendoredCppSharpClang -ge $gate } else { $null }
-        $latestOk   = if ($gate -ne $null) { $LatestReleasedCppSharpClang -ge $gate } else { $null }
+
+        # WR-05: $null-on-the-left equality (PowerShell-recommended — avoids surprising
+        # element-wise comparison if the right side is ever a collection). Compute the
+        # report-column strings directly instead of relying on if-as-expression assignment.
+        if ($null -ne $gate) {
+            $requiredClang  = $gate
+            $vendoredParses = if ($VendoredCppSharpClang -ge $gate) { 'YES' } else { 'NO' }
+            $latestParses   = if ($LatestReleasedCppSharpClang -ge $gate) { 'YES' } else { 'NO' }
+        } else {
+            $requiredClang  = '(no gate)'
+            $vendoredParses = 'n/a'
+            $latestParses   = 'n/a'
+        }
+
         $rows.Add([pscustomobject]@{
             MsvcVersion        = $_.Name
-            RequiredClang      = if ($gate -ne $null) { $gate } else { '(no gate)' }
-            VendoredParses     = if ($vendoredOk -eq $null) { 'n/a' } elseif ($vendoredOk) { 'YES' } else { 'NO' }
-            LatestReleaseParses = if ($latestOk -eq $null) { 'n/a' } elseif ($latestOk) { 'YES' } else { 'NO' }
+            RequiredClang      = $requiredClang
+            VendoredParses     = $vendoredParses
+            LatestReleaseParses = $latestParses
         })
     }
 }
