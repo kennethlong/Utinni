@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: verifying
+status: ready_to_plan
 stopped_at: Completed 17-02-PLAN.md
 last_updated: "2026-06-15T02:54:42.724Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 16
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 3
   completed_plans: 3
-  percent: 100
+  percent: 13
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 
 ## Current Position
 
-Phase: 17 (cppsharp-v145-hardening) — COMPLETE (ready for verification)
-Plan: 3 of 3 — all plans complete
-Status: Phase complete — ready for verification
+Phase: 999.2
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-06-15
 
 **v2.1 milestone (Phases 17–23) — foundation-before-features:**
@@ -126,7 +126,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 
 **Velocity:**
 
-- Total plans completed: 34
+- Total plans completed: 37
 - Average duration: —
 - Total execution time: —
 
@@ -142,6 +142,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | 08 | 7 | - | - |
 | 09 | 7 | - | - |
 | 11 | 5 | - | - |
+| 17 | 3 | - | - |
 
 **Recent Trend:**
 

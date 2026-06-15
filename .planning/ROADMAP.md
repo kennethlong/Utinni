@@ -61,7 +61,7 @@ render-backend seam (18→19) land before the new editors. 17→18→19 is a str
 Terrain codec (20) is offline and gated only on 17 (the critical path / only long pole); the user-visible
 editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23) is an independent P2.
 
-- [ ] **Phase 17: CppSharp / v145 Hardening** — clang-capability spike → harden-the-redirect + ABI-diff/MEF-compose gate (FOUNDATION; research-phase)
+- [x] **Phase 17: CppSharp / v145 Hardening** — clang-capability spike → harden-the-redirect + ABI-diff/MEF-compose gate (FOUNDATION; research-phase) (completed 2026-06-15)
 - [ ] **Phase 18: Render-Backend Seam + Dx9Backend** — carve `IRenderBackend`, D3D9 overlay behaviorally unchanged (FOUNDATION)
 - [ ] **Phase 19: Dx11Backend + Config Detection + Resize** — DXGI `Present`/`ResizeBuffers` hooks, one-backend-per-session detect (FOUNDATION; research-phase)
 - [ ] **Phase 20: Terrain `.trn` Codec + Verbs + MCP** — decode→navigable layer tree, typed tags, scalar-leaf edit/save, verbs-first (FEATURE / critical path; research-phase)
@@ -175,7 +175,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 14. Headless MCP server | v2.0 | 5/5 | ✅ Complete | 2026-06-07 |
 | 15. Wave-2 editors + residuals | v2.0 | 21/21 | ✅ Complete | 2026-06-13 |
 | 16. Live MCP bridge + Blender | v2.0 | 3/3 | ✅ Complete | 2026-06-14 |
-| 17. CppSharp / v145 Hardening | v2.1 | 2/3 | In Progress|  |
+| 17. CppSharp / v145 Hardening | v2.1 | 3/3 | Complete    | 2026-06-15 |
 | 18. Render-Backend Seam + Dx9Backend | v2.1 | 0/? | Not started | - |
 | 19. Dx11Backend + Detection + Resize | v2.1 | 0/? | Not started | - |
 | 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 0/? | Not started | - |
