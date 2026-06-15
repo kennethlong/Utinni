@@ -24,7 +24,13 @@
 
 #pragma once
 
-#include <d3d9.h>
+// Phase 18 / RNDR-01 (D-05 purge): imgui_impl is now DX9-API-neutral. The header
+// no longer pulls the Direct3D bindings; setup() takes a Win32 HWND (not a device
+// type). The render seam itself (render_backend.h, which pulls <imgui.h>) is
+// included ONLY in imgui_impl.cpp -- keeping it OUT of this UTINNI_API-bearing
+// header avoids dragging <imgui.h> into the CppSharp clang-11 parse graph (the
+// same AccessViolation that forced render_backend.h's discovery exclusion in 18-01).
+#include <Windows.h> // HWND for the DX9-API-neutral setup() signature
 #include "utinni.h"
 
 namespace utinni
@@ -35,7 +41,7 @@ class Object;
 namespace imgui_impl
 {
 UTINNI_API extern void enableInternalUi(bool enable);
-extern void setup(IDirect3DDevice9* pDevice);
+extern void setup(HWND hwnd);
 extern void render();
 extern bool isRendering();
 // Phase 3 R-A primary API (per 03-CONTEXT D-08/D-09).

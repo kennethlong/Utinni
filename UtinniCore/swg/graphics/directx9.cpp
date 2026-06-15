@@ -31,6 +31,7 @@
 #include "swg/ui/cui_manager.h"
 #include "depth_texture.h"
 #include "graphics.h"
+#include "render_backend.h" // Phase 18 / RNDR-01: stash live device + drive setup(HWND)
 
 // C-09: Win32 manual-reset event signaller for UI/game-thread synchronization.
 // The managed FormMain.WndProc waits on this event instead of spinning on IsPresentBlocked().
@@ -358,7 +359,22 @@ HRESULT __stdcall hkPresent(LPDIRECT3DDEVICE9 pDevice, const RECT* pSourceRect, 
         // utinni::log::info("Creating Texture");
     }
 
-    imgui_impl::setup(pDevice);
+    // Phase 18 / RNDR-01 (review amendments 2/6): imgui_impl::setup() is now
+    // DX9-API-neutral and takes a Win32 HWND. Extract SWG's focus window from the
+    // live device here (the DX9 tier is the right place to touch a device type) and
+    // stash that same live device on the Dx9 backend singleton so its non-virtual
+    // init() consumes it as the PRIMARY source. Guard against a null device or a
+    // failed creation-parameters query / null focus window: bail without installing
+    // (no overlay rather than a crash) -- setup() also re-guards the null HWND.
+    if (pDevice != nullptr)
+    {
+        D3DDEVICE_CREATION_PARAMETERS cParam = {};
+        if (SUCCEEDED(pDevice->GetCreationParameters(&cParam)) && cParam.hFocusWindow != nullptr)
+        {
+            render_backend::dx9Singleton()->stashDevice(pDevice);
+            imgui_impl::setup(cParam.hFocusWindow);
+        }
+    }
     return result;
 }
 

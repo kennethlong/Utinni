@@ -100,6 +100,18 @@ public:
     // device-bearing GetCreationParameters + the imgui DX9 backend init and
     // returns hFocusWindow. Returns nullptr if no device is available (caller bails).
     HWND init(IDirect3DDevice9* device);
+
+    // Phase 18 / RNDR-01 (review amendment 6): hkPresent stashes its LIVE pDevice
+    // here BEFORE calling the DX9-API-neutral imgui_impl::setup(HWND). setup()
+    // cannot name a Direct3D device type (D-05 gate), so it calls init(nullptr)
+    // and init() consumes this stashed device as its PRIMARY source --
+    // directX::getDevice() is the assert/fallback only. Win32 HWND in / device out
+    // never cross the imgui_impl seam as a DX9 type.
+    void stashDevice(IDirect3DDevice9* device);
+    IDirect3DDevice9* stashedDevice() const;
+
+private:
+    IDirect3DDevice9* m_stashedDevice = nullptr;
 };
 
 // Accessor trio (mirrors the directx9.h namespace-of-free-functions convention,

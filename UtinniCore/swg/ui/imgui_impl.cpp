@@ -25,8 +25,11 @@
 #include "imgui_impl.h"
 #include <imgui.h>
 #include <imgui_impl_win32.h>
-#include <imgui_impl_dx9.h>
 #include <ImGuizmo.h>
+// Phase 18 / RNDR-01: the runtime-polymorphic render seam (replaces the former
+// Direct3D bindings). Included here in the .cpp -- NOT in imgui_impl.h -- so its
+// <imgui.h> dependency stays out of the CppSharp parse graph.
+#include "swg/graphics/render_backend.h"
 
 #include <cstdio>
 #include <mutex>
@@ -45,7 +48,10 @@
 #include "swg/misc/config.h"
 #include "command_parser.h"
 #include "cui_io.h"
-#include "swg/graphics/directx9.h"
+// Phase 18 / RNDR-01 (D-05 purge): the former depth-texture reach-in into the
+// DX9 tier is gone -- imgui_impl now routes scene depth/color through the render
+// seam (render_backend.h, pulled in via imgui_impl.h). No Direct3D binding header
+// is included here.
 #include "swg/game/game.h"
 #include "swg/scene/render_world.h"
 
@@ -254,31 +260,59 @@ IMGUI_API LRESULT hkWndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 }
 
 bool isSetup = false;
-void setup(IDirect3DDevice9* pDevice)
+void setup(HWND hwnd)
 {
     if (isSetup)
         return;
 
-    D3DDEVICE_CREATION_PARAMETERS cParam;
-
-    pDevice->GetCreationParameters(&cParam);
-
-    // 2026-05-20 Issue #10 Phase A: publish SWG's actual top-level HWND
-    // (D3D9's focus window) to the managed side so PanelGame can find it
-    // for SetParent reparenting. Pure plumbing -- no behavior change yet.
-    utinni::Client::setSwgHwnd(cParam.hFocusWindow);
+    // Phase 18 / RNDR-01 (D-05 carve, review amendments 2/6/9): imgui_impl is now
+    // DX9-API-neutral. The device-bearing GetCreationParameters + the imgui DX9
+    // backend init moved into render_backend::Dx9Backend::init() (Plan 01). This
+    // setup() takes a Win32 HWND (passed by hkPresent, extracted from its live
+    // pDevice) and runs the LOCKED step order below. Guard: if hkPresent could not
+    // produce a window or the backend cannot acquire a device, bail without
+    // installing (no overlay rather than a crash).
+    if (hwnd == nullptr)
+        return;
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGui_ImplWin32_Init(cParam.hFocusWindow);
-    ImGui_ImplDX9_Init(pDevice);
+
+    // (1) Install the active backend BEFORE isSetup flips true, so no seam call
+    //     site can fire through the isSetup gate with a null backend.
+    render_backend::set(render_backend::dx9Singleton());
+
+    // (2) Drive the non-virtual device-bearing init. The live device that
+    //     hkPresent stashed on the singleton is init()'s PRIMARY source (review
+    //     amendment 6); the captured-device fallback is used only if none stashed.
+    //     init() does the creation-parameters query + the single imgui DX9 renderer
+    //     init internally and returns hFocusWindow. If it returns null no device was
+    //     available -- undo the partial install and bail (no overlay rather than a
+    //     half-installed one).
+    const HWND backendWindow = render_backend::dx9Singleton()->init(nullptr);
+    if (backendWindow == nullptr)
+    {
+        render_backend::set(nullptr);
+        return;
+    }
+
+    // (3) Issue #10 Phase A: publish SWG's actual top-level HWND to the managed
+    //     side so PanelGame can find it for SetParent reparenting. This MUST
+    //     survive the carve (consumed managed-side by PanelGame).
+    utinni::Client::setSwgHwnd(hwnd);
+
+    // (4) Win32 platform backend init -- MUST come before the DX9 renderer init
+    //     (imgui requires platform-before-renderer). The DX9 renderer init already
+    //     completed inside step 2's init(); never reorder Win32 ahead of set/init.
+    ImGui_ImplWin32_Init(hwnd);
 
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     ImGui::GetIO().WantCaptureKeyboard = true;
     ImGui::GetIO().WantCaptureMouse = true;
     ImGui::GetIO().WantTextInput = true;
-    originalWndProcHandler = (WNDPROC)SetWindowLongPtr(cParam.hFocusWindow, GWL_WNDPROC, (LONG)hkWndProcHandler);
+    // (6) WndProc subclass install (Issue #11 chat-context routing) -- verbatim.
+    originalWndProcHandler = (WNDPROC)SetWindowLongPtr(hwnd, GWL_WNDPROC, (LONG)hkWndProcHandler);
 
     ImGui::GetIO().Fonts->AddFontFromFileTTF("C:/Windows/Fonts/micross.ttf", 14);
 
@@ -346,8 +380,11 @@ int GetHeight()
 
 void DrawDepthWindow()
 {
-    auto depthTex = directX::getDepthTexture();
-    if (depthTex == nullptr || depthTex->getTextureColor() == nullptr || utinni::Game::getPlayer() == nullptr)
+    // D-05 carve: the former depth-texture reach-in folds into the seam accessor.
+    // sceneDepthTexture() returns 0 when no live depth+color texture exists (the
+    // accessor already encodes the old null guard), so a 0 handle is the "no
+    // texture" signal here. Null-guard the nullable seam first.
+    if (render_backend::get() == nullptr || render_backend::get()->sceneDepthTexture() == 0 || utinni::Game::getPlayer() == nullptr)
         return;
 
     ImVec2 size2(GetWidth() + 5, GetHeight() + 31);
@@ -361,7 +398,7 @@ void DrawDepthWindow()
         ImGui::SetNextWindowSize(size2);
         ImGui::BeginChild("GameWindow");
 
-        ImGui::GetWindowDrawList()->AddImage((void*)depthTex->getTextureDepth(), pos, posMax);
+        ImGui::GetWindowDrawList()->AddImage(render_backend::get()->sceneDepthTexture(), pos, posMax);
 
         ImGui::EndChild();
 
@@ -373,8 +410,10 @@ void DrawDepthWindow()
 
 void DrawColorWindow()
 {
-    auto colorTex = directX::getDepthTexture();
-    if (colorTex == nullptr || colorTex->getTextureColor() == nullptr || utinni::Game::getPlayer() == nullptr)
+    // D-05 carve (A2): the former color-texture reach-in folds into the seam
+    // accessor. sceneColorTexture() returns 0 when no live texture exists.
+    // Null-guard the nullable seam first.
+    if (render_backend::get() == nullptr || render_backend::get()->sceneColorTexture() == 0 || utinni::Game::getPlayer() == nullptr)
         return;
 
     ImVec2 size2(GetWidth() + 5, GetHeight() + 31);
@@ -387,7 +426,7 @@ void DrawColorWindow()
 
         ImGui::SetNextWindowSize(size2);
         ImGui::BeginChild("GameWindow");
-        ImGui::GetWindowDrawList()->AddImage((void*)colorTex->getTextureColor(), pos, posMax);
+        ImGui::GetWindowDrawList()->AddImage(render_backend::get()->sceneColorTexture(), pos, posMax);
         ImGui::EndChild();
 
         ImGui::SetWindowSize(size2);
@@ -416,7 +455,9 @@ void render()
         }
 
         rendering = true;
-        ImGui_ImplDX9_NewFrame();
+        // D-05 carve: route the renderer new-frame through the seam (null-guarded).
+        if (auto* b = render_backend::get())
+            b->newFrame();
         ImGui_ImplWin32_NewFrame();
 
         // Issue #10 reparent/stretch fix: the embedded SWG window is resized to fit
@@ -486,8 +527,16 @@ void render()
                     // CuiMediatorFactory::activate("Testzzz");
                 }
 
-                auto depthTex = directX::getDepthTexture();
-                if (depthTex != nullptr)
+                // D-05 carve (A2 + review amendment 4): the former depth-texture
+                // reach-in folds into the seam. The seam's sceneDepthStage() returns
+                // an int and cannot signal "no depth texture", so this dev-only block
+                // is gated on sceneDepthTexture() != 0 instead. This is INTENTIONALLY
+                // STRICTER than the pre-carve `depthTex != nullptr` guard (the
+                // accessor also requires a live COLOR texture), so the block stays
+                // hidden in more cases than before -- a DELIBERATE dev-only behavior
+                // change, NOT verbatim. Release (enableInternalUi=true) is unaffected:
+                // this whole block is behind `if (!enableUi)` above.
+                if (render_backend::get() != nullptr && render_backend::get()->sceneDepthTexture() != 0)
                 {
                     if (ImGui::Checkbox("Show Depth Window", &showDepthWindow))
                     {
@@ -496,10 +545,10 @@ void render()
                     {
                     }
 
-                    int stage = depthTex->getStage();
+                    int stage = render_backend::get()->sceneDepthStage();
                     if (ImGui::SliderInt("Stage", &stage, 0, 11))
                     {
-                        depthTex->setStage(stage);
+                        render_backend::get()->setSceneDepthStage(stage);
                     }
                 }
             }
@@ -559,7 +608,9 @@ void render()
 
         ImGui::EndFrame();
         ImGui::Render();
-        ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
+        // D-05 carve: route draw-data submit through the seam (null-guarded).
+        if (auto* b = render_backend::get())
+            b->renderDrawData(ImGui::GetDrawData());
         rendering = false;
     }
 }

@@ -104,13 +104,32 @@ void Dx9Backend::setSceneDepthStage(int stage)
     }
 }
 
+// --- hkPresent stashes its live pDevice here BEFORE the DX9-API-neutral       ---
+// --- imgui_impl::setup(HWND) runs (review amendment 6). init() consumes it as  ---
+// --- the PRIMARY source so setup() never has to name a Direct3D device type.   ---
+void Dx9Backend::stashDevice(IDirect3DDevice9* device)
+{
+    m_stashedDevice = device;
+}
+
+IDirect3DDevice9* Dx9Backend::stashedDevice() const
+{
+    return m_stashedDevice;
+}
+
 // --- NON-VIRTUAL device-bearing init (off the vtable). pDevice from hkPresent ---
-// --- is the primary source; directX::getDevice() is the assert/fallback only.  ---
+// --- (stashed) is the primary source; directX::getDevice() is the fallback only. ---
 HWND Dx9Backend::init(IDirect3DDevice9* device)
 {
     if (device == nullptr)
     {
-        // Fallback to the captured device only if the caller passed null.
+        // PRIMARY source: the live pDevice hkPresent stashed before setup().
+        device = m_stashedDevice;
+    }
+
+    if (device == nullptr)
+    {
+        // Fallback to the captured device only if no stashed/passed device.
         device = directX::getDevice();
         assert(device != nullptr && "Dx9Backend::init: no D3D9 device available");
     }
