@@ -40,7 +40,7 @@ REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 ca
   runs Direct3D 11 — `Dx11Backend` hooks the DXGI swapchain `Present`.
 - [x] **RNDR-03**: Exactly one render backend installs per session, auto-detected from the loaded SWG
   renderer DLL (`gl%02d_r.dll`), with a one-shot diagnostic log — no doubled input or dual ImGui contexts.
-- [ ] **RNDR-04**: The overlay survives a window resize under D3D11 — the RTV is released/recreated inside
+- [x] **RNDR-04**: The overlay survives a window resize under D3D11 — the RTV is released/recreated inside
   the `ResizeBuffers` hook (no `DXGI_ERROR_INVALID_CALL`, the DXGI analog of the forbidden D3D9 `Reset`).
 
 ### Terrain editor (PROD-W2-TRN)
@@ -122,7 +122,7 @@ Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no
 | RNDR-01 | Phase 18 — Render-Backend Seam + Dx9Backend | Complete (CI-green; final acceptance pending the D-08 maintainer live-smoke — 18-02 Task 3) |
 | RNDR-02 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete |
 | RNDR-03 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete |
-| RNDR-04 | Phase 19 — Dx11Backend + Config Detection + Resize | Pending |
+| RNDR-04 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete |
 | PROD-W2-TRN-01 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Pending |
 | PROD-W2-TRN-02 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Pending |
 | PROD-W2-TRN-03 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Pending |

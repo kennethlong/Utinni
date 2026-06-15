@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: executing
-stopped_at: Completed 19-01-PLAN.md (Dx11Backend contracts + device-free test scaffolding)
-last_updated: "2026-06-15T20:08:49.338Z"
-last_activity: 2026-06-15 -- Phase 19 Plan 01 complete
+stopped_at: Phase 19 context gathered
+last_updated: "2026-06-15T20:19:35.069Z"
+last_activity: 2026-06-15
 progress:
   total_phases: 16
   completed_phases: 2
   total_plans: 8
-  completed_plans: 6
-  percent: 75
+  completed_plans: 7
+  percent: 88
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 ## Current Position
 
 Phase: 19 (dx11backend-config-detection-resize) — EXECUTING
-Plan: 2 of 3
-Status: 19-01 complete (contracts + tests); 19-02 (Dx11Backend/directx11 impl) ready
-Last activity: 2026-06-15 -- Phase 19 Plan 01 complete
+Plan: 3 of 3
+Status: Ready to execute
+Last activity: 2026-06-15
 
 **v2.1 milestone (Phases 17–23) — foundation-before-features:**
 
@@ -209,6 +209,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 18 P01 | 120min | 2 tasks | 7 files |
 | Phase 18 P18-02 | ~1h | 2 tasks | 7 files |
 | Phase 19 P01 | 35min | 3 tasks | 8 files |
+| Phase 19 P02 | ~25min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -269,6 +270,8 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase 18]: 18-01: render_backend.h excluded from CppSharp PARSE-stage discovery (clang-11 AccessViolation on <imgui.h>); seam projects zero managed surface so nothing lost
 - [Phase ?]: 18-02: imgui_impl carved onto IRenderBackend seam (D-05 extended purge); render_backend.h kept out of imgui_impl.h to avoid CppSharp imgui parse-AV; amendment-6 device hand-off via Dx9Backend stashDevice; RNDR-01 pending D-08 maintainer live-smoke
 - [Phase ?]: Phase 19 P01: Dx11Backend init() takes device+context (off-vtable, differs from Dx9 single-device init); selectBackend picks Dx11 only when gl11Present && getHookPointsResolved else Dx9; vcpkg ships imgui dx11 binding as header + in-lib (no .cpp under include, same as dx9).
+- [Phase ?]: Phase 19 P02: directx11.h parses CLEAN through clang-11 CppSharp (left DISCOVERED, no HeaderDiscovery exclusion).
+- [Phase ?]: Phase 19 P02: DX11 acquisition via the client's advertised GetHookPoints() (live swapchain), kicked off by directX11::kickoff() from graphics.cpp::hkInstall (single owned site).
 
 ### Pending Todos
 
@@ -326,7 +329,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-15T20:08:28.488Z
+Last session: 2026-06-15T20:19:28.173Z
 Stopped at: Phase 19 context gathered
 Resume file: None
 
