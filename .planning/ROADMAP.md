@@ -63,7 +63,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 
 - [x] **Phase 17: CppSharp / v145 Hardening** — clang-capability spike → harden-the-redirect + ABI-diff/MEF-compose gate (FOUNDATION; research-phase)
  (completed 2026-06-15)
-- [ ] **Phase 18: Render-Backend Seam + Dx9Backend** — carve `IRenderBackend`, D3D9 overlay behaviorally unchanged (FOUNDATION)
+- [x] **Phase 18: Render-Backend Seam + Dx9Backend** — carve `IRenderBackend`, D3D9 overlay behaviorally unchanged (FOUNDATION) (completed 2026-06-15)
 - [ ] **Phase 19: Dx11Backend + Config Detection + Resize** — DXGI `Present`/`ResizeBuffers` hooks, one-backend-per-session detect (FOUNDATION; research-phase)
 - [ ] **Phase 20: Terrain `.trn` Codec + Verbs + MCP** — decode→navigable layer tree, typed tags, scalar-leaf edit/save, verbs-first (FEATURE / critical path; research-phase)
 - [ ] **Phase 21: Terrain TJT SubPanel (+ best-effort live preview)** — consumes the Phase 20 codec; live regen-on-save rides the seam, degrades honestly (FEATURE)
@@ -98,7 +98,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
   4. The carve preserves the no-Reset / Present-stretch D3D9 contract verbatim — no `Reset` is introduced and the third-party device is never destabilized during the refactor.
 **Plans**: 2 plans
 - [x] 18-01-PLAN.md — Define IRenderBackend seam (10-pure-virtual ABC: 6 ROADMAP-named + A2 color + A2 stage get/set pair) + non-virtual Dx9Backend::init + Dx9Backend wrapper + D-07 mock-dispatch test (Wave 1)
-- [ ] 18-02-PLAN.md — Carve imgui_impl onto the seam (D-05 full purge, setup(HWND)) + D-06 source gate + D-08 live-smoke (Wave 2)
+- [x] 18-02-PLAN.md — Carve imgui_impl onto the seam (D-05 full purge, setup(HWND)) + D-06 source gate + D-08 live-smoke (Wave 2)
 **UI hint**: yes
 
 ### Phase 19: Dx11Backend + Config Detection + Resize
@@ -179,7 +179,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 15. Wave-2 editors + residuals | v2.0 | 21/21 | ✅ Complete | 2026-06-13 |
 | 16. Live MCP bridge + Blender | v2.0 | 3/3 | ✅ Complete | 2026-06-14 |
 | 17. CppSharp / v145 Hardening | v2.1 | 3/3 | Complete    | 2026-06-15 |
-| 18. Render-Backend Seam + Dx9Backend | v2.1 | 1/2 | In Progress|  |
+| 18. Render-Backend Seam + Dx9Backend | v2.1 | 2/2 | Complete   | 2026-06-15 |
 | 19. Dx11Backend + Detection + Resize | v2.1 | 0/? | Not started | - |
 | 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 0/? | Not started | - |
 | 21. Terrain TJT SubPanel | v2.1 | 0/? | Not started | - |

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: executing
+status: verifying
 stopped_at: Phase 18 context gathered
-last_updated: "2026-06-15T17:01:45.650Z"
+last_updated: "2026-06-15T17:15:38.128Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 16
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 4
-  percent: 80
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 
 Phase: 18 (render-backend-seam-dx9backend) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-15
 
 **v2.1 milestone (Phases 17–23) — foundation-before-features:**
@@ -206,6 +206,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 17 P02 | ~18 min | 2 tasks | 2 files |
 | Phase 17 P03 | ~35 min | 4 tasks (3 auto + 1 maintainer live-smoke) | 6 files |
 | Phase 18 P01 | 120min | 2 tasks | 7 files |
+| Phase 18 P18-02 | ~1h | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -264,6 +265,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase 17]: Phase 17-03 (CPPS-04 ABI gate) COMPLETE 2026-06-15 (edd48cc/993f26f/f098586; maintainer live-smoke APPROVED). Two defense-in-depth layers make a binding regen unable to silently detonate pre-built plugins at MEF compose: (1) BCL-only (SHA256) per-block-hash ABI SET diff (AbiBlockHash) over the freshly-regenerated Generated/UtinniCore.cs — order-independent, ignores CppSharp reorder churn, trips on a real public-surface change (member/signature/DllImport-EntryPoint/enum/field-layout), with one-command --rebless; committed baseline = 4386 keys; (2) committed NEVER-rebuilt frozen TheJawaToolboxDotNet.dll Content fixture (deliberate inverse of a rebuild csproj) MEF-composing via PluginLoader(autoLoad:false).Load with LoadErrors==0. DEVIATIONS: (Rule 3) UtinniCore-Symbols.dll added to CopyNativeArtifactsForTests — frozen TJT ctor P/Invokes std::basic_string at compose, else DllNotFoundException masks the managed ABI; (Rule 1) block extractor scope tracking rewritten emit-order→Allman brace-depth scope stack — emit-order drifted ~2450 blocks/regen (permanent red gate), re-blessed from a true fresh regen (two consecutive fresh regens → identical 4386-key set, 0 diff). No paired UtinniPlugins commit — TJT already in lockstep (byte-identical re-freeze). 771/771 UtinniCoreDotNet.Tests + 263/2-skip Utinni.Cli.Tests + AbiSurface/FrozenPluginCompose 7/7; sln + TJT clean Release|x86; Generated/UtinniCore.cs never committed. CPPS-01..04 all delivered → Phase 17 complete.
 - [Phase 18]: 18-01: Option-A two-TU seam split (DX9-free render_backend.cpp holds get/set/s_active; render_backend_dx9.cpp holds Dx9Backend/s_dx9Backend/dx9Singleton) to satisfy CPPS-04 zero-export AND the D-07 device-free test together
 - [Phase 18]: 18-01: render_backend.h excluded from CppSharp PARSE-stage discovery (clang-11 AccessViolation on <imgui.h>); seam projects zero managed surface so nothing lost
+- [Phase ?]: 18-02: imgui_impl carved onto IRenderBackend seam (D-05 extended purge); render_backend.h kept out of imgui_impl.h to avoid CppSharp imgui parse-AV; amendment-6 device hand-off via Dx9Backend stashDevice; RNDR-01 pending D-08 maintainer live-smoke
 
 ### Pending Todos
 
@@ -321,9 +323,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-15T13:09:00.724Z
+Last session: 2026-06-15T17:15:30.787Z
 Stopped at: Phase 18 context gathered
-Resume file: .planning/phases/18-render-backend-seam-dx9backend/18-CONTEXT.md
+Resume file: None
 
 ## Ingest Provenance
 
