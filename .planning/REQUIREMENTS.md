@@ -33,7 +33,7 @@ REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 ca
 
 ### Foundation — Render-path (RNDR)
 
-- [ ] **RNDR-01**: The ImGui overlay renders through a single `IRenderBackend` seam with the existing
+- [x] **RNDR-01**: The ImGui overlay renders through a single `IRenderBackend` seam with the existing
   D3D9 path behaviorally unchanged — overlay still renders and takes input in a live D3D9 session
   (verified by the existing live-smoke).
 - [ ] **RNDR-02**: The overlay renders and maps input correctly (render-target space) when the SWG client
@@ -119,7 +119,7 @@ Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no
 | CPPS-02 | Phase 17 — CppSharp / v145 Hardening | Complete |
 | CPPS-03 | Phase 17 — CppSharp / v145 Hardening | Complete |
 | CPPS-04 | Phase 17 — CppSharp / v145 Hardening | Complete |
-| RNDR-01 | Phase 18 — Render-Backend Seam + Dx9Backend | Pending |
+| RNDR-01 | Phase 18 — Render-Backend Seam + Dx9Backend | Complete |
 | RNDR-02 | Phase 19 — Dx11Backend + Config Detection + Resize | Pending |
 | RNDR-03 | Phase 19 — Dx11Backend + Config Detection + Resize | Pending |
 | RNDR-04 | Phase 19 — Dx11Backend + Config Detection + Resize | Pending |

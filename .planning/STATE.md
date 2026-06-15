@@ -4,14 +4,14 @@ milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: executing
 stopped_at: Phase 18 context gathered
-last_updated: "2026-06-15T14:23:34.472Z"
-last_activity: 2026-06-15 -- Phase 18 planning complete
+last_updated: "2026-06-15T17:01:45.650Z"
+last_activity: 2026-06-15
 progress:
   total_phases: 16
   completed_phases: 1
   total_plans: 5
-  completed_plans: 3
-  percent: 60
+  completed_plans: 4
+  percent: 80
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 17 — cppsharp-v145-hardening
+**Current focus:** Phase 18 — render-backend-seam-dx9backend
 
 ## Current Position
 
-Phase: 999.2
-Plan: Not started
+Phase: 18 (render-backend-seam-dx9backend) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-06-15 -- Phase 18 planning complete
+Last activity: 2026-06-15
 
 **v2.1 milestone (Phases 17–23) — foundation-before-features:**
 
@@ -205,6 +205,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 17 P01 | ~3 min | 2 tasks | 4 files |
 | Phase 17 P02 | ~18 min | 2 tasks | 2 files |
 | Phase 17 P03 | ~35 min | 4 tasks (3 auto + 1 maintainer live-smoke) | 6 files |
+| Phase 18 P01 | 120min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -261,6 +262,8 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: The VS 2019 14.29 parser-include redirect is the documented SUPPORTED binding-generation config (docs/ai/cppsharp-v145-redirect.md); retiring it is gated on a future clang-20-bearing CppSharp release.
 - [Phase 17]: Phase 17-02: CPPS-03 CI tripwires — C++23-header scan HARD-FAILs (throw); clang-20 pin tripwire WARN-loud (committed pin, never blocks, never probes).
 - [Phase 17]: Phase 17-03 (CPPS-04 ABI gate) COMPLETE 2026-06-15 (edd48cc/993f26f/f098586; maintainer live-smoke APPROVED). Two defense-in-depth layers make a binding regen unable to silently detonate pre-built plugins at MEF compose: (1) BCL-only (SHA256) per-block-hash ABI SET diff (AbiBlockHash) over the freshly-regenerated Generated/UtinniCore.cs — order-independent, ignores CppSharp reorder churn, trips on a real public-surface change (member/signature/DllImport-EntryPoint/enum/field-layout), with one-command --rebless; committed baseline = 4386 keys; (2) committed NEVER-rebuilt frozen TheJawaToolboxDotNet.dll Content fixture (deliberate inverse of a rebuild csproj) MEF-composing via PluginLoader(autoLoad:false).Load with LoadErrors==0. DEVIATIONS: (Rule 3) UtinniCore-Symbols.dll added to CopyNativeArtifactsForTests — frozen TJT ctor P/Invokes std::basic_string at compose, else DllNotFoundException masks the managed ABI; (Rule 1) block extractor scope tracking rewritten emit-order→Allman brace-depth scope stack — emit-order drifted ~2450 blocks/regen (permanent red gate), re-blessed from a true fresh regen (two consecutive fresh regens → identical 4386-key set, 0 diff). No paired UtinniPlugins commit — TJT already in lockstep (byte-identical re-freeze). 771/771 UtinniCoreDotNet.Tests + 263/2-skip Utinni.Cli.Tests + AbiSurface/FrozenPluginCompose 7/7; sln + TJT clean Release|x86; Generated/UtinniCore.cs never committed. CPPS-01..04 all delivered → Phase 17 complete.
+- [Phase 18]: 18-01: Option-A two-TU seam split (DX9-free render_backend.cpp holds get/set/s_active; render_backend_dx9.cpp holds Dx9Backend/s_dx9Backend/dx9Singleton) to satisfy CPPS-04 zero-export AND the D-07 device-free test together
+- [Phase 18]: 18-01: render_backend.h excluded from CppSharp PARSE-stage discovery (clang-11 AccessViolation on <imgui.h>); seam projects zero managed surface so nothing lost
 
 ### Pending Todos
 
@@ -300,6 +303,8 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 12. **~~In-game Esc doesn't open system menu~~ NOT-A-BUG / WORKING AS DESIGNED (2026-05-20)** — Action ID `0x12` is `untarget`, not `gameMenuActivate`; SWG binds Esc to clear-target (invisible no-op when no target). See auto-memory `project_swg_keymap_reality`.
 
 Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved constraints — see ROADMAP.md "Open-Question → Phase Mapping" section.
+
+- 18-01 Task 2: render_backend get/set are non-UTINNI_API (zero-export gate, CPPS-04, reviewed-locked) so the D-07 test cannot link them via the UtinniCore.dll import lib (LinkLibraryDependencies only exposes exports). Research assumption links-via-project-reference was wrong. Architectural decision needed.
 
 ## Deferred Items
 

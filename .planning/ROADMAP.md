@@ -97,7 +97,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
   3. The ~1000-line API-neutral overlay logic (WndProc subclass / Issue #11 chat-context routing, RT-space input mapping, gizmo, renderCallbacks bus) is single-sourced in `imgui_impl.cpp`; only the seam dispatch sites (the former DX9 touch-points: newFrame / renderDrawData + the scene depth/color/stage accessors per the A2 amendment) call through the seam.
   4. The carve preserves the no-Reset / Present-stretch D3D9 contract verbatim — no `Reset` is introduced and the third-party device is never destabilized during the refactor.
 **Plans**: 2 plans
-- [ ] 18-01-PLAN.md — Define IRenderBackend seam (10-pure-virtual ABC: 6 ROADMAP-named + A2 color + A2 stage get/set pair) + non-virtual Dx9Backend::init + Dx9Backend wrapper + D-07 mock-dispatch test (Wave 1)
+- [x] 18-01-PLAN.md — Define IRenderBackend seam (10-pure-virtual ABC: 6 ROADMAP-named + A2 color + A2 stage get/set pair) + non-virtual Dx9Backend::init + Dx9Backend wrapper + D-07 mock-dispatch test (Wave 1)
 - [ ] 18-02-PLAN.md — Carve imgui_impl onto the seam (D-05 full purge, setup(HWND)) + D-06 source gate + D-08 live-smoke (Wave 2)
 **UI hint**: yes
 
@@ -179,7 +179,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 15. Wave-2 editors + residuals | v2.0 | 21/21 | ✅ Complete | 2026-06-13 |
 | 16. Live MCP bridge + Blender | v2.0 | 3/3 | ✅ Complete | 2026-06-14 |
 | 17. CppSharp / v145 Hardening | v2.1 | 3/3 | Complete    | 2026-06-15 |
-| 18. Render-Backend Seam + Dx9Backend | v2.1 | 0/? | Not started | - |
+| 18. Render-Backend Seam + Dx9Backend | v2.1 | 1/2 | In Progress|  |
 | 19. Dx11Backend + Detection + Resize | v2.1 | 0/? | Not started | - |
 | 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 0/? | Not started | - |
 | 21. Terrain TJT SubPanel | v2.1 | 0/? | Not started | - |
