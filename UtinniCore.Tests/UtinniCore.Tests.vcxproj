@@ -77,7 +77,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)vcpkg_installed\x86-windows\debug\lib;$(SolutionDir)vcpkg_installed\x86-windows\debug\lib\manual-link;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Catch2d.lib;Catch2Maind.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Catch2d.lib;Catch2Maind.lib;d3d11.lib;dxgi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -96,7 +96,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)vcpkg_installed\x86-windows\lib;$(SolutionDir)vcpkg_installed\x86-windows\lib\manual-link;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Catch2.lib;Catch2Main.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Catch2.lib;Catch2Main.lib;d3d11.lib;dxgi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDbgInfo|Win32'">
@@ -117,7 +117,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)vcpkg_installed\x86-windows\lib;$(SolutionDir)vcpkg_installed\x86-windows\lib\manual-link;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Catch2.lib;Catch2Main.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Catch2.lib;Catch2Main.lib;d3d11.lib;dxgi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -142,6 +142,9 @@
     <ClCompile Include="Graphics\Dx11VtblOffsetTests.cpp" />
     <!-- Phase 19 / RNDR-03 D-21 L4: gl%02d_r.dll backend-selection pure-function unit test. -->
     <ClCompile Include="Graphics\Dx11DetectionTests.cpp" />
+    <!-- Phase 19 / RNDR-02 D-21 L3: WARP throwaway-swapchain harvest + no-leak (skip-with-log
+         if WARP unavailable). Links d3d11.lib/dxgi.lib (it CALLS the API, not patches it). -->
+    <ClCompile Include="Graphics\Dx11DummyDeviceHarvestTests.cpp" />
     <!-- Phase 18 / RNDR-01 D-07 (Option-A split): compile the DX9-FREE half of the
          seam DIRECTLY into the test exe so render_backend::set/get link without the
          import lib. The zero-export seam (CPPS-04) is NOT in UtinniCore.lib, and the
