@@ -35,7 +35,19 @@ the clang-capability spike + supported-config docs (the 14.29 parser-include red
 documented, accepted config), two asymmetric CI tripwires (C++23-STL-header hard-fail scan + clang-20
 pin warn-loud), and the CPPS-04 ABI gate (per-block-hash diff with `--rebless` + a frozen-TJT
 MEF-compose fixture) — a binding regen can no longer silently break a pre-built plugin DLL. Verified
-7/7 via green CI run `8cc05b4`. Next: Phase 18 (render-backend seam).
+7/7 via green CI run `8cc05b4`.
+
+**Phase 18 (Render-Backend Seam + Dx9Backend) complete 2026-06-15 — RNDR-01 satisfied:** the ImGui
+overlay now renders through a single 10-member `IRenderBackend` ABC seam (`UtinniCore/swg/graphics/
+render_backend.{h,cpp}` + a DX9-bearing `render_backend_dx9.cpp`, an Option-A two-TU split that keeps
+the seam zero-`UTINNI_API` per CPPS-04 while staying unit-testable device-free). `imgui_impl.{cpp,h}`
+are fully DX9-API-neutral (D-06 source gate, hardened post-review to be string-literal-aware + cover the
+full reach-in token set) and single-source the ~1000-line overlay logic; the no-Reset / Present-stretch
+D3D9 contract is preserved verbatim. Verified 4/4 must-haves + D-08 maintainer live-smoke (approved); a
+post-review pass hardened four non-blocking warnings (WR-01..04). Native Catch2 suite 151/29. The seam
+is the foundation Phase 19's Dx11Backend twin plugs into without forking the overlay. Next: Phase 19
+(Dx11Backend + config detection + DXGI resize). Pre-existing window-resize/fullscreen edge cases stay
+tracked as an open todo (a pure refactor cannot regress them).
 
 <details>
 <summary>v2.0 milestone goal + target features (shipped — archived for reference)</summary>
