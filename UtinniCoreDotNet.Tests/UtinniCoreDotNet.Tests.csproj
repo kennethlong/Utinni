@@ -46,6 +46,14 @@
     <Content Include="..\Utinni.Cli.Tests\Fixtures\live\wire-reload-ack.json" Link="Fixtures\live\wire-reload-ack.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- Phase 17 CPPS-04a: the committed ABI public-surface block-hash baseline (the ABI
+       contract snapshot). Content-copied beside the test assembly so AbiSurfaceTests reads
+       it by relative path under Fixtures\. Fixtures\** is in DefaultItemExcludes so this is
+       referenced as Content (committed data), NOT compiled. -->
+  <ItemGroup>
+    <Content Include="Fixtures\abi-baseline-blockhashes.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- C-15 tests target SlnDirResolver, a pure-function helper. We CANNOT take a
        ProjectReference to UtinniCoreDotNetGen.csproj because that project must build
        AnyCPU/x64 (its CppSharp deps are AMD64), and the Tests project runs x86 —
