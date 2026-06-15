@@ -54,6 +54,16 @@
     <Content Include="Fixtures\abi-baseline-blockhashes.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- Phase 17 CPPS-04b: the FROZEN The Jawa Toolbox host plugin DLL (broadest binding
+       consumer, D-02). DELIBERATE inversion vs Fixtures/{BrokenPlugin,GoodPlugin}: this is
+       a committed PRE-BUILT binary referenced as <Content>, with NO rebuild csproj — a
+       rebuilt "frozen" plugin would always match the current surface → dead gate
+       (RESEARCH Pitfall 6). Re-freeze via the D-01 rebless lockstep on an intentional
+       surface change. Fixtures\** is in DefaultItemExcludes so it is NOT compiled. -->
+  <ItemGroup>
+    <Content Include="Fixtures\FrozenPlugin\TheJawaToolboxDotNet.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- C-15 tests target SlnDirResolver, a pure-function helper. We CANNOT take a
        ProjectReference to UtinniCoreDotNetGen.csproj because that project must build
        AnyCPU/x64 (its CppSharp deps are AMD64), and the Tests project runs x86 —
@@ -100,6 +110,13 @@
   <Target Name="CopyNativeArtifactsForTests" AfterTargets="Build">
     <ItemGroup>
       <_NativeTestArtifacts Include="$(SolutionDir)bin\$(Configuration)\UtinniCore.dll" />
+      <!-- Phase 17 CPPS-04b: the frozen TJT plugin's ctor activates the generated
+           std::basic_string binding, which P/Invokes into the native UtinniCore-Symbols.dll
+           at MEF compose. Co-locate it beside the test assembly so the headless
+           FrozenPluginComposeTests exercise the MANAGED binding surface (the actual ABI
+           gate) rather than tripping on a missing native dep. A genuine binding-ABI break
+           still surfaces as a MissingMethod/ReflectionTypeLoad failure in LoadErrors. -->
+      <_NativeTestArtifacts Include="$(SolutionDir)bin\$(Configuration)\UtinniCore-Symbols.dll" />
       <_NativeTestArtifacts Include="$(SolutionDir)bin\$(Configuration)\Utinni.LoaderLockHarness.exe" />
       <!-- Phase 3 R-B fixture DLLs (Plan 03-02 Task 1): both are LoadLibrary'd at
            runtime by PluginManagerLifecycleTests via a P/Invoke bridge that
