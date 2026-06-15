@@ -346,17 +346,15 @@ if (GetModuleHandleA("gl11_r.dll") || GetModuleHandleA("gl11_d.dll")) {
 | A3 | Utinni can derive the focus HWND from `IDXGISwapChain1::GetHwnd()`/`GetDesc1()`. `GetHwnd` exists on `IDXGISwapChain1`. | Pattern 3 | Low — `IDXGISwapChain1::GetHwnd` is a documented method; if it returns the child HWND vs top-level, the WndProc subclass target may differ. Verify the HWND identity against `utinni::Client::getSwgHwnd()` at smoke time. |
 | A4 | The producer's RTV is fully released before Utinni's `hkResizeBuffers` detour fires (ordering at `Direct3d11_Device.cpp:1200-1205`). | Pattern 2 | Low — confirmed by reading the source; the `.Reset()` calls precede the `ResizeBuffers` call lexically and execute first. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`WM_SIZE` drag-resize for the embedded panel (RNDR-04 honest bound)**
-   - What we know: the client calls `ResizeBuffers` ONLY from `displayModeChanged()` on `WM_DISPLAYCHANGE` (`Direct3d11_Device.cpp:1181`; trigger chain spec §8). It does NOT call `ResizeBuffers` on `WM_SIZE`.
-   - What's unclear: whether the WinForms reparent/embed generates any path that fires `ResizeBuffers`. It almost certainly does NOT for free window-drag/panel-resize.
-   - Recommendation: **Success-criterion-3 / RNDR-04 is demonstrable for `WM_DISPLAYCHANGE` (monitor mode change)** via the live-smoke. Free `WM_SIZE` drag-resize of the embed panel is **out of reach** unless the client takes spec §6 Option 1 (call `displayModeChanged()` on `WM_SIZE`). Plan the RNDR-04 acceptance as "no `DXGI_ERROR_INVALID_CALL`, RTV recreated, overlay survives a mode change"; track the `WM_SIZE` quality gap under RESID-04 (deliberately deferred, D-18b). State this candor to the planner so RNDR-04 is not over-scoped.
+   - What we knew: the client called `ResizeBuffers` ONLY from `displayModeChanged()` on `WM_DISPLAYCHANGE` (`Direct3d11_Device.cpp:1181`), NOT on `WM_SIZE`.
+   - **RESOLVED (2026-06-15):** the client took **spec §6 Option 1** — `swg-client-v2 @ 2d01b0cb5` now drives `displayModeChanged()` from `WM_SIZE` (debounced via `ms_inSizeMove`/`ms_sizeChangePending`; immediate for embed-reparent/maximize/restore). So the embed-panel/window-drag resize path now fires `ResizeBuffers` and is **in reach** for RNDR-04. The live-smoke should exercise embed/window resize in addition to `WM_DISPLAYCHANGE`. The D-18b deferral to RESID-04 is **closed on the producer side** (see CONTEXT D-18b). Utinni's `ResizeBuffers` hook (vtbl 13) is unchanged — it now simply gets exercised by more triggers.
 
 2. **Poll location: `setup()` one-shot vs per-frame `hkSwapChainPresent` poll**
-   - What we know: the D3D11 swapchain may not exist at first `setup()`; the D3D9 path polls inside `hkPresent` until ready (`directx9.cpp:378`).
-   - What's unclear: whether to detect/select in `setup()` (which needs a device/swapchain) or to install detours from a lightweight poll before `setup()`.
-   - Recommendation: Claude's Discretion (D-21 note). Natural shape: a `directx11::tryInstall()` polled once/frame from a minimal Present-equivalent OR from `hkPresent` analog, latched. The detection branch in `setup()` selects the singleton; the actual DXGI detour install waits for `swapChain != null`. Let the planner choose; both honor D-15.
+   - What we knew: the D3D11 swapchain may not exist at first `setup()`; the D3D9 path polls inside `hkPresent` until ready (`directx9.cpp:378`).
+   - **RESOLVED (iter2 plan revision):** LOCKED shape — `directX11::kickoff()` (in directx11.cpp) is invoked from `graphics.cpp::hkInstall` (beside `directX::detour()`) and subscribes a `tryInstall()` poll thunk to the already-installed `Graphics::subscribePrePresentCallback` per-frame tick, unsubscribing once latched. The bootstrap-broken "minimal DXGI Present detour" shape was rejected. Owned entirely by Plan 02.
 
 ## Environment Availability
 
@@ -367,7 +365,7 @@ if (GetModuleHandleA("gl11_r.dll") || GetModuleHandleA("gl11_d.dll")) {
 | Windows SDK `<d3d11.h>`/`<dxgi1_2.h>` | DXGI hook tier | ✓ | OS SDK | — |
 | DetourXS | vtbl detour | ✓ | vendored 1.0 | — |
 | D3D11 WARP | offline harvest test (D-21 L3) | ? | OS-provided | Skip-with-log if device create fails (A1) |
-| Live 32-bit D3D11 SWG-Source client w/ GetHookPoints | D-22 live-smoke | ✓ build exists (D-20); export shipped @ `056632a` | swg-client-v2 | — (maintainer-only checkpoint) |
+| Live 32-bit D3D11 SWG-Source client w/ GetHookPoints | D-22 live-smoke | ✓ release+debug `gl11_r/_d.dll` built+staged @ `2d01b0cb5`; `GetHookPoints` export dumpbin-verified undecorated; boot-tested | swg-client-v2 | — (maintainer-only checkpoint) |
 
 **Missing dependencies with no fallback:** none.
 **Missing dependencies with fallback:** `dx11-binding` (add to manifest — trivial); WARP (skip-with-log).

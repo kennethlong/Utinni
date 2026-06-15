@@ -58,12 +58,14 @@ D3D9 windowed↔fullscreen window-management bugs (deferred todo); any new edito
   process-lifetime `ms_swapChain` ComPtr that persists through resize.
 
 ### Separation of responsibilities (Utinni vs SWG-Source)
-- **D-12:** Phase 19 (Utinni side) delivers: the `Dx11Backend` **consumer** of the advertised contract
-  + **a written instrumentation spec** documenting the contract the client must satisfy.
-- **D-13:** The actual **SWG-Source client instrumentation is a clean handoff** — the spec (D-12) is
-  handed to a **separate Claude Code session** working in the SWG-Source repo. It is NOT Utinni-phase
-  code; it does not live in Utinni's tree. Clean separation of responsibilities (analogous to the
-  cross-repo UtinniPlugins pattern, but executed by a different agent against a different repo).
+- **D-12 [informational — satisfied, not a plan task]:** Phase 19 (Utinni side) delivers a written
+  instrumentation spec documenting the contract the client must satisfy. SATISFIED: authored directly
+  at `19-INSTRUMENTATION-SPEC.md` (not implemented by a PLAN.md). The `Dx11Backend` consumer half is
+  the trackable code work (covered by Plans 02/03 via D-09/D-10/D-11).
+- **D-13 [informational — satisfied, cross-repo process]:** the SWG-Source client instrumentation is a
+  clean handoff to a separate Claude Code session — NOT Utinni-phase code, does not live in Utinni's
+  tree. SATISFIED: the handoff landed (`GetHookPoints` export + `WM_SIZE`, `swg-client-v2 @ 2d01b0cb5`,
+  verified 2026-06-15). No Utinni PLAN.md implements this by design.
 - **D-14 (sequencing):** Because advertisement REPLACES harvest, the Utinni consumer needs the contract
   defined first, and the **maintainer live-smoke gate is sequenced AFTER the handoff instrumentation
   lands** in the running client. Planner must account for this dependency ordering (contract design →
@@ -86,13 +88,14 @@ D3D9 windowed↔fullscreen window-management bugs (deferred todo); any new edito
   `ResizeBuffers` run → recreate RTV. Backbuffer tracks the window; no `DXGI_ERROR_INVALID_CALL`. The
   D3D9 never-Reset/stretch rule is **NOT** carried verbatim (D3D11 has no third-party-Reset hazard —
   `[[feedback_d3d9_reset_third_party]]` is D3D9-specific). Confirms success criterion 3.
-- **D-18b (resize-trigger gap, research finding 2026-06-15):** the D3D11 client today calls
-  `ResizeBuffers` **only** from `displayModeChanged()` on `WM_DISPLAYCHANGE` (monitor mode change) —
-  **NOT** on `WM_SIZE` (window-drag / embed-panel resize). Utinni's `ResizeBuffers` hook covers the
-  mode-change path; the embedded-panel drag-resize is not backbuffer-tracked unless the client also
-  fires `ResizeBuffers` on `WM_SIZE`. Disposition: hook `ResizeBuffers` regardless (covers what fires);
-  the optional client-side `WM_SIZE→ResizeBuffers` improvement is raised in the instrumentation spec
-  §6 (default = defer to the RESID-04 window-management bucket). Does NOT block the contract.
+- **D-18b (resize-trigger gap — CLOSED on producer side 2026-06-15):** the D3D11 client *previously*
+  called `ResizeBuffers` only from `displayModeChanged()` on `WM_DISPLAYCHANGE`, not on `WM_SIZE`. The
+  client-side session took **spec §6 Option 1** (`swg-client-v2 @ 2d01b0cb5`): `WM_SIZE` now drives the
+  `displayModeChanged()` resize path (debounced via `ms_inSizeMove`/`ms_sizeChangePending`; immediate
+  for embed-reparent/maximize/restore), boot-tested. **So the embed-panel/window-drag resize now fires
+  `ResizeBuffers` and RNDR-04 is NO LONGER deferred to RESID-04** — the live-smoke (D-22) should
+  exercise embed/window resize in addition to `WM_DISPLAYCHANGE`. Utinni's `ResizeBuffers` hook
+  (vtbl 13) is unchanged; it now simply gets exercised by more triggers.
 - **D-19:** **Keep RT-space input mapping under D3D11.** Reuse the existing RT-space block
   (`imgui_impl.cpp` ~425–465) feeding `renderTargetWidth/Height` through the seam. Success criterion 1
   explicitly requires render-target-space input under D3D11; if true `ResizeBuffers` makes
@@ -120,6 +123,10 @@ D3D9 windowed↔fullscreen window-management bugs (deferred todo); any new edito
 - **D-22:** **Maintainer live-smoke is the final RNDR-02/03/04 acceptance gate** (mirrors Phase 18 D-08
   for RNDR-01): inject + eyeball the overlay (renders, input maps in RT-space, survives resize) on the
   live D3D11 client. Maintainer-only human checkpoint; not subagent-reachable. Sequenced after D-14.
+  **Prereq SATISFIED 2026-06-15:** the deployed client side has landed — `GetHookPoints` export
+  dumpbin-verified undecorated in both `gl11_r.dll`/`gl11_d.dll` (built+staged, `swg-client-v2 @
+  2d01b0cb5`), contract reviewed against `19-INSTRUMENTATION-SPEC.md` (met), both boot-tested. The
+  live-smoke is unblocked.
 
 ### Claude's Discretion
 - Dummy-swapchain HWND choice for the offline harvest test (message-only window vs 1×1 hidden window),

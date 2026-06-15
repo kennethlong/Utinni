@@ -66,7 +66,7 @@ created: 2026-06-15
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
 | Overlay renders + maps input in RT-space on the live D3D11 client | RNDR-02 | CI cannot run a live SWG D3D11 session (D-22) | Inject Utinni into the running 32-bit `gl11_r.dll` SWG-Source client; confirm overlay draws + mouse/keyboard map in render-target space |
-| Overlay survives resize without `DXGI_ERROR_INVALID_CALL` | RNDR-04 | Live-only; `ResizeBuffers` fires on `WM_DISPLAYCHANGE` (D-18b) | Trigger a display-mode change in the live D3D11 client; confirm overlay re-renders, no INVALID_CALL. (Free `WM_SIZE` panel drag-resize is the deferred RESID-04 bound per Open Q1 — do not score it here.) |
+| Overlay survives resize without `DXGI_ERROR_INVALID_CALL` | RNDR-04 | Live-only; client fires `ResizeBuffers` on both `WM_DISPLAYCHANGE` and `WM_SIZE` (D-18b CLOSED @ 2d01b0cb5) | Trigger a display-mode change AND an embed-panel/window resize (drag, maximize/restore) in the live D3D11 client; confirm overlay re-renders, RTV recreated, backbuffer tracks client rect, no INVALID_CALL. (WM_SIZE now in scope — client landed spec §6 Option 1.) |
 | Exactly one backend, one-shot diagnostic, no doubled input | RNDR-03 | Live-only confirmation of single-context install | Inject into the D3D11 client; confirm the one-shot detection log names gl11_r.dll + Dx11Backend, single ImGui context, no doubled input |
 
 ---
