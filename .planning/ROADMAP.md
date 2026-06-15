@@ -64,7 +64,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 - [x] **Phase 17: CppSharp / v145 Hardening** — clang-capability spike → harden-the-redirect + ABI-diff/MEF-compose gate (FOUNDATION; research-phase)
  (completed 2026-06-15)
 - [x] **Phase 18: Render-Backend Seam + Dx9Backend** — carve `IRenderBackend`, D3D9 overlay behaviorally unchanged (FOUNDATION) (completed 2026-06-15)
-- [ ] **Phase 19: Dx11Backend + Config Detection + Resize** — DXGI `Present`/`ResizeBuffers` hooks, one-backend-per-session detect (FOUNDATION; research-phase)
+- [ ] **Phase 19: Dx11Backend + Config Detection + Resize** — DXGI `Present`/`ResizeBuffers` hooks, one-backend-per-session detect (FOUNDATION; research-phase) (all 3 plans code-complete + CI lanes green 2026-06-15; awaiting maintainer live-smoke D-22 — RNDR-02/03/04 on the live D3D11 client)
 - [ ] **Phase 20: Terrain `.trn` Codec + Verbs + MCP** — decode→navigable layer tree, typed tags, scalar-leaf edit/save, verbs-first (FEATURE / critical path; research-phase)
 - [ ] **Phase 21: Terrain TJT SubPanel (+ best-effort live preview)** — consumes the Phase 20 codec; live regen-on-save rides the seam, degrades honestly (FEATURE)
 - [ ] **Phase 22: ClientEffect Editor** — command-list `.iff` codec + verbs + MCP + SubPanel (FEATURE; lowest risk)
@@ -112,7 +112,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 **Plans**: 3 plans
 - [x] 19-01-PLAN.md — vcpkg dx11-binding enable + Dx11Backend seam decl + extend D-06 neutrality gate to DX11/DXGI + offset-pin/detection/mock-dispatch tests (Wave 1)
 - [x] 19-02-PLAN.md — directx11.{cpp,h} DXGI hook tier (advertised GetHookPoints consumer, Present idx 8 / ResizeBuffers idx 13) + render_backend_dx11.cpp twin (per-frame RTV rebind, resize release/recreate) + WARP harvest test + CppSharp parse-stage decision (Wave 2)
-- [ ] 19-03-PLAN.md — one-backend-per-session detection at setup() + latched DX11 install poll + one-shot log + maintainer live-smoke RNDR-02/03/04 (D-22) (Wave 3)
+- [~] 19-03-PLAN.md — one-backend-per-session detection at setup() + latched DX11 install poll + one-shot log + maintainer live-smoke RNDR-02/03/04 (D-22) (Wave 3) — Task 1 code-complete + CI lanes green; Task 2 maintainer live-smoke PENDING (blocking-human, no headless path)
 **Research-phase**: yes — confirm FIRST (a) the final renderer-DLL contract (`gl11_r.dll` source-grounded vs `Direct3d11.dll`) and (b) hard-cutover vs runtime-switch. **Scope: 32-bit only.** x64 is explicitly OUT of v2.1 (user-locked 2026-06-14) — the `swg-client-v2` `x64bit-Upgrade` branch is a deliberate later milestone, paired with the entry-point-advertisement mechanism (Backlog 999.7), not a v2.1 risk. This D3D11 work targets the **32-bit** SWG-Source client. Entry-point discovery for v2.1 stays the current RVA/pattern-scan model on both clients; advertisement is future + SWG-Source-only.
 **UI hint**: yes
 
@@ -183,7 +183,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 16. Live MCP bridge + Blender | v2.0 | 3/3 | ✅ Complete | 2026-06-14 |
 | 17. CppSharp / v145 Hardening | v2.1 | 3/3 | Complete    | 2026-06-15 |
 | 18. Render-Backend Seam + Dx9Backend | v2.1 | 2/2 | Complete    | 2026-06-15 |
-| 19. Dx11Backend + Detection + Resize | v2.1 | 2/3 | In Progress|  |
+| 19. Dx11Backend + Detection + Resize | v2.1 | 3/3 | Complete   | 2026-06-15 |
 | 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 0/? | Not started | - |
 | 21. Terrain TJT SubPanel | v2.1 | 0/? | Not started | - |
 | 22. ClientEffect Editor | v2.1 | 0/? | Not started | - |
