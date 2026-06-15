@@ -36,6 +36,14 @@
 // Forward declaration only -- keeps <d3d9.h> out of this header (D-05 gate).
 struct IDirect3DDevice9;
 
+// Phase 19 / RNDR-02: forward declarations only -- keep <d3d11.h>/<dxgi1_2.h> out
+// of this header (D-05 gate extended). Dx11Backend's non-virtual init() names the
+// DX11 device/context types by pointer, and any private RTV/device/context state
+// stays a forward-declared pointer; the concrete types live in render_backend_dx11.cpp.
+struct ID3D11Device;
+struct ID3D11DeviceContext;
+struct ID3D11RenderTargetView;
+
 namespace render_backend
 {
 // IRenderBackend is a runtime-polymorphic pure-virtual ABC (D-01). A single
@@ -114,6 +122,40 @@ private:
     IDirect3DDevice9* m_stashedDevice = nullptr;
 };
 
+// Concrete D3D11/DXGI backend (Phase 19 / RNDR-02). The DXGI twin of Dx9Backend:
+// the SAME 10 vtable overrides plug into the SAME IRenderBackend seam without
+// re-touching imgui_impl. The impl (render_backend_dx11.cpp) wraps the directX11::
+// hook tier + the imgui DX11 backend binding. Unlike Dx9Backend, the resize hooks
+// do REAL work (DXGI ResizeBuffers releases/recreates the backbuffer RTV, D-18)
+// and newFrame() rebinds the flip-discard-unbound RTV before the imgui new-frame.
+class Dx11Backend final : public IRenderBackend
+{
+public:
+    void newFrame() override;
+    void renderDrawData(ImDrawData* drawData) override;
+    void onPreResize() override;
+    void onPostResize() override;
+    int renderTargetWidth() override;
+    int renderTargetHeight() override;
+    ImTextureID sceneDepthTexture() override;
+    ImTextureID sceneColorTexture() override;
+    int sceneDepthStage() override;
+    void setSceneDepthStage(int stage) override;
+
+    // NON-VIRTUAL, deliberately OFF the IRenderBackend vtable. The DX11 init
+    // signature DIFFERS from Dx9's single-device init: it takes BOTH the device
+    // and the immediate context (ImGui_ImplDX11_Init needs both). Plan 02's
+    // install path calls this; it does the imgui DX11 backend init and returns
+    // the swapchain's HWND. Returns nullptr if no device/context is available.
+    HWND init(ID3D11Device* device, ID3D11DeviceContext* context);
+
+private:
+    // Forward-declared-pointer members only (D-05): the backbuffer RTV Utinni
+    // CREATES (released in onPreResize, recreated in onPostResize/newFrame). The
+    // concrete ID3D11RenderTargetView type stays in render_backend_dx11.cpp's TU.
+    ID3D11RenderTargetView* m_rtv = nullptr;
+};
+
 // Accessor trio (mirrors the directx9.h namespace-of-free-functions convention,
 // but deliberately carries NO DLL-export macro -- the seam is internal: it links
 // via project reference, has no DLL export, and adds no CppSharp binding surface).
@@ -123,4 +165,5 @@ private:
 IRenderBackend* get();
 void set(IRenderBackend* backend);   // setup() installs the Dx9 singleton; the D-07 test installs a mock
 Dx9Backend* dx9Singleton();          // address of the static-storage Dx9Backend (never heap-allocated)
+Dx11Backend* dx11Singleton();        // address of the static-storage Dx11Backend (Phase 19; impl in render_backend_dx11.cpp)
 } // namespace render_backend

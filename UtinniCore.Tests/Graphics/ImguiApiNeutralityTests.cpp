@@ -86,6 +86,34 @@ const std::vector<std::string>& dx9Tokens()
     };
     return tokens;
 }
+
+// Phase 19 / RNDR-02/03 (D-06 extension): the DX11/DXGI concrete symbol forms
+// imgui_impl.{cpp,h} must ALSO stay free of. The Dx11Backend twin and the
+// directX11:: hook tier are added BEHIND the seam in Plans 02/03; imgui_impl
+// must never name a DX11/DXGI type or include a DX11 binding/tier header.
+//
+// GREP-GATE HYGIENE (feedback_gsd_grep_gate_hygiene): gate ONLY concrete symbol
+// forms, NEVER the bare strings "D3D11" / "DXGI" -- live comments (the gl11
+// detection rationale, the flip-discard note) legitimately mention them.
+const std::vector<std::string>& dx11Tokens()
+{
+    static const std::vector<std::string> tokens = {
+        "#include <d3d11.h>",
+        "#include \"d3d11.h\"",
+        "#include <dxgi1_2.h>",
+        "#include <dxgi.h>",
+        "#include <imgui_impl_dx11.h>",
+        "imgui_impl_dx11",                // the DX11 imgui backend header/symbol form
+        "directx11.h",                    // any include form of the DX11 tier header
+        "directX11::",                    // the DX11 namespace reach-in (tryInstall/getDevice)
+        "ID3D11Device",                   // also matches ID3D11DeviceContext
+        "ID3D11DeviceContext",
+        "ID3D11RenderTargetView",
+        "ID3D11ShaderResourceView",
+        "IDXGISwapChain",
+    };
+    return tokens;
+}
 } // namespace
 
 TEST_CASE("D-06 imgui_impl is fully DX9-API-neutral after the carve", "[rndr01][graphics]")
@@ -99,14 +127,20 @@ TEST_CASE("D-06 imgui_impl is fully DX9-API-neutral after the carve", "[rndr01][
         const std::string sample =
             "int x = 0; // IDirect3DDevice9 in a line comment must be stripped\n"
             "/* block: #include <d3d9.h> and ImGui_ImplDX9_Init also stripped */\n"
-            "int y = 1; // directX::getDevice() in a comment\n";
+            "int y = 1; // directX::getDevice() in a comment\n"
+            "int z = 2; // ID3D11Device and directX11::tryInstall in a comment too\n";
         REQUIRE(countSubstr(stripComments(sample), "IDirect3DDevice9") == 0);
         REQUIRE(countSubstr(stripComments(sample), "ImGui_ImplDX9_") == 0);
         REQUIRE(countSubstr(stripComments(sample), "directX::") == 0);
+        // Phase 19: prove the stripper still does work on at least one NEW DX11 token.
+        REQUIRE(countSubstr(stripComments(sample), "ID3D11Device") == 0);
+        REQUIRE(countSubstr(stripComments(sample), "directX11::") == 0);
         // And the un-stripped sample DOES contain matches -> stripper is doing work.
         REQUIRE(countSubstr(sample, "IDirect3DDevice9") == 1);
         REQUIRE(countSubstr(sample, "ImGui_ImplDX9_") == 1);
         REQUIRE(countSubstr(sample, "directX::") == 1);
+        REQUIRE(countSubstr(sample, "ID3D11Device") == 1);
+        REQUIRE(countSubstr(sample, "directX11::") == 1);
 
         // WR-02 regression guard: a banned token sitting AFTER an in-string `//`
         // must NOT be stripped. A string-literal-blind stripper would truncate at
@@ -134,6 +168,11 @@ TEST_CASE("D-06 imgui_impl is fully DX9-API-neutral after the carve", "[rndr01][
             INFO("DX9 symbol leaked into imgui_impl.cpp: " << token);
             REQUIRE(countSubstr(code, token) == 0);
         }
+        for (const std::string& token : dx11Tokens())
+        {
+            INFO("DX11/DXGI symbol leaked into imgui_impl.cpp: " << token);
+            REQUIRE(countSubstr(code, token) == 0);
+        }
     }
 
     SECTION("imgui_impl.h contains zero DX9 symbols (extended token set)")
@@ -142,6 +181,11 @@ TEST_CASE("D-06 imgui_impl is fully DX9-API-neutral after the carve", "[rndr01][
         for (const std::string& token : dx9Tokens())
         {
             INFO("DX9 symbol leaked into imgui_impl.h: " << token);
+            REQUIRE(countSubstr(code, token) == 0);
+        }
+        for (const std::string& token : dx11Tokens())
+        {
+            INFO("DX11/DXGI symbol leaked into imgui_impl.h: " << token);
             REQUIRE(countSubstr(code, token) == 0);
         }
     }
