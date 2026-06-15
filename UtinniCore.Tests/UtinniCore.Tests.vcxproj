@@ -133,6 +133,14 @@
     <ClCompile Include="UtINI\IniParserTests.cpp" />
     <!-- Phase 15 15-05 Task 2: RESID-04 / D-13 no-device-Reset regression gate. -->
     <ClCompile Include="Graphics\NoDeviceResetTests.cpp" />
+    <!-- Phase 18 / RNDR-01 D-07: IRenderBackend mock-dispatch seam test. -->
+    <ClCompile Include="Graphics\RenderBackendSeamTests.cpp" />
+    <!-- Phase 18 / RNDR-01 D-07 (Option-A split): compile the DX9-FREE half of the
+         seam DIRECTLY into the test exe so render_backend::set/get link without the
+         import lib. The zero-export seam (CPPS-04) is NOT in UtinniCore.lib, and the
+         DX9-bearing half (render_backend_dx9.cpp) is deliberately NOT compiled here;
+         it would drag in directX, DetourXS, and DepthTexture (LNK2019 cascade). -->
+    <ClCompile Include="..\UtinniCore\swg\graphics\render_backend.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\UtinniCore\UtinniCore.vcxproj">

@@ -83,6 +83,21 @@ namespace UtinniCoreDotNetGen
                 {
                     continue;
                 }
+                // Phase 18 / RNDR-01: render_backend.h is the internal IRenderBackend
+                // seam (zero UTINNI_API -- no managed binding surface; it links into
+                // UtinniCore via project reference only). It is the first UtinniCore
+                // header to pull <imgui.h> into the CppSharp parse graph, which the
+                // pinned clang-11 parser (MSVC 14.29 STL, NoStandardIncludes) cannot
+                // parse -- ClangParser.ParseHeader faults with an AccessViolation
+                // during ParseCode(), BEFORE the Preprocess IgnoreHeadersWithName pass
+                // can take effect. The header must therefore be excluded at DISCOVERY
+                // (here, pre-parse), not via the AST ignore list. Excluding it never
+                // loses managed surface because the seam projects none.
+                string fileName = Path.GetFileName(relPath);
+                if (string.Equals(fileName, "render_backend.h", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
                 // CppSharp expects backslash-separated relative paths.
                 results.Add(relPath.Replace('/', '\\'));
             }

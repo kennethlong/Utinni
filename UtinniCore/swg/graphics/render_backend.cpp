@@ -22,108 +22,21 @@
  * SOFTWARE.
  **/
 
-// Phase 18 / RNDR-01: render_backend.cpp is the ONLY new file that may include
-// the DX9 bindings. The Dx9Backend wraps the existing live-verified directX::
-// free functions verbatim (wrap, don't rewrite) -- it re-implements none of the
-// detour/device/vtable-harvest internals.
+// Phase 18 / RNDR-01: this TU is the DX9-FREE half of the seam (Option A split,
+// 18-01 Task 2 decision). It holds ONLY the active-backend pointer and the
+// get()/set() accessors -- it has ZERO Direct3D / imgui-backend / device-facade
+// dependencies, so the D-07 mock-dispatch test can compile it DIRECTLY and link
+// the dispatch contract device-free (the test references render_backend::set/get
+// only; it never touches the Dx9Backend concrete type). The Dx9Backend method
+// bodies, its static-storage singleton, and dx9Singleton() live in the sibling
+// render_backend_dx9.cpp, which owns all the DX9/ImGui_ImplDX9 dependencies.
 #include "render_backend.h"
-#include <d3d9.h>
-#include <imgui_impl_dx9.h>
-#include "directx9.h"   // directX:: free functions (device/depth/etc.)
-#include "graphics.h"   // utinni::Graphics::getCurrentRenderTargetWidth/Height
-#include <cassert>
 
 namespace render_backend
 {
-// --- Per-frame hot path: plain forwards to the imgui DX9 backend bindings. ---
-void Dx9Backend::newFrame()
-{
-    ImGui_ImplDX9_NewFrame();
-}
-
-void Dx9Backend::renderDrawData(ImDrawData* drawData)
-{
-    ImGui_ImplDX9_RenderDrawData(drawData);
-}
-
-// --- Resize hooks (D-03): honest no-ops. D3D9 never re-initializes the device; ---
-// --- these exist only so Phase 19's Dx11 ResizeBuffers has a home. The bodies   ---
-// --- stay empty -- no device re-init call is ever introduced here.              ---
-void Dx9Backend::onPreResize() {}
-void Dx9Backend::onPostResize() {}
-
-// --- Render-target dims (D-04): forward to the API-neutral SWG Graphics facade. ---
-int Dx9Backend::renderTargetWidth()
-{
-    return utinni::Graphics::getCurrentRenderTargetWidth();
-}
-
-int Dx9Backend::renderTargetHeight()
-{
-    return utinni::Graphics::getCurrentRenderTargetHeight();
-}
-
-// --- Scene depth/color accessors (D-05 + A2): fold the imgui_impl null guards ---
-// --- into the accessor so the consumer never sees directX::DepthTexture.       ---
-ImTextureID Dx9Backend::sceneDepthTexture()
-{
-    auto* t = directX::getDepthTexture();
-    if (t == nullptr || t->getTextureColor() == nullptr)
-    {
-        return (ImTextureID)0;
-    }
-    return (ImTextureID)t->getTextureDepth();
-}
-
-ImTextureID Dx9Backend::sceneColorTexture()
-{
-    auto* t = directX::getDepthTexture();
-    if (t == nullptr || t->getTextureColor() == nullptr)
-    {
-        return (ImTextureID)0;
-    }
-    return (ImTextureID)t->getTextureColor();
-}
-
-int Dx9Backend::sceneDepthStage()
-{
-    auto* t = directX::getDepthTexture();
-    return t ? t->getStage() : 0;
-}
-
-void Dx9Backend::setSceneDepthStage(int stage)
-{
-    if (auto* t = directX::getDepthTexture())
-    {
-        t->setStage(stage);
-    }
-}
-
-// --- NON-VIRTUAL device-bearing init (off the vtable). pDevice from hkPresent ---
-// --- is the primary source; directX::getDevice() is the assert/fallback only.  ---
-HWND Dx9Backend::init(IDirect3DDevice9* device)
-{
-    if (device == nullptr)
-    {
-        // Fallback to the captured device only if the caller passed null.
-        device = directX::getDevice();
-        assert(device != nullptr && "Dx9Backend::init: no D3D9 device available");
-    }
-
-    if (device == nullptr)
-    {
-        // Still null -- caller (Plan 02 setup()) bails; no overlay install.
-        return nullptr;
-    }
-
-    D3DDEVICE_CREATION_PARAMETERS cParam;
-    device->GetCreationParameters(&cParam);
-    ImGui_ImplDX9_Init(device);
-    return cParam.hFocusWindow;
-}
-
-// --- Static-storage singleton (no heap; heap-free hot path) + accessor trio. ---
-static Dx9Backend s_dx9Backend;
+// The single installed backend. NULLABLE: nullptr until setup() installs the
+// Dx9 singleton (Plan 02) or a test installs a mock; Plan 02 guards every call
+// site. Static storage, no heap (heap-free per-frame dispatch -- Pitfall 1).
 static IRenderBackend* s_active = nullptr;
 
 IRenderBackend* get()
@@ -134,10 +47,5 @@ IRenderBackend* get()
 void set(IRenderBackend* backend)
 {
     s_active = backend;
-}
-
-Dx9Backend* dx9Singleton()
-{
-    return &s_dx9Backend;
 }
 } // namespace render_backend
