@@ -165,6 +165,16 @@ namespace UtinniCoreDotNetGen
             // VS 2019 14.29 MSVC STL + Windows SDK 10.0.19041 (the original supported
             // pairing for clang 11). This decouples codegen-time STL parsing from
             // build-time (v145) STL compilation. See research note above.
+            //
+            // SUPPORTED-CONFIG DOC: this redirect is the documented, supported
+            // binding-generation config -- not a temporary workaround. The CPPS-01
+            // spike (tools/cppsharp-clang-capability-spike.ps1) confirms no released
+            // CppSharp parses the v145 STL (vendored clang 11 and latest released
+            // clang 19 both < the clang-20 the v145 STL requires). For the full
+            // rationale -- why the 14.29 redirect is load-bearing, the
+            // _MSVC_STL_VERSION = 143 ABI-stability assumption, the toolchain
+            // prerequisites, and the UTINNI_VS2019_ROOT / UTINNI_SLN_DIR env
+            // overrides read below -- see docs/ai/cppsharp-v145-redirect.md.
             private static void ConfigureCppSharpParserStl(Driver driver)
             {
                 string vs2019Root = ResolveVs2019Root();
