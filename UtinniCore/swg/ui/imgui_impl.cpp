@@ -30,6 +30,11 @@
 // Direct3D bindings). Included here in the .cpp -- NOT in imgui_impl.h -- so its
 // <imgui.h> dependency stays out of the CppSharp parse graph.
 #include "swg/graphics/render_backend.h"
+// Phase 19 / RNDR-03 (D-15/D-17): the PURE backend-selection decision. This
+// header names ZERO concrete DX11/DXGI symbol (it models the decision as two
+// booleans), so it passes the extended D-06 neutrality gate -- the DX11 hook
+// tier header (the directX11 tier .h) deliberately stays OUT of this TU.
+#include "swg/graphics/backend_select.h"
 
 #include <cstdio>
 #include <mutex>
@@ -280,28 +285,105 @@ void setup(HWND hwnd)
 
     // (1) Install the active backend BEFORE isSetup flips true, so no seam call
     //     site can fire through the isSetup gate with a null backend.
-    render_backend::set(render_backend::dx9Singleton());
+    //
+    //     Phase 19 / RNDR-03: one-backend-per-session detection (D-15/D-17). TWO
+    //     entry paths reach setup(), and they are distinguished by whether a
+    //     backend is ALREADY installed:
+    //       * DX9 entry (directx9.cpp::hkPresent): arrives with NO backend
+    //         installed (get() == nullptr). We run the selection here. The gl11
+    //         module-presence check is a plain Win32 string call (passes the D-06
+    //         gate). The advertised DXGI GetHookPoints contract can only be
+    //         resolved by the DX11 hook tier (which would require the DX11 tier
+    //         header -- banned in this TU), so on THIS entry path the contract bit is
+    //         necessarily false: had the live DXGI swapchain been ready, the DX11
+    //         hook tier's tryInstall() would have already latched the dx11
+    //         backend and entered setup() via the DX11 path below. Routing the
+    //         decision through the pure selectBackend() keeps it honest + the
+    //         testable contract (Dx11DetectionTests) the live path also obeys.
+    //       * DX11 entry (directx11.cpp::tryInstall, Plan 02): tryInstall() has
+    //         ALREADY done render_backend::set(dx11Singleton()) +
+    //         dx11Singleton()->init(device,context) from the hook tier BEFORE
+    //         calling setup(hwnd).
+    //         So get() is non-null and != dx9Singleton(); we must NOT re-set and
+    //         must SKIP the DX9 step-2 init below.
+    //     The one-shot diagnostic names the chosen backend (RNDR-03).
+    static bool sLoggedBackend = false;
+    if (render_backend::get() == nullptr)
+    {
+        // DX9 entry path: resolve the selection booleans WITHOUT naming any DX11
+        // symbol. gl11Present is a module-presence check; the contract bit is
+        // false here (see rationale above -- a ready DXGI swapchain would have
+        // entered via the DX11 path, not this one).
+        const bool gl11Present =
+            (GetModuleHandleA("gl11_r.dll") != nullptr) || (GetModuleHandleA("gl11_d.dll") != nullptr);
+        const render_backend::BackendChoice choice =
+            render_backend::selectBackend(gl11Present, /*getHookPointsResolved=*/false);
 
-    // (2) Drive the non-virtual device-bearing init. The live device that
-    //     hkPresent stashed on the singleton is init()'s PRIMARY source (review
-    //     amendment 6); the captured-device fallback is used only if none stashed.
-    //     init() does the creation-parameters query + the single imgui DX9 renderer
-    //     init internally and returns hFocusWindow. If it returns null no device was
+        // selectBackend can only return Dx11 when BOTH booleans are true; the
+        // contract bit is false on this entry path, so this resolves to Dx9. The
+        // dx11 install is owned entirely by the DX11 hook tier (directx11.cpp),
+        // kicked off from graphics.cpp::hkInstall (Plan 02) -- never from here.
+        render_backend::set(render_backend::dx9Singleton());
+        if (!sLoggedBackend)
+        {
+            sLoggedBackend = true;
+            if (choice == render_backend::BackendChoice::Dx11)
+            {
+                // Unreachable on this entry path (contract bit false) -- present
+                // for completeness so the selection is single-sourced.
+                utinni::log::info("Render backend: D3D11 (gl11 detected, GetHookPoints advertised)");
+            }
+            else if (gl11Present)
+            {
+                utinni::log::warning("gl11 detected but GetHookPoints absent/not-ready; defaulting D3D9");
+            }
+            else
+            {
+                utinni::log::info("Render backend: D3D9 (default; no gl11 detected)");
+            }
+        }
+    }
+    else if (!sLoggedBackend)
+    {
+        // DX11 entry path: the hook tier already installed the dx11 backend.
+        // Emit the one-shot diagnostic naming it; do NOT re-set the backend.
+        sLoggedBackend = true;
+        utinni::log::info("Render backend: D3D11 (gl11 detected, GetHookPoints advertised)");
+    }
+
+    // (2) Drive the non-virtual device-bearing init -- ONLY when the installed
+    //     backend is the DX9 singleton. The live device that hkPresent stashed on
+    //     the singleton is init()'s PRIMARY source (review amendment 6); the
+    //     captured-device fallback is used only if none stashed. init() does the
+    //     creation-parameters query + the single imgui DX9 renderer init
+    //     internally and returns hFocusWindow. If it returns null no device was
     //     available -- undo the partial install and bail (no overlay rather than a
     //     half-installed one).
-    const HWND backendWindow = render_backend::dx9Singleton()->init(nullptr);
-    if (backendWindow == nullptr)
+    //
+    //     Phase 19 hand-off (Plan 02): on the DX11 entry path the device init
+    //     ALREADY ran inside the hook tier's install poll (dx11Singleton()->init(
+    //     device, context)) and no D3D9 device exists in a D3D11 client -- calling
+    //     dx9Singleton()->init(nullptr) would bail at the null guard and leave a
+    //     dead overlay. So this step is GUARDED on the installed backend being the
+    //     dx9 singleton; the DX11 path skips it and runs the HWND-bearing tail
+    //     with the passed-in hwnd (the swapchain-derived window).
+    if (render_backend::get() == render_backend::dx9Singleton())
     {
-        // WR-01: symmetric partial-init teardown. At this bail point the only
-        // imgui-side state that has been created is the ImGuiContext from line
-        // 279 (Win32 platform init is step (4), still ahead of us, so there is
-        // no ImGui_ImplWin32_Shutdown to issue yet). Destroying the context here
-        // -- and undoing the step (1) backend install -- means a later frame
-        // re-enters setup() from a CLEAN slate instead of stacking a second
-        // CreateContext() on a leaked first one (isSetup stays false on bail).
-        render_backend::set(nullptr);
-        ImGui::DestroyContext();
-        return;
+        const HWND backendWindow = render_backend::dx9Singleton()->init(nullptr);
+        if (backendWindow == nullptr)
+        {
+            // WR-01: symmetric partial-init teardown. At this bail point the only
+            // imgui-side state that has been created is the ImGuiContext from the
+            // CreateContext() above (Win32 platform init is step (4), still ahead
+            // of us, so there is no ImGui_ImplWin32_Shutdown to issue yet).
+            // Destroying the context here -- and undoing the step (1) backend
+            // install -- means a later frame re-enters setup() from a CLEAN slate
+            // instead of stacking a second CreateContext() on a leaked first one
+            // (isSetup stays false on bail).
+            render_backend::set(nullptr);
+            ImGui::DestroyContext();
+            return;
+        }
     }
 
     // (3) Issue #10 Phase A: publish SWG's actual top-level HWND to the managed
