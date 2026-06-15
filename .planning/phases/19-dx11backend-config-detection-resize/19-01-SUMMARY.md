@@ -144,6 +144,11 @@ None - no external service configuration required. (The vcpkg reinstall is a bui
 - **Plan 03** can wire the imgui_impl.cpp install branch against `selectBackend()` from the neutral `backend_select.h` (no gate trip).
 - **Open / deferred:** the optional WARP throwaway-device harvest test (D-21 L3, `Dx11DummyDeviceHarvestTests`) was outside this plan's file list — a later plan owns it. The vcpkg `.cpp`-under-include acceptance line should be corrected in the plan template if reused.
 
+## Self-Check: PASSED
+
+- Files: backend_select.h, Dx11VtblOffsetTests.cpp, Dx11DetectionTests.cpp, 19-01-SUMMARY.md, vcpkg.json — all FOUND.
+- Commits: c129e39, 14f9762, aaa7a51 — all FOUND in git history.
+
 ---
 *Phase: 19-dx11backend-config-detection-resize*
 *Completed: 2026-06-15*

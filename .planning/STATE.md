@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: executing
-stopped_at: Phase 19 context gathered
-last_updated: "2026-06-15T19:55:23.391Z"
-last_activity: 2026-06-15 -- Phase 19 planning complete
+stopped_at: Completed 19-01-PLAN.md (Dx11Backend contracts + device-free test scaffolding)
+last_updated: "2026-06-15T20:08:49.338Z"
+last_activity: 2026-06-15 -- Phase 19 Plan 01 complete
 progress:
   total_phases: 16
   completed_phases: 2
   total_plans: 8
-  completed_plans: 5
-  percent: 63
+  completed_plans: 6
+  percent: 75
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 18 — render-backend-seam-dx9backend
+**Current focus:** Phase 19 — dx11backend-config-detection-resize
 
 ## Current Position
 
-Phase: 999.2
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-15 -- Phase 19 planning complete
+Phase: 19 (dx11backend-config-detection-resize) — EXECUTING
+Plan: 2 of 3
+Status: 19-01 complete (contracts + tests); 19-02 (Dx11Backend/directx11 impl) ready
+Last activity: 2026-06-15 -- Phase 19 Plan 01 complete
 
 **v2.1 milestone (Phases 17–23) — foundation-before-features:**
 
@@ -208,6 +208,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 17 P03 | ~35 min | 4 tasks (3 auto + 1 maintainer live-smoke) | 6 files |
 | Phase 18 P01 | 120min | 2 tasks | 7 files |
 | Phase 18 P18-02 | ~1h | 2 tasks | 7 files |
+| Phase 19 P01 | 35min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -267,6 +268,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase 18]: 18-01: Option-A two-TU seam split (DX9-free render_backend.cpp holds get/set/s_active; render_backend_dx9.cpp holds Dx9Backend/s_dx9Backend/dx9Singleton) to satisfy CPPS-04 zero-export AND the D-07 device-free test together
 - [Phase 18]: 18-01: render_backend.h excluded from CppSharp PARSE-stage discovery (clang-11 AccessViolation on <imgui.h>); seam projects zero managed surface so nothing lost
 - [Phase ?]: 18-02: imgui_impl carved onto IRenderBackend seam (D-05 extended purge); render_backend.h kept out of imgui_impl.h to avoid CppSharp imgui parse-AV; amendment-6 device hand-off via Dx9Backend stashDevice; RNDR-01 pending D-08 maintainer live-smoke
+- [Phase ?]: Phase 19 P01: Dx11Backend init() takes device+context (off-vtable, differs from Dx9 single-device init); selectBackend picks Dx11 only when gl11Present && getHookPointsResolved else Dx9; vcpkg ships imgui dx11 binding as header + in-lib (no .cpp under include, same as dx9).
 
 ### Pending Todos
 
@@ -324,9 +326,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-15T18:45:07.195Z
+Last session: 2026-06-15T20:08:28.488Z
 Stopped at: Phase 19 context gathered
-Resume file: .planning/phases/19-dx11backend-config-detection-resize/19-CONTEXT.md
+Resume file: None
 
 ## Ingest Provenance
 

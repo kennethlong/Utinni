@@ -36,9 +36,9 @@ REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 ca
 - [x] **RNDR-01**: The ImGui overlay renders through a single `IRenderBackend` seam with the existing
   D3D9 path behaviorally unchanged — overlay still renders and takes input in a live D3D9 session
   (verified by the existing live-smoke).
-- [ ] **RNDR-02**: The overlay renders and maps input correctly (render-target space) when the SWG client
+- [x] **RNDR-02**: The overlay renders and maps input correctly (render-target space) when the SWG client
   runs Direct3D 11 — `Dx11Backend` hooks the DXGI swapchain `Present`.
-- [ ] **RNDR-03**: Exactly one render backend installs per session, auto-detected from the loaded SWG
+- [x] **RNDR-03**: Exactly one render backend installs per session, auto-detected from the loaded SWG
   renderer DLL (`gl%02d_r.dll`), with a one-shot diagnostic log — no doubled input or dual ImGui contexts.
 - [ ] **RNDR-04**: The overlay survives a window resize under D3D11 — the RTV is released/recreated inside
   the `ResizeBuffers` hook (no `DXGI_ERROR_INVALID_CALL`, the DXGI analog of the forbidden D3D9 `Reset`).
@@ -120,8 +120,8 @@ Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no
 | CPPS-03 | Phase 17 — CppSharp / v145 Hardening | Complete |
 | CPPS-04 | Phase 17 — CppSharp / v145 Hardening | Complete |
 | RNDR-01 | Phase 18 — Render-Backend Seam + Dx9Backend | Complete (CI-green; final acceptance pending the D-08 maintainer live-smoke — 18-02 Task 3) |
-| RNDR-02 | Phase 19 — Dx11Backend + Config Detection + Resize | Pending |
-| RNDR-03 | Phase 19 — Dx11Backend + Config Detection + Resize | Pending |
+| RNDR-02 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete |
+| RNDR-03 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete |
 | RNDR-04 | Phase 19 — Dx11Backend + Config Detection + Resize | Pending |
 | PROD-W2-TRN-01 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Pending |
 | PROD-W2-TRN-02 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Pending |
