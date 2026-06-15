@@ -117,13 +117,36 @@ namespace UtinniCoreDotNet.Tests
         /// </summary>
         public static HashSet<string> ExtractFromText(string source)
         {
+            var set = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var key in ExtractRawKeys(source))
+            {
+                set.Add(Sha256Hex(key));
+            }
+            return set;
+        }
+
+        /// <summary>
+        /// The pre-hash, human-readable public-surface block keys (diagnostic seam — lets a
+        /// re-bless / drift investigation see WHICH blocks moved, not just opaque hashes).
+        /// </summary>
+        public static List<string> ExtractRawKeys(string source)
+        {
             if (source == null) throw new ArgumentNullException(nameof(source));
 
             var keys = new List<string>();
-            var nsStack = new List<string>();
 
-            // Track namespace nesting so a type's FQN key is namespace-qualified. A simple
-            // brace-aware scan is enough for the generated file's regular shape.
+            // Brace-depth scope stack. CppSharp reorders the TYPES in the file on every
+            // regen, so a block's identity MUST be its true lexical FQN (namespace + nested
+            // type names), NOT its emit position. We push a scope name when a namespace or
+            // type declaration opens a brace, and pop it when that brace closes — so every
+            // block is attributed to its real enclosing scope regardless of emit order. The
+            // resulting SET of (FQN-keyed) blocks is genuinely order-independent.
+            var scope = new List<string>();   // current FQN segments (namespace + type names)
+            var braceFrame = new List<bool>(); // per open-brace: did it push a scope segment?
+            // CppSharp emits Allman bracing — a namespace/type declaration's opening '{' is
+            // on the NEXT line. Carry the declared scope name forward until its '{' arrives.
+            string pendingDeclName = null;
+
             string[] lines = source.Replace("\r\n", "\n").Split('\n');
 
             for (int i = 0; i < lines.Length; i++)
@@ -136,70 +159,125 @@ namespace UtinniCoreDotNet.Tests
                 // artifact; no version line exists to key off).
                 if (line.StartsWith("//")) continue;
 
-                var nsMatch = Regex.Match(line, "^namespace\\s+(?<ns>[A-Za-z_][A-Za-z0-9_.]*)");
-                if (nsMatch.Success)
-                {
-                    nsStack.Add(nsMatch.Groups["ns"].Value);
-                    continue;
-                }
+                string fqnPrefix = scope.Count > 0 ? string.Join(".", scope) + "." : "";
 
-                string fqnPrefix = nsStack.Count > 0 ? string.Join(".", nsStack) + "." : "";
+                // --- public-surface blocks (recorded BEFORE we mutate the scope stack so a
+                //     declaration line is attributed to its ENCLOSING scope) ---
 
-                // EntryPoint anchors — the native ABI. Always key these (they live on the
-                // internal __Internal P/Invoke decls but ARE the ABI contract).
+                // EntryPoint anchors — the native ABI. Fully deterministic mangled symbol
+                // names; a mangled-name change IS an ABI change. Not scope-qualified (the
+                // mangled string already encodes the full native identity).
                 var epMatch = EntryPointRegex.Match(line);
                 if (epMatch.Success)
                 {
                     keys.Add("ENTRYPOINT|" + epMatch.Groups["ep"].Value);
-                    continue;
                 }
-
-                var foMatch = FieldOffsetRegex.Match(line);
-                if (foMatch.Success)
+                else
                 {
-                    // Pair the offset with the next non-trivial declaration line for context.
-                    string next = (i + 1 < lines.Length) ? Normalize(lines[i + 1]) : "";
-                    keys.Add("FIELDOFFSET|" + fqnPrefix + foMatch.Groups["n"].Value + "|" + next);
-                    continue;
-                }
-
-                var slMatch = StructLayoutRegex.Match(line);
-                if (slMatch.Success)
-                {
-                    keys.Add("STRUCTLAYOUT|" + fqnPrefix + "size=" + slMatch.Groups["n"].Value);
-                    continue;
-                }
-
-                var typeMatch = PublicTypeRegex.Match(raw);
-                if (typeMatch.Success)
-                {
-                    string kind = typeMatch.Groups["kind"].Value;
-                    string name = typeMatch.Groups["name"].Value;
-                    string rest = Normalize(typeMatch.Groups["rest"].Value);
-                    keys.Add("TYPE|" + kind + "|" + fqnPrefix + name + (rest.Length > 0 ? "|" + rest : ""));
-                    continue;
-                }
-
-                var memberMatch = PublicMemberRegex.Match(raw);
-                if (memberMatch.Success)
-                {
-                    string sig = Normalize(memberMatch.Groups["sig"].Value);
-                    // Drop trivial / non-signature captures (e.g. a bare "public").
-                    if (sig.Length > 0 && sig != "public")
+                    var foMatch = FieldOffsetRegex.Match(line);
+                    if (foMatch.Success)
                     {
-                        keys.Add("MEMBER|" + fqnPrefix + sig);
+                        // Pair the offset with the field's declared type+name (the next decl
+                        // line), FQN-qualified so it survives reorder churn.
+                        string next = (i + 1 < lines.Length) ? Normalize(lines[i + 1]) : "";
+                        keys.Add("FIELDOFFSET|" + fqnPrefix + foMatch.Groups["n"].Value + "|" + next);
                     }
-                    continue;
+                    else
+                    {
+                        var slMatch = StructLayoutRegex.Match(line);
+                        if (slMatch.Success)
+                        {
+                            keys.Add("STRUCTLAYOUT|" + fqnPrefix + "size=" + slMatch.Groups["n"].Value);
+                        }
+                        else
+                        {
+                            var typeMatch = PublicTypeRegex.Match(raw);
+                            if (typeMatch.Success)
+                            {
+                                string kind = typeMatch.Groups["kind"].Value;
+                                string name = typeMatch.Groups["name"].Value;
+                                string rest = Normalize(typeMatch.Groups["rest"].Value);
+                                keys.Add("TYPE|" + kind + "|" + fqnPrefix + name
+                                    + (rest.Length > 0 ? "|" + rest : ""));
+                            }
+                            else
+                            {
+                                var memberMatch = PublicMemberRegex.Match(raw);
+                                if (memberMatch.Success)
+                                {
+                                    string sig = Normalize(memberMatch.Groups["sig"].Value);
+                                    if (sig.Length > 0 && sig != "public")
+                                    {
+                                        keys.Add("MEMBER|" + fqnPrefix + sig);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // --- scope-stack maintenance (Allman-aware brace counting) ---
+                // A namespace or type declaration names a scope; its opening '{' arrives on
+                // a later line (Allman). We carry pendingDeclName until that '{' is seen, push
+                // the name then, and record on the brace frame whether each '{' pushed a
+                // segment so the matching '}' pops it. This keeps FQNs correct across reorder
+                // churn AND across enum/class nesting.
+                if (pendingDeclName == null)
+                {
+                    var nsDecl = Regex.Match(line, "^namespace\\s+(?<ns>[A-Za-z_][A-Za-z0-9_.]*)\\s*$");
+                    if (nsDecl.Success)
+                    {
+                        pendingDeclName = nsDecl.Groups["ns"].Value;
+                    }
+                    else
+                    {
+                        // Any type declaration (public OR internal/private nested, e.g. the
+                        // __Internal P/Invoke struct) opens a scope worth tracking so member
+                        // and field FQNs beneath it are stable.
+                        var anyType = Regex.Match(raw,
+                            "^\\s*(?:\\[[^\\]]*\\]\\s*)*" +
+                            "(?:public\\s+|internal\\s+|private\\s+|protected\\s+|unsafe\\s+|sealed\\s+|abstract\\s+|static\\s+|partial\\s+)*" +
+                            "(?<kind>class|struct|interface|enum)\\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)");
+                        if (anyType.Success)
+                        {
+                            pendingDeclName = anyType.Groups["name"].Value;
+                        }
+                    }
+                }
+
+                int opens = CountChar(line, '{');
+                int closes = CountChar(line, '}');
+
+                // The first '{' after a pending declaration owns that scope segment.
+                if (pendingDeclName != null && opens > 0)
+                {
+                    scope.Add(pendingDeclName);
+                    braceFrame.Add(true);
+                    pendingDeclName = null;
+                    opens--;
+                }
+                for (int o = 0; o < opens; o++) braceFrame.Add(false);
+
+                for (int c = 0; c < closes; c++)
+                {
+                    if (braceFrame.Count == 0) break;
+                    bool ownsScope = braceFrame[braceFrame.Count - 1];
+                    braceFrame.RemoveAt(braceFrame.Count - 1);
+                    if (ownsScope && scope.Count > 0)
+                    {
+                        scope.RemoveAt(scope.Count - 1);
+                    }
                 }
             }
 
-            // SHA256 each normalized block key → the order-independent hash set.
-            var set = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var key in keys)
-            {
-                set.Add(Sha256Hex(key));
-            }
-            return set;
+            return keys;
+        }
+
+        private static int CountChar(string s, char c)
+        {
+            int n = 0;
+            foreach (var ch in s) if (ch == c) n++;
+            return n;
         }
 
         // Collapse runs of whitespace, trim, and strip ordering-only artifacts so a block's
