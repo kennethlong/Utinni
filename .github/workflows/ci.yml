@@ -229,6 +229,35 @@ jobs:
           }
           Write-Host "C++23-header scan passed ($($files.Count) files, no denylisted STL header)."
 
+      # Phase 17 (17-02 / CPPS-03b): WARN-loud tripwire — NEVER blocks master (D-04). The 14.29
+      # parser-include redirect exists only because no released CppSharp bundles a clang new enough
+      # to parse the v145 STL (its yvals_core.h gate requires clang >= 20; CppSharp v1.2 / 2025-11-19
+      # bundles only clang 19). When a CppSharp release finally ships clang >= 20, native-v145 binding
+      # generation becomes reachable and the redirect can be RETIRED — that is GOOD NEWS, not a
+      # regression, so this step emits "::warning::" (mirror ci.yml's vcpkg-retry warning idiom) and
+      # MUST NOT throw.
+      #
+      # D-03: this asserts a COMMITTED "last-known-latest" pin, NOT a live network probe. No NuGet /
+      # GitHub-API call, no self-hosted-runner egress, deterministic, unspoofable. Refreshing the pin
+      # (when a new CppSharp release is observed) is an OUT-OF-BAND manual/scheduled maintainer edit —
+      # NOT this step's job. To refresh: bump $pinnedCppSharpClangMajor below to the clang major the
+      # newest CppSharp release bundles, then commit. If that value reaches the redirect threshold,
+      # this step warns loud on the next push so the team reviews retiring the redirect.
+      - name: Tripwire — CppSharp clang-20 release pin (WARN-loud, never blocks)
+        shell: powershell
+        run: |
+          # Committed pin: the clang major bundled by the newest known CppSharp release (v1.2 = clang 19).
+          $pinnedCppSharpClangMajor = 19
+          # The redirect-retirement threshold: the v145 STL yvals_core.h gate requires clang >= 20.
+          $redirectRetiredThreshold = 20
+          Write-Host "Committed CppSharp pin: clang $pinnedCppSharpClangMajor (redirect retires at clang >= $redirectRetiredThreshold)."
+          if ($pinnedCppSharpClangMajor -ge $redirectRetiredThreshold) {
+            # Unblock / good-news path: a clang>=20-bearing CppSharp is now the known-latest.
+            Write-Host "::warning::CppSharp pin reached clang $pinnedCppSharpClangMajor (>= $redirectRetiredThreshold) — native v145 binding generation is now reachable. Review retiring the VS 2019 14.29 parser-include redirect (UtinniCoreDotNetGen/Program.cs::ConfigureCppSharpParserStl); see docs/ai/cppsharp-v145-redirect.md."
+          } else {
+            Write-Host "No clang-20 CppSharp release pinned yet — the 14.29 redirect remains the supported config. (Pin is refreshed out-of-band; this step never blocks the build.)"
+          }
+
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
         # Post-Phase 6 D-09 sweep, PlatformToolset=v145 is declared in every .vcxproj so MSBuild auto-selects
