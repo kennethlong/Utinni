@@ -133,8 +133,7 @@ HRESULT __stdcall hkSetCooperativeLevel(IDirectInputDevice8A* pThis, HWND hwnd, 
     // here -- the no-Reset constraint (D-13) lives entirely in the windowed
     // Present self-stretch path; this is a pure DirectInput-level redirect.
     DWORD effectiveFlags = dwFlags;
-    if (s_suppressExclusiveFullscreen.load(std::memory_order_relaxed)
-        && (dwFlags & DISCL_EXCLUSIVE))
+    if (s_suppressExclusiveFullscreen.load(std::memory_order_relaxed) && (dwFlags & DISCL_EXCLUSIVE))
     {
         // Clear EXCLUSIVE, set NONEXCLUSIVE; leave FOREGROUND/BACKGROUND/NOWINKEY
         // exactly as SWG requested.
@@ -278,8 +277,8 @@ void DirectInput::setSuppressExclusiveFullscreen(bool enabled)
     // reads it are atomic, so flipping from a managed/debug thread is safe.
     s_suppressExclusiveFullscreen.store(enabled, std::memory_order_relaxed);
     utinni::log::info(enabled
-        ? "DirectInput: exclusive-fullscreen suppression ENABLED (D-12, keep windowed-embedded)"
-        : "DirectInput: exclusive-fullscreen suppression DISABLED (D-12, allow SWG's native mode switch)");
+                          ? "DirectInput: exclusive-fullscreen suppression ENABLED (D-12, keep windowed-embedded)"
+                          : "DirectInput: exclusive-fullscreen suppression DISABLED (D-12, allow SWG's native mode switch)");
 }
 
 bool DirectInput::getSuppressExclusiveFullscreen()

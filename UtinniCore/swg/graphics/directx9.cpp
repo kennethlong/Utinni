@@ -592,9 +592,7 @@ void detour()
             // Guard: only detour if the target is committed, executable code.
             MEMORY_BASIC_INFORMATION mbi = {};
             const DWORD execMask = PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
-            if (VirtualQuery((LPCVOID)targetAddr, &mbi, sizeof(mbi)) == sizeof(mbi)
-                && mbi.State == MEM_COMMIT
-                && (mbi.Protect & execMask) != 0)
+            if (VirtualQuery((LPCVOID)targetAddr, &mbi, sizeof(mbi)) == sizeof(mbi) && mbi.State == MEM_COMMIT && (mbi.Protect & execMask) != 0)
             {
                 compileShader = (pCompileShader)Detour::Create((LPVOID)targetAddr, hkD3DXCompileShader, DETOUR_TYPE_PUSH_RET);
                 char msg[192];
