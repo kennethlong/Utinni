@@ -51,7 +51,7 @@ created: 2026-06-15
 ## Wave 0 Requirements
 
 - [ ] D-06 structural gate — clone `NoDeviceResetTests.cpp` comment-stripping source-gate, assert ZERO `ImGui_ImplDX9_` / `IDirect3DDevice9` / `#include <d3d9.h>` in `imgui_impl.{cpp,h}`
-- [ ] D-07 seam dispatch test — mock/no-op `IRenderBackend` asserting all 8 members route through the vtable (heap-free)
+- [ ] D-07 seam dispatch test — mock/no-op `IRenderBackend` asserting all 10 pure virtuals route through the vtable (heap-free)
 
 *Existing infrastructure (Catch2 + xUnit PreservationAudit) covers the framework; new test files added in-phase.*
 
