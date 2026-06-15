@@ -138,6 +138,10 @@
     <!-- Phase 18 / RNDR-01 D-06: imgui_impl DX9-API-neutrality source gate (extended
          token set + seam-dispatch-presence). Uses Graphics\SourceGateUtil.h. -->
     <ClCompile Include="Graphics\ImguiApiNeutralityTests.cpp" />
+    <!-- Phase 19 / RNDR-02 D-21 L1: DXGI Present=8/ResizeBuffers=13 vtbl-offset pin. -->
+    <ClCompile Include="Graphics\Dx11VtblOffsetTests.cpp" />
+    <!-- Phase 19 / RNDR-03 D-21 L4: gl%02d_r.dll backend-selection pure-function unit test. -->
+    <ClCompile Include="Graphics\Dx11DetectionTests.cpp" />
     <!-- Phase 18 / RNDR-01 D-07 (Option-A split): compile the DX9-FREE half of the
          seam DIRECTLY into the test exe so render_backend::set/get link without the
          import lib. The zero-export seam (CPPS-04) is NOT in UtinniCore.lib, and the

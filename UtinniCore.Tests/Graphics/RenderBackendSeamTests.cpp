@@ -101,3 +101,50 @@ TEST_CASE("D-07 seam routes all 10 members through the installed backend", "[rnd
     render_backend::set(nullptr);
     REQUIRE(render_backend::get() == nullptr);
 }
+
+// ============================================================================
+// Phase 19 / RNDR-02 / D-21 automated layer 2: Dx11 mock-dispatch.
+//
+// The Dx11Backend twin plugs into the SAME IRenderBackend ABC. This case proves
+// the 10-vtable contract routes identically for the DX11 path WITHOUT a live
+// device. CRITICAL (Option-A split, UtinniCore.Tests.vcxproj): we do NOT
+// instantiate the concrete Dx11Backend -- that would drag <imgui_impl_dx11.h> +
+// DetourXS + directx11 into the test exe (the LNK2019 cascade that keeps
+// render_backend_dx11.cpp out of this project). The device-free MockBackend
+// satisfies the SAME ABC, so the shared seam is exercised the same way.
+// ============================================================================
+TEST_CASE("RNDR-02 Dx11 path routes all 10 members through the shared seam ABC", "[rndr02][graphics]")
+{
+    MockBackend mock; // device-free stand-in for the Dx11Backend twin (shared ABC)
+    render_backend::set(&mock);
+    REQUIRE(render_backend::get() == &mock);
+
+    // The DX11 resize hooks do REAL work in production (release/recreate the
+    // backbuffer RTV) -- here we only assert the seam DISPATCHES them, which is
+    // the contract Plan 02's directx11.cpp::hkResizeBuffers depends on.
+    render_backend::get()->onPreResize();
+    render_backend::get()->onPostResize();
+    render_backend::get()->newFrame();
+    render_backend::get()->renderDrawData(nullptr);
+    REQUIRE(render_backend::get()->renderTargetWidth() == 1920);
+    REQUIRE(render_backend::get()->renderTargetHeight() == 1080);
+    render_backend::get()->sceneDepthTexture();
+    render_backend::get()->sceneColorTexture();
+    REQUIRE(render_backend::get()->sceneDepthStage() == 7);
+    render_backend::get()->setSceneDepthStage(5);
+
+    REQUIRE(mock.preResizeCalls == 1);
+    REQUIRE(mock.postResizeCalls == 1);
+    REQUIRE(mock.newFrameCalls == 1);
+    REQUIRE(mock.renderDrawCalls == 1);
+    REQUIRE(mock.rtwCalls == 1);
+    REQUIRE(mock.rthCalls == 1);
+    REQUIRE(mock.depthCalls == 1);
+    REQUIRE(mock.colorCalls == 1);
+    REQUIRE(mock.stageGetCalls == 1);
+    REQUIRE(mock.stageSetCalls == 1);
+    REQUIRE(mock.lastStageSet == 5);
+
+    render_backend::set(nullptr);
+    REQUIRE(render_backend::get() == nullptr);
+}
