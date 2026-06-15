@@ -83,7 +83,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 **Plans**: 3 plans
 - [x] 17-01-PLAN.md — CPPS-01 clang-capability spike + CPPS-02 supported-config doc (de-stale regen-bindings.md, Program.cs doc pointer)
 - [x] 17-02-PLAN.md — CPPS-03 CI tripwires: C++23-header HARD-FAIL scan + clang-20 WARN-loud committed-pin
-- [ ] 17-03-PLAN.md — CPPS-04 ABI gate: per-block-hash diff + --rebless + frozen TJT MEF-compose fixture + lockstep rebuild
+- [x] 17-03-PLAN.md — CPPS-04 ABI gate: per-block-hash diff + --rebless + frozen TJT MEF-compose fixture + lockstep rebuild
 **Research-phase**: yes — the clang-capability spike outcome determines whether the phase is harden-redirect or harden+net9-modernization; acceptance criteria cannot be fixed until the spike resolves.
 
 ### Phase 18: Render-Backend Seam + Dx9Backend

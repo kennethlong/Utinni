@@ -28,7 +28,7 @@ REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 ca
   binding-generation configuration (explicit, not silently load-bearing).
 - [x] **CPPS-03**: CI fails fast on the two unblock/regression signals — (a) UtinniCore C++ adopting a
   C++23 STL header the 14.29 redirect can't parse, and (b) a CppSharp release shipping clang ≥20.
-- [ ] **CPPS-04**: A binding regen cannot silently break pre-built plugin DLLs — a per-block-hash ABI
+- [x] **CPPS-04**: A binding regen cannot silently break pre-built plugin DLLs — a per-block-hash ABI
   diff + a frozen-DLL MEF-compose fixture gate the generated surface, and TJT/Sytner rebuild in lockstep.
 
 ### Foundation — Render-path (RNDR)
@@ -118,7 +118,7 @@ Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no
 | CPPS-01 | Phase 17 — CppSharp / v145 Hardening | Complete |
 | CPPS-02 | Phase 17 — CppSharp / v145 Hardening | Complete |
 | CPPS-03 | Phase 17 — CppSharp / v145 Hardening | Complete |
-| CPPS-04 | Phase 17 — CppSharp / v145 Hardening | Pending |
+| CPPS-04 | Phase 17 — CppSharp / v145 Hardening | Complete |
 | RNDR-01 | Phase 18 — Render-Backend Seam + Dx9Backend | Pending |
 | RNDR-02 | Phase 19 — Dx11Backend + Config Detection + Resize | Pending |
 | RNDR-03 | Phase 19 — Dx11Backend + Config Detection + Resize | Pending |

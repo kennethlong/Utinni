@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: executing
+status: verifying
 stopped_at: Completed 17-02-PLAN.md
-last_updated: "2026-06-15T01:45:54.060Z"
+last_updated: "2026-06-15T02:54:42.724Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 16
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 67
+  completed_plans: 3
+  percent: 100
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 
 ## Current Position
 
-Phase: 17 (cppsharp-v145-hardening) — EXECUTING
-Plan: 3 of 3
-Status: Ready to execute
+Phase: 17 (cppsharp-v145-hardening) — COMPLETE (ready for verification)
+Plan: 3 of 3 — all plans complete
+Status: Phase complete — ready for verification
 Last activity: 2026-06-15
 
 **v2.1 milestone (Phases 17–23) — foundation-before-features:**
@@ -203,6 +203,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 16 P03 | ~15 min | 4 tasks | 9 files |
 | Phase 17 P01 | ~3 min | 2 tasks | 4 files |
 | Phase 17 P02 | ~18 min | 2 tasks | 2 files |
+| Phase 17 P03 | ~35 min | 4 tasks (3 auto + 1 maintainer live-smoke) | 6 files |
 
 ## Accumulated Context
 
@@ -258,6 +259,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: Phase 17 spike confirmed empirically: no released CppSharp parses the v145 STL (vendored clang 11 + latest released clang 19 both below the clang-20 the v145 STL requires) -> harden-the-redirect.
 - [Phase ?]: The VS 2019 14.29 parser-include redirect is the documented SUPPORTED binding-generation config (docs/ai/cppsharp-v145-redirect.md); retiring it is gated on a future clang-20-bearing CppSharp release.
 - [Phase 17]: Phase 17-02: CPPS-03 CI tripwires — C++23-header scan HARD-FAILs (throw); clang-20 pin tripwire WARN-loud (committed pin, never blocks, never probes).
+- [Phase 17]: Phase 17-03 (CPPS-04 ABI gate) COMPLETE 2026-06-15 (edd48cc/993f26f/f098586; maintainer live-smoke APPROVED). Two defense-in-depth layers make a binding regen unable to silently detonate pre-built plugins at MEF compose: (1) BCL-only (SHA256) per-block-hash ABI SET diff (AbiBlockHash) over the freshly-regenerated Generated/UtinniCore.cs — order-independent, ignores CppSharp reorder churn, trips on a real public-surface change (member/signature/DllImport-EntryPoint/enum/field-layout), with one-command --rebless; committed baseline = 4386 keys; (2) committed NEVER-rebuilt frozen TheJawaToolboxDotNet.dll Content fixture (deliberate inverse of a rebuild csproj) MEF-composing via PluginLoader(autoLoad:false).Load with LoadErrors==0. DEVIATIONS: (Rule 3) UtinniCore-Symbols.dll added to CopyNativeArtifactsForTests — frozen TJT ctor P/Invokes std::basic_string at compose, else DllNotFoundException masks the managed ABI; (Rule 1) block extractor scope tracking rewritten emit-order→Allman brace-depth scope stack — emit-order drifted ~2450 blocks/regen (permanent red gate), re-blessed from a true fresh regen (two consecutive fresh regens → identical 4386-key set, 0 diff). No paired UtinniPlugins commit — TJT already in lockstep (byte-identical re-freeze). 771/771 UtinniCoreDotNet.Tests + 263/2-skip Utinni.Cli.Tests + AbiSurface/FrozenPluginCompose 7/7; sln + TJT clean Release|x86; Generated/UtinniCore.cs never committed. CPPS-01..04 all delivered → Phase 17 complete.
 
 ### Pending Todos
 
@@ -313,7 +315,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-15T01:45:54.046Z
+Last session: 2026-06-15T02:54:42.711Z
 Stopped at: Completed 17-02-PLAN.md
 Resume file: None
 
