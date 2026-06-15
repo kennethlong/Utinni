@@ -185,6 +185,86 @@ namespace UtinniCoreDotNet.Tests
         }
 
         [Fact]
+        public void ReorderedEnumMember_IsReportedAsChanged()
+        {
+            // CR-01: an enum value renumber/reorder is a genuine binary-ABI break for any
+            // pre-built plugin that binds the integer value. The keyed surface MUST capture enum
+            // members so the diff trips. Here the SAME enum has VtString renumbered 1 -> 2; the
+            // hash set MUST differ (the old member key drops, the new one appears).
+            const string original =
+                "namespace N {\n" +
+                "  public enum Types {\n" +
+                "    VtIniValue = 0,\n" +
+                "    VtString = 1,\n" +
+                "    VtBool = 2,\n" +
+                "  }\n" +
+                "}\n";
+            const string renumbered =
+                "namespace N {\n" +
+                "  public enum Types {\n" +
+                "    VtIniValue = 0,\n" +
+                "    VtString = 2,\n" +
+                "    VtBool = 3,\n" +
+                "  }\n" +
+                "}\n";
+
+            var setOriginal = AbiBlockHash.ExtractFromText(original);
+            var setRenumbered = AbiBlockHash.ExtractFromText(renumbered);
+
+            Assert.False(setOriginal.SetEquals(setRenumbered),
+                "An enum-value renumber must change the block hash set (enum members are in the "
+                + "keyed ABI surface — CR-01).");
+
+            // And the specific renumbered member must surface as an ADDED/REMOVED delta.
+            var removed = setOriginal.Except(setRenumbered).ToList();
+            var added = setRenumbered.Except(setOriginal).ToList();
+            Assert.True(removed.Count >= 1 && added.Count >= 1,
+                "A renumbered enum member must surface as both a REMOVED (old value) and an "
+                + "ADDED (new value) block; got removed=" + removed.Count + " added=" + added.Count);
+
+            // A pure reorder (no value change) of the SAME members must NOT trip (the set is
+            // order-independent — enum capture must be regen-stable too, CR-01 determinism).
+            const string reorderedSameValues =
+                "namespace N {\n" +
+                "  public enum Types {\n" +
+                "    VtBool = 2,\n" +
+                "    VtIniValue = 0,\n" +
+                "    VtString = 1,\n" +
+                "  }\n" +
+                "}\n";
+            var setReordered = AbiBlockHash.ExtractFromText(reorderedSameValues);
+            Assert.True(setOriginal.SetEquals(setReordered),
+                "Reordering enum members WITHOUT changing their values must yield an equal set "
+                + "(reorder churn invisible; only a real value change trips).");
+        }
+
+        [Fact]
+        public void RenamedEnumMember_IsReportedAsChanged()
+        {
+            // A rename at the SAME ordinal is also a managed-surface change a plugin binds by name.
+            const string original =
+                "namespace N {\n" +
+                "  public enum Modes {\n" +
+                "    CmFreeChase = 2,\n" +
+                "    CmFree = 5,\n" +
+                "  }\n" +
+                "}\n";
+            const string renamed =
+                "namespace N {\n" +
+                "  public enum Modes {\n" +
+                "    CmFreeChase = 2,\n" +
+                "    CmLocked = 5,\n" +
+                "  }\n" +
+                "}\n";
+
+            var setOriginal = AbiBlockHash.ExtractFromText(original);
+            var setRenamed = AbiBlockHash.ExtractFromText(renamed);
+
+            Assert.False(setOriginal.SetEquals(setRenamed),
+                "Renaming an enum member must change the block hash set (CR-01).");
+        }
+
+        [Fact]
         public void ChangedDllImportEntryPointMangledString_ProducesADifferentHash()
         {
             // The native-ABI anchor: a changed mangled EntryPoint IS an ABI change and MUST
