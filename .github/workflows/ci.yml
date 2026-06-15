@@ -184,6 +184,51 @@ jobs:
           }
           Write-Host "MSVC 14.29 (VS 2019 v142) present for CppSharp parser pin."
 
+      # Phase 17 (17-02 / CPPS-03a): HARD-FAIL tripwire. The CppSharp 0.10.5 / clang 11 parser
+      # reads the binding headers through the VS 2019 14.29 STL redirect (the step above). 14.29
+      # predates C++23, so if UtinniCore C++ adopts a C++23 (or C++20-late) STL header the redirect
+      # cannot parse, the binding regen breaks silently / emits broken bindings. This scan throws
+      # (D-04: hard-fail severity) BEFORE the regen so the break is caught at the source.
+      # Scope: #include lines under UtinniCore/ ONLY, excluding external/, Generated, build-output
+      # dirs (grep-gate hygiene, RESEARCH Pitfall 4 — the denylist itself lives under tools/, OUTSIDE
+      # this scanned root, so naming the header tokens there does not self-trip). Today's tree is
+      # clean (RESEARCH Pitfall 5: zero C++23-risky headers in UtinniCore/), so this PASSES now.
+      - name: Scan UtinniCore for 14.29-unparseable C++23 STL headers (HARD-FAIL)
+        shell: powershell
+        run: |
+          $denyFile = "tools/allowed-cpp-stl-headers.txt"
+          if (-not (Test-Path $denyFile)) { throw "denylist not found: $denyFile" }
+          # Load bare header names (skip blank lines and '#' comments).
+          $deny = Get-Content $denyFile | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith("#") }
+          $denySet = @{}
+          foreach ($h in $deny) { $denySet[$h] = $true }
+          if ($denySet.Count -eq 0) { throw "denylist is empty: $denyFile" }
+          # Mirror the clang-format style gate's include/exclude idiom; scope to UtinniCore/ only.
+          $excludePattern = '\\(external|bin|obj|Release|Debug|RelWithDbgInfo|x86|x64|\.vs|vcpkg_installed|packages|Generated|TestResults)\\'
+          $files = Get-ChildItem -Path "UtinniCore" -Recurse -Include *.cpp,*.h -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -notmatch $excludePattern }
+          Write-Host "Scanning $($files.Count) C++ files under UtinniCore/ for $($denySet.Count) denylisted STL headers ..."
+          $violations = @()
+          foreach ($f in $files) {
+            # -LiteralPath: paths are repo-controlled but quote/escape anyway (T-V5 path-injection mitigation).
+            $lines = Get-Content -LiteralPath $f.FullName -ErrorAction SilentlyContinue
+            $n = 0
+            foreach ($line in $lines) {
+              $n++
+              if ($line -match '^\s*#\s*include\s*<([^>]+)>') {
+                $hdr = $Matches[1].Trim()
+                if ($denySet.ContainsKey($hdr)) {
+                  $violations += ("{0}:{1}: #include <{2}>" -f $f.FullName, $n, $hdr)
+                }
+              }
+            }
+          }
+          if ($violations.Count -gt 0) {
+            $violations | ForEach-Object { Write-Host "  $_" }
+            throw "UtinniCore adopted a 14.29-unparseable C++23 STL header (see tools/allowed-cpp-stl-headers.txt). The CppSharp parser-include redirect cannot parse these; the binding regen would break. Remove the include or upgrade the redirect target STL."
+          }
+          Write-Host "C++23-header scan passed ($($files.Count) files, no denylisted STL header)."
+
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
         # Post-Phase 6 D-09 sweep, PlatformToolset=v145 is declared in every .vcxproj so MSBuild auto-selects

@@ -1,0 +1,48 @@
+# allowed-cpp-stl-headers.txt
+#
+# DENYLIST of C++23 (and C++20-late) STL headers that the CppSharp 0.10.5 / clang 11
+# parser CANNOT parse through the VS 2019 14.29 parser-include redirect
+# (UtinniCoreDotNetGen/Program.cs::ConfigureCppSharpParserStl). The 14.29 STL predates
+# C++23, so if UtinniCore C++ adopts one of these headers the binding regen breaks
+# silently or emits broken bindings. See docs/ai/cppsharp-v145-redirect.md and
+# .planning/phases/17-cppsharp-v145-hardening/17-RESEARCH.md (Pitfall 5).
+#
+# The CI tripwire (.github/workflows/ci.yml, CPPS-03a) scans #include lines under
+# UtinniCore/ ONLY and HARD-FAILS the build if any of the bracketed header names below
+# appears. This file lives under tools/ (OUTSIDE the scanned root) ON PURPOSE: naming
+# the header tokens here does NOT self-trip the grep gate. Do NOT place any of these
+# tokens in a file under UtinniCore/ (grep-gate hygiene, RESEARCH Pitfall 4).
+#
+# Format: one bare angle-bracket-free STL header name per line; blank lines and lines
+# starting with '#' are ignored. The scan matches `#include <NAME>` for each NAME.
+#
+# Refreshing this denylist (e.g. when the redirect target STL is upgraded, or a new
+# C++23 header is standardized) is an out-of-band maintainer edit — keep it in lockstep
+# with the redirect's STL version in docs/ai/cppsharp-v145-redirect.md.
+
+# --- C++23 STL headers (14.29 cannot parse) ---
+expected
+flat_map
+flat_set
+generator
+mdspan
+print
+spanstream
+stacktrace
+stdfloat
+
+# --- C++20 STL headers that 14.29/clang-11 chokes on through the redirect ---
+format
+ranges
+concepts
+span
+coroutine
+syncstream
+stop_token
+barrier
+latch
+semaphore
+source_location
+numbers
+compare
+bit
