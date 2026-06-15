@@ -61,7 +61,8 @@ render-backend seam (18→19) land before the new editors. 17→18→19 is a str
 Terrain codec (20) is offline and gated only on 17 (the critical path / only long pole); the user-visible
 editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23) is an independent P2.
 
-- [x] **Phase 17: CppSharp / v145 Hardening** — clang-capability spike → harden-the-redirect + ABI-diff/MEF-compose gate (FOUNDATION; research-phase) (completed 2026-06-15)
+- [x] **Phase 17: CppSharp / v145 Hardening** — clang-capability spike → harden-the-redirect + ABI-diff/MEF-compose gate (FOUNDATION; research-phase)
+ (completed 2026-06-15)
 - [ ] **Phase 18: Render-Backend Seam + Dx9Backend** — carve `IRenderBackend`, D3D9 overlay behaviorally unchanged (FOUNDATION)
 - [ ] **Phase 19: Dx11Backend + Config Detection + Resize** — DXGI `Present`/`ResizeBuffers` hooks, one-backend-per-session detect (FOUNDATION; research-phase)
 - [ ] **Phase 20: Terrain `.trn` Codec + Verbs + MCP** — decode→navigable layer tree, typed tags, scalar-leaf edit/save, verbs-first (FEATURE / critical path; research-phase)
@@ -95,7 +96,9 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
   2. A `render_backend.{h,cpp}` seam exists in `UtinniCore/swg/graphics/` (newFrame / renderDrawData / onPreResize / onPostResize / renderTargetWidth/Height); `directx9.cpp` is carved into a `Dx9Backend` behind it.
   3. The ~1000-line API-neutral overlay logic (WndProc subclass / Issue #11 chat-context routing, RT-space input mapping, gizmo, renderCallbacks bus) is single-sourced in `imgui_impl.cpp`; only the four backend-touching lines call through the seam.
   4. The carve preserves the no-Reset / Present-stretch D3D9 contract verbatim — no `Reset` is introduced and the third-party device is never destabilized during the refactor.
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 18-01-PLAN.md — Define IRenderBackend seam (8-member ABC, A2 amendment) + Dx9Backend wrapper + D-07 mock-dispatch test (Wave 1)
+- [ ] 18-02-PLAN.md — Carve imgui_impl onto the seam (D-05 full purge, setup(HWND)) + D-06 source gate + D-08 live-smoke (Wave 2)
 **UI hint**: yes
 
 ### Phase 19: Dx11Backend + Config Detection + Resize
