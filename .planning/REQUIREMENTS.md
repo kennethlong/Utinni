@@ -26,7 +26,7 @@ REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 ca
   with current tooling and why.
 - [x] **CPPS-02**: The VS2019-14.29 parser-include redirect is hardened and documented as the *supported*
   binding-generation configuration (explicit, not silently load-bearing).
-- [ ] **CPPS-03**: CI fails fast on the two unblock/regression signals — (a) UtinniCore C++ adopting a
+- [x] **CPPS-03**: CI fails fast on the two unblock/regression signals — (a) UtinniCore C++ adopting a
   C++23 STL header the 14.29 redirect can't parse, and (b) a CppSharp release shipping clang ≥20.
 - [ ] **CPPS-04**: A binding regen cannot silently break pre-built plugin DLLs — a per-block-hash ABI
   diff + a frozen-DLL MEF-compose fixture gate the generated surface, and TJT/Sytner rebuild in lockstep.
@@ -117,7 +117,7 @@ Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no
 |-------------|-------|--------|
 | CPPS-01 | Phase 17 — CppSharp / v145 Hardening | Complete |
 | CPPS-02 | Phase 17 — CppSharp / v145 Hardening | Complete |
-| CPPS-03 | Phase 17 — CppSharp / v145 Hardening | Pending |
+| CPPS-03 | Phase 17 — CppSharp / v145 Hardening | Complete |
 | CPPS-04 | Phase 17 — CppSharp / v145 Hardening | Pending |
 | RNDR-01 | Phase 18 — Render-Backend Seam + Dx9Backend | Pending |
 | RNDR-02 | Phase 19 — Dx11Backend + Config Detection + Resize | Pending |

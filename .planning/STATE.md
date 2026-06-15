@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: executing
-stopped_at: Phase 17 context gathered
-last_updated: "2026-06-15T01:37:19.735Z"
+stopped_at: Completed 17-02-PLAN.md
+last_updated: "2026-06-15T01:45:54.060Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 16
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
-  percent: 33
+  completed_plans: 2
+  percent: 67
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 ## Current Position
 
 Phase: 17 (cppsharp-v145-hardening) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-06-15
 
@@ -202,6 +202,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 16 P02 | ~60 min | 4 tasks | 13 files |
 | Phase 16 P03 | ~15 min | 4 tasks | 9 files |
 | Phase 17 P01 | ~3 min | 2 tasks | 4 files |
+| Phase 17 P02 | ~18 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -256,6 +257,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: 16-03: MCP-03 host half COMPLETE — net10 CanonicalJson field-for-field re-impl byte-exact to 16-02 goldens (R3-1); LivePipeClient never-hang twin (relative-on-wire, skew structured-error, clientRoot diagnostic); live_ping/live_reload_asset gated fail-closed on --enable-live proven via real ListToolsAsync (D-04); net472 real cross-impl wire round-trip (C-02); MCP-SECURITY.md live-tier addendum. Commits 13db929/33abf4c/77e6087/abce1e4.
 - [Phase ?]: Phase 17 spike confirmed empirically: no released CppSharp parses the v145 STL (vendored clang 11 + latest released clang 19 both below the clang-20 the v145 STL requires) -> harden-the-redirect.
 - [Phase ?]: The VS 2019 14.29 parser-include redirect is the documented SUPPORTED binding-generation config (docs/ai/cppsharp-v145-redirect.md); retiring it is gated on a future clang-20-bearing CppSharp release.
+- [Phase 17]: Phase 17-02: CPPS-03 CI tripwires — C++23-header scan HARD-FAILs (throw); clang-20 pin tripwire WARN-loud (committed pin, never blocks, never probes).
 
 ### Pending Todos
 
@@ -311,8 +313,8 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-15T01:36:55.321Z
-Stopped at: Phase 17 context gathered
+Last session: 2026-06-15T01:45:54.046Z
+Stopped at: Completed 17-02-PLAN.md
 Resume file: None
 
 ## Ingest Provenance
