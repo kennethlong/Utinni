@@ -46,11 +46,16 @@ D3D9 windowed↔fullscreen window-management bugs (deferred todo); any new edito
   `D3D11CreateDeviceAndSwapChain`"). Flag as a deliberate, user-approved deviation; the *outcome*
   (hook Present idx 8 + ResizeBuffers idx 13, per-frame RTV rebind) is unchanged — only how the
   addresses/objects are obtained changes. Planner should reconcile this with the ROADMAP wording.
-- **D-11:** **Exact contract shape is a research task.** The principle (client advertises) is locked;
-  the concrete mechanism — advertise function addresses directly, advertise the live
-  `IDXGISwapChain`/device pointer (Utinni reads vtbl idx 8/13 off the real object), or a build-time
-  config sidecar — is for research to design against the running client + SWG-Source build. (See the
-  999.7 mechanism menu for the option space.)
+- **D-11:** **Contract shape RESOLVED by research (2026-06-15) → see `19-INSTRUMENTATION-SPEC.md`.**
+  Mechanism = **Candidate A**: `gl11_r.dll` gains one new `extern "C"` export `GetHookPoints()`
+  returning the live `{IDXGISwapChain1*, ID3D11Device*, ID3D11DeviceContext*}` (~9 client-side lines,
+  no logic change, client stays Utinni-agnostic). Utinni `GetProcAddress`es it, polls
+  `swapChain != null` once/frame, then reads vtbl idx 8/13 off the **live** swapchain and detours
+  `Present`/`ResizeBuffers`. Push-model (client calls a Utinni export, Candidate D) is the documented
+  fallback. The blind throwaway-`D3D11CreateDeviceAndSwapChain` harvest is NOT used in production
+  (D-10) — only as the offline CI test (D-21 layer 3). Grounded: client uses
+  `D3D11CreateDevice` + `CreateSwapChainForHwnd` (NOT `...AndSwapChain`); swapchain is a
+  process-lifetime `ms_swapChain` ComPtr that persists through resize.
 
 ### Separation of responsibilities (Utinni vs SWG-Source)
 - **D-12:** Phase 19 (Utinni side) delivers: the `Dx11Backend` **consumer** of the advertised contract
@@ -81,6 +86,13 @@ D3D9 windowed↔fullscreen window-management bugs (deferred todo); any new edito
   `ResizeBuffers` run → recreate RTV. Backbuffer tracks the window; no `DXGI_ERROR_INVALID_CALL`. The
   D3D9 never-Reset/stretch rule is **NOT** carried verbatim (D3D11 has no third-party-Reset hazard —
   `[[feedback_d3d9_reset_third_party]]` is D3D9-specific). Confirms success criterion 3.
+- **D-18b (resize-trigger gap, research finding 2026-06-15):** the D3D11 client today calls
+  `ResizeBuffers` **only** from `displayModeChanged()` on `WM_DISPLAYCHANGE` (monitor mode change) —
+  **NOT** on `WM_SIZE` (window-drag / embed-panel resize). Utinni's `ResizeBuffers` hook covers the
+  mode-change path; the embedded-panel drag-resize is not backbuffer-tracked unless the client also
+  fires `ResizeBuffers` on `WM_SIZE`. Disposition: hook `ResizeBuffers` regardless (covers what fires);
+  the optional client-side `WM_SIZE→ResizeBuffers` improvement is raised in the instrumentation spec
+  §6 (default = defer to the RESID-04 window-management bucket). Does NOT block the contract.
 - **D-19:** **Keep RT-space input mapping under D3D11.** Reuse the existing RT-space block
   (`imgui_impl.cpp` ~425–465) feeding `renderTargetWidth/Height` through the seam. Success criterion 1
   explicitly requires render-target-space input under D3D11; if true `ResizeBuffers` makes
@@ -132,6 +144,10 @@ D3D9 windowed↔fullscreen window-management bugs (deferred todo); any new edito
 **Downstream agents MUST read these before planning or implementing.**
 
 ### Phase scope & requirements
+- `.planning/phases/19-dx11backend-config-detection-resize/19-INSTRUMENTATION-SPEC.md` — **the resolved
+  hook-point advertisement contract** (Candidate A `GetHookPoints()` export). Source of truth for the
+  cross-repo handoff; a copy lives at `D:/Code/swg-client-v2/.planning/handoff/2026-06-15-utinni-dx11-hookpoint-advertisement-spec.md`.
+  The Utinni-side `Dx11Backend` consumer MUST match this contract.
 - `.planning/ROADMAP.md` §"Phase 19: Dx11Backend + Config Detection + Resize" — goal + 3 locked success
   criteria + the research-phase confirm-FIRST notes (renderer-DLL contract; hard-cutover vs
   runtime-switch). ⚠ Note D-10 deviation: criterion-1's "throwaway `D3D11CreateDeviceAndSwapChain`"
