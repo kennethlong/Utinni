@@ -16,7 +16,19 @@ findings:
   warning: 6
   info: 3
   total: 10
-status: issues_found
+resolved:
+  critical: 1
+  warning: 5
+  info: 0
+  total: 6
+open:
+  warning: 1
+  info: 3
+  total: 4
+status: partially_resolved
+resolution_commits:
+  - aa12a29  # CR-01 + WR-01/02/03/06 (enum capture, extractor hardening, re-bless)
+  - 1bd2d84  # WR-05 (spike PS 5.1 robustness)
 ---
 
 # Phase 17: Code Review Report
@@ -35,6 +47,29 @@ The CI tripwires are well-constructed: the hard-fail scan is correctly scoped to
 The dominant defect is in the ABI-surface extractor: **enum members are silently not captured**, despite the file's own header comment claiming they are part of the keyed surface. CppSharp emits enum values that no extraction pattern matches, so a reordered/renumbered enum value — a real binary-ABI break for plugins that bind integer enum values — passes the gate undetected. Several latent robustness issues in the brace-counting scope tracker round out the warnings.
 
 The verification scope explicitly excludes the binary DLL fixture, the generated baseline txt, the denylist data file, and docs.
+
+## Resolution (post-review fix pass, 2026-06-15)
+
+Fixed in commits `aa12a29` (extractor) and `1bd2d84` (spike), then the baseline was re-blessed
+from a fresh regen (4386 → 4456 hashes; determinism re-proven: a second independent regen yields
+an identical set, 0 diff). AbiSurface filter 6 → 8 facts; full UtinniCoreDotNet.Tests lane 771 →
+773, no regressions. The frozen DLL fixture was NOT touched (managed-extraction-only fix), so the
+maintainer live-smoke approval remains valid.
+
+| Finding | Severity | Status | Note |
+|---------|----------|--------|------|
+| CR-01 | Critical | ✅ Resolved | Enum members now keyed to enum FQN (`ENUMMEMBER|<fqn>name=value`); two negative facts prove renumber/rename trips the gate, pure reorder stays invisible |
+| WR-01 | Warning | ✅ Resolved | `ScrubLiteralsAndComments` (column-preserving) blanks string/char/comment spans before brace counting + regex; EntryPoint match deliberately uses the unscrubbed line |
+| WR-02 | Warning | ✅ Resolved | `[FieldOffset]` now scans forward past blank/comment/attribute lines to the next real field |
+| WR-03 | Warning | ✅ Resolved | `[StructLayout(Size=N)]` key now carries the enclosing struct FQN (`pendingLayoutSize` deferral) |
+| WR-05 | Warning | ✅ Resolved | Spike: `$null -ne $gate` (null-on-left) + explicit if/else; report output behavior-identical |
+| WR-06 | Warning | ✅ Resolved | `ResolveBaselinePath` co-anchors to the resolved generated file's repo root; probes for the baseline FILE |
+| WR-04 | Warning | ⏳ Open (deferred) | Key `internal static extern` managed signatures independently of the mangled EntryPoint — cascades into IN-01; deferred together |
+| IN-01 | Info | ⏳ Open (deferred) | Test couples to `count==1`; will be revisited with WR-04 |
+| IN-02 | Info | ⏳ Open (deferred) | Per-call `SHA256.Create()` — micro-optimization |
+| IN-03 | Info | ⏳ Open (deferred) | Hard-fail scan emits to stdout rather than `::error::` annotations |
+
+Remaining open: 1 Warning (WR-04) + 3 Info, all advisory and tracked here for a future pass.
 
 ## Critical Issues
 
