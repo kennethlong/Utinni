@@ -1,8 +1,12 @@
 ---
-resolves_phase: 18
 title: SWG window resize / windowed↔fullscreen edge cases
 area: d3d9-presentation
 ---
+
+<!-- NOTE: previously tagged resolves_phase: 18, but Phase 18 (render-backend seam carve)
+     was a pure refactor and did NOT touch resize/fullscreen behavior. Tag removed so this
+     stays OPEN for the future window-management / D3D9 presentation pass. -->
+
 
 # SWG window resize / windowed↔fullscreen edge cases
 
@@ -75,6 +79,17 @@ Concrete per-transition results to seed the matrix:
   - **Fix direction (to investigate):** recompute the RT-space mouse scale + origin from the *current*
     fullscreen client-rect ↔ backbuffer mapping on the window-level fullscreen transition (the same
     transition the 15-13 watchdog already detects), instead of reusing the windowed mapping.
+
+## Observed live (2026-06-15 — maintainer, injected session; Phase 18 D-08 render-backend-seam smoke)
+
+The Phase 18 D-08 live-smoke (render-backend seam carve onto `IRenderBackend`) **PASSED** overall —
+overlay renders through the new seam, input works, Issue #11 chat routing works, no crash/Reset through
+scene change. **Window resizing still shows issues** (consistent with this open bucket). Phase 18 was a
+**pure refactor** (overlay behaviorally unchanged; the seam wraps the same `directX::` free functions and
+introduces no `Reset`), so it neither caused nor fixed these — they remain the pre-existing
+window-management / D3D9-presentation cluster tracked here. Per-transition symptoms not re-enumerated this
+session; maintainer flagged as non-blocking, capture-for-later. Still belongs to the future
+window-management pass alongside the 2026-06-03 and 2026-06-13 observations above.
 
 ## Known-adjacent issues (link, don't re-investigate from scratch)
 
