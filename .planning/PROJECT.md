@@ -30,6 +30,13 @@ named-pipe live-injected MCP bridge; and the documented Utinni ↔ swg-blender-p
 **Next milestone:** v2.1 "Wave-2 Editors + Foundation Hardening" — started 2026-06-14 (Phases 17+).
 See the Current Milestone section below.
 
+**v2.1 progress:** Phase 17 (CppSharp / v145 hardening) complete 2026-06-15 — CPPS-01..04 satisfied:
+the clang-capability spike + supported-config docs (the 14.29 parser-include redirect is now the
+documented, accepted config), two asymmetric CI tripwires (C++23-STL-header hard-fail scan + clang-20
+pin warn-loud), and the CPPS-04 ABI gate (per-block-hash diff with `--rebless` + a frozen-TJT
+MEF-compose fixture) — a binding regen can no longer silently break a pre-built plugin DLL. Verified
+7/7 via green CI run `8cc05b4`. Next: Phase 18 (render-backend seam).
+
 <details>
 <summary>v2.0 milestone goal + target features (shipped — archived for reference)</summary>
 
@@ -201,6 +208,6 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-14 — v2.1 "Wave-2 Editors + Foundation Hardening" milestone started (Phases 17+:
+*Last updated: 2026-06-15 — Phase 17 (CppSharp / v145 hardening, CPPS-01..04) complete; CI 8cc05b4 green. Prior: 2026-06-14 — v2.1 "Wave-2 Editors + Foundation Hardening" milestone started (Phases 17+:
 Terrain + one adjacent Wave-2 editor on a hardened D3D11/v145 base; optional IFF-chunk-template + TRE-
 history quick wins). Previous: 2026-06-14 after v2.0 milestone — v2.0 "AI-Assisted SWG Tools" SHIPPED (`v2.0`, Phases 12–16: revived SOE compilers as `utinni-cli` verbs + headless net10 MCP server + Wave-2 editors + live MCP bridge + Blender boundary; DEC-V2-LIFT-SHIFT / MCP-OOP / VERBS-FIRST locked). v1.0 retroactively archived at the same close (was tagged but never run through `/gsd:complete-milestone`). Previous updates: 2026-06-01 — V1 shipped (`v1.0.0`); 2026-05-29 — Phase 8 complete (PROD-W1-IFF validated); 2026-05-23 (Phase 4 + DEC-C3 LOCKED); 2026-05-17 (Phase 2 + DEC-C4 locked); initial creation via `/gsd:new-project` after `/gsd:ingest-docs` synthesis of vision.md + assessment.md + test-harness-plan.md.*
