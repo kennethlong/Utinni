@@ -21,10 +21,10 @@ REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 ca
 > not retire-it. ClangSharp/Biohazrd/C++-CLI ruled out (advisor, 2026-06-14): they don't reproduce the
 > C++-class→C#-class bridge without a large hand-written shim + plugin-ABI break.
 
-- [ ] **CPPS-01**: The binding generator's clang-parse capability against the MSVC v145 (14.5x) STL is
+- [x] **CPPS-01**: The binding generator's clang-parse capability against the MSVC v145 (14.5x) STL is
   empirically determined by a spike and documented, so the team knows native-v145 parse is unreachable
   with current tooling and why.
-- [ ] **CPPS-02**: The VS2019-14.29 parser-include redirect is hardened and documented as the *supported*
+- [x] **CPPS-02**: The VS2019-14.29 parser-include redirect is hardened and documented as the *supported*
   binding-generation configuration (explicit, not silently load-bearing).
 - [ ] **CPPS-03**: CI fails fast on the two unblock/regression signals — (a) UtinniCore C++ adopting a
   C++23 STL header the 14.29 redirect can't parse, and (b) a CppSharp release shipping clang ≥20.
@@ -115,8 +115,8 @@ Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CPPS-01 | Phase 17 — CppSharp / v145 Hardening | Pending |
-| CPPS-02 | Phase 17 — CppSharp / v145 Hardening | Pending |
+| CPPS-01 | Phase 17 — CppSharp / v145 Hardening | Complete |
+| CPPS-02 | Phase 17 — CppSharp / v145 Hardening | Complete |
 | CPPS-03 | Phase 17 — CppSharp / v145 Hardening | Pending |
 | CPPS-04 | Phase 17 — CppSharp / v145 Hardening | Pending |
 | RNDR-01 | Phase 18 — Render-Backend Seam + Dx9Backend | Pending |

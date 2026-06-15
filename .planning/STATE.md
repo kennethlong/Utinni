@@ -4,14 +4,14 @@ milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: executing
 stopped_at: Phase 17 context gathered
-last_updated: "2026-06-15T01:30:12.771Z"
-last_activity: 2026-06-15 -- Phase 17 planning complete
+last_updated: "2026-06-15T01:37:19.735Z"
+last_activity: 2026-06-15
 progress:
   total_phases: 16
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 33
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Between milestones — v2.0 shipped 2026-06-14. Next: `/gsd:new-milestone` to define v2.1+.
+**Current focus:** Phase 17 — cppsharp-v145-hardening
 
 ## Current Position
 
-Phase: 17 — CppSharp / v145 Hardening (not started)
-Plan: —
+Phase: 17 (cppsharp-v145-hardening) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-06-15 -- Phase 17 planning complete
+Last activity: 2026-06-15
 
 **v2.1 milestone (Phases 17–23) — foundation-before-features:**
 
@@ -201,6 +201,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 16 P16-01 | ~85 min | 3 of 4 tasks (Task 4 = blocking-human checkpoint) | 9 created + 4 modified |
 | Phase 16 P02 | ~60 min | 4 tasks | 13 files |
 | Phase 16 P03 | ~15 min | 4 tasks | 9 files |
+| Phase 17 P01 | ~3 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -253,6 +254,8 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase 15]: 15-16: three deferred managed-only polish defects closed in UtinniPlugins (TJT Release|x86 MSBuild exit 0; Generated/UtinniCore.cs untouched, C#-only build). B4/B5: FormParticleEditor.AfterModelMutated now re-calls BindParamGrid(currentParamNode) after emitterTree.RefreshMutable so a raw-hex leaf edit (and Undo/Redo, which share AfterModelMutated) re-renders the edited cell immediately — no reselect. currentParamNode tracks the MutableIffNode MODEL object (set in BindParamGrid), which survives RefreshMutable because IffChunkTree.LoadMutable rebuilds only TreeNode wrappers from the SAME MutableIffDocument — so a direct re-bind is correct, no id/path re-resolve. B6: new PreviewNoHookTooltip ("Live preview isn't wired this build — edits show on the next scene change or relog.") selected in RefreshButtonsState by Game.IsRunning (running-but-no-hook -> no-hook copy; !running -> existing no-client PreviewUnavailableTooltip); honest, no implied hook, consistent with LOCKED ReloadBadgeDegraded; LOCKED badge constants untouched. A7: FormSnapshotPlacements delete-confirm appends "The in-world object stays visible until the next scene change." (matches LOCKED WS badge, no instant-de-spawn over-promise) keeping the undoable clause + heading/verbs; WorldSnapshotImpl.BulkDelete adds WorldSnapshot.DetailLevelChanged() inside its AddUpdateLoopCall like BulkMove/BulkRetemplate for immediate grid refresh while retaining the GAP-2 DisableGizmo()/UpdateSelectedNodeControls(null) clear. Live B4/B5/B6/A7 re-verify gated to 15-18 against the 15-17 reassembled build. Commits UtinniPlugins 02bfc46, 9180250.
 - [Phase ?]: 16-02: live-wire bytes via Utinni-owned hand-rolled CanonicalJson (BCL-only, no STJ — C-03); four golden byte-vectors byte-exact produce+consume on net472 (R3-1); gameIsRunning is a game-thread-updated volatile cache the pipe worker reads but never natively probes (R3-2); StartListener wired into main.cs pinned to SWG CLIENT root not injectRoot (CUR-NEW-1).
 - [Phase ?]: 16-03: MCP-03 host half COMPLETE — net10 CanonicalJson field-for-field re-impl byte-exact to 16-02 goldens (R3-1); LivePipeClient never-hang twin (relative-on-wire, skew structured-error, clientRoot diagnostic); live_ping/live_reload_asset gated fail-closed on --enable-live proven via real ListToolsAsync (D-04); net472 real cross-impl wire round-trip (C-02); MCP-SECURITY.md live-tier addendum. Commits 13db929/33abf4c/77e6087/abce1e4.
+- [Phase ?]: Phase 17 spike confirmed empirically: no released CppSharp parses the v145 STL (vendored clang 11 + latest released clang 19 both below the clang-20 the v145 STL requires) -> harden-the-redirect.
+- [Phase ?]: The VS 2019 14.29 parser-include redirect is the documented SUPPORTED binding-generation config (docs/ai/cppsharp-v145-redirect.md); retiring it is gated on a future clang-20-bearing CppSharp release.
 
 ### Pending Todos
 
@@ -308,9 +311,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-14T23:34:50.844Z
+Last session: 2026-06-15T01:36:55.321Z
 Stopped at: Phase 17 context gathered
-Resume file: .planning/phases/17-cppsharp-v145-hardening/17-CONTEXT.md
+Resume file: None
 
 ## Ingest Provenance
 
