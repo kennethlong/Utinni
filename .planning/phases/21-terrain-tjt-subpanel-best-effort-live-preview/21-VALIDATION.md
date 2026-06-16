@@ -1,9 +1,9 @@
 ---
 phase: 21
 slug: terrain-tjt-subpanel-best-effort-live-preview
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: planned
+nyquist_compliant: true
+wave_0_complete: false   # flips true after Plan 01 actually executes (Wave-0 gaps are PLANNED in 21-01, not yet built)
 created: 2026-06-16
 ---
 
@@ -57,12 +57,14 @@ created: 2026-06-16
 
 ## Wave 0 Requirements
 
-- [ ] A unit/string-assert that the Terrain editor's status footer maps each `ReloadTier`
+- [x] A unit/string-assert that the Terrain editor's status footer maps each `ReloadTier`
       (`ReloadedTerrain` / `PendingNextSceneChange` / `Unavailable`) to the locked candor copy
       (default "live" disposition = `PendingNextSceneChange` per D-07 until the smoke says otherwise).
-- [ ] An in-proc edit-save parity test (UI save path produces byte-identical output to `apply-save-trn`
+      *(PLANNED: 21-01 Task 1 — `TerrainReloadCandorTests`.)*
+- [x] An in-proc edit-save parity test (UI save path produces byte-identical output to `apply-save-trn`
       for the same single-field edit) — required if the planner chooses the in-proc save path.
-- [ ] Confirm `ReloadAssetClassifierTests` has an explicit `.trn → ReloadedTerrain` assertion (add if missing).
+      *(PLANNED: 21-01 Task 2 — `TerrainInProcSaveParityTests`, covering BOTH a typed field AND the `--field active` IHDR path.)*
+- [x] Confirm `ReloadAssetClassifierTests` has an explicit `.trn → ReloadedTerrain` assertion (add if missing). *(PLANNED: 21-01 Task 1 — `Classify_Trn_ReturnsReloadedTerrain`.)*
 
 *Existing Phase 20 + Phase 8 infrastructure covers the codec/encoder/classifier behaviors.*
 
@@ -78,12 +80,12 @@ created: 2026-06-16
 
 ## Validation Sign-Off
 
-- [ ] All tasks have automated verify or Wave 0 dependencies (except the D-07 manual gate)
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references (tiered-candor assert + in-proc parity test)
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 90s
-- [ ] D-07 maintainer live-smoke task present and `autonomous: false`
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have automated verify or Wave 0 dependencies (except the D-07 manual gate)
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (tiered-candor assert + in-proc parity test)
+- [x] No watch-mode flags
+- [x] Feedback latency < 90s
+- [x] D-07 maintainer live-smoke task present and `autonomous: false`
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** plan-time validation PASSED (Wave-0 gaps PLANNED in 21-01; `wave_0_complete` flips after 21-01 executes; D-07 live-smoke is the lone deferred maintainer gate).

@@ -362,10 +362,11 @@ ReloadTier tier = ClientReloadDispatcher.Dispatch(previewPath, null);  // rootTy
 3. Note the searchPath prerequisite in the smoke task explicitly — without it, the smoke observes nothing regardless of reload tier.
 **Do NOT** block the phase on D-07. The save + tiered-candor path is fully shippable and automation-verifiable; only the "live vs pending" wording disposition awaits the smoke.
 
-### Open Question 2 — Active-flag leaf addressing from the tree
+### Open Question 2 — Active-flag leaf addressing from the tree  [RESOLVED — Plan 01]
 **What we know:** `--field active` mutates the int32 at offset 0 of the `IHDR` DATA leaf under `LAYR` (`ApplySaveTrnCommand.cs:73-75,272-278`); `TerrainLayer.Active` reads the SAME leaf (`TerrainLayer.cs:51`). `TerrainLayer.StableIdPath` is the LAYR FORM's path.
 **What's unclear:** The UI must derive the IHDR DATA leaf's stable id from the selected `TerrainLayer`. The CLI resolves this by asserting the addressed leaf's parent is `IHDR`. The in-proc path must walk from the layer's StableIdPath to its IHDR/DATA child, or expose the leaf id from the model.
 **Recommendation:** Confirm during Wave-0 whether the model surfaces the IHDR leaf id directly, or whether the UI must walk `doc.Mutable` for the IHDR child of the selected layer (the `FindMutableLeafByStableId` + parent-is-IHDR check from `ApplySaveTrnCommand` is the reference walk).
+**RESOLUTION (Plan 01):** The model does NOT surface the IHDR leaf id; `TerrainLayer.StableIdPath` is the LAYR FORM path only. Plan 01 adds a NET-NEW public helper `TerrainSaveTargets.ResolveIhdrLeafStableId(MutableIffDocument doc, string layerFormStableId)` that walks `doc` from the LAYR FORM stable id to its IHDR DATA child leaf and returns that leaf's stable id (via `MutableIffDocument.DeriveStableId`), asserting the parent FORM is `IHDR` (mirrors `ApplySaveTrnCommand.ResolveFieldContext` :272-278). The private CLI `FindMutableLeafByStableId` is NOT reused. Plan 01 proves byte-parity of the `--field active` write against `apply-save-trn` via this helper; Plan 02 consumes it for the active-flag toggle. D-07 (the live in-session re-read disposition) remains the legitimate Plan-04 maintainer-smoke deferral and is untouched.
 
 ## Environment Availability
 
