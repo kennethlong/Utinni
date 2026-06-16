@@ -142,9 +142,9 @@ Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no
 | CPPS-03 | Phase 17 — CppSharp / v145 Hardening | Complete |
 | CPPS-04 | Phase 17 — CppSharp / v145 Hardening | Complete |
 | RNDR-01 | Phase 18 — Render-Backend Seam + Dx9Backend | Complete (CI-green; final acceptance pending the D-08 maintainer live-smoke — 18-02 Task 3) |
-| RNDR-02 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete |
-| RNDR-03 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete |
-| RNDR-04 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete |
+| RNDR-02 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete (CI-green; live D3D11 acceptance deferred to Phase 24 — RVA crash on `SwgClient_r.exe` blocks inject until entry-point advertisement) |
+| RNDR-03 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete (CI-green; live D3D11 acceptance deferred to Phase 24) |
+| RNDR-04 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete (CI-green; live D3D11 acceptance deferred to Phase 24) |
 | EPA-01 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Pending |
 | EPA-02 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Pending |
 | EPA-03 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Pending |

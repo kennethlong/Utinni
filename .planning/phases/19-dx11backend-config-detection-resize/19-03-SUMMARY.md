@@ -42,20 +42,23 @@ patterns-established:
 
 requirements-completed: [RNDR-03]
 requirements-pending-live-smoke: [RNDR-02, RNDR-04]
+live-smoke-deferred-to: Phase 24 (EPA — client entry-point advertisement)
 
 # Metrics
 duration: ~20min
 completed: 2026-06-15
-status: checkpoint-blocking-human
+status: code-complete-live-smoke-deferred
 ---
 
 # Phase 19 Plan 03: One-Backend-Per-Session Detection + Live-Smoke Gate Summary
 
 **Wired the one-backend-per-session detection at `imgui_impl::setup()`: the DX9 entry path routes through the pure `selectBackend()` and installs `dx9Singleton()` with a one-shot RNDR-03 diagnostic; the DX11 entry path (the hook tier's `tryInstall()` already installed `dx11Singleton()` + ran `init(device,context)`) is detected via `render_backend::get()`, skips the DX9 step-2 device init, and runs the HWND-bearing tail with the swapchain-derived hwnd — all while keeping `imgui_impl.cpp` DX11/DXGI-symbol-free (D-06 gate green). Task 2 is the maintainer-only live-smoke (D-22) — STOPPED at the blocking-human checkpoint.**
 
-## Status: CHECKPOINT (blocking-human)
+## Status: CODE-COMPLETE — live-smoke (D-22) DEFERRED to Phase 24
 
-This plan is `autonomous: false`. Task 1 (the autonomous detection wiring) is **complete and committed**. Task 2 is a `checkpoint:human-verify gate="blocking-human"` — the maintainer-only live-SWG smoke on the live 32-bit D3D11 `gl11_r.dll` client. There is no headless/subagent path for live injection (AGENTS.md build-wave constraint), so execution **STOPS here** awaiting the maintainer sign-off.
+This plan is `autonomous: false`. Task 1 (the autonomous detection wiring) is **complete and committed**. Task 2 is a `checkpoint:human-verify gate="blocking-human"` — the maintainer-only live-SWG smoke on the live 32-bit D3D11 `gl11_r.dll` client.
+
+**Deferral (decided 2026-06-15, maintainer-approved):** the D-22 live-smoke is **blocked by a pre-existing architectural gap, not by this phase's code.** A live injection attempt into `swg-client-v2/stage/SwgClient_r.exe` crashed in `createDetours()` (`VEH 0xC0000005 … READ target=0x00401000`) — UtinniCore's ~198 game-logic detours are hardcoded to the SWGEmu.exe binary layout (`swg::config::detour()` hooks `loadOverrideConfig` at `0x00401000`, the exact faulting address), and the from-source `SwgClient_r.exe` has a different layout. The DX11 hook path itself is binary-agnostic (`gl11_r.dll!GetHookPoints` + swapchain vtbl), but its kickoff rides the SWGEmu-addressed `graphics::install` hook, which never fires on this client. Unblocking the live-smoke requires the client to advertise its own entry points — now scoped as **Phase 24 (EPA-01..04, `GetEngineHookPoints`)**. RNDR-02/03/04 live acceptance rides Phase 24; the CI-enforceable layers of this phase are all green.
 
 ## Performance
 
