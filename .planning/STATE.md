@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: ready_to_plan
-stopped_at: Phase 20 complete (4/4 plans + code-review fixes); verification passed; ready to plan Phase 21
-last_updated: "2026-06-16T14:30:17.012Z"
+status: planning
+stopped_at: Phase 21 context gathered
+last_updated: "2026-06-16T15:48:12.174Z"
 last_activity: 2026-06-16
 progress:
   total_phases: 17
@@ -341,9 +341,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-16T14:30:16.991Z
-Stopped at: Completed 20-04-PLAN.md (MCP summarize_terrain + LargeFixtures + DEC-C3 closure); Phase 20 ready for verification
-Resume file: None
+Last session: 2026-06-16T15:48:12.159Z
+Stopped at: Phase 21 context gathered
+Resume file: .planning/phases/21-terrain-tjt-subpanel-best-effort-live-preview/21-CONTEXT.md
 
 ## Ingest Provenance
 
