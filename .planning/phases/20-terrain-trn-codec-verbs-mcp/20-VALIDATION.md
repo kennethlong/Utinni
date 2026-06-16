@@ -5,6 +5,7 @@ status: complete
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-06-15
+audited: 2026-06-16
 ---
 
 # Phase 20 — Validation Strategy
@@ -116,3 +117,30 @@ real asset's version ever differs. No AFCN version was fabricated (maintainer de
 **Real-asset roundtrip:** SKIPPED by maintainer decision (decision 3) — the synthetic low+high matrix +
 the `BREC` divergence + the committed MCP fixtures already cover both lineages byte-exactly; no real client
 asset is in the repo (D-14).
+
+---
+
+## Validation Audit 2026-06-16
+
+State-A re-audit. All four phase requirements confirmed COVERED — no gaps found, no test generation
+needed; `nyquist_compliant: true` retained.
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+**Coverage confirmation (per requirement → green test evidence):**
+
+| Req ID | Test file(s) | Evidence |
+|--------|--------------|----------|
+| PROD-W2-TRN-01 | `TgenDecoderTests.cs` | navigation/typed-field facts (filter `TgenDecode`) |
+| PROD-W2-TRN-02 | `TgenDecoderTests.cs` | `Decode_TruncatedKnownTag_RawFallbackNonEditable_NoOverRead`, DEAD/unknown-tag facts (filter `TgenRawFallback`) |
+| PROD-W2-TRN-03 | `RoundtripTrnTests.cs`, `ApplySaveTrnTests.cs` | exact-span + untouched-leaf byte-identity, active-toggle parity |
+| PROD-W2-TRN-04 | `TerrainReadToolTests.cs`, `PaletteLineageTests.cs` | both-lineage MCP dispatch + palette-lineage goldens |
+
+**Green-state basis:** test files + filter tokens verified present (2026-06-16); full lanes recorded green
+at the maintainer checkpoint earlier today (411 Cli / 112 Mcp passing; terrain filters 55+10 passing per
+the DEC-C3 closure above). No rebuild re-run performed — building requires VS2026 MSBuild (`dotnet build`
+fails on WinForms `.resx`), and the ratified checkpoint green-state is same-day authoritative.
