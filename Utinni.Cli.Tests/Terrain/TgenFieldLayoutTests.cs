@@ -86,6 +86,86 @@ namespace Utinni.Cli.Tests.Terrain
             Assert.True(d.Editable);
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // Offset-parity (concern #2): the encoder's edit MUST touch EXACTLY the descriptor span the
+        // decoder reads — same TgenFieldLayouts source. We prove this end-to-end: for every editable
+        // descriptor field, encoding a new value via TrnFieldEncoder changes ONLY the bytes in that
+        // descriptor's [offset .. offset+width) span and leaves every other byte byte-identical.
+        // ─────────────────────────────────────────────────────────────────────
+
+        [Theory]
+        [Trait("Category", "TgenLayout")]
+        [MemberData(nameof(Tier1TagArms))]
+        public void EncoderEditSpan_EqualsDecoderDescriptorSpan_PerEditableField(string tag, string version)
+        {
+            IReadOnlyList<TgenFieldDescriptor> descriptors = TgenFieldLayouts.For(tag, version);
+            Assert.NotNull(descriptors);
+
+            // The exact packed DATA payload the synthesizer emits for this tag/version (the same bytes
+            // the decoder reads). We edit each field through the encoder and assert the touched span ==
+            // the descriptor span — the single-source parity guarantee.
+            byte[] payload = ExtractFirstDataPayload(TgenFixtureSynthesizer.WithTypedTag(tag, version));
+            Assert.Equal(TgenFieldLayouts.PayloadLength(tag, version), payload.Length);
+
+            foreach (TgenFieldDescriptor d in descriptors)
+            {
+                if (!d.Editable) continue;
+                string editValue = SampleValueFor(d);
+                byte[] edited = TrnFieldEncoder.EncodeField(payload, tag, version, d.Name, editValue);
+
+                Assert.Equal(payload.Length, edited.Length); // same-length: no ripple.
+
+                // Every byte OUTSIDE [d.Offset .. d.Offset+d.Width) is byte-identical (the decoder reads
+                // each field from precisely that span, so an out-of-span change would prove drift).
+                for (int i = 0; i < payload.Length; i++)
+                {
+                    bool inSpan = i >= d.Offset && i < d.Offset + d.Width;
+                    if (!inSpan)
+                    {
+                        Assert.True(payload[i] == edited[i],
+                            tag + "/" + version + " field '" + d.Name + "' edit changed an out-of-span byte at " + i + ".");
+                    }
+                }
+            }
+        }
+
+        // A deterministic, descriptor-appropriate sample edit value (distinct from the synthesizer defaults
+        // so at least one in-span byte differs for every field width).
+        private static string SampleValueFor(TgenFieldDescriptor d)
+        {
+            switch (d.EditParser)
+            {
+                case TgenEditParser.Float: return "1234.5";
+                case TgenEditParser.Bool32: return "1";
+                default: return "987654321";
+            }
+        }
+
+        private static byte[] ExtractFirstDataPayload(byte[] fixtureBytes)
+        {
+            using (var ms = new System.IO.MemoryStream(fixtureBytes, writable: false))
+            {
+                var doc = UtinniCoreDotNet.Formats.Iff.IffReader.Read(ms);
+                return FindFirstDataPayload(doc.Root);
+            }
+        }
+
+        private static byte[] FindFirstDataPayload(UtinniCoreDotNet.Formats.Iff.IffChunk chunk)
+        {
+            var leaf = chunk as UtinniCoreDotNet.Formats.Iff.IffLeafChunk;
+            if (leaf != null && leaf.TypeId == "DATA") return leaf.Data;
+            var container = chunk as UtinniCoreDotNet.Formats.Iff.IffContainerChunk;
+            if (container != null)
+            {
+                foreach (var c in container.Children)
+                {
+                    byte[] found = FindFirstDataPayload(c);
+                    if (found != null) return found;
+                }
+            }
+            return null;
+        }
+
         // Extracts the length of the FIRST DATA leaf in the synthesized fixture (the typed node's payload),
         // so the descriptor-width sum can be asserted against the real on-disk fixed payload length.
         private static int ExtractDataPayloadLength(byte[] fixtureBytes)

@@ -132,6 +132,7 @@
     <Compile Include="Formats\Decoders\TgenDecoder.cs" />
     <Compile Include="Formats\Terrain\TerrainParseException.cs" />
     <Compile Include="Formats\Terrain\TgenFieldLayouts.cs" />
+    <Compile Include="Formats\Terrain\TrnFieldEncoder.cs" />
     <Compile Include="Formats\Terrain\TerrainNode.cs" />
     <Compile Include="Formats\Terrain\TerrainLayer.cs" />
     <Compile Include="Formats\Terrain\TerrainPalettes.cs" />
