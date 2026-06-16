@@ -129,6 +129,13 @@
     <Compile Include="Formats\Decoders\DataTableDecoder.cs" />
     <Compile Include="Formats\Decoders\StringTableDecoder.cs" />
     <Compile Include="Formats\Decoders\ObjectTemplateDecoder.cs" />
+    <Compile Include="Formats\Decoders\TgenDecoder.cs" />
+    <Compile Include="Formats\Terrain\TerrainParseException.cs" />
+    <Compile Include="Formats\Terrain\TgenFieldLayouts.cs" />
+    <Compile Include="Formats\Terrain\TerrainNode.cs" />
+    <Compile Include="Formats\Terrain\TerrainLayer.cs" />
+    <Compile Include="Formats\Terrain\TerrainPalettes.cs" />
+    <Compile Include="Formats\Terrain\TerrainDocument.cs" />
     <Compile Include="Formats\Decoders\AppearanceSummary.cs" />
     <Compile Include="Formats\Decoders\IffStructureSummary.cs" />
     <Compile Include="Callbacks\CuiCallbacks.cs" />
