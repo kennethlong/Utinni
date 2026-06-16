@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: planning
-stopped_at: Phase 21 UI-SPEC approved
-last_updated: "2026-06-16T15:54:12.351Z"
+stopped_at: Phase 21 planned (4 plans, verified PASSED)
+last_updated: "2026-06-16T16:38:43.407Z"
 last_activity: 2026-06-16
 progress:
   total_phases: 17
   completed_phases: 4
-  total_plans: 12
+  total_plans: 16
   completed_plans: 12
-  percent: 100
+  percent: 75
 ---
 
 # Project State
@@ -341,9 +341,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-16T15:54:12.336Z
-Stopped at: Phase 21 UI-SPEC approved
-Resume file: .planning/phases/21-terrain-tjt-subpanel-best-effort-live-preview/21-UI-SPEC.md
+Last session: 2026-06-16T16:38:43.392Z
+Stopped at: Phase 21 planned (4 plans, verified PASSED)
+Resume file: .planning/phases/21-terrain-tjt-subpanel-best-effort-live-preview/21-01-PLAN.md
 
 ## Ingest Provenance
 
