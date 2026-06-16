@@ -1,10 +1,11 @@
 ---
 phase: 21
 slug: terrain-tjt-subpanel-best-effort-live-preview
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-06-16
+reviewed_at: 2026-06-16
 ---
 
 # Phase 21 — UI Design Contract
