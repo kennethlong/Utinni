@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: executing
-stopped_at: Phase 21 planned (4 plans, verified PASSED)
+status: ready_to_plan
+stopped_at: Phase 21 complete (4/4 plans; live smoke fixed a blocking terrain stable-id bug; D-07 honest default; 3 residual todos)
 last_updated: "2026-06-16T20:15:26.736Z"
 last_activity: 2026-06-16
 progress:
   total_phases: 17
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 16
   completed_plans: 15
-  percent: 94
+  percent: 29
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 21 — terrain-tjt-subpanel-best-effort-live-preview
+**Current focus:** Phase 22 — ClientEffect Editor (next; not yet planned)
 
 ## Current Position
 
-Phase: 21 (terrain-tjt-subpanel-best-effort-live-preview) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
+Phase: 22 (clienteffect-editor) — next, not started
+Plan: Not started
+Status: Ready to plan (corrected from SDK auto-advance to backlog 999.2 — known phase.complete next-phase quirk)
 Last activity: 2026-06-16
 
 **v2.1 milestone (Phases 17–24) — foundation-before-features:**
@@ -127,7 +127,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 
 **Velocity:**
 
-- Total plans completed: 46
+- Total plans completed: 50
 - Average duration: —
 - Total execution time: —
 
@@ -147,6 +147,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | 18 | 2 | - | - |
 | 19 | 3 | - | - |
 | 20 | 4 | - | - |
+| 21 | 4 | - | - |
 
 **Recent Trend:**
 

@@ -156,7 +156,7 @@ Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no
 | PROD-W2-TRN-02 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Complete |
 | PROD-W2-TRN-03 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Complete |
 | PROD-W2-TRN-04 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Complete |
-| PROD-W2-TRN-05 | Phase 21 — Terrain TJT SubPanel (+ live preview) | In Progress |
+| PROD-W2-TRN-05 | Phase 21 — Terrain TJT SubPanel (+ live preview) | Complete |
 | PROD-W2-CFX-01 | Phase 22 — ClientEffect Editor | Pending |
 | PROD-W2-CFX-02 | Phase 22 — ClientEffect Editor | Pending |
 | PROD-IFFT-01 | Phase 23 — User-Definable IFF Chunk Templates | Pending |

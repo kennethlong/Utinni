@@ -66,7 +66,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 - [x] **Phase 18: Render-Backend Seam + Dx9Backend** — carve `IRenderBackend`, D3D9 overlay behaviorally unchanged (FOUNDATION) (completed 2026-06-15)
 - [x] **Phase 19: Dx11Backend + Config Detection + Resize** — DXGI `Present`/`ResizeBuffers` hooks, one-backend-per-session detect (FOUNDATION; research-phase) (all 3 plans code-complete + CI lanes green 2026-06-15; live-smoke D-22 / RNDR-02/03/04 acceptance DEFERRED to Phase 24 — UtinniCore's hardcoded RVAs crash on the from-source D3D11 client until it advertises its entry points)
 - [x] **Phase 20: Terrain `.trn` Codec + Verbs + MCP** — decode→navigable layer tree, typed tags, scalar-leaf edit/save, verbs-first (FEATURE / critical path; research-phase) (completed 2026-06-16)
-- [ ] **Phase 21: Terrain TJT SubPanel (+ best-effort live preview)** — consumes the Phase 20 codec; live regen-on-save rides the seam, degrades honestly (FEATURE)
+- [x] **Phase 21: Terrain TJT SubPanel (+ best-effort live preview)** — consumes the Phase 20 codec; live regen-on-save rides the seam, degrades honestly (FEATURE) (completed 2026-06-16)
 - [ ] **Phase 22: ClientEffect Editor** — command-list `.iff` codec + verbs + MCP + SubPanel (FEATURE; lowest risk)
 - [ ] **Phase 23: User-Definable IFF Chunk Templates** — schema-driven decode/encode + manage-from-UI (QUICK WIN, Backlog 999.2)
 - [ ] **Phase 24: Client Entry-Point Advertisement (`GetEngineHookPoints`)** — SWG-Source client advertises its ~198 engine entry points; UtinniCore consumes them (dual-path), retiring hardcoded RVAs on that client; unblocks the 18/19 live-smokes on D3D11 (FOUNDATION; promotes Backlog 999.7 advertisement half; gated on external swg-client-v2 readiness; research-phase)
@@ -145,7 +145,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 - [x] 21-01-PLAN.md — Wave-0 scaffold: framework-side TerrainReloadCandor copy-map + tests, explicit .trn-classifier assert, in-proc TerrainSaveTargets + byte-parity-vs-apply-save-trn test
 - [x] 21-02-PLAN.md — FormTerrainEditor roomy host (D-02 launched-Form, D-03 custom tree+detail pane): navigable TGEN tree + read-only palettes, typed/raw-fallback field editor, in-proc save, Save+Preview reload candor
 - [x] 21-03-PLAN.md — Thin docked TerrainSubPanel (D-01, fits 417px) + Plugin.cs SubPanelContainer registration + FormTreBrowser "Open in Terrain Editor" hand-off (D-08 both entry points; MEF-safe, undo null-checked)
-- [ ] 21-04-PLAN.md — Maintainer live-smoke (D-07, autonomous:false): observe in-session reload disposition → set the shipped candor copy honestly
+- [x] 21-04-PLAN.md — Maintainer live-smoke (D-07, autonomous:false): observe in-session reload disposition → set the shipped candor copy honestly
 **UI hint**: yes
 
 ### Phase 22: ClientEffect Editor
@@ -211,7 +211,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 18. Render-Backend Seam + Dx9Backend | v2.1 | 2/2 | Complete    | 2026-06-15 |
 | 19. Dx11Backend + Detection + Resize | v2.1 | 3/3 | Complete    | 2026-06-16 |
 | 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 4/4 | Complete   | 2026-06-16 |
-| 21. Terrain TJT SubPanel | v2.1 | 3/4 | In Progress|  |
+| 21. Terrain TJT SubPanel | v2.1 | 4/4 | Complete    | 2026-06-16 |
 | 22. ClientEffect Editor | v2.1 | 0/? | Not started | - |
 | 23. IFF Chunk Templates | v2.1 | 0/? | Not started | - |
 | 24. Client Entry-Point Advertisement | v2.1 | 0/? | Not started | - |
