@@ -4,14 +4,14 @@ milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: executing
 stopped_at: Phase 21 planned (4 plans, verified PASSED)
-last_updated: "2026-06-16T19:50:41.411Z"
+last_updated: "2026-06-16T20:04:50.280Z"
 last_activity: 2026-06-16
 progress:
   total_phases: 17
   completed_phases: 4
   total_plans: 16
-  completed_plans: 13
-  percent: 81
+  completed_plans: 14
+  percent: 88
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 ## Current Position
 
 Phase: 21 (terrain-tjt-subpanel-best-effort-live-preview) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-16
 
@@ -219,6 +219,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 20 P03 | 35m | 3 tasks | 15 files |
 | Phase 20 P04 | ~40m | 3 tasks | 6 files |
 | Phase 21 P01 | 9min | 2 tasks | 8 files |
+| Phase 21 P02 | 25min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -288,6 +289,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: 21-01: terrain save = in-proc TerrainSaveTargets (mirror IffSaveTargets), byte-parity-proven vs apply-save-trn (binds Plans 02/03)
 - [Phase ?]: 21-01: active-flag leaf addressing = net-new public TerrainSaveTargets.ResolveIhdrLeafStableId (LAYR FORM -> IHDR DATA leaf; RESEARCH OQ2)
 - [Phase ?]: 21-01: reload candor copy framework-side (TerrainReloadCandor); D-07 honest default = PendingNextSceneChange copy for ReloadedTerrain until Plan 04 smoke flips LivePreviewObserved
+- [Phase ?]: 21-02: FormTerrainEditor field pane = custom TreDetailPane-style (D-03); typed-leaf addressing via net-new TerrainSaveTargets.ResolveTypedDataLeafStableId; Preview = in-memory edit→temp loose override→Dispatch (one AddMainLoopCall)
 
 ### Pending Todos
 
@@ -345,7 +347,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-16T19:50:28.567Z
+Last session: 2026-06-16T20:04:39.136Z
 Stopped at: Phase 21 planned (4 plans, verified PASSED)
 Resume file: None
 

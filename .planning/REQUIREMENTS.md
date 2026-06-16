@@ -78,7 +78,7 @@ REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 ca
 - [x] **PROD-W2-TRN-04**: `.trn` decode/edit/save is exposed as golden-tested `utinni-cli` verbs
   (decode / roundtrip / apply-save) + an MCP read tool, validated across BOTH SWGEmu and Infinity
   fixtures.
-- [ ] **PROD-W2-TRN-05**: On save, the terrain change previews live in-client where a heap-free hot-path
+- [x] **PROD-W2-TRN-05**: On save, the terrain change previews live in-client where a heap-free hot-path
   regen is reachable; where it is not (this build), it degrades to save-then-reload with explicit candor —
   never a standalone Utinni renderer.
 
