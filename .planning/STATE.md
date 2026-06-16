@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: verifying
-stopped_at: Completed 20-04-PLAN.md (MCP summarize_terrain + LargeFixtures + DEC-C3 closure); Phase 20 ready for verification
+status: ready_to_plan
+stopped_at: Phase 20 complete (4/4 plans + code-review fixes); verification passed; ready to plan Phase 21
 last_updated: "2026-06-16T14:30:17.012Z"
 last_activity: 2026-06-16
 progress:
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 20 — terrain-trn-codec-verbs-mcp
+**Current focus:** Phase 20 complete (terrain `.trn` codec + verbs + MCP) → next is Phase 21 (Terrain TJT SubPanel)
 
 ## Current Position
 
-Phase: 20 (terrain-trn-codec-verbs-mcp) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
+Phase: 21 (terrain-tjt-subpanel) — next, not started
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-06-16
 
 **v2.1 milestone (Phases 17–24) — foundation-before-features:**
@@ -127,7 +127,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 
 **Velocity:**
 
-- Total plans completed: 42
+- Total plans completed: 46
 - Average duration: —
 - Total execution time: —
 
@@ -146,6 +146,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | 17 | 3 | - | - |
 | 18 | 2 | - | - |
 | 19 | 3 | - | - |
+| 20 | 4 | - | - |
 
 **Recent Trend:**
 
