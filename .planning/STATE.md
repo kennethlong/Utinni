@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: executing
-stopped_at: Phase 20 context gathered
-last_updated: "2026-06-16T04:24:03.473Z"
-last_activity: 2026-06-16 -- Phase 20 planning complete
+stopped_at: Completed 20-01-PLAN.md (Wave-0 fixture scaffold + real-asset version grounding)
+last_updated: "2026-06-16T13:01:37.272Z"
+last_activity: 2026-06-16
 progress:
   total_phases: 17
   completed_phases: 3
   total_plans: 12
-  completed_plans: 8
-  percent: 67
+  completed_plans: 9
+  percent: 75
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 19 COMPLETE → next is Phase 20 (Terrain `.trn` codec)
+**Current focus:** Phase 20 — terrain-trn-codec-verbs-mcp
 
 ## Current Position
 
-Phase: 20
-Plan: Not started
+Phase: 20 (terrain-trn-codec-verbs-mcp) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-06-16 -- Phase 20 planning complete
+Last activity: 2026-06-16
 
 **v2.1 milestone (Phases 17–24) — foundation-before-features:**
 
@@ -213,6 +213,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 19 P01 | 35min | 3 tasks | 8 files |
 | Phase 19 P02 | ~25min | 3 tasks | 7 files |
 | Phase 19 P03 | ~20min | 1 tasks | 1 files |
+| Phase 20 P01 | 5h15m | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -275,6 +276,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: Phase 19 P01: Dx11Backend init() takes device+context (off-vtable, differs from Dx9 single-device init); selectBackend picks Dx11 only when gl11Present && getHookPointsResolved else Dx9; vcpkg ships imgui dx11 binding as header + in-lib (no .cpp under include, same as dx9).
 - [Phase ?]: Phase 19 P02: directx11.h parses CLEAN through clang-11 CppSharp (left DISCOVERED, no HeaderDiscovery exclusion).
 - [Phase ?]: Phase 19 P02: DX11 acquisition via the client's advertised GetHookPoints() (live swapchain), kicked off by directX11::kickoff() from graphics.cpp::hkInstall (single owned site).
+- [Phase ?]: Phase 20 terrain era constants grounded in SWGEmu + SWG Infinity (maintainer directive: no Restoration); RestorationEra renamed InfinityEra. Both clients ship identical PTAT/0014 FORM versions; BREC is the one low/high drift pair.
 
 ### Pending Todos
 
@@ -332,9 +334,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-16T03:57:32.601Z
-Stopped at: Phase 20 context gathered
-Resume file: .planning/phases/20-terrain-trn-codec-verbs-mcp/20-CONTEXT.md
+Last session: 2026-06-16T13:01:37.258Z
+Stopped at: Completed 20-01-PLAN.md (Wave-0 fixture scaffold + real-asset version grounding)
+Resume file: None
 
 ## Ingest Provenance
 
