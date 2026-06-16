@@ -222,11 +222,24 @@ namespace UtinniCoreDotNet.Formats.Decoders
             // The layer's body is its version form (e.g. "0000"/"0003") OR, in the synthesizer's collapsed
             // shape, the layerForm IS the version form directly under LYRS. Walk to find the IHDR + children.
             MutableIffNode walkRoot = layerForm;
-            // If this is a real LAYR FORM, descend into its single version-form body.
+            // Children (IHDR + boundary/filter/affector nodes + sub-layers) are addressed RELATIVE TO walkRoot.
+            // For a real LAYR FORM the children live under its single version-form body, so that version form
+            // contributes a path segment that MUST be folded into every child's stable id. Omitting it (the
+            // pre-21-04 bug) made the decoded StableIdPath unresolvable by the save-side FindNodeByStableId,
+            // which walks the TRUE DOM — surfacing live as "no IHDR DATA child leaf" (active flag) and
+            // "No typed node FORM container found" (typed field) on real high-era terrain (naboo.trn). The
+            // synthesizer's collapsed fixture (layer FORM sub-type "0003", not "LAYR") skips this descent, so
+            // walkRootId stays == stableIdPath and the existing golden tests are unaffected.
+            string walkRootId = stableIdPath;
             if (layerForm.SubTypeId == LayerForm)
             {
                 MutableIffNode versionBody = FirstContainerChild(layerForm);
-                if (versionBody != null) walkRoot = versionBody;
+                if (versionBody != null)
+                {
+                    walkRoot = versionBody;
+                    walkRootId = stableIdPath + "/"
+                        + MutableIffDocument.DeriveStableId(versionBody, "", IndexOf(layerForm, versionBody));
+                }
             }
 
             bool active = true;     // C++ default is active=true when no IHDR active flag is present.
@@ -240,7 +253,7 @@ namespace UtinniCoreDotNet.Formats.Decoders
             foreach (var child in walkRoot.Children)
             {
                 if (child.Kind != MutableIffNodeKind.Container) { ordinal++; continue; }
-                string childId = stableIdPath + "/" + MutableIffDocument.DeriveStableId(child, "", ordinal);
+                string childId = walkRootId + "/" + MutableIffDocument.DeriveStableId(child, "", ordinal);
                 string tag = child.SubTypeId;
 
                 if (tag == LayerForm || tag == LayerListForm)

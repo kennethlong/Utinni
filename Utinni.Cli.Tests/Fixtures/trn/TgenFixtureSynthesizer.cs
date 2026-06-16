@@ -308,6 +308,35 @@ namespace Utinni.Cli.Tests.Fixtures.Trn
         }
 
         /// <summary>
+        /// The REAL high-era layer shape observed in shipped planet <c>.trn</c> (e.g. naboo):
+        /// <c>LYRS → FORM:LAYR → FORM:&lt;version&gt; → IHDR(DATA) + typed AHCN</c>. A literal <c>LAYR</c> FORM
+        /// wraps a version-form body that in turn holds the <c>IHDR</c> header and the child boundary/filter/
+        /// affector nodes. This is distinct from <see cref="WithLayerHeader"/>, whose layer FORM IS the version
+        /// form directly under <c>LYRS</c> (the "collapsed" shape) and therefore NEVER exercises
+        /// <c>TgenDecoder.DecodeLayer</c>'s <c>LAYR → version</c> descent. Regression fixture for the 21-04
+        /// live-smoke stable-id defect: when the decoder descends into the version body it must fold that
+        /// version-form segment into every child's <c>StableIdPath</c>, or the save-side
+        /// <c>FindNodeByStableId</c> (which walks the TRUE DOM) cannot re-locate the node — surfacing as
+        /// "no IHDR DATA child leaf" (active flag) and "No typed node FORM container found" (typed field).
+        /// </summary>
+        public static byte[] WithRealLayrWrapper(bool active = true, string name = "layer0")
+        {
+            MutableIffNode tgen = MutableIffNode.NewContainer("FORM", "TGEN");
+            MutableIffNode body = tgen.AddContainer("FORM", "0000");
+            MutableIffNode lyrs = body.AddContainer("FORM", "LYRS");
+            MutableIffNode layr = lyrs.AddContainer("FORM", "LAYR");                    // literal LAYR wrapper
+            MutableIffNode ver = layr.AddContainer("FORM", TgenEraVersions.SwgEmuEra["LAYR"]); // version body INSIDE LAYR
+
+            // IHDR layer-item header under the version body: [int32 active][cstring name].
+            MutableIffNode ihdr = ver.AddContainer("FORM", "IHDR");
+            ihdr.AddLeaf("DATA", Concat(Int32Le(active ? 1 : 0), CString(name)));
+
+            // One typed AHCN affector sibling under the version body (editable typed node).
+            AddTypedForm(ver, "AHCN", TgenEraVersions.Low("AHCN"), DefaultPayloadFor("AHCN", TgenEraVersions.Low("AHCN")));
+            return Emit(tgen);
+        }
+
+        /// <summary>
         /// A <c>FORM TGEN</c> whose single <c>LAYR</c> carries <paramref name="siblingCount"/> SAME-TAG
         /// (<c>AHCN</c>) sibling forms so node ordinals reach double digits — the CR-01 prefix-collision
         /// regression shape. Because every sibling is tag <c>AHCN</c>, the node at LAYR-child ordinal 1 has

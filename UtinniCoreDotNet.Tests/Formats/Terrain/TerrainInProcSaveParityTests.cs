@@ -134,6 +134,61 @@ namespace UtinniCoreDotNet.Tests.Formats.Terrain
             Assert.Contains("non-editable", ex.Message, StringComparison.OrdinalIgnoreCase);
         }
 
+        // ── (d) REAL LAYR-wrapper shape (21-04 live-smoke regression): on real high-era terrain the layer is
+        //        LYRS → FORM:LAYR → FORM:<version> → IHDR + affectors. The pre-fix decoder dropped the
+        //        version-form segment from child StableIdPaths, so the save-side resolvers threw
+        //        "no IHDR DATA child leaf" / "No typed node FORM container found" and NO edit could be saved.
+        //        This pins the fix: decoded node ids round-trip through the DOM walk, both resolvers locate
+        //        their DATA leaf, and BOTH edit paths (typed scalar + active flag) save + re-decode correctly.
+
+        [Fact]
+        public void RealLayrWrapperShape_StableIdsRoundTrip_AndBothEditPathsSave()
+        {
+            byte[] source = TgenFixtureSynthesizer.WithRealLayrWrapper(active: true, name: "alpha");
+            TerrainDocument doc = TerrainDocument.FromBytes(source);
+
+            // Sanity: the LAYR-wrapped layer decoded one typed node and reads Active=true.
+            Assert.NotEmpty(doc.Layers);
+            Assert.True(doc.Layers[0].Active);
+            Assert.NotEmpty(doc.Layers[0].Nodes);
+
+            // (1) Core regression: EVERY decoded typed node's StableIdPath must re-resolve to a container in the
+            //     held DOM. Pre-fix this failed (the path omitted the LAYR version-form segment).
+            foreach (var layer in doc.Layers)
+            {
+                foreach (var node in layer.Nodes)
+                {
+                    MutableIffNode found = FindNodeByStableId(doc.Mutable, node.StableIdPath);
+                    Assert.True(found != null, "node StableIdPath did not round-trip through the DOM: " + node.StableIdPath);
+                    Assert.Equal(MutableIffNodeKind.Container, found.Kind);
+                }
+            }
+
+            // (2) Active-flag resolver (LAYR → version → IHDR → DATA) yields a leaf the DOM walk can find.
+            string layerId = doc.Layers[0].StableIdPath;
+            string ihdrLeaf = ResolveIhdrLeafStableId(doc.Mutable, layerId);
+            Assert.False(string.IsNullOrEmpty(ihdrLeaf));
+            MutableIffNode ihdrNode = FindNodeByStableId(doc.Mutable, ihdrLeaf);
+            Assert.NotNull(ihdrNode);
+            Assert.Equal(MutableIffNodeKind.Leaf, ihdrNode.Kind);
+
+            // (3) Typed-field resolver yields the AHCN DATA leaf; an in-proc edit-save round-trips byte-exact.
+            string ascnNodeId = doc.Layers[0].Nodes[0].StableIdPath;
+            string typedLeaf = ResolveTypedDataLeafStableId(doc.Mutable, ascnNodeId);
+            Assert.False(string.IsNullOrEmpty(typedLeaf));
+            Assert.NotNull(FindNodeByStableId(doc.Mutable, typedLeaf));
+
+            byte[] typedEdited = InProcEditSave(source, typedLeaf, "AHCN", TgenEraVersions.Low("AHCN"), "height", "321.0");
+            Assert.False(source.SequenceEqual(typedEdited));
+            Assert.Equal(typedEdited, TerrainDocument.FromBytes(typedEdited).Serialize());
+
+            // (4) Active-flag edit round-trips: re-decode reports Active=false with the layer name preserved.
+            byte[] flagEdited = InProcEditSave(source, ihdrLeaf, "IHDR", "active", "active", "0");
+            TerrainDocument reDecoded = TerrainDocument.FromBytes(flagEdited);
+            Assert.False(reDecoded.Layers[0].Active);
+            Assert.Equal("alpha", reDecoded.Layers[0].Name);
+        }
+
         // ════════════════════════════════════════════════════════════════════
         // In-proc edit-save sequence (mirrors TerrainSaveTargets: locate leaf -> EncodeField -> SetPayload ->
         // Serialize). The non-gated form is used for the positive parity cases (editability already known);
@@ -220,11 +275,26 @@ namespace UtinniCoreDotNet.Tests.Formats.Terrain
             Assert.NotNull(layerForm);
             Assert.Equal(MutableIffNodeKind.Container, layerForm.Kind);
 
-            string layerPrefix = layerFormStableId + "/";
-            for (int i = 0; i < layerForm.Children.Count; i++)
+            // Mirror TgenDecoder.DecodeLayer / TerrainSaveTargets: a real LAYR FORM nests its IHDR under a
+            // version-form body whose segment must be folded into the walk (the 21-04 stable-id fix). The
+            // collapsed fixture (layer FORM sub-type "0003", not "LAYR") skips this descent unchanged.
+            MutableIffNode walkRoot = layerForm;
+            string walkPrefix = layerFormStableId + "/";
+            if (string.Equals(layerForm.SubTypeId, "LAYR", StringComparison.Ordinal))
             {
-                MutableIffNode child = layerForm.Children[i];
-                string childId = MutableIffDocument.DeriveStableId(child, layerPrefix, i);
+                MutableIffNode versionBody = FirstContainerChild(layerForm);
+                if (versionBody != null)
+                {
+                    walkRoot = versionBody;
+                    walkPrefix = layerFormStableId + "/"
+                        + MutableIffDocument.DeriveStableId(versionBody, "", IndexOf(layerForm, versionBody)) + "/";
+                }
+            }
+
+            for (int i = 0; i < walkRoot.Children.Count; i++)
+            {
+                MutableIffNode child = walkRoot.Children[i];
+                string childId = MutableIffDocument.DeriveStableId(child, walkPrefix, i);
                 if (child.Kind == MutableIffNodeKind.Container
                     && string.Equals(child.SubTypeId, "IHDR", StringComparison.Ordinal))
                 {
@@ -240,6 +310,44 @@ namespace UtinniCoreDotNet.Tests.Formats.Terrain
                 }
             }
             return null;
+        }
+
+        // LOCAL MIRROR of TerrainSaveTargets.ResolveTypedDataLeafStableId — node FORM -> version FORM -> DATA.
+        private static string ResolveTypedDataLeafStableId(MutableIffDocument doc, string nodeFormStableId)
+        {
+            MutableIffNode nodeForm = FindNodeByStableId(doc, nodeFormStableId);
+            Assert.NotNull(nodeForm);
+            string nodePrefix = nodeFormStableId + "/";
+            for (int i = 0; i < nodeForm.Children.Count; i++)
+            {
+                MutableIffNode versionForm = nodeForm.Children[i];
+                if (versionForm.Kind != MutableIffNodeKind.Container) continue;
+                string versionId = MutableIffDocument.DeriveStableId(versionForm, nodePrefix, i);
+                string versionPrefix = versionId + "/";
+                for (int j = 0; j < versionForm.Children.Count; j++)
+                {
+                    MutableIffNode g = versionForm.Children[j];
+                    if (g.Kind == MutableIffNodeKind.Leaf && string.Equals(g.TypeId, "DATA", StringComparison.Ordinal))
+                    {
+                        return MutableIffDocument.DeriveStableId(g, versionPrefix, j);
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static MutableIffNode FirstContainerChild(MutableIffNode node)
+        {
+            for (int i = 0; i < node.Children.Count; i++)
+                if (node.Children[i].Kind == MutableIffNodeKind.Container) return node.Children[i];
+            return null;
+        }
+
+        private static int IndexOf(MutableIffNode parent, MutableIffNode child)
+        {
+            for (int i = 0; i < parent.Children.Count; i++)
+                if (ReferenceEquals(parent.Children[i], child)) return i;
+            return 0;
         }
 
         // ════════════════════════════════════════════════════════════════════
