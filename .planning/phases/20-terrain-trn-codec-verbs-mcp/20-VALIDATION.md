@@ -2,7 +2,7 @@
 phase: 20
 slug: terrain-trn-codec-verbs-mcp
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-06-15
 ---
@@ -40,11 +40,16 @@ created: 2026-06-15
 
 ## Per-Task Verification Map
 
+> Every auto/tdd task in the revised plans carries a concrete `<automated>` verify (the planning-time
+> Nyquist contract is satisfied — see Sign-Off). The "File Exists / Status" columns track *execution*
+> state: the test files + fixtures are created during Wave 0 of execute-phase, so they read `W0 / pending`
+> until that wave runs, then flip to ✅ green per the sampling rate above.
+
 | Req ID | Behavior | Test Type | Automated Command | File Exists | Status |
 |--------|----------|-----------|-------------------|-------------|--------|
 | PROD-W2-TRN-01 | Navigate TGEN tree (TGEN→Layers→Boundaries/Filters/Affectors/sub-layers), names + active flags, six read-only palettes | unit | `dotnet test Utinni.Cli.Tests --filter TgenDecode --no-build` | ❌ W0 | ⬜ pending |
 | PROD-W2-TRN-02 | Typed Tier-1 tags; raw-fallback on unknown tag/version (never hard fail); DEAD-tag skip | unit | `dotnet test Utinni.Cli.Tests --filter TgenRawFallback --no-build` | ❌ W0 | ⬜ pending |
-| PROD-W2-TRN-03 | Byte-exact fixed-length field edit + active-flag toggle; untouched-leaf byte-identity | golden roundtrip | `dotnet test Utinni.Cli.Tests --filter "ApplySaveTrn|RoundtripTrn" --no-build` | ❌ W0 | ⬜ pending |
+| PROD-W2-TRN-03 | Byte-exact fixed-length field edit + active-flag toggle; untouched-leaf byte-identity; active toggle re-decodes to the edited value (read↔write parity) | golden roundtrip | `dotnet test Utinni.Cli.Tests --filter "ApplySaveTrn|RoundtripTrn" --no-build` | ❌ W0 | ⬜ pending |
 | PROD-W2-TRN-04 | Verbs (`decode-trn`/`roundtrip-trn`/`apply-save-trn` + `decode-iff` TGEN branch) + MCP read tool, BOTH lineages | golden + MCP | `dotnet test Utinni.Mcp.Tests --filter Terrain --no-build` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
@@ -57,7 +62,7 @@ created: 2026-06-15
 - [ ] Fixture synthesizer helper (hand-emit `TGEN` via `IffWriter`) — shared test fixture
 - [ ] `TgenDecoderTests.cs` — navigation + typed-field + raw-fallback assertions (TRN-01/02)
 - [ ] `RoundtripTrnTests.cs` — byte-exact whole-file identity across the fixture matrix (TRN-03/04)
-- [ ] `ApplySaveTrnTests.cs` — single-field edit + active toggle, untouched-leaf byte-identity (TRN-03)
+- [ ] `ApplySaveTrnTests.cs` — single-field edit + active toggle, untouched-leaf byte-identity, active-toggle round-trip parity (TRN-03)
 - [ ] `Utinni.Mcp.Tests/Fixtures/` + `TerrainReadToolTests.cs` — MCP thin-wrapper dispatch (TRN-04)
 
 ---
@@ -74,11 +79,14 @@ created: 2026-06-15
 
 ## Validation Sign-Off
 
-- [ ] All tasks have automated verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references (fixtures + test stubs above)
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have automated verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (fixtures + test stubs above)
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+> `wave_0_complete` stays `false` until execute-phase actually runs Wave 0 (it is an execution-time
+> field, not a planning-time sign-off) — the planning-time Nyquist contract above is satisfied.
+
+**Approval:** planning-time validation contract signed off (Nyquist-compliant); execution status pending Wave 0.
