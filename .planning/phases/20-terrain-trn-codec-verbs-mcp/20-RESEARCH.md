@@ -384,17 +384,22 @@ switch (tag) {
 | A4 | `decode-iff` should grow a TGEN branch (so MCP works for free) AND a `decode-trn` alias exists | Verbs / Alternatives | LOW — both are cheap; minimal answer is decode-iff branch + roundtrip/apply-save verbs |
 | A5 | Restoration `.trn` differs from SWGEmu only via higher per-form version numbers (no separate container) | SWGEmu vs Restoration | MED — VERIFY against a real Restoration `.trn` if one is reachable; the source shows only version-number divergence, but the team has live access to both clients |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All three settled during discuss-phase and baked into `20-CONTEXT.md`; markers added here to keep RESEARCH in sync.
 
 1. **Do we have (or can we synthesize from a real asset) a Restoration-lineage `.trn` to confirm A5?**
+   — **RESOLVED: D-13/D-14.** Synthesized ≤200-byte both-version fixtures are the committed golden corpus; a real per-lineage `.trn` pair (extracted via Utinni's own `utinni-cli` TRE verbs) pins the exact shipped FORM versions and runs an extra `roundtrip-trn` check, but stays OUT of the committed goldens (retail `.trn` large / v6000+ encrypted). Sourcing is a Wave-0 / Plan 04 Task-3 checkpoint.
    - What we know: the C++ source expresses lineage as version numbers; FloraGroup spans `0001`-`0008`, ShaderGroup `0000`-`0006`.
    - What's unclear: which exact versions ship in each live client the user mods.
    - Recommendation: in discuss-phase, ask the user to drop one `.trn` from each client (or `decode-iff inspect` one) to pin the version pair; otherwise synthesize a low-version + high-version fixture per Tier-1 tag.
 
 2. **`decode-trn` standalone verb vs. `decode-iff` TGEN-branch only?**
+   — **RESOLVED: D-08.** Ship BOTH — the `decode-iff` TGEN branch (gives MCP routing for free) PLUS a thin standalone `decode-trn` alias for discoverability/symmetry with the other format families.
    - Recommendation: do the `decode-iff` branch (MCP gets it free) + a thin `roundtrip-trn`/`apply-save-trn`; treat a standalone `decode-trn` as optional symmetry. Let discuss-phase decide.
 
 3. **Does `IffWriter` recompute ALL ancestor FORM lengths when a deep leaf changes length (name edit)?**
+   — **RESOLVED: D-05/D-06.** Sidestepped for v1 — `apply-save-trn` v1 supports FIXED-LENGTH edits only (scalar/enum/active-flag), so no parent FORM length ripple occurs and byte-exact is trivially guaranteed. Variable-length name edits are explicitly DEFERRED (D-06) pending a length-ripple round-trip proof.
    - What we know: it re-emits dirty subtrees and recomputes container framing.
    - What's unclear: variable-length payload ripple depth.
    - Recommendation: a round-trip fixture with a deliberately length-changed leaf settles it; or keep v1 to fixed-length edits (A3).
