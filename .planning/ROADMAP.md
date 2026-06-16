@@ -65,7 +65,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
  (completed 2026-06-15)
 - [x] **Phase 18: Render-Backend Seam + Dx9Backend** — carve `IRenderBackend`, D3D9 overlay behaviorally unchanged (FOUNDATION) (completed 2026-06-15)
 - [x] **Phase 19: Dx11Backend + Config Detection + Resize** — DXGI `Present`/`ResizeBuffers` hooks, one-backend-per-session detect (FOUNDATION; research-phase) (all 3 plans code-complete + CI lanes green 2026-06-15; live-smoke D-22 / RNDR-02/03/04 acceptance DEFERRED to Phase 24 — UtinniCore's hardcoded RVAs crash on the from-source D3D11 client until it advertises its entry points)
-- [ ] **Phase 20: Terrain `.trn` Codec + Verbs + MCP** — decode→navigable layer tree, typed tags, scalar-leaf edit/save, verbs-first (FEATURE / critical path; research-phase)
+- [x] **Phase 20: Terrain `.trn` Codec + Verbs + MCP** — decode→navigable layer tree, typed tags, scalar-leaf edit/save, verbs-first (FEATURE / critical path; research-phase) (completed 2026-06-16)
 - [ ] **Phase 21: Terrain TJT SubPanel (+ best-effort live preview)** — consumes the Phase 20 codec; live regen-on-save rides the seam, degrades honestly (FEATURE)
 - [ ] **Phase 22: ClientEffect Editor** — command-list `.iff` codec + verbs + MCP + SubPanel (FEATURE; lowest risk)
 - [ ] **Phase 23: User-Definable IFF Chunk Templates** — schema-driven decode/encode + manage-from-UI (QUICK WIN, Backlog 999.2)
@@ -130,7 +130,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 - [x] 20-01-PLAN.md — Wave-0 scaffold (post-review): FULL per-tag low+high TGEN fixture matrix + pinnable TgenEraVersions (D-12) + test-only verb-ceiling assertion (no stub verb, D-11) + four Skip stubs + EARLY real-asset version discovery (D-13)
 - [x] 20-02-PLAN.md — Single-source TgenFieldLayouts descriptor table + TgenDecoder + Terrain/ model (Serialize): version-first typed decode, palette state machine (ambiguous-not-guessed), raw/truncated→non-editable, physical-path stable-ids, DEAD-skip, navigable model (TRN-01/02)
 - [x] 20-03-PLAN.md — TrnFieldEncoder (exact-byte-span on shared descriptor, float-bit policy) + ResolveFieldContext + verbs: navigable decode-iff TGEN branch, decode-trn/roundtrip-trn, field-aware apply-save-trn + CLI golden tests (TRN-03/04 verb half)
-- [ ] 20-04-PLAN.md — MCP summarize_terrain (OOP, schema/exit-code tested) + opt-in LargeFixtures palette set + DEC-C3 gate with real-asset pin as PREREQUISITE (TRN-04 MCP half)
+- [x] 20-04-PLAN.md — MCP summarize_terrain (OOP, schema/exit-code tested) + opt-in LargeFixtures palette set + DEC-C3 gate with real-asset pin as PREREQUISITE (TRN-04 MCP half)
 **Research-phase**: yes — `.trn` is the most variant-rich SWG format Utinni has tackled; port from a pinned `swg-client-v2/sharedTerrain` SHA (read-only), and the per-tag typed-coverage matrix + SWGEmu-vs-Restoration version dispatch need format research against `sharedTerrain`.
 
 ### Phase 21: Terrain TJT SubPanel (+ best-effort live preview)
@@ -206,7 +206,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 17. CppSharp / v145 Hardening | v2.1 | 3/3 | Complete    | 2026-06-15 |
 | 18. Render-Backend Seam + Dx9Backend | v2.1 | 2/2 | Complete    | 2026-06-15 |
 | 19. Dx11Backend + Detection + Resize | v2.1 | 3/3 | Complete    | 2026-06-16 |
-| 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 3/4 | In Progress|  |
+| 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 4/4 | Complete   | 2026-06-16 |
 | 21. Terrain TJT SubPanel | v2.1 | 0/? | Not started | - |
 | 22. ClientEffect Editor | v2.1 | 0/? | Not started | - |
 | 23. IFF Chunk Templates | v2.1 | 0/? | Not started | - |

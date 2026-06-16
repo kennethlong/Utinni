@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: executing
-stopped_at: Completed 20-01-PLAN.md (Wave-0 fixture scaffold + real-asset version grounding)
-last_updated: "2026-06-16T13:39:42.427Z"
+status: verifying
+stopped_at: Completed 20-04-PLAN.md (MCP summarize_terrain + LargeFixtures + DEC-C3 closure); Phase 20 ready for verification
+last_updated: "2026-06-16T14:30:17.012Z"
 last_activity: 2026-06-16
 progress:
   total_phases: 17
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 12
-  completed_plans: 11
-  percent: 92
+  completed_plans: 12
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 
 Phase: 20 (terrain-trn-codec-verbs-mcp) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-16
 
 **v2.1 milestone (Phases 17–24) — foundation-before-features:**
@@ -216,6 +216,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 20 P01 | 5h15m | 3 tasks | 3 files |
 | Phase 20 P02 | 11m | 2 tasks | 10 files |
 | Phase 20 P03 | 35m | 3 tasks | 15 files |
+| Phase 20 P04 | ~40m | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -281,6 +282,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: Phase 20 terrain era constants grounded in SWGEmu + SWG Infinity (maintainer directive: no Restoration); RestorationEra renamed InfinityEra. Both clients ship identical PTAT/0014 FORM versions; BREC is the one low/high drift pair.
 - [Phase ?]: Plan 20-02: single-source TgenFieldLayouts descriptor table consumed by decoder + Plan-03 encoder (no offset literals)
 - [Phase ?]: Plan 20-02: TgenDecoder version-first dispatch; typed only when consumed-length==payload-length else raw-fallback non-editable; DEAD recognized-and-skipped; six palettes positional state machine (lone MGRP -> Ambiguous, not guessed)
+- [Phase 20]: DEC-C3 CLOSED: both-lineage byte-exact gate ratified on the SWGEmu==Infinity pin (PTAT/0014 identical, BREC 0002/0003 the one divergence). AFCN stays ASSUMED v0000 (non-blocking, raw-falls-back); real-asset roundtrip skipped (synthetic matrix + committed MCP fixtures cover both lineages).
 
 ### Pending Todos
 
@@ -338,8 +340,8 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-16T13:39:42.412Z
-Stopped at: Completed 20-01-PLAN.md (Wave-0 fixture scaffold + real-asset version grounding)
+Last session: 2026-06-16T14:30:16.991Z
+Stopped at: Completed 20-04-PLAN.md (MCP summarize_terrain + LargeFixtures + DEC-C3 closure); Phase 20 ready for verification
 Resume file: None
 
 ## Ingest Provenance

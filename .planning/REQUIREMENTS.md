@@ -75,8 +75,8 @@ REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 ca
   field list — never a hard decode failure.
 - [x] **PROD-W2-TRN-03**: A modder can edit + save scalar/enum leaf values and toggle a layer/affector
   active flag, byte-exact, via the loose-override save matrix.
-- [ ] **PROD-W2-TRN-04**: `.trn` decode/edit/save is exposed as golden-tested `utinni-cli` verbs
-  (decode / roundtrip / apply-save) + an MCP read tool, validated across BOTH SWGEmu and Restoration
+- [x] **PROD-W2-TRN-04**: `.trn` decode/edit/save is exposed as golden-tested `utinni-cli` verbs
+  (decode / roundtrip / apply-save) + an MCP read tool, validated across BOTH SWGEmu and Infinity
   fixtures.
 - [ ] **PROD-W2-TRN-05**: On save, the terrain change previews live in-client where a heap-free hot-path
   regen is reachable; where it is not (this build), it degrades to save-then-reload with explicit candor —
@@ -155,7 +155,7 @@ Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no
 | PROD-W2-TRN-01 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Complete |
 | PROD-W2-TRN-02 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Complete |
 | PROD-W2-TRN-03 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Complete |
-| PROD-W2-TRN-04 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Pending |
+| PROD-W2-TRN-04 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Complete |
 | PROD-W2-TRN-05 | Phase 21 — Terrain TJT SubPanel (+ live preview) | Pending |
 | PROD-W2-CFX-01 | Phase 22 — ClientEffect Editor | Pending |
 | PROD-W2-CFX-02 | Phase 22 — ClientEffect Editor | Pending |
