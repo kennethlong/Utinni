@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: executing
-stopped_at: Phase 19-03 Task 1 complete; STOPPED at Task 2 blocking-human live-smoke checkpoint (D-22)
+status: ready_to_plan
+stopped_at: Phase 19 COMPLETE (code + CI green); D-22 live-smoke DEFERRED to Phase 24 (hardcoded-RVA crash on SwgClient_r.exe). Next: Phase 20 (Terrain .trn codec)
 last_updated: "2026-06-15T20:27:11.369Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 16
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 8
   completed_plans: 8
-  percent: 100
+  percent: 25
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 19 — dx11backend-config-detection-resize
+**Current focus:** Phase 19 COMPLETE → next is Phase 20 (Terrain `.trn` codec)
 
 ## Current Position
 
-Phase: 19 (dx11backend-config-detection-resize) — EXECUTING
-Plan: 3 of 3
-Status: 19-03 Task 1 complete (detection wired, CI lanes green); PAUSED at Task 2 blocking-human live-smoke (D-22, RNDR-02/03/04 on live D3D11 client)
-Last activity: 2026-06-15
+Phase: 20
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-06-16
 
-**v2.1 milestone (Phases 17–23) — foundation-before-features:**
+**v2.1 milestone (Phases 17–24) — foundation-before-features:**
 
 | Phase | Goal | Requirements |
 |-------|------|--------------|
@@ -41,8 +41,9 @@ Last activity: 2026-06-15
 | 21 | Terrain TJT SubPanel — consumes Phase 20 codec; live regen-on-save rides the seam, degrades honestly (heap-free hot path) | PROD-W2-TRN-05 |
 | 22 | ClientEffect editor — command-list `.iff` codec + verbs + MCP + SubPanel (lowest risk; Particle pattern proven) | PROD-W2-CFX-01, -02 |
 | 23 | User-definable IFF chunk templates — schema-driven decode/encode (byte-exact round-trip) + manage-from-UI; quick win (ex-Backlog 999.2) | PROD-IFFT-01..03 |
+| 24 | Client entry-point advertisement (`GetEngineHookPoints`) — SWG-Source client advertises its ~198 engine entry points; UtinniCore consumes them (dual-path), retiring hardcoded RVAs; unblocks 18/19 D3D11 live-smokes (FOUNDATION; ex-Backlog 999.7 advertisement half; gated on external swg-client-v2 readiness) | EPA-01..04 |
 
-**Coverage:** 18/18 v2.1 requirements mapped, no orphans, no duplicates.
+**Coverage:** 22/22 v2.1 requirements mapped, no orphans, no duplicates.
 **Research flags:** Phase 17 (clang spike sets acceptance), Phase 19 (churning D3D11 DLL contract + milestone-existential x64 question), Phase 20 (most variant-rich SWG format) — plan with `--research-phase`.
 **Carried locks:** byte-exact round-trip across BOTH SWGEmu + Restoration fixtures; verbs-first (DEC-V2-VERBS-FIRST); editors as TJT SubPanels (DEC-C4); live preview never a standalone renderer (DEC-A3 + live-in-client lock); confirm the CommandLineParser verb-count ceiling before adding `trn-*`/`effect-*` verbs.
 
@@ -126,7 +127,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 
 **Velocity:**
 
-- Total plans completed: 39
+- Total plans completed: 42
 - Average duration: —
 - Total execution time: —
 
@@ -144,6 +145,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | 11 | 5 | - | - |
 | 17 | 3 | - | - |
 | 18 | 2 | - | - |
+| 19 | 3 | - | - |
 
 **Recent Trend:**
 

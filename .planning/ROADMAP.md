@@ -201,7 +201,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 16. Live MCP bridge + Blender | v2.0 | 3/3 | ✅ Complete | 2026-06-14 |
 | 17. CppSharp / v145 Hardening | v2.1 | 3/3 | Complete    | 2026-06-15 |
 | 18. Render-Backend Seam + Dx9Backend | v2.1 | 2/2 | Complete    | 2026-06-15 |
-| 19. Dx11Backend + Detection + Resize | v2.1 | 3/3 | Complete   | 2026-06-15 |
+| 19. Dx11Backend + Detection + Resize | v2.1 | 3/3 | Complete    | 2026-06-16 |
 | 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 0/? | Not started | - |
 | 21. Terrain TJT SubPanel | v2.1 | 0/? | Not started | - |
 | 22. ClientEffect Editor | v2.1 | 0/? | Not started | - |
