@@ -78,5 +78,15 @@ namespace UtinniCoreDotNet.Tests.Saving
             Assert.NotEqual(ReloadTier.ReloadedTextures, tier);
             Assert.NotEqual(ReloadTier.ReloadedTerrain, tier);
         }
+
+        [Fact]
+        public void Classify_Trn_ReturnsReloadedTerrain()
+        {
+            // Phase 21 Plan 01 Wave-0: pin the explicit .trn routing the Terrain editor's reload candor rides
+            // (PROD-W2-TRN-05). The Terrain reload path feeds (".trn", null) to the classifier; it must route
+            // to ReloadTier.ReloadedTerrain (the tier the candor footer maps to its honest-default copy via
+            // TerrainReloadCandor — D-07).
+            Assert.Equal(ReloadTier.ReloadedTerrain, ReloadAssetClassifier.Classify(".trn", null));
+        }
     }
 }

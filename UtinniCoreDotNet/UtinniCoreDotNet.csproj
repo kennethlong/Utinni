@@ -122,6 +122,7 @@
     <Compile Include="Live\LivePipeServer.cs" />
     <Compile Include="Saving\LooseOverridePath.cs" />
     <Compile Include="Saving\ReloadAssetClassifier.cs" />
+    <Compile Include="Saving\TerrainReloadCandor.cs" />
     <Compile Include="Saving\TreBackupPath.cs" />
     <Compile Include="Saving\TreRepackLock.cs" />
     <Compile Include="Formats\Decoders\DecoderException.cs" />
