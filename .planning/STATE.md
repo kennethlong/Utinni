@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: ready_to_plan
-stopped_at: Phase 19 COMPLETE (code + CI green); D-22 live-smoke DEFERRED to Phase 24 (hardcoded-RVA crash on SwgClient_r.exe). Next: Phase 20 (Terrain .trn codec)
-last_updated: "2026-06-15T20:27:11.369Z"
-last_activity: 2026-06-15
+status: planning
+stopped_at: Phase 20 context gathered
+last_updated: "2026-06-16T03:57:32.620Z"
+last_activity: 2026-06-16
 progress:
-  total_phases: 16
-  completed_phases: 4
+  total_phases: 17
+  completed_phases: 3
   total_plans: 8
   completed_plans: 8
-  percent: 25
+  percent: 100
 ---
 
 # Project State
@@ -332,9 +332,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-15T20:27:11.355Z
-Stopped at: Phase 19-03 Task 1 complete; STOPPED at Task 2 blocking-human live-smoke checkpoint (D-22)
-Resume file: 19-03-PLAN.md Task 2
+Last session: 2026-06-16T03:57:32.601Z
+Stopped at: Phase 20 context gathered
+Resume file: .planning/phases/20-terrain-trn-codec-verbs-mcp/20-CONTEXT.md
 
 ## Ingest Provenance
 
