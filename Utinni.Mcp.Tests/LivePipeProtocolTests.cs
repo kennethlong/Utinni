@@ -51,11 +51,11 @@ namespace Utinni.Mcp.Tests;
 /// </summary>
 public sealed partial class LivePipeProtocolTests
 {
-    // The non-live baseline surface (12 tools) the assembly scan registers regardless of --enable-live.
+    // The non-live baseline surface the assembly scan registers regardless of --enable-live.
     private static readonly string[] BaselineTools =
     {
-        "read_tre", "inspect_iff", "decode_iff", "summarize_particle", "list_world_objects",
-        "get_template_schema",
+        "read_tre", "inspect_iff", "decode_iff", "summarize_particle", "summarize_terrain",
+        "list_world_objects", "get_template_schema",
         "save_iff", "save_datatable", "save_stringtable", "save_object_template",
         "repack_tre", "roundtrip_check"
     };

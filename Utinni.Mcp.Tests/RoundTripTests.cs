@@ -66,8 +66,8 @@ public sealed class RoundTripTests : IAsyncLifetime
 
     private static readonly string[] ExpectedTools =
     {
-        "read_tre", "inspect_iff", "decode_iff", "summarize_particle", "list_world_objects",
-        "get_template_schema",
+        "read_tre", "inspect_iff", "decode_iff", "summarize_particle", "summarize_terrain",
+        "list_world_objects", "get_template_schema",
         "save_iff", "save_datatable", "save_stringtable", "save_object_template",
         "repack_tre", "roundtrip_check"
     };
@@ -106,7 +106,7 @@ public sealed class RoundTripTests : IAsyncLifetime
     // ─────────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Handshake_ListsExactlyTheTwelveNamedTools()
+    public async Task Handshake_ListsExactlyTheNamedTools()
     {
         await using McpClient client = await CreateClientAsync(_tempRoot);
         IList<McpClientTool> tools = await client.ListToolsAsync();

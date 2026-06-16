@@ -109,6 +109,23 @@ public static class ReadTools
         return CliResultMapper.ToCallToolResult(r);              // verbatim envelope pass-through
     }
 
+    [McpServerTool(Name = "summarize_terrain", ReadOnly = true, Idempotent = true)]
+    [Description("Summarize a terrain .trn (FORM TGEN, optionally wrapped in PTAT) — the navigable layer " +
+                 "tree (name / active / children), the six positional palettes, and each node's " +
+                 "typed/raw/dead kind — as the utinni-cli JSON envelope. Read-assist ONLY (no write/mutate): " +
+                 "the same .trn read path the in-app terrain browser reuses (D-10). Dispatches decode-iff, " +
+                 "which auto-routes a FORM TGEN root. ZERO format logic here — the named pipe / subprocess " +
+                 "boundary to the x86 utinni-cli IS the architecture boundary (MCP-OOP, DEC-V2-MCP-OOP).")]
+    public static async Task<CallToolResult> SummarizeTerrain(
+        ResolvedRoot root,
+        CliDispatcher cli,
+        [Description(PathParamDescription)] string relativePath)
+    {
+        string abs = root.Resolve(relativePath);                 // throws on escape → SDK tool error
+        CliInvocationResult r = await cli.RunAsync("decode-iff", new[] { abs }).ConfigureAwait(false);
+        return CliResultMapper.ToCallToolResult(r);              // verbatim envelope pass-through; nonzero exit → tool error
+    }
+
     [McpServerTool(Name = "list_world_objects", ReadOnly = true, Idempotent = true)]
     [Description("List world-snapshot objects from a ws.iff and return the utinni-cli JSON envelope.")]
     public static async Task<CallToolResult> ListWorldObjects(
