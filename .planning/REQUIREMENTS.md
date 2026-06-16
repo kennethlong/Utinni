@@ -43,6 +43,28 @@ REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 ca
 - [x] **RNDR-04**: The overlay survives a window resize under D3D11 — the RTV is released/recreated inside
   the `ResizeBuffers` hook (no `DXGI_ERROR_INVALID_CALL`, the DXGI analog of the forbidden D3D9 `Reset`).
 
+### Foundation — Client entry-point advertisement (EPA)
+
+> Promotes the advertisement half of Backlog 999.7. Unblocks the Phase 18/19 live-smokes on the
+> from-source D3D11 client (`swg-client-v2/SwgClient_r.exe`), whose memory layout no hardcoded RVA matches.
+> x86-only; x64 (999.7's other half) stays deferred.
+
+- [ ] **EPA-01**: The SWG-Source client (`SwgClient_r.exe`) advertises its engine entry points to UtinniCore
+  via a versioned, well-known export (`GetEngineHookPoints`) sourced at compile time by symbol (`&fn`) in the
+  **executable** module — covering the ~198 entry points UtinniCore currently hardcodes. (The renderer DLL's
+  `gl11_r.dll!GetHookPoints` can only see graphics symbols; this is its exe-side companion for game logic.)
+- [ ] **EPA-02**: UtinniCore consumes the advertised contract on the SWG-Source client — a single resolver
+  populates the `swg::*` function pointers, retiring the hardcoded `0x00xxxxxx` literals on that client. The
+  old SWGEmu (Pre-CU) client keeps the hardcoded-RVA path; discovery is dual-path, auto-selected by detecting
+  the export (no config toggle). No hardcoded literal is dereferenced on the advertised client.
+- [ ] **EPA-03**: The DX11 overlay kickoff is decoupled from the SWGEmu-addressed `graphics::install` hook —
+  `directX11::kickoff()` is driven from the advertised contract / a binary-agnostic trigger, so the Phase-19
+  DX11 path starts on the advertised client without relying on any hardcoded install detour.
+- [ ] **EPA-04**: A client missing the export (older/unpatched) or shipping a partial contract is detected and
+  logged, and UtinniCore degrades cleanly — SWGEmu falls back to hardcoded discovery; an unknown client bails
+  without crashing (mirrors the gl11 `GetHookPoints` graceful-bail). A coverage check flags any UtinniCore-hooked
+  endpoint absent from the advertised struct.
+
 ### Terrain editor (PROD-W2-TRN)
 
 - [ ] **PROD-W2-TRN-01**: A modder can open a `.trn` (from a TRE archive or loose override) and navigate
@@ -123,6 +145,10 @@ Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no
 | RNDR-02 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete |
 | RNDR-03 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete |
 | RNDR-04 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete |
+| EPA-01 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Pending |
+| EPA-02 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Pending |
+| EPA-03 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Pending |
+| EPA-04 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Pending |
 | PROD-W2-TRN-01 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Pending |
 | PROD-W2-TRN-02 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Pending |
 | PROD-W2-TRN-03 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Pending |

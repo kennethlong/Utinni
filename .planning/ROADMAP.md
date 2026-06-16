@@ -8,7 +8,7 @@ one stable tool, and (as of v2.0) makes the whole asset pipeline AI-drivable.
 
 - ✅ **v1.0 MVP — "Demo + CI green"** — Phases 1–11 (shipped 2026-06-01, `v1.0.0`)
 - ✅ **v2.0 — "AI-Assisted SWG Tools"** — Phases 12–16 (shipped 2026-06-14, `v2.0`)
-- 📋 **v2.1 — "Wave-2 Editors + Foundation Hardening"** — Phases 17–23 (planning, started 2026-06-14)
+- 📋 **v2.1 — "Wave-2 Editors + Foundation Hardening"** — Phases 17–24 (planning, started 2026-06-14)
 
 Full per-milestone phase detail + requirements are archived under `.planning/milestones/`.
 
@@ -52,7 +52,7 @@ Full detail: [`milestones/v2.0-ROADMAP.md`](milestones/v2.0-ROADMAP.md) · audit
 
 </details>
 
-### 📋 v2.1 — "Wave-2 Editors + Foundation Hardening" (Phases 17–23) — PLANNING
+### 📋 v2.1 — "Wave-2 Editors + Foundation Hardening" (Phases 17–24) — PLANNING
 
 Ship the Terrain `.trn` editor (Wave-2 #1) + a ClientEffect editor on a hardened rendering/toolchain
 base, so the live-preview editors survive SWG Source's D3D9→D3D11 flip — plus the user-definable IFF
@@ -69,6 +69,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 - [ ] **Phase 21: Terrain TJT SubPanel (+ best-effort live preview)** — consumes the Phase 20 codec; live regen-on-save rides the seam, degrades honestly (FEATURE)
 - [ ] **Phase 22: ClientEffect Editor** — command-list `.iff` codec + verbs + MCP + SubPanel (FEATURE; lowest risk)
 - [ ] **Phase 23: User-Definable IFF Chunk Templates** — schema-driven decode/encode + manage-from-UI (QUICK WIN, Backlog 999.2)
+- [ ] **Phase 24: Client Entry-Point Advertisement (`GetEngineHookPoints`)** — SWG-Source client advertises its ~198 engine entry points; UtinniCore consumes them (dual-path), retiring hardcoded RVAs on that client; unblocks the 18/19 live-smokes on D3D11 (FOUNDATION; promotes Backlog 999.7 advertisement half; gated on external swg-client-v2 readiness; research-phase)
 
 ## Phase Details
 
@@ -160,6 +161,23 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 **Plans**: TBD
 **UI hint**: yes
 
+### Phase 24: Client Entry-Point Advertisement (`GetEngineHookPoints`)
+**Goal**: The from-source SWG-Source client (`SwgClient_r.exe`) advertises its own engine entry points to UtinniCore via a well-known export, so UtinniCore attaches to the D3D11 client with **zero hardcoded RVAs** on that client — unblocking the Phase 18 (D-08) and Phase 19 (D-22) live-smokes and live-preview on D3D11.
+**Depends on**: Phase 19 (the DX11 render path this completes the attach story for) **+ EXTERNAL: the swg-client-v2 build reaching a stopping point where the export can land.** Parallel to Phases 20–23 — does NOT gate the offline Terrain critical path.
+**Requirements**: EPA-01, EPA-02, EPA-03, EPA-04
+**Success Criteria** (what must be TRUE):
+  1. Injecting UtinniCore into `swg-client-v2/stage/SwgClient_r.exe` no longer crashes in `createDetours()` — the first detour (`config::loadOverride`, today hardcoded `(pLoadOverrideConfig)0x00401000`) resolves through the advertised contract. (This is the exact crash observed 2026-06-15: `VEH FATAL 0xC0000005 … READ target=0x00401000`, the first detour off `swg::config::detour()`.)
+  2. The advertised contract is sourced in the swg-client-v2 build by compile-time symbol reference (`&fn`), versioned, and exported from the **exe** module; a coverage test asserts every UtinniCore-hooked `swg::*` endpoint (~198 across ~30 subsystems) has a populated pointer — zero missing.
+  3. UtinniCore runs dual-path discovery: advertised contract on the SWG-Source client, hardcoded-RVA on SWGEmu (Pre-CU), auto-selected by detecting the export — no config toggle. The existing SWGEmu D3D9 live-smoke still passes unchanged (no regression to the working client).
+  4. The Phase-19 DX11 overlay installs + renders on the advertised D3D11 client with the kickoff no longer gated on a hardcoded `graphics::install` address — closing the Phase 18 (D-08) and Phase 19 (D-22) live-smokes on `SwgClient_r.exe`.
+**Plans**: TBD (create via /gsd:plan-phase when swg-client-v2 is ready) — likely ~4: (1) contract struct/table design + exe-side export skeleton + coverage test in swg-client-v2; (2) UtinniCore consumer/resolver + dual-path selection + retire literals behind a `swg::endpoints` accessor; (3) decouple the DX11 kickoff from the SWGEmu install hook; (4) live-smoke acceptance (D-08 + D-22).
+**Design notes / open questions** (resolve in discuss/plan):
+  - **Contract shape**: a single versioned struct of ~198 named pointers (explicit, greppable, but large + brittle) vs. a name→pointer table / `GetEngineEntryPoint(name)` lookup (data-driven, version-tolerant — a missing name degrades gracefully, self-documenting). Leaning table; settle in the spike.
+  - **Single source of truth**: a generated header shared by both repos so the field/name list cannot drift between swg-client-v2's export and UtinniCore's consumer.
+  - **Staging**: MVP = the subset needed to boot + render the overlay + the TJT-driven scene-change repro path (config/client/graphics/game/scene/cui/command_parser); full = all ~198. The coverage test makes "full" measurable.
+  - **Cross-repo write boundary**: this phase requires WRITE access to swg-client-v2 source (adding the export) — crossing the "`swg-client-v2` is a read-only reference corpus" rule (`[[project_swg_client_v2_reference]]`). The user owns + actively builds swg-client-v2, so this is sanctioned, but it is a NEW write target distinct from the standing UtinniPlugins authority.
+**Research-phase**: yes — the contract shape (struct vs table), the maintainable enumeration of the ~198 endpoints, and cross-build-suffix handling (`_r`/`_d`/`_o`) need a short design spike before plans fix acceptance. **Scope: 32-bit only** — x64 (999.7's other half) stays user-locked-deferred.
+
 ## Progress
 
 | Phase | Milestone | Plans | Status | Completed |
@@ -188,9 +206,10 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 21. Terrain TJT SubPanel | v2.1 | 0/? | Not started | - |
 | 22. ClientEffect Editor | v2.1 | 0/? | Not started | - |
 | 23. IFF Chunk Templates | v2.1 | 0/? | Not started | - |
+| 24. Client Entry-Point Advertisement | v2.1 | 0/? | Not started | - |
 
 **Shipped: 2 milestones, 16 phases (+02.1), 94 plans, 31 requirements (15 v1 + 16 v2.0).**
-**In progress: v2.1 — 7 phases (17–23), 18 requirements, 0% complete.**
+**In progress: v2.1 — 8 phases (17–24), 22 requirements, ~14% complete (3/8 phases code-complete).**
 
 ## Backlog
 
@@ -314,8 +333,14 @@ are paired and sequenced after v2.1.
   paired with this advertisement work — NOT a v2.1 surprise.
 - See auto-memory `[[project_entrypoint_advertisement_mechanism]]`; relates to `[[project_d3d11_migration]]`.
 
+> **Advertisement half promoted into v2.1 (2026-06-15):** the SWG-Source entry-point advertisement is now
+> **Phase 24** (EPA-01..04 — `GetEngineHookPoints`), pulled forward to unblock the Phase 18/19 D3D11
+> live-smokes (UtinniCore's hardcoded RVAs crash on the from-source `SwgClient_r.exe`). The **x64 half stays
+> in this backlog item** (user-locked 32-bit-first); promote it later as its own phase paired with the
+> `x64bit-Upgrade` branch.
+
 Plans:
-- [ ] TBD (promote with /gsd:review-backlog when ready)
+- [ ] TBD x64 half only (advertisement half → Phase 24); promote with /gsd:review-backlog when ready
 
 ### Phase 999.8: Remaining Wave-2 editors (BACKLOG)
 
