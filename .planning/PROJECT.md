@@ -49,6 +49,26 @@ is the foundation Phase 19's Dx11Backend twin plugs into without forking the ove
 (Dx11Backend + config detection + DXGI resize). Pre-existing window-resize/fullscreen edge cases stay
 tracked as an open todo (a pure refactor cannot regress them).
 
+**Phase 19 (Dx11Backend + config detection + resize) complete 2026-06-15 — RNDR-02/03/04 code-complete:**
+DXGI `Present` (vtbl 8) + `ResizeBuffers` (vtbl 13) hooks, one-backend-per-session `gl%02d_r.dll`
+detection, per-frame RTV rebind. CI lanes green; the live-smoke acceptance (D-22) is DEFERRED to Phase 24
+because UtinniCore's hardcoded RVAs crash on the from-source D3D11 client until it advertises its entry
+points.
+
+**Phase 20 (Terrain `.trn` codec + verbs + MCP) complete 2026-06-16 — PROD-W2-TRN-01..04 satisfied:**
+the critical-path Wave-2 deliverable. A single-source `TgenFieldLayouts` descriptor table drives both a
+`TgenDecoder` (version-first `TGEN→LYRS→LAYR` walk → navigable layer tree, typed-vs-raw-fallback with a
+consumed==payload gate, positional six-palette state machine, DEAD-skip, physical-path stable-ids) and a
+`TrnFieldEncoder` (exact-byte-span single-field re-encode, float-bit preservation, NaN/Infinity reject).
+Exposed verbs-first (DEC-V2-VERBS-FIRST): `decode-trn`/`roundtrip-trn`/`apply-save-trn` + `decode-iff`
+TGEN auto-route + a thin MCP-OOP `summarize_terrain` read tool (zero format logic). DEC-C3 closed on a
+real-asset version pin — the two grounded lineages are **SWGEmu + SWG Infinity** (Restoration dropped:
+its terrain is proprietary-encrypted/unreachable, discovered after the original dual-lineage call), which
+ship the identical `PTAT/0014` format (only `BREC` 0002/0003 diverges). Verified 4/4 must-haves; a
+post-execution code review caught + fixed a Critical sibling-id prefix-collision in the edit gate (CR-01).
+`AFCN` stays assumed-v0000 (absent from sampled planets; raw-falls-back). Next: Phase 21 (Terrain TJT
+SubPanel — consumes this codec; live regen-on-save rides the render seam).
+
 <details>
 <summary>v2.0 milestone goal + target features (shipped — archived for reference)</summary>
 
@@ -220,6 +240,6 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-15 — Phase 17 (CppSharp / v145 hardening, CPPS-01..04) complete; CI 8cc05b4 green. Prior: 2026-06-14 — v2.1 "Wave-2 Editors + Foundation Hardening" milestone started (Phases 17+:
+*Last updated: 2026-06-16 — Phase 20 (Terrain `.trn` codec + verbs + MCP, PROD-W2-TRN-01..04) complete; verification passed 4/4, DEC-C3 closed on the SWGEmu+Infinity pin, code-review CR-01 fixed. Prior: 2026-06-15/16 — Phases 18 (render-backend seam) + 19 (Dx11Backend) complete. Prior: 2026-06-15 — Phase 17 (CppSharp / v145 hardening, CPPS-01..04) complete; CI 8cc05b4 green. Prior: 2026-06-14 — v2.1 "Wave-2 Editors + Foundation Hardening" milestone started (Phases 17+:
 Terrain + one adjacent Wave-2 editor on a hardened D3D11/v145 base; optional IFF-chunk-template + TRE-
 history quick wins). Previous: 2026-06-14 after v2.0 milestone — v2.0 "AI-Assisted SWG Tools" SHIPPED (`v2.0`, Phases 12–16: revived SOE compilers as `utinni-cli` verbs + headless net10 MCP server + Wave-2 editors + live MCP bridge + Blender boundary; DEC-V2-LIFT-SHIFT / MCP-OOP / VERBS-FIRST locked). v1.0 retroactively archived at the same close (was tagged but never run through `/gsd:complete-milestone`). Previous updates: 2026-06-01 — V1 shipped (`v1.0.0`); 2026-05-29 — Phase 8 complete (PROD-W1-IFF validated); 2026-05-23 (Phase 4 + DEC-C3 LOCKED); 2026-05-17 (Phase 2 + DEC-C4 locked); initial creation via `/gsd:new-project` after `/gsd:ingest-docs` synthesis of vision.md + assessment.md + test-harness-plan.md.*
