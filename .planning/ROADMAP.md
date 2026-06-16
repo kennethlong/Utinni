@@ -126,7 +126,11 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
   2. Common terrain tags (height/shader/color/flora affectors; circle/rect boundaries; height/slope filters) display as typed fields; unknown/long-tail tags degrade to a generic field list — never a hard decode failure (raw-fallback passthrough on unknown chunks).
   3. A modder can edit + save scalar/enum leaf values and toggle a layer/affector active flag, byte-exact, via the loose-override save matrix (`MutableIffDocument`/`IffWriter`, inheriting IFF no-pad behavior).
   4. `.trn` decode/edit/save is exposed as golden-tested `utinni-cli` verbs (`decode-trn` / `roundtrip-trn` / `apply-save-trn`, verbs-first per DEC-V2-VERBS-FIRST) + an MCP read tool, validated against a fixture matrix spanning BOTH SWGEmu and Restoration lineages (synthesized ≤200-byte fixtures, DEC-C3) — confirm the CommandLineParser verb-count ceiling registers cleanly first.
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 20-01-PLAN.md — Wave-0 scaffold: `trn` verb-ceiling smoke (D-11) + ≤200-byte TGEN fixture synthesizer (D-12) + four Skip test stubs (Nyquist)
+- [ ] 20-02-PLAN.md — TgenDecoder + Terrain/ model: version-first typed decode, raw-fallback, positional palettes, DEAD-skip (TRN-01/02)
+- [ ] 20-03-PLAN.md — TrnFieldEncoder + verbs: decode-iff TGEN branch, decode-trn/roundtrip-trn, field-aware apply-save-trn (TRN-03/04 verb half)
+- [ ] 20-04-PLAN.md — MCP summarize_terrain (OOP) + both-lineage byte-exact gate (DEC-C3) + real-asset version-pin checkpoint (TRN-04 MCP half)
 **Research-phase**: yes — `.trn` is the most variant-rich SWG format Utinni has tackled; port from a pinned `swg-client-v2/sharedTerrain` SHA (read-only), and the per-tag typed-coverage matrix + SWGEmu-vs-Restoration version dispatch need format research against `sharedTerrain`.
 
 ### Phase 21: Terrain TJT SubPanel (+ best-effort live preview)
@@ -202,7 +206,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 17. CppSharp / v145 Hardening | v2.1 | 3/3 | Complete    | 2026-06-15 |
 | 18. Render-Backend Seam + Dx9Backend | v2.1 | 2/2 | Complete    | 2026-06-15 |
 | 19. Dx11Backend + Detection + Resize | v2.1 | 3/3 | Complete    | 2026-06-16 |
-| 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 0/? | Not started | - |
+| 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 0/4 | Planned      | - |
 | 21. Terrain TJT SubPanel | v2.1 | 0/? | Not started | - |
 | 22. ClientEffect Editor | v2.1 | 0/? | Not started | - |
 | 23. IFF Chunk Templates | v2.1 | 0/? | Not started | - |
