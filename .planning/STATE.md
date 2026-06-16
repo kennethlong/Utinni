@@ -4,14 +4,14 @@ milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: executing
 stopped_at: Completed 20-01-PLAN.md (Wave-0 fixture scaffold + real-asset version grounding)
-last_updated: "2026-06-16T13:01:37.272Z"
+last_updated: "2026-06-16T13:19:23.779Z"
 last_activity: 2026-06-16
 progress:
   total_phases: 17
   completed_phases: 3
   total_plans: 12
-  completed_plans: 9
-  percent: 75
+  completed_plans: 10
+  percent: 83
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 ## Current Position
 
 Phase: 20 (terrain-trn-codec-verbs-mcp) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-16
 
@@ -214,6 +214,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 19 P02 | ~25min | 3 tasks | 7 files |
 | Phase 19 P03 | ~20min | 1 tasks | 1 files |
 | Phase 20 P01 | 5h15m | 3 tasks | 3 files |
+| Phase 20 P02 | 11m | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -277,6 +278,8 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: Phase 19 P02: directx11.h parses CLEAN through clang-11 CppSharp (left DISCOVERED, no HeaderDiscovery exclusion).
 - [Phase ?]: Phase 19 P02: DX11 acquisition via the client's advertised GetHookPoints() (live swapchain), kicked off by directX11::kickoff() from graphics.cpp::hkInstall (single owned site).
 - [Phase ?]: Phase 20 terrain era constants grounded in SWGEmu + SWG Infinity (maintainer directive: no Restoration); RestorationEra renamed InfinityEra. Both clients ship identical PTAT/0014 FORM versions; BREC is the one low/high drift pair.
+- [Phase ?]: Plan 20-02: single-source TgenFieldLayouts descriptor table consumed by decoder + Plan-03 encoder (no offset literals)
+- [Phase ?]: Plan 20-02: TgenDecoder version-first dispatch; typed only when consumed-length==payload-length else raw-fallback non-editable; DEAD recognized-and-skipped; six palettes positional state machine (lone MGRP -> Ambiguous, not guessed)
 
 ### Pending Todos
 
@@ -334,7 +337,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-16T13:01:37.258Z
+Last session: 2026-06-16T13:16:54.715Z
 Stopped at: Completed 20-01-PLAN.md (Wave-0 fixture scaffold + real-asset version grounding)
 Resume file: None
 

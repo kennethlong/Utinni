@@ -128,7 +128,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
   4. `.trn` decode/edit/save is exposed as golden-tested `utinni-cli` verbs (`decode-trn` / `roundtrip-trn` / `apply-save-trn`, verbs-first per DEC-V2-VERBS-FIRST) + an MCP read tool, validated against a fixture matrix spanning BOTH SWGEmu and Restoration lineages (synthesized ≤200-byte fixtures, DEC-C3) — confirm the CommandLineParser verb-count ceiling registers cleanly first.
 **Plans**: 4 plans
 - [x] 20-01-PLAN.md — Wave-0 scaffold (post-review): FULL per-tag low+high TGEN fixture matrix + pinnable TgenEraVersions (D-12) + test-only verb-ceiling assertion (no stub verb, D-11) + four Skip stubs + EARLY real-asset version discovery (D-13)
-- [ ] 20-02-PLAN.md — Single-source TgenFieldLayouts descriptor table + TgenDecoder + Terrain/ model (Serialize): version-first typed decode, palette state machine (ambiguous-not-guessed), raw/truncated→non-editable, physical-path stable-ids, DEAD-skip, navigable model (TRN-01/02)
+- [x] 20-02-PLAN.md — Single-source TgenFieldLayouts descriptor table + TgenDecoder + Terrain/ model (Serialize): version-first typed decode, palette state machine (ambiguous-not-guessed), raw/truncated→non-editable, physical-path stable-ids, DEAD-skip, navigable model (TRN-01/02)
 - [ ] 20-03-PLAN.md — TrnFieldEncoder (exact-byte-span on shared descriptor, float-bit policy) + ResolveFieldContext + verbs: navigable decode-iff TGEN branch, decode-trn/roundtrip-trn, field-aware apply-save-trn + CLI golden tests (TRN-03/04 verb half)
 - [ ] 20-04-PLAN.md — MCP summarize_terrain (OOP, schema/exit-code tested) + opt-in LargeFixtures palette set + DEC-C3 gate with real-asset pin as PREREQUISITE (TRN-04 MCP half)
 **Research-phase**: yes — `.trn` is the most variant-rich SWG format Utinni has tackled; port from a pinned `swg-client-v2/sharedTerrain` SHA (read-only), and the per-tag typed-coverage matrix + SWGEmu-vs-Restoration version dispatch need format research against `sharedTerrain`.
@@ -206,7 +206,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 17. CppSharp / v145 Hardening | v2.1 | 3/3 | Complete    | 2026-06-15 |
 | 18. Render-Backend Seam + Dx9Backend | v2.1 | 2/2 | Complete    | 2026-06-15 |
 | 19. Dx11Backend + Detection + Resize | v2.1 | 3/3 | Complete    | 2026-06-16 |
-| 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 1/4 | In Progress|  |
+| 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 2/4 | In Progress|  |
 | 21. Terrain TJT SubPanel | v2.1 | 0/? | Not started | - |
 | 22. ClientEffect Editor | v2.1 | 0/? | Not started | - |
 | 23. IFF Chunk Templates | v2.1 | 0/? | Not started | - |

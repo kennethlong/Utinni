@@ -67,10 +67,10 @@ REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 ca
 
 ### Terrain editor (PROD-W2-TRN)
 
-- [ ] **PROD-W2-TRN-01**: A modder can open a `.trn` (from a TRE archive or loose override) and navigate
+- [x] **PROD-W2-TRN-01**: A modder can open a `.trn` (from a TRE archive or loose override) and navigate
   its procedural layer tree (TGEN → Layers → Boundaries/Filters/Affectors/sub-layers) with names + active
   flags, and view the six shared palettes read-only.
-- [ ] **PROD-W2-TRN-02**: Common terrain tags (height/shader/color/flora affectors; circle/rect
+- [x] **PROD-W2-TRN-02**: Common terrain tags (height/shader/color/flora affectors; circle/rect
   boundaries; height/slope filters) display as typed fields; unknown/long-tail tags degrade to a generic
   field list — never a hard decode failure.
 - [ ] **PROD-W2-TRN-03**: A modder can edit + save scalar/enum leaf values and toggle a layer/affector
@@ -152,8 +152,8 @@ Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no
 | EPA-02 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Pending |
 | EPA-03 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Pending |
 | EPA-04 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Pending |
-| PROD-W2-TRN-01 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Pending |
-| PROD-W2-TRN-02 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Pending |
+| PROD-W2-TRN-01 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Complete |
+| PROD-W2-TRN-02 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Complete |
 | PROD-W2-TRN-03 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Pending |
 | PROD-W2-TRN-04 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Pending |
 | PROD-W2-TRN-05 | Phase 21 — Terrain TJT SubPanel (+ live preview) | Pending |
