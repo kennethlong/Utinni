@@ -94,6 +94,14 @@
          round-2 HIGH-A csproj coverage requirement for the linked-source
          pattern documented in 08-07-PLAN.md PART C. -->
     <Compile Include="..\Utinni.Cli.Tests\Infrastructure\TreFixtureBuilder.cs" Link="Infrastructure\TreFixtureBuilder.cs" />
+    <!-- 21-01 Task 2: link the committed terrain (.trn) fixture synthesizer + its version table so
+         TerrainInProcSaveParityTests can synthesize the SAME deterministic FORM TGEN fixtures the
+         Phase 20 Utinni.Cli.Tests assert against, without a ProjectReference to Utinni.Cli.Tests
+         (which would couple two test assemblies). Both files are dependency-free beyond
+         UtinniCoreDotNet.Formats.Iff (already referenced) — same linked-source constraint that lets
+         TreFixtureBuilder.cs link cleanly. -->
+    <Compile Include="..\Utinni.Cli.Tests\Fixtures\trn\TgenEraVersions.cs" Link="Fixtures\trn\TgenEraVersions.cs" />
+    <Compile Include="..\Utinni.Cli.Tests\Fixtures\trn\TgenFixtureSynthesizer.cs" Link="Fixtures\trn\TgenFixtureSynthesizer.cs" />
   </ItemGroup>
   <ItemGroup>
     <!-- HotkeyTests.cs uses Keys enum and key chord syntax from System.Windows.Forms,
