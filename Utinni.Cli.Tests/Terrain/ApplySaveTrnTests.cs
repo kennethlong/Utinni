@@ -189,6 +189,51 @@ namespace Utinni.Cli.Tests.Terrain
             Assert.Equal("alpha", reDecoded.Layers[0].Name);
         }
 
+        // ── CR-01: stable-id prefix collision at ordinals ≥10 ───────────────────
+
+        // A layer with 12 same-tag AHCN siblings: the sibling at LAYR-child ordinal 1 is TRUNCATED
+        // (raw-fallback / NON-editable); every other sibling is a valid editable AHCN. Node-1's stable id
+        // (".../FORM:AHCN/1") is a bare-string prefix of node-10's leaf id (".../FORM:AHCN/10/..."), so an
+        // unanchored StartsWith editability gate resolves a leaf in node-10 to node-1's (non-editable) verdict.
+        // After the path-segment-anchored fix, each leaf resolves to ITS OWN node.
+        [Fact]
+        [Trait("Category", "ApplySaveTrn")]
+        public void ApplySave_PrefixCollidingSibling_ResolvesEditabilityToOwnNode_NotNodeOne()
+        {
+            const string rel = "terrain/many.trn";
+            byte[] original = TgenFixtureSynthesizer.WithManySameTagSiblings(siblingCount: 12, nonEditableOrdinal: 1);
+            string asset = WriteLooseAsset(rel, original);
+            byte[] before = File.ReadAllBytes(asset);
+
+            // The EDITABLE node-10 leaf: its stable id contains "/FORM:AHCN/10/". With the bug this would
+            // collide with node-1 (".../FORM:AHCN/1") and be WRONGLY rejected as non-editable.
+            string node10Leaf = AhcnLeafAtOrdinal(before, 10);
+            JObject editEnv = RunApply(out int editExit, "apply-save-trn", rel, "--root", _work,
+                "--leaf", node10Leaf, "--field", "height", "--value", "321.5");
+            Assert.Equal(0, editExit); // node-10 IS editable; the edit must be ACCEPTED, not bounced to node-1
+            Assert.True((bool)((JObject)editEnv["result"])["written"]);
+            Assert.Equal("AHCN", (string)((JObject)editEnv["result"])["tag"]);
+
+            // The NON-editable node-1 (truncated, raw-fallback) leaf must STILL be rejected — the anchoring
+            // must not accidentally wave it through by matching a longer editable sibling's prefix.
+            byte[] afterFirstEdit = File.ReadAllBytes(asset);
+            string node1Leaf = AhcnLeafAtOrdinal(afterFirstEdit, 1);
+            JObject rejEnv = RunApply(out int rejExit, "apply-save-trn", rel, "--root", _work,
+                "--leaf", node1Leaf, "--field", "height", "--value", "9.0");
+            Assert.Equal(1, rejExit);
+            Assert.Equal("UsageError", (string)((JObject)rejEnv["error"])["kind"]);
+            Assert.True(afterFirstEdit.SequenceEqual(File.ReadAllBytes(asset)),
+                "a rejected edit on the non-editable node-1 must leave the file byte-unchanged");
+        }
+
+        // The DATA leaf id of the AHCN sibling at the given LAYR-child ordinal (matches "/FORM:AHCN/<ord>/"
+        // as a path-segment-anchored substring so ordinal 1 never matches ordinal 10..19).
+        private static string AhcnLeafAtOrdinal(byte[] bytes, int ordinal)
+        {
+            string seg = "/FORM:AHCN/" + ordinal + "/";
+            return DataLeaves(bytes).First(x => x.grandTag == "AHCN" && x.id.Contains(seg)).id;
+        }
+
         // ── negative battery (#4 / V12 / .tre / bad-leaf) ───────────────────────
 
         [Fact]

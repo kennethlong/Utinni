@@ -348,8 +348,12 @@ namespace UtinniCoreDotNet.Formats.Decoders
                         value = cursor.ReadInt32Le().ToString(System.Globalization.CultureInfo.InvariantCulture);
                         break;
                     default:
-                        value = cursor.ReadInt32Le().ToString(System.Globalization.CultureInfo.InvariantCulture);
-                        break;
+                        // A new TgenDisplayType value is a single-source layout-table bug — fail loudly rather
+                        // than silently decoding it as int32 (IN-03). This is NOT a DecoderException, so it does
+                        // NOT raw-fall-back: an unhandled display type is a programmer error, not malformed data.
+                        throw new System.ArgumentException(
+                            "Unhandled TgenDisplayType " + d.DisplayType + " for descriptor '" + d.Name
+                            + "'; refusing to default to int32.", nameof(descriptors));
                 }
                 fields.Add(new TerrainField(d.Name, value, d.DisplayType, d.Editable));
             }

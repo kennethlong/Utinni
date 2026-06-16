@@ -183,7 +183,6 @@ namespace UtinniCoreDotNet.Formats.Terrain
                 }
 
                 case TgenEditParser.Int32:
-                default:
                 {
                     int iv;
                     if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out iv))
@@ -194,6 +193,13 @@ namespace UtinniCoreDotNet.Formats.Terrain
                     }
                     return Int32LeWidth(iv, d.Width, fieldName);
                 }
+
+                default:
+                    // A new TgenEditParser value MUST fail loudly here rather than silently encode as int32
+                    // (IN-03) — folding an unknown parser into the int32 path would mis-encode the field.
+                    throw new ArgumentException(
+                        "Field '" + fieldName + "' has an unhandled EditParser " + d.EditParser
+                        + "; refusing to default to int32.", nameof(fieldName));
             }
         }
 

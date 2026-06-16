@@ -307,6 +307,44 @@ namespace Utinni.Cli.Tests.Fixtures.Trn
             return Emit(tgen);
         }
 
+        /// <summary>
+        /// A <c>FORM TGEN</c> whose single <c>LAYR</c> carries <paramref name="siblingCount"/> SAME-TAG
+        /// (<c>AHCN</c>) sibling forms so node ordinals reach double digits — the CR-01 prefix-collision
+        /// regression shape. Because every sibling is tag <c>AHCN</c>, the node at LAYR-child ordinal 1 has
+        /// stable id <c>.../FORM:AHCN/1</c>, which is a bare-string PREFIX of the leaf id under the node at
+        /// ordinal 10 (<c>.../FORM:AHCN/10/FORM:0000/0/DATA:DATA/0</c>) — an unanchored <c>StartsWith</c> gate
+        /// resolves a leaf in node-10 to node-1's editability.
+        ///
+        /// <para>The sibling at <paramref name="nonEditableOrdinal"/> is emitted with a TRUNCATED payload
+        /// (shorter than AHCN's known 8-byte layout) so it raw-falls-back to NON-editable; EVERY other sibling
+        /// gets a valid 8-byte payload so it decodes typed + editable. Pass <c>nonEditableOrdinal = 1</c> and a
+        /// count ≥ 11 to make node-1 (non-editable) collide with node-10 (editable).</para>
+        ///
+        /// <para>NOT part of the ≤200-byte committed-golden self-test — this is a focused regression fixture
+        /// built large on purpose.</para>
+        /// </summary>
+        public static byte[] WithManySameTagSiblings(int siblingCount, int nonEditableOrdinal)
+        {
+            if (siblingCount < 1) throw new ArgumentOutOfRangeException(nameof(siblingCount));
+            MutableIffNode tgen = MutableIffNode.NewContainer("FORM", "TGEN");
+            MutableIffNode body = tgen.AddContainer("FORM", "0000");
+            MutableIffNode lyrs = body.AddContainer("FORM", "LYRS");
+            MutableIffNode layr = lyrs.AddContainer("FORM", TgenEraVersions.SwgEmuEra["LAYR"]);
+
+            // The LAYR-body child ordinal of each sibling IS its add order (0-based). All siblings share the
+            // AHCN tag so their stable-id prefixes collide on ordinal substrings; one sibling is deliberately
+            // truncated (raw-fallback / non-editable) so editability differs across the colliding pair.
+            string version = TgenEraVersions.Low("AHCN");
+            for (int i = 0; i < siblingCount; i++)
+            {
+                byte[] payload = (i == nonEditableOrdinal)
+                    ? new byte[] { 0x01, 0x00, 0x00 }                     // truncated -> raw-fallback, non-editable
+                    : Concat(Int32Le(i), FloatLe(i + 0.5f));              // valid AHCN [operation][height] -> editable
+                AddTypedForm(layr, "AHCN", version, payload);
+            }
+            return Emit(tgen);
+        }
+
         // ─────────────────────────────────────────────────────────────────────
         // Self-test (NON-Skipped) — mitigation T-20-01.
         // ─────────────────────────────────────────────────────────────────────

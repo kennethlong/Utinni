@@ -306,19 +306,22 @@ namespace Utinni.Cli.Commands
             {
                 if (originalPayload.Length < 4)
                     throw new ArgumentException("IHDR active-flag DATA leaf is shorter than 4 bytes; cannot edit active.");
-                int iv;
-                if (bool.TryParse(value, out bool b)) iv = b ? 1 : 0;
-                else if (!int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out iv))
-                    throw new ArgumentException("--field active --value must be true/false/1/0 (got '" + value + "').");
 
-                byte[] result = (byte[])originalPayload.Clone();
-                result[0] = (byte)(iv & 0xFF);
-                result[1] = (byte)((iv >> 8) & 0xFF);
-                result[2] = (byte)((iv >> 16) & 0xFF);
-                result[3] = (byte)((iv >> 24) & 0xFF);
-                spanOffset = 0;
-                spanWidth = 4;
-                return result;
+                // Route the int32 active-flag write through the single-source TrnFieldEncoder (WR-03) so there
+                // is exactly ONE LE int32 packer. The IHDR descriptor (registered in TgenFieldLayouts under the
+                // synthetic "active" version) overwrites ONLY the 4-byte flag span at offset 0 and copies the
+                // trailing cstring name verbatim — preserving the read↔write parity location (#10).
+                var ihdrDescriptors = TgenFieldLayouts.For(TgenFieldLayouts.LayerHeaderTag, TgenFieldLayouts.LayerHeaderVersion);
+                TgenFieldDescriptor activeDesc = ihdrDescriptors?.FirstOrDefault(
+                    d => string.Equals(d.Name, TgenFieldLayouts.ActiveFieldName, StringComparison.Ordinal));
+                if (activeDesc == null)
+                    throw new ArgumentException("No IHDR active-flag descriptor in the single-source layout table.");
+
+                spanOffset = activeDesc.Offset;
+                spanWidth = activeDesc.Width;
+                return TrnFieldEncoder.EncodeField(
+                    originalPayload, TgenFieldLayouts.LayerHeaderTag, TgenFieldLayouts.LayerHeaderVersion,
+                    TgenFieldLayouts.ActiveFieldName, value);
             }
 
             // Typed field: locate the descriptor span (so the verify can assert exact-span) then encode.
@@ -336,22 +339,29 @@ namespace Utinni.Cli.Commands
 
         // True when the typed node enclosing the addressed leaf decoded to an editable TerrainNode (#4). The
         // addressed leaf's stable id is the DATA leaf; the enclosing node's stable id is the leaf id minus its
-        // trailing "/FORM:<version>/.../DATA:DATA/0" — but rather than parse the id we match the decoded
-        // node whose StableIdPath is a PREFIX of the leaf id. A raw/truncated/DEAD node is non-editable.
+        // trailing "/FORM:<version>/.../DATA:DATA/0" — but rather than parse the id we match the decoded node
+        // whose StableIdPath is the leaf id itself OR a path-SEGMENT-anchored prefix of it. Returning on the
+        // first claiming node gives order-independent semantics (a stable id is unique to one node — WR-02).
+        // A raw/truncated/DEAD node is non-editable.
         private static bool TargetTypedNodeIsEditable(TerrainDocument terrain, string leafId)
         {
-            bool? editable = null;
             foreach (var layer in terrain.Layers)
-                editable = WalkLayerForNode(layer, leafId) ?? editable;
+            {
+                bool? editable = WalkLayerForNode(layer, leafId);
+                if (editable != null) return editable == true;
+            }
             // If no decoded typed/raw/dead node claims the leaf, it is not an editable typed-node payload.
-            return editable == true;
+            return false;
         }
 
         private static bool? WalkLayerForNode(TerrainLayer layer, string leafId)
         {
             foreach (var node in layer.Nodes)
             {
-                if (node.StableIdPath != null && leafId.StartsWith(node.StableIdPath, StringComparison.Ordinal))
+                // Anchor the prefix match on a path-segment boundary (CR-01). Stable ids end in
+                // ".../FORM:AHCN/<ordinal>" with NO trailing separator, so a bare StartsWith makes node "1"
+                // a string prefix of node "10".."19" — match ONLY an exact id or a prefix followed by '/'.
+                if (node.StableIdPath != null && IsSelfOrDescendantId(leafId, node.StableIdPath))
                     return node.IsEditable;
             }
             foreach (var sub in layer.SubLayers)
@@ -360,6 +370,14 @@ namespace Utinni.Cli.Commands
                 if (r != null) return r;
             }
             return null;
+        }
+
+        // True when leafId is the node's own stable id, or a descendant of it on a path-segment boundary.
+        // Prevents the ".../1" vs ".../10" prefix collision (CR-01).
+        private static bool IsSelfOrDescendantId(string leafId, string nodeStableId)
+        {
+            return leafId == nodeStableId
+                || leafId.StartsWith(nodeStableId + "/", StringComparison.Ordinal);
         }
 
         private static bool OnlyTargetSpanDiffers(byte[] original, byte[] edited, int spanOffset, int spanWidth)

@@ -50,11 +50,17 @@ namespace Utinni.Cli.Commands
     /// re-emits the full captured IFF tree verbatim (including every raw-preserved / DEAD sub-tree), even a
     /// degraded fixture round-trips byte-exact — this is the DEC-C3 codec-level gate (TRN-03/04).
     ///
-    /// <para><b>Exit codes:</b> 0 success; 1 UsageError; 2 TerrainParseException / DecoderException /
-    /// IffParseException / IOException; 3 FileNotFound. Generic <see cref="System.Exception"/> NOT caught.</para>
+    /// <para><b>Exit codes:</b> 0 success (byte-identical); 1 UsageError; 2 VerifyFailed (NOT byte-identical)
+    /// / TerrainParseException / DecoderException / IffParseException / IOException; 3 FileNotFound. Generic
+    /// <see cref="System.Exception"/> NOT caught. A non-identical round-trip fails closed (WR-01).</para>
     /// </summary>
     public static class RoundtripTrnCommand
     {
+        // Test-only seam: perturb the round-tripped bytes before the byte-identity compare (mirrors
+        // ApplySaveTrnCommand.TestPerturbSerialized). Lets a test force a NON-identical round-trip to
+        // assert the WR-01 fail-closed exit path without shipping a deliberately-broken codec.
+        internal static System.Func<byte[], byte[]> TestPerturbRoundtripped;
+
         public static int Run(RoundtripTrnOptions o)
         {
             if (string.IsNullOrEmpty(o.Path))
@@ -75,6 +81,7 @@ namespace Utinni.Cli.Commands
                 TerrainDocument model = TerrainDocument.FromBytes(loadedBytes);
 
                 byte[] roundtrippedBytes = model.Serialize();
+                if (TestPerturbRoundtripped != null) roundtrippedBytes = TestPerturbRoundtripped(roundtrippedBytes);
                 TerrainDocument rtModel = TerrainDocument.FromBytes(roundtrippedBytes); // re-parse for validity
 
                 bool bytesEqual = loadedBytes.Length == roundtrippedBytes.Length
@@ -88,6 +95,18 @@ namespace Utinni.Cli.Commands
                     ["rootType"] = "TGEN",
                     ["source"] = o.Path
                 };
+
+                // Fail closed: DEC-C3 byte-exact is THE codec gate for this phase, so a non-identical
+                // round-trip MUST exit nonzero — a CI/agent gating on exit code would otherwise treat a
+                // byte-exact regression as a pass (WR-01). Exit 2 = VerifyFailed, matching the sibling
+                // apply-save-trn verb's verify-failure band (FileNotFound owns 3 here, so VerifyFailed
+                // reuses the existing 2 "structural/verify" band rather than overloading 3).
+                if (!bytesEqual)
+                {
+                    return JsonOutput.EmitError("roundtrip-trn", "VerifyFailed",
+                        "round-trip was not byte-identical (whole-file); the codec write path regressed.",
+                        exitCode: 2);
+                }
                 return JsonOutput.EmitSuccess("roundtrip-trn", result);
             }
             catch (TerrainParseException ex)

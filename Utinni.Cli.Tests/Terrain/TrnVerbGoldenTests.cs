@@ -35,6 +35,7 @@ namespace Utinni.Cli.Tests.Terrain
 
         public void Dispose()
         {
+            Utinni.Cli.Commands.RoundtripTrnCommand.TestPerturbRoundtripped = null;
             try { if (Directory.Exists(_work)) Directory.Delete(_work, recursive: true); }
             catch { /* best-effort */ }
         }
@@ -168,6 +169,33 @@ namespace Utinni.Cli.Tests.Terrain
             CliResult r = InProcessCliRunner.Run("roundtrip-trn", path);
             Assert.Equal(0, r.ExitCode);
             Assert.True((bool)((JObject)JObject.Parse(r.Stdout)["result"])["bytesIdentical"]);
+        }
+
+        // WR-01: a NON-byte-identical round-trip must FAIL CLOSED (exit nonzero), not report
+        // bytesIdentical=false yet exit 0 — DEC-C3 byte-exact is THE codec gate for this phase, so a
+        // CI/agent gating on exit code must catch a write-path regression. The test-only perturbation seam
+        // flips a payload byte of the round-tripped output so it diverges from the input while staying
+        // structurally parseable (the re-parse-for-validity must still succeed).
+        [Fact]
+        [Trait("Category", "TrnVerbGolden")]
+        public void RoundtripTrn_NotByteIdentical_FailsClosed_ExitNonzero()
+        {
+            string path = WriteFixture("rtbad.trn", TgenFixtureSynthesizer.LowVersion("AHCN"));
+            Utinni.Cli.Commands.RoundtripTrnCommand.TestPerturbRoundtripped = bytes =>
+            {
+                // Flip the last byte (inside the AHCN DATA payload, not the framing) so the whole-file
+                // compare differs but the re-parse still succeeds.
+                byte[] copy = (byte[])bytes.Clone();
+                copy[copy.Length - 1] ^= 0xFF;
+                return copy;
+            };
+
+            CliResult r = InProcessCliRunner.Run("roundtrip-trn", path);
+
+            Assert.NotEqual(0, r.ExitCode);
+            JObject env = JObject.Parse(r.Stdout);
+            Assert.NotNull(env["error"]);
+            Assert.Equal("VerifyFailed", (string)((JObject)env["error"])["kind"]);
         }
 
         [Fact]

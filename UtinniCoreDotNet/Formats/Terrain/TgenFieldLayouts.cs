@@ -163,6 +163,15 @@ namespace UtinniCoreDotNet.Formats.Terrain
         // Fixed scalar widths (all SWG payload scalars are 4-byte LE).
         private const int W = 4;
 
+        /// <summary>The layer-item-header FORM tag carrying the int32 active flag (read↔write parity location).</summary>
+        public const string LayerHeaderTag = "IHDR";
+
+        /// <summary>The synthetic version key under which the IHDR active-flag descriptor is registered.</summary>
+        public const string LayerHeaderVersion = "active";
+
+        /// <summary>The descriptor field name of the IHDR int32 active flag.</summary>
+        public const string ActiveFieldName = "active";
+
         /// <summary>
         /// Returns the ordered descriptor list for <paramref name="tag"/> at <paramref name="version"/>,
         /// or <c>null</c> if the (tag, version) pair is not a recognized Tier-1 layout. Never throws.
@@ -243,6 +252,16 @@ namespace UtinniCoreDotNet.Formats.Terrain
         private static IReadOnlyDictionary<string, IReadOnlyList<TgenFieldDescriptor>> Build()
         {
             var t = new Dictionary<string, IReadOnlyList<TgenFieldDescriptor>>(StringComparer.Ordinal);
+
+            // ── Layer-item header ──────────────────────────────────────────
+            // IHDR layer-item header: [int32 active][cstring name]. Only the active flag (the int32 at
+            // offset 0) is an editable fixed-length field; the trailing variable-length name is copied
+            // verbatim by the encoder (it overwrites ONLY the descriptor span). Keyed under the synthetic
+            // "active" version so the apply-save active branch routes the int32 write through the
+            // single-source encoder rather than hand-rolling the LE packing (WR-03 / review concern #2).
+            t[Key(LayerHeaderTag, LayerHeaderVersion)] = Layout(false,
+                new TgenFieldDescriptor(ActiveFieldName, 0, W, true, TgenFieldEndian.Little, 0,
+                    TgenDisplayType.ActiveFlag, TgenEditParser.Bool32, true));
 
             // ── Affectors ──────────────────────────────────────────────────
             // AHCN AffectorHeightConstant v0000: [operation enum][height float]; no feather at 0000.

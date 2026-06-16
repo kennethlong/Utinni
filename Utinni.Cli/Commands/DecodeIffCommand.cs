@@ -79,7 +79,11 @@ namespace Utinni.Cli.Commands
                     return JsonOutput.EmitSuccess("decode-iff", BuildUiPageTextResult(o.Path, bytes));
                 }
 
-                var doc = IffReader.Read(new MemoryStream(bytes));
+                IffDocument doc;
+                using (var ms = new MemoryStream(bytes))
+                {
+                    doc = IffReader.Read(ms);
+                }
 
                 // A particle-effect (FORM PEFT) root auto-dispatches into the 15-02 particle codec.
                 // It needs the source bytes (the typed model captures the raw IFF tree for byte-exact
