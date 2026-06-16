@@ -64,7 +64,7 @@ namespace Utinni.Cli.Tests.Terrain
         [InlineData("FSLP")]
         public void Roundtrip_Tier1Tag_HighVersion_ByteExact(string tag)
         {
-            // TODO Wave 2: high ("Restoration-era") fixture for each Tier-1 tag → roundtrip-trn → byte-exact.
+            // TODO Wave 2: high ("Infinity-era") fixture for each Tier-1 tag → roundtrip-trn → byte-exact.
             _ = tag;
         }
 

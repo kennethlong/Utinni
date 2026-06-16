@@ -18,13 +18,13 @@ namespace Utinni.Cli.Tests.Fixtures.Trn
     /// <summary>
     /// Hand-emits ≤200-byte <c>FORM TGEN</c> byte arrays by composing a <see cref="MutableIffDocument"/>
     /// tree and serializing it through <see cref="IffWriter"/> (D-12). This is the COMMITTED golden corpus
-    /// for the terrain (<c>.trn</c>) codec: tiny, deterministic, and isolating the SWGEmu-vs-Restoration
+    /// for the terrain (<c>.trn</c>) codec: tiny, deterministic, and isolating the SWGEmu-vs-Infinity
     /// version matrix without shipping any real (large / v6000+ encrypted) retail asset (D-14).
     ///
     /// <para><b>Both-lineage matrix (review concerns #11/#13):</b> for EVERY Tier-1 tag in
     /// <see cref="TgenEraVersions.Tier1Tags"/> the synthesizer can emit a LOW-version fixture (version =
     /// <see cref="TgenEraVersions.SwgEmuEra"/>[tag]) and a HIGH-version fixture (version =
-    /// <see cref="TgenEraVersions.RestorationEra"/>[tag]) — the full low+high matrix is built HERE in Wave 0
+    /// <see cref="TgenEraVersions.InfinityEra"/>[tag]) — the full low+high matrix is built HERE in Wave 0
     /// so downstream plans assert against the complete matrix in wave order, not against assumed-then-pinned
     /// versions landing last.</para>
     ///
@@ -143,9 +143,11 @@ namespace Utinni.Cli.Tests.Fixtures.Trn
             }
         }
 
-        // High-version (Restoration-era) arms add a feather-function enum + feather distance, mirroring the
-        // research "v0001 typically adds feather-override/feather-function fields" divergence. Low arms (0000)
-        // get no extra bytes — proving the version-dispatch path differs between lineages.
+        // High-version (Infinity-era) arms add a feather-function enum + feather distance, mirroring the
+        // research "higher FORM versions add feather-override/feather-function fields" divergence. Arms whose
+        // version is the baseline "0000" get no extra bytes — proving the version-dispatch path can differ
+        // between lineages. (Real observation: SWGEmu and Infinity share versions for all but BREC, so most
+        // arms emit identical bytes; this synthetic feather-add still exercises the divergence-capable path.)
         private static byte[] WithHighFeather(string version, byte[] lowPayload)
         {
             bool isHigh = !string.Equals(version, "0000", StringComparison.Ordinal);
@@ -189,19 +191,19 @@ namespace Utinni.Cli.Tests.Fixtures.Trn
         /// <summary>Convenience: emit the LOW ("SWGEmu-era") fixture for a Tier-1 tag.</summary>
         public static byte[] LowVersion(string tag) => WithTypedTag(tag, TgenEraVersions.Low(tag));
 
-        /// <summary>Convenience: emit the HIGH ("Restoration-era") fixture for a Tier-1 tag.</summary>
+        /// <summary>Convenience: emit the HIGH ("Infinity-era") fixture for a Tier-1 tag.</summary>
         public static byte[] HighVersion(string tag) => WithTypedTag(tag, TgenEraVersions.High(tag));
 
         /// <summary>
         /// Emit an affector fixture (height/color/shader/flora) at the given era's version. <paramref name="era"/>
-        /// is one of <see cref="TgenEraVersions.SwgEmuEra"/> / <see cref="TgenEraVersions.RestorationEra"/>.
+        /// is one of <see cref="TgenEraVersions.SwgEmuEra"/> / <see cref="TgenEraVersions.InfinityEra"/>.
         /// </summary>
         public static byte[] WithAffector(string tag, IReadOnlyDictionary<string, string> era)
             => WithTypedTag(tag, era[tag]);
 
         /// <summary>
         /// Emit a boundary fixture. <c>WithBoundary("BCIR", SwgEmuEra)</c> emits a v0000 BoundaryCircle
-        /// WITHOUT feather; <c>WithBoundary("BCIR", RestorationEra)</c> emits a feather-bearing version
+        /// WITHOUT feather; <c>WithBoundary("BCIR", InfinityEra)</c> emits a feather-bearing version
         /// (proves the version-divergence path).
         /// </summary>
         public static byte[] WithBoundary(string tag, IReadOnlyDictionary<string, string> era)
