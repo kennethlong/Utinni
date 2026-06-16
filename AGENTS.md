@@ -72,7 +72,11 @@ base. See `.planning/PROJECT.md`, `.planning/ROADMAP.md`, `.planning/MILESTONES.
 ## Locked invariants — do not silently override
 
 Product scope (anti-goals, all LOCKED — `DEC-A1..A4`):
-- NOT a server-side mod manager (SWG-Source / swg-main own that).
+- NOT a server-side mod manager (SWG-Source / swg-main own that). **Boundary:** DEC-A1 fences the server
+  *application/management* layer (config, scripts, DB, the mod-manager/patcher tooling). It does NOT fence
+  shared TRE asset data — assets like `.trn` (terrain) are loaded by BOTH the client and the server, so
+  editing them (Utinni's core job) is authoritative on both sides by design. Do not cite DEC-A1 to fence
+  shared-asset edits.
 - NOT a launcher / patcher (SWGEmu + community launchers own that).
 - NOT a Maya/3ds Max replacement — DCC mesh/anim/texture authoring is **Blender's lane**
   (`swg-blender-plugin`). Utinni's appearance preview is **live-in-client via the real engine**, never a

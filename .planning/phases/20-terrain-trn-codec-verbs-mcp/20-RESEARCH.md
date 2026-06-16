@@ -33,6 +33,7 @@ The good news for scoping: the heavy lifting (byte-exact edit via captured-slice
 - **No standalone renderer** (DEC-A3 + live-in-client lock) — not in scope this phase (no preview here at all).
 - Confirm the **CommandLineParser verb-count ceiling** registers cleanly before adding `trn-*` verbs (ALREADY solved via `Type[]` overload — see §Verbs).
 - **Reference corpus is READ-ONLY**: `D:/Code/swg-client-v2/...` has no runtime dependency; port understanding, never `#include`/ProjectReference (DEC-V2-LIFT-SHIFT scope discipline).
+- **Terrain edits are AUTHORITATIVE shared-data changes (not "visual-only").** `.trn` is TRE-packed asset data loaded by BOTH the client AND the server (`sharedTerrain` is an `engine/shared/` library; the engine opens `terrain\<planet>.trn` via `TreeFile::open`). Editing it in a TRE / loose-override is authoritative on both sides by design — this is squarely Utinni's job and is **NOT** fenced by DEC-A1 (DEC-A1 fences the server *app/management* layer — config/scripts/DB/mod-manager — not shared assets; see AGENTS.md DEC-A1 boundary note). **Implication for Phase 21:** the "degrades honestly" promise is purely about *live in-session pickup* (does the running client re-render without a relog/scene-change), NOT about client/server consistency — do not frame a terrain edit as a cosmetic/client-only change.
 
 ### Claude's Discretion
 - Exact split of verbs vs. shared codec library; how many typed tags to cover in v1 vs. raw-fallback (success criterion names the common set — see §Tag Taxonomy "Tier-1").

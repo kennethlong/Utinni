@@ -115,7 +115,10 @@ REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 ca
 - **Standalone Utinni terrain renderer / 3D fly-through** — violates the locked live-in-client preview decision + DEC-A3.
 - **C# reimplementation of the procedural generator for preview** — preview is the real engine, in-client, or save-then-reload.
 - **Editing baked heightmaps** — terrain is procedural; there is no stored heightmap to edit.
-- **Server-side terrain regen** — DEC-A1 (server-side is SWG-Source / swg-main's domain).
+- **Server-side terrain regen *orchestration*** — DEC-A1 fences the server app/management layer, NOT the
+  shared asset. Editing the `.trn` in a TRE/loose-override IS authoritative on both client and server (both
+  load the same data); what's out of scope is Utinni driving the server's regen/restart or managing server
+  config — that stays SWG-Source / swg-main's domain.
 
 ## Milestone risks / assumptions (confirm during execution)
 
