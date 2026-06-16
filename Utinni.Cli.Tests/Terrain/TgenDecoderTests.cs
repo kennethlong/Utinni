@@ -4,7 +4,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using CommandLine;
+using UtinniCoreDotNet.Formats.Terrain;
 using Utinni.Cli.Tests.Fixtures.Trn;
 using Xunit;
 
@@ -122,31 +124,76 @@ namespace Utinni.Cli.Tests.Terrain
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // Wave-1 Skip stubs (PROD-W2-TRN-01/02) — COLLECTED, reported Skipped.
+        // Wave-1 (Plan 02 Task 2): TgenDecoder navigation + typed-field + raw-fallback + DEAD-skip +
+        // negative battery (PROD-W2-TRN-01/02). Implemented against the TgenFixtureSynthesizer matrix.
         // ─────────────────────────────────────────────────────────────────────
 
-        [Fact(Skip = WaveOne)]
+        // Helper: the single decoded boundary/filter/affector node of a single-tag fixture (the first
+        // node of the first layer). Throws via xUnit assertions if the navigation shape is unexpected.
+        private static TerrainNode SingleNode(TerrainDocument doc)
+        {
+            Assert.Single(doc.Layers);
+            TerrainLayer layer = doc.Layers[0];
+            Assert.Single(layer.Nodes);
+            return layer.Nodes[0];
+        }
+
+        [Fact]
         [Trait("Category", "TgenDecode")]
         public void Decode_MinimalTgen_NavigatesTopLevelFormNoPalettesNoLayers()
         {
-            // TODO Wave 1: decode MinimalTgen(); assert TGEN root + zero palettes + zero layers.
+            TerrainDocument doc = TerrainDocument.FromBytes(TgenFixtureSynthesizer.MinimalTgen());
+
+            Assert.Equal("TGEN", doc.RootForm);
+            Assert.Empty(doc.Layers);
+            Assert.All(doc.Palettes.InLoadOrder, p => Assert.False(p.Present));
         }
 
-        [Fact(Skip = WaveOne)]
+        [Fact]
         [Trait("Category", "TgenDecode")]
         public void Decode_TgenTree_NavigatesLayersBoundariesFiltersAffectorsAndSubLayers()
         {
-            // TODO Wave 1: assert TGEN → Layers → Boundaries/Filters/Affectors/sub-layers navigation (TRN-01).
+            // CompositionalLayer = one layer with AHCN (affector), BALL (dead), ZZZZ (unknown), BCIR (boundary).
+            TerrainDocument doc = TerrainDocument.FromBytes(TgenFixtureSynthesizer.CompositionalLayer());
+
+            Assert.Single(doc.Layers);
+            TerrainLayer layer = doc.Layers[0];
+            Assert.Equal(4, layer.Nodes.Count); // four sibling children all navigable.
+            Assert.Contains(layer.Nodes, n => n.Tag == "AHCN" && n.IsEditable);
+            Assert.Contains(layer.Nodes, n => n.Tag == "BCIR" && n.IsEditable);
+            Assert.Contains(layer.Nodes, n => n.Tag == "BALL" && n.IsDeadSkipped);
+            Assert.Contains(layer.Nodes, n => n.Tag == "ZZZZ" && n.IsRawPreserved);
         }
 
-        [Fact(Skip = WaveOne)]
+        [Fact]
         [Trait("Category", "TgenDecode")]
-        public void Decode_SixPalettes_ResolvesFamilyIdToNamePositionallyInLoadOrder()
+        public void Decode_Layer_ExposesNameAndActive()
         {
-            // TODO Wave 1: decode the six read-only palettes positionally (D-04), incl. the MGRP collision (TRN-01).
+            // TRN-01: each layer exposes Name + Active. The synthesizer's minimal layer has no IHDR, so
+            // Active defaults to true (the C++ LayerItem default) and Name is empty — the navigable shape
+            // still surfaces both properties.
+            TerrainDocument doc = TerrainDocument.FromBytes(TgenFixtureSynthesizer.LowVersion("AHCN"));
+
+            Assert.Single(doc.Layers);
+            Assert.True(doc.Layers[0].Active);
+            Assert.NotNull(doc.Layers[0].Name);
         }
 
-        [Theory(Skip = WaveOne)]
+        [Fact]
+        [Trait("Category", "TgenDecode")]
+        public void Decode_SixPalettes_AreExposedPositionallyInLoadOrder()
+        {
+            // MinimalTgen has no palettes — assert the six positional slots exist in fixed load order with
+            // their roles, all absent (the positional state machine yields all-absent, not a throw).
+            TerrainDocument doc = TerrainDocument.FromBytes(TgenFixtureSynthesizer.MinimalTgen());
+
+            string[] expectedRoles = { "Shader", "Flora", "Radial", "Environment", "Fractal", "Bitmap" };
+            Assert.Equal(expectedRoles, doc.Palettes.InLoadOrder.Select(p => p.Role).ToArray());
+            Assert.Equal("Fractal", doc.Palettes.Fractal.Role);
+            Assert.Equal("Bitmap", doc.Palettes.Bitmap.Role);
+        }
+
+        [Theory]
         [Trait("Category", "TgenDecode")]
         [InlineData("AHCN")]
         [InlineData("AHTR")]
@@ -163,86 +210,255 @@ namespace Utinni.Cli.Tests.Terrain
         [InlineData("FSLP")]
         public void Decode_Tier1Tag_DecodesTypedNamedFields_LowAndHighVersion(string tag)
         {
-            // TODO Wave 1: decode the low + high fixture for each Tier-1 tag; assert named-field values (TRN-02).
-            _ = tag;
+            foreach (string version in new[] { TgenEraVersions.Low(tag), TgenEraVersions.High(tag) })
+            {
+                TerrainDocument doc = TerrainDocument.FromBytes(TgenFixtureSynthesizer.WithTypedTag(tag, version));
+                TerrainNode node = SingleNode(doc);
+
+                Assert.Equal(tag, node.Tag);
+                Assert.Equal(version, node.Version);
+                Assert.True(node.IsEditable, tag + "/" + version + " should be a typed editable node.");
+                Assert.False(node.IsRawPreserved);
+                Assert.False(node.IsDeadSkipped);
+                Assert.NotEmpty(node.TypedFields);
+                // The field names match the single-source descriptor table (no offset literals in decode).
+                IReadOnlyList<TgenFieldDescriptor> descriptors = TgenFieldLayouts.For(tag, version);
+                Assert.Equal(descriptors.Select(d => d.Name).ToArray(), node.TypedFields.Select(f => f.Name).ToArray());
+            }
+        }
+
+        [Fact]
+        [Trait("Category", "TgenDecode")]
+        public void Decode_AHCN_BothVersions_ExposesOperationEnumAndHeightFloat()
+        {
+            foreach (var era in new[] { TgenEraVersions.SwgEmuEra, TgenEraVersions.InfinityEra })
+            {
+                TerrainDocument doc = TerrainDocument.FromBytes(TgenFixtureSynthesizer.WithAffector("AHCN", era));
+                TerrainNode node = SingleNode(doc);
+
+                TerrainField op = node.TypedFields.Single(f => f.Name == "operation");
+                TerrainField height = node.TypedFields.Single(f => f.Name == "height");
+                Assert.Equal(TgenDisplayType.Enum32, op.DisplayType);
+                Assert.Equal(TgenDisplayType.ScalarFloat, height.DisplayType);
+                Assert.Equal("1", op.Value); // the synthesizer packs operation = 1.
+            }
+        }
+
+        [Fact]
+        [Trait("Category", "TgenDecode")]
+        public void Decode_BCIR_LowVersionHasFeather_HighVersionHasFeather()
+        {
+            // Both observed BCIR arms are v0002 (feather-bearing). Assert the feather fields decode in both.
+            foreach (var era in new[] { TgenEraVersions.SwgEmuEra, TgenEraVersions.InfinityEra })
+            {
+                TerrainDocument doc = TerrainDocument.FromBytes(TgenFixtureSynthesizer.WithBoundary("BCIR", era));
+                TerrainNode node = SingleNode(doc);
+                Assert.Contains(node.TypedFields, f => f.Name == "radius");
+                Assert.Contains(node.TypedFields, f => f.Name == "featherFunction");
+                Assert.Contains(node.TypedFields, f => f.Name == "featherDistance");
+            }
+        }
+
+        [Fact]
+        [Trait("Category", "TgenDecode")]
+        public void Decode_StableIds_DoNotDriftAcrossDecodeModes()
+        {
+            // Every node (typed/raw/dead/unknown) gets a physical-path stable id; ordinals include all
+            // siblings so they do not drift (concern #14). Assert the four compositional siblings carry
+            // distinct, non-empty stable ids reflecting their physical ordinal positions.
+            TerrainDocument doc = TerrainDocument.FromBytes(TgenFixtureSynthesizer.CompositionalLayer());
+            TerrainLayer layer = doc.Layers[0];
+
+            var ids = layer.Nodes.Select(n => n.StableIdPath).ToList();
+            Assert.All(ids, id => Assert.False(string.IsNullOrEmpty(id)));
+            Assert.Equal(ids.Count, ids.Distinct().Count()); // all distinct — no ordinal collision/drift.
         }
 
         // ── Raw-fallback / DEAD-skip / negative battery (review concern #17) ──
 
-        [Fact(Skip = WaveOne)]
+        [Fact]
         [Trait("Category", "TgenRawFallback")]
         public void Decode_UnknownTag_RawFallbackTagVersionHex_NeverThrows()
         {
-            // TODO Wave 1: WithUnknownTag() → {tag, version, hex} raw-fallback, never a hard failure (TRN-02).
+            TerrainDocument doc = TerrainDocument.FromBytes(TgenFixtureSynthesizer.WithUnknownTag());
+            TerrainNode node = SingleNode(doc);
+
+            Assert.Equal("ZZZZ", node.Tag);
+            Assert.True(node.IsRawPreserved);
+            Assert.False(node.IsEditable);
+            Assert.Empty(node.TypedFields); // raw-preserved, NOT a parsed field list (concern #8).
+            Assert.False(string.IsNullOrEmpty(node.RawHex));
         }
 
-        [Fact(Skip = WaveOne)]
+        [Fact]
         [Trait("Category", "TgenRawFallback")]
         public void Decode_DeadTag_RecognizedAndSkipped_NotEditable()
         {
-            // TODO Wave 1: WithDeadTag() → "obsolete, ignored", recognized-and-skipped, NOT raw-editable (D-03).
+            TerrainDocument doc = TerrainDocument.FromBytes(TgenFixtureSynthesizer.WithDeadTag());
+            TerrainNode node = SingleNode(doc);
+
+            Assert.Equal("BALL", node.Tag);
+            Assert.True(node.IsDeadSkipped);
+            Assert.False(node.IsRawPreserved); // a DEAD tag is NOT raw-fallback (D-03).
+            Assert.False(node.IsEditable);
         }
 
-        [Fact(Skip = WaveOne)]
+        [Fact]
         [Trait("Category", "TgenRawFallback")]
         public void Decode_UnknownFormVersion_RawFallbacksWholeChunk_NoPartialDecode()
         {
-            // TODO Wave 1: unrecognized FORM version → raw-fallback the whole chunk (D-02 / Pitfall 5).
+            // A known tag at an unrecognized version → raw-fallback the WHOLE chunk (D-02 / Pitfall 5).
+            byte[] bytes = TgenFixtureSynthesizer.WithTypedTag("AHCN", "9999", new byte[] { 1, 0, 0, 0, 0, 0, 0, 0 });
+            TerrainDocument doc = TerrainDocument.FromBytes(bytes);
+            TerrainNode node = SingleNode(doc);
+
+            Assert.Equal("AHCN", node.Tag);
+            Assert.Equal("9999", node.Version);
+            Assert.True(node.IsRawPreserved);
+            Assert.False(node.IsEditable);
         }
 
-        [Fact(Skip = WaveOne)]
+        [Fact]
         [Trait("Category", "TgenRawFallback")]
         public void Decode_TruncatedKnownTag_RawFallbackNonEditable_NoOverRead()
         {
-            // TODO Wave 1: WithTruncatedKnownTag() → raw-fallback / non-editable, never over-read (concern #4/#17).
+            TerrainDocument doc = TerrainDocument.FromBytes(TgenFixtureSynthesizer.WithTruncatedKnownTag());
+            TerrainNode node = SingleNode(doc);
+
+            Assert.Equal("AHCN", node.Tag);
+            Assert.True(node.IsRawPreserved); // consumed-length != payload-length → raw (concern #4).
+            Assert.False(node.IsEditable);
         }
 
-        [Fact(Skip = WaveOne)]
+        [Fact]
         [Trait("Category", "TgenRawFallback")]
         public void Decode_KnownTagWithTrailingBytes_RawFallbackNonEditable()
         {
-            // TODO Wave 1: known tag with trailing bytes past its field list → raw-fallback (concern #17).
+            // AHCN v0000 layout is 8 bytes; supply 12 (trailing bytes) → consumed != payload → raw-fallback.
+            byte[] payload = new byte[12];
+            payload[0] = 1; // operation
+            byte[] bytes = TgenFixtureSynthesizer.WithTypedTag("AHCN", TgenEraVersions.Low("AHCN"), payload);
+            TerrainDocument doc = TerrainDocument.FromBytes(bytes);
+            TerrainNode node = SingleNode(doc);
+
+            Assert.True(node.IsRawPreserved);
+            Assert.False(node.IsEditable);
         }
 
-        [Fact(Skip = WaveOne)]
+        [Fact]
         [Trait("Category", "TgenRawFallback")]
         public void Decode_MissingLyrs_NavigatesPalettesOnly_NoLayers()
         {
-            // TODO Wave 1: a TGEN with no LYRS still decodes (LYRS optional — Pitfall 3 / concern #17).
+            // MinimalTgen has no LYRS — decodes with zero layers, no throw (LYRS optional, Pitfall 3).
+            TerrainDocument doc = TerrainDocument.FromBytes(TgenFixtureSynthesizer.MinimalTgen());
+            Assert.Empty(doc.Layers);
         }
 
-        [Theory(Skip = WaveOne)]
+        [Fact]
         [Trait("Category", "TgenRawFallback")]
-        [InlineData("SGRP")]
-        [InlineData("FGRP")]
-        [InlineData("RGRP")]
-        [InlineData("EGRP")]
-        [InlineData("MGRP")]
-        public void Decode_MissingPaletteSlot_RemainingPalettesResolvePositionally(string missingPalette)
+        public void Decode_NonTgenRoot_ThrowsTerrainParseException()
         {
-            // TODO Wave 1: drop each palette slot; the remaining palettes still resolve in load order (concern #17).
-            _ = missingPalette;
+            // A non-TGEN root is the one hard malformation that does NOT degrade to raw-preserve.
+            byte[] notTerrain;
+            using (var ms = new System.IO.MemoryStream())
+            {
+                var node = UtinniCoreDotNet.Formats.Iff.MutableIffNode.NewContainer("FORM", "PEFT");
+                node.AddContainer("FORM", "0000");
+                notTerrain = UtinniCoreDotNet.Formats.Iff.IffWriter.Write(
+                    new UtinniCoreDotNet.Formats.Iff.MutableIffDocument(node));
+            }
+            var ex = Assert.Throws<TerrainParseException>(() => TerrainDocument.FromBytes(notTerrain));
+            Assert.Equal(TerrainParseError.UnexpectedForm, ex.Kind);
         }
 
-        [Fact(Skip = WaveOne)]
+        [Fact]
         [Trait("Category", "TgenRawFallback")]
-        public void Decode_OnlyOneMgrp_DisambiguatesByLoadOrderNotTag()
+        public void Decode_OnlyOneMgrp_DisambiguatesByLoadOrderNotTag_MarksAmbiguous()
         {
-            // TODO Wave 1: a TGEN with only ONE MGRP — load-order disambiguation, not tag lookup (Pitfall 4 / #17).
+            // A TGEN with exactly ONE MGRP palette — bound to the expected next slot (Fractal) and marked
+            // Ambiguous rather than guessing fractal-vs-bitmap (concern #3 / Pitfall 4).
+            byte[] bytes = BuildTgenWithSingleMgrp();
+            TerrainDocument doc = TerrainDocument.FromBytes(bytes);
+
+            Assert.True(doc.Palettes.Fractal.Present);
+            Assert.True(doc.Palettes.Fractal.Ambiguous);
+            Assert.False(doc.Palettes.Bitmap.Present);
         }
 
-        [Fact(Skip = WaveOne)]
+        [Fact]
         [Trait("Category", "TgenRawFallback")]
-        public void Decode_DeadAdjacentToEditedSibling_SiblingByteExact()
+        public void Decode_TwoMgrp_BindsFractalThenBitmapByPosition()
         {
-            // TODO Wave 1: CompositionalLayer() — a DEAD/unknown sibling must not corrupt an edited typed neighbour (#16).
+            byte[] bytes = BuildTgenWithTwoMgrp();
+            TerrainDocument doc = TerrainDocument.FromBytes(bytes);
+
+            Assert.True(doc.Palettes.Fractal.Present);
+            Assert.False(doc.Palettes.Fractal.Ambiguous); // two present → no ambiguity.
+            Assert.True(doc.Palettes.Bitmap.Present);
         }
 
-        [Fact(Skip = WaveOne)]
+        [Fact]
         [Trait("Category", "TgenRawFallback")]
-        public void Decode_MalformedCString_DegradesGracefully_NoThrow()
+        public void Decode_DeadAdjacentToTypedSibling_BothDecode_NonDriftingIds()
         {
-            // TODO Wave 1: a malformed (unterminated) CString in a name field degrades gracefully (concern #17).
+            // CompositionalLayer: AHCN (typed) adjacent to BALL (dead), ZZZZ (unknown), BCIR (typed).
+            // The DEAD/unknown siblings must not corrupt the typed neighbours' decode or stable ids (#16).
+            TerrainDocument doc = TerrainDocument.FromBytes(TgenFixtureSynthesizer.CompositionalLayer());
+            TerrainLayer layer = doc.Layers[0];
+
+            TerrainNode ahcn = layer.Nodes.Single(n => n.Tag == "AHCN");
+            TerrainNode bcir = layer.Nodes.Single(n => n.Tag == "BCIR");
+            Assert.True(ahcn.IsEditable);
+            Assert.True(bcir.IsEditable);
+            Assert.NotEqual(ahcn.StableIdPath, bcir.StableIdPath);
+        }
+
+        [Fact]
+        [Trait("Category", "TgenRawFallback")]
+        public void Decode_RoundTripsByteExact_WhenUnedited()
+        {
+            // The held mutable DOM re-emits byte-identical on an unedited decode (Serialize is the Plan-03
+            // roundtrip foundation, concern #12).
+            byte[] input = TgenFixtureSynthesizer.CompositionalLayer();
+            TerrainDocument doc = TerrainDocument.FromBytes(input);
+            byte[] output = doc.Serialize();
+            Assert.Equal(input, output);
+        }
+
+        // ── Local TGEN builders for the palette state-machine tests ──
+
+        private static byte[] BuildTgenWithSingleMgrp()
+        {
+            var tgen = UtinniCoreDotNet.Formats.Iff.MutableIffNode.NewContainer("FORM", "TGEN");
+            var body = tgen.AddContainer("FORM", "0000");
+            var mgrp = body.AddContainer("FORM", "MGRP");
+            AddFamilyLeaf(mgrp, 0, "fractal0");
+            return UtinniCoreDotNet.Formats.Iff.IffWriter.Write(
+                new UtinniCoreDotNet.Formats.Iff.MutableIffDocument(tgen));
+        }
+
+        private static byte[] BuildTgenWithTwoMgrp()
+        {
+            var tgen = UtinniCoreDotNet.Formats.Iff.MutableIffNode.NewContainer("FORM", "TGEN");
+            var body = tgen.AddContainer("FORM", "0000");
+            var first = body.AddContainer("FORM", "MGRP");
+            AddFamilyLeaf(first, 0, "fractal0");
+            var second = body.AddContainer("FORM", "MGRP");
+            AddFamilyLeaf(second, 1, "bitmap0");
+            return UtinniCoreDotNet.Formats.Iff.IffWriter.Write(
+                new UtinniCoreDotNet.Formats.Iff.MutableIffDocument(tgen));
+        }
+
+        private static void AddFamilyLeaf(UtinniCoreDotNet.Formats.Iff.MutableIffNode paletteForm, int familyId, string name)
+        {
+            var bytes = new List<byte>();
+            bytes.Add((byte)(familyId & 0xFF));
+            bytes.Add((byte)((familyId >> 8) & 0xFF));
+            bytes.Add((byte)((familyId >> 16) & 0xFF));
+            bytes.Add((byte)((familyId >> 24) & 0xFF));
+            bytes.AddRange(System.Text.Encoding.ASCII.GetBytes(name));
+            bytes.Add(0x00);
+            paletteForm.AddLeaf("DATA", bytes.ToArray());
         }
     }
 }
