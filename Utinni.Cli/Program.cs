@@ -70,6 +70,7 @@ namespace Utinni.Cli
                         typeof(Commands.RoundtripParticleOptions),
                         typeof(Commands.DecodeTrnOptions),
                         typeof(Commands.RoundtripTrnOptions),
+                        typeof(Commands.ApplySaveTrnOptions),
                         typeof(Commands.ValidateBundleOptions))
                     .MapResult(
                         (object opts) => Dispatch(opts),
@@ -105,6 +106,7 @@ namespace Utinni.Cli
                 case Commands.RoundtripParticleOptions o: return Commands.RoundtripParticleCommand.Run(o);
                 case Commands.DecodeTrnOptions o:          return Commands.DecodeTrnCommand.Run(o);
                 case Commands.RoundtripTrnOptions o:       return Commands.RoundtripTrnCommand.Run(o);
+                case Commands.ApplySaveTrnOptions o:       return Commands.ApplySaveTrnCommand.Run(o);
                 case Commands.ValidateBundleOptions o:     return Commands.ValidateBundleCommand.Run(o);
                 default:                                  return 1;
             }

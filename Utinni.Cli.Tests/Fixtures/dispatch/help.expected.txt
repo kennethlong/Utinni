@@ -84,6 +84,11 @@ Copyright (c) 2005 - 2020 Giacomo Stelluti Scala & Contributors
   roundtrip-trn         Parse -> serialize -> re-parse a terrain .trn (FORM TGEN
                         / PTAT); assert byte-exact identity on the whole file.
 
+  apply-save-trn        Apply ONE fixed-length terrain field edit
+                        (scalar/enum/familyId/active) to a loose-override .trn,
+                        verify only the target field's exact byte span changed,
+                        then atomically commit.
+
   validate-bundle       Validate a Blender export bundle
                         (swg_export_manifest.json + .rsp + .cfg) as TEXT - no
                         3D/IFF codec. Emits a JSON envelope with explicit

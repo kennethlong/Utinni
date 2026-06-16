@@ -283,6 +283,30 @@ namespace Utinni.Cli.Tests.Fixtures.Trn
             return Emit(tgen);
         }
 
+        /// <summary>
+        /// A <c>FORM TGEN</c> whose single layer carries an <c>IHDR</c> layer-item-header DATA leaf
+        /// (<c>[int32 active][cstring name]</c>) followed by one typed <c>AHCN</c> affector. This is the
+        /// active-flag read↔write parity fixture (Plan 03 <c>--field active</c>, concern #10): the decoder
+        /// reads <see cref="UtinniCoreDotNet.Formats.Terrain.TerrainLayer.Active"/> from the SAME IHDR int32
+        /// the edit path mutates. <paramref name="active"/> seeds the on-disk flag; <paramref name="name"/>
+        /// the layer name.
+        /// </summary>
+        public static byte[] WithLayerHeader(bool active = true, string name = "layer0")
+        {
+            MutableIffNode tgen = MutableIffNode.NewContainer("FORM", "TGEN");
+            MutableIffNode body = tgen.AddContainer("FORM", "0000");
+            MutableIffNode lyrs = body.AddContainer("FORM", "LYRS");
+            MutableIffNode layr = lyrs.AddContainer("FORM", TgenEraVersions.SwgEmuEra["LAYR"]);
+
+            // IHDR layer-item header: [int32 active][cstring name] (the decoder reads active @ offset 0).
+            MutableIffNode ihdr = layr.AddContainer("FORM", "IHDR");
+            ihdr.AddLeaf("DATA", Concat(Int32Le(active ? 1 : 0), CString(name)));
+
+            // One typed AHCN affector so the layer has an editable typed sibling too.
+            AddTypedForm(layr, "AHCN", TgenEraVersions.Low("AHCN"), DefaultPayloadFor("AHCN", TgenEraVersions.Low("AHCN")));
+            return Emit(tgen);
+        }
+
         // ─────────────────────────────────────────────────────────────────────
         // Self-test (NON-Skipped) — mitigation T-20-01.
         // ─────────────────────────────────────────────────────────────────────
