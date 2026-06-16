@@ -127,10 +127,10 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
   3. A modder can edit + save scalar/enum leaf values and toggle a layer/affector active flag, byte-exact, via the loose-override save matrix (`MutableIffDocument`/`IffWriter`, inheriting IFF no-pad behavior).
   4. `.trn` decode/edit/save is exposed as golden-tested `utinni-cli` verbs (`decode-trn` / `roundtrip-trn` / `apply-save-trn`, verbs-first per DEC-V2-VERBS-FIRST) + an MCP read tool, validated against a fixture matrix spanning BOTH SWGEmu and Restoration lineages (synthesized ≤200-byte fixtures, DEC-C3) — confirm the CommandLineParser verb-count ceiling registers cleanly first.
 **Plans**: 4 plans
-- [ ] 20-01-PLAN.md — Wave-0 scaffold: `trn` verb-ceiling smoke (D-11) + ≤200-byte TGEN fixture synthesizer (D-12) + four Skip test stubs (Nyquist)
-- [ ] 20-02-PLAN.md — TgenDecoder + Terrain/ model: version-first typed decode, raw-fallback, positional palettes, DEAD-skip (TRN-01/02)
-- [ ] 20-03-PLAN.md — TrnFieldEncoder + verbs: decode-iff TGEN branch, decode-trn/roundtrip-trn, field-aware apply-save-trn (TRN-03/04 verb half)
-- [ ] 20-04-PLAN.md — MCP summarize_terrain (OOP) + both-lineage byte-exact gate (DEC-C3) + real-asset version-pin checkpoint (TRN-04 MCP half)
+- [ ] 20-01-PLAN.md — Wave-0 scaffold (post-review): FULL per-tag low+high TGEN fixture matrix + pinnable TgenEraVersions (D-12) + test-only verb-ceiling assertion (no stub verb, D-11) + four Skip stubs + EARLY real-asset version discovery (D-13)
+- [ ] 20-02-PLAN.md — Single-source TgenFieldLayouts descriptor table + TgenDecoder + Terrain/ model (Serialize): version-first typed decode, palette state machine (ambiguous-not-guessed), raw/truncated→non-editable, physical-path stable-ids, DEAD-skip, navigable model (TRN-01/02)
+- [ ] 20-03-PLAN.md — TrnFieldEncoder (exact-byte-span on shared descriptor, float-bit policy) + ResolveFieldContext + verbs: navigable decode-iff TGEN branch, decode-trn/roundtrip-trn, field-aware apply-save-trn + CLI golden tests (TRN-03/04 verb half)
+- [ ] 20-04-PLAN.md — MCP summarize_terrain (OOP, schema/exit-code tested) + opt-in LargeFixtures palette set + DEC-C3 gate with real-asset pin as PREREQUISITE (TRN-04 MCP half)
 **Research-phase**: yes — `.trn` is the most variant-rich SWG format Utinni has tackled; port from a pinned `swg-client-v2/sharedTerrain` SHA (read-only), and the per-tag typed-coverage matrix + SWGEmu-vs-Restoration version dispatch need format research against `sharedTerrain`.
 
 ### Phase 21: Terrain TJT SubPanel (+ best-effort live preview)
