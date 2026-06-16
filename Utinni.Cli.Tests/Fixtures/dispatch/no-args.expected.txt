@@ -81,6 +81,12 @@ ERROR(S):
                         (FORM PEFT); assert byte-exact identity on the whole
                         file.
 
+  decode-trn            Decode a terrain .trn (FORM TGEN / PTAT) to a navigable
+                        JSON terrain envelope.
+
+  roundtrip-trn         Parse -> serialize -> re-parse a terrain .trn (FORM TGEN
+                        / PTAT); assert byte-exact identity on the whole file.
+
   validate-bundle       Validate a Blender export bundle
                         (swg_export_manifest.json + .rsp + .cfg) as TEXT - no
                         3D/IFF codec. Emits a JSON envelope with explicit

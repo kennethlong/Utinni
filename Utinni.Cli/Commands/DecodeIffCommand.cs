@@ -92,6 +92,16 @@ namespace Utinni.Cli.Commands
                             UtinniCoreDotNet.Formats.Particle.ParticleEffectDocument.FromIff(doc, bytes), o.Path));
                 }
 
+                // A terrain template (FORM TGEN directly, or PTAT wrapping a TGEN) auto-dispatches into the
+                // Plan-02 terrain codec and emits a NAVIGABLE terrain envelope (layer tree + palettes + typed/
+                // raw/dead children) — MCP routing for free (#9). Mirrors the PEFT branch above.
+                if (UtinniCoreDotNet.Formats.Decoders.TgenDecoder.LooksLikeTerrain(doc.Root))
+                {
+                    return JsonOutput.EmitSuccess("decode-iff",
+                        BuildTerrainResult(
+                            UtinniCoreDotNet.Formats.Terrain.TerrainDocument.FromIff(doc, bytes), o.Path));
+                }
+
                 object result;
                 if (!TryDecode(doc, o.Path, out result, out string unsupportedTag))
                 {
@@ -101,6 +111,10 @@ namespace Utinni.Cli.Commands
                 return JsonOutput.EmitSuccess("decode-iff", result);
             }
             catch (UtinniCoreDotNet.Formats.Particle.ParticleParseException ex)
+            {
+                return JsonOutput.EmitError("decode-iff", ex.Kind.ToString(), ex.Message, exitCode: 2);
+            }
+            catch (UtinniCoreDotNet.Formats.Terrain.TerrainParseException ex)
             {
                 return JsonOutput.EmitError("decode-iff", ex.Kind.ToString(), ex.Message, exitCode: 2);
             }
@@ -255,6 +269,88 @@ namespace Utinni.Cli.Commands
                 source = sourcePath,
                 type = "particle",
                 version = effect.Version
+            };
+        }
+
+        // Terrain (FORM TGEN / PTAT) NAVIGABLE envelope (#9): a layer tree (name + active + recursive
+        // children + sub-layers), the six positional palettes (slot role / present / ambiguous / family
+        // names), and per-child typed fields | raw hex | dead disposition + stable id + editable. Counts
+        // (layerCount / paletteCounts / rawFallbackCount) ride alongside the navigable tree for convenience —
+        // NOT summary-only. Routed without any MCP-layer change.
+        public static object BuildTerrainResult(
+            UtinniCoreDotNet.Formats.Terrain.TerrainDocument doc, string sourcePath)
+        {
+            int rawFallbackCount = 0;
+            var palettes = new System.Collections.Generic.List<object>();
+            foreach (var p in doc.Palettes.InLoadOrder)
+            {
+                palettes.Add(new
+                {
+                    ambiguous = p.Ambiguous,
+                    families = p.Families
+                        .Select(f => new { familyId = f.FamilyId, name = f.Name })
+                        .ToList(),
+                    present = p.Present,
+                    slot = p.Role
+                });
+            }
+
+            int layerCount = 0;
+            var layers = new System.Collections.Generic.List<object>();
+            foreach (var layer in doc.Layers)
+            {
+                layers.Add(BuildTerrainLayer(layer, ref rawFallbackCount, ref layerCount));
+            }
+
+            return new
+            {
+                layerCount = layerCount,
+                layers = layers,
+                paletteCount = palettes.Count,
+                palettes = palettes,
+                rawFallbackCount = rawFallbackCount,
+                rootType = "TGEN",
+                source = sourcePath,
+                type = "terrain"
+            };
+        }
+
+        private static object BuildTerrainLayer(
+            UtinniCoreDotNet.Formats.Terrain.TerrainLayer layer, ref int rawFallbackCount, ref int layerCount)
+        {
+            layerCount++;
+            var children = new System.Collections.Generic.List<object>();
+            foreach (var node in layer.Nodes)
+            {
+                string kind = node.IsDeadSkipped ? "dead" : (node.IsRawPreserved ? "raw" : "typed");
+                if (node.IsRawPreserved) rawFallbackCount++;
+                children.Add(new
+                {
+                    editable = node.IsEditable,
+                    fields = node.TypedFields
+                        .Select(f => new { displayType = f.DisplayType.ToString(), editable = f.Editable, name = f.Name, value = f.Value })
+                        .ToList(),
+                    hex = node.RawHex,
+                    kind = kind,
+                    stableId = node.StableIdPath,
+                    tag = node.Tag,
+                    version = node.Version
+                });
+            }
+
+            var subLayers = new System.Collections.Generic.List<object>();
+            foreach (var sub in layer.SubLayers)
+            {
+                subLayers.Add(BuildTerrainLayer(sub, ref rawFallbackCount, ref layerCount));
+            }
+
+            return new
+            {
+                active = layer.Active,
+                children = children,
+                name = layer.Name,
+                stableId = layer.StableIdPath,
+                subLayers = subLayers
             };
         }
 
