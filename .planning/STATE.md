@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: verifying
-stopped_at: Completed 21-06-PLAN.md (R2 closed)
+status: ready_to_plan
+stopped_at: Phase 21 complete + verified (gap-closure 21-05..07 closed R1/R2/R3; verifier PASS 3/3). Next: Phase 22 ClientEffect Editor.
 last_updated: "2026-06-17T15:00:46.680Z"
 last_activity: 2026-06-17
 progress:
   total_phases: 17
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 19
   completed_plans: 19
-  percent: 100
+  percent: 35
 ---
 
 # Project State
@@ -21,14 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 21 — terrain-tjt-subpanel-best-effort-live-preview
+**Current focus:** Phase 22 — ClientEffect Editor (command-list `.iff` codec + verbs + MCP + SubPanel)
 
 ## Current Position
 
-Phase: 21 (terrain-tjt-subpanel-best-effort-live-preview) — gap-closure complete
-Plan: 7 of 7 complete (7/7 summaries; 21-06 R2 closed)
-Status: Phase complete — ready for verification
+Phase: 22 (clienteffect-editor) — next-up
+Plan: Not started (`/gsd:discuss-phase 22` → `/gsd:plan-phase 22`)
+Status: Ready to plan. Phase 21 complete + verified (PASS 3/3; R1/R2/R3 closed).
 Last activity: 2026-06-17
+
+> Note: `gsd-sdk query phase.complete 21` set next_phase to 999.2 (the legacy backlog id for what is now Phase 23); hand-corrected to Phase 22 here per the documented phase.complete next-phase bug.
 
 **v2.1 milestone (Phases 17–24) — foundation-before-features:**
 
@@ -127,7 +129,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 
 **Velocity:**
 
-- Total plans completed: 50
+- Total plans completed: 57
 - Average duration: —
 - Total execution time: —
 
@@ -147,7 +149,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | 18 | 2 | - | - |
 | 19 | 3 | - | - |
 | 20 | 4 | - | - |
-| 21 | 4 | - | - |
+| 21 | 7 | - | - |
 
 **Recent Trend:**
 

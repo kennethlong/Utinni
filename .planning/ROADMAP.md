@@ -214,7 +214,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 18. Render-Backend Seam + Dx9Backend | v2.1 | 2/2 | Complete    | 2026-06-15 |
 | 19. Dx11Backend + Detection + Resize | v2.1 | 3/3 | Complete    | 2026-06-16 |
 | 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 4/4 | Complete   | 2026-06-16 |
-| 21. Terrain TJT SubPanel | v2.1 | 7/7 | Complete   | 2026-06-17 |
+| 21. Terrain TJT SubPanel | v2.1 | 7/7 | Complete    | 2026-06-17 |
 | 22. ClientEffect Editor | v2.1 | 0/? | Not started | - |
 | 23. IFF Chunk Templates | v2.1 | 0/? | Not started | - |
 | 24. Client Entry-Point Advertisement | v2.1 | 0/? | Not started | - |
