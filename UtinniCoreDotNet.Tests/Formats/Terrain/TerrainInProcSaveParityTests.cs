@@ -189,6 +189,48 @@ namespace UtinniCoreDotNet.Tests.Formats.Terrain
             Assert.Equal("alpha", reDecoded.Layers[0].Name);
         }
 
+        // ── (e) DEEPER real LAYR shape (21-05 R1): the IHDR DATA leaf is one version-form deeper —
+        //        LYRS → FORM:LAYR → FORM:<layer-version> → FORM:IHDR → FORM:<IHDR-version> → DATA. Pre-fix
+        //        TgenDecoder.ReadLayerItemHeader reads only a DIRECT IHDR DATA child, so the active flag falls
+        //        back to the C++ default true (RED #1), and ResolveIhdrLeafStableId finds no DATA leaf (RED #2).
+        //        After Task 2/3 the decoder + resolver descend IHDR → version → DATA (with direct-DATA fallback),
+        //        the real flag reads, the leaf resolves, and both edit paths save byte-exact.
+
+        [Fact]
+        public void RealLayrIhdrVersionShape_ActiveReadsReal_ResolverHitsLeaf_BothEditPathsSave()
+        {
+            byte[] source = TgenFixtureSynthesizer.WithRealLayrIhdrVersion(active: false, name: "alpha");
+            TerrainDocument doc = TerrainDocument.FromBytes(source);
+
+            Assert.NotEmpty(doc.Layers);
+            Assert.NotEmpty(doc.Layers[0].Nodes);
+
+            // (1) RED #1 — the REAL on-disk active flag (false) must be read, NOT the C++ default true.
+            Assert.False(doc.Layers[0].Active);
+
+            // (2) RED #2 — the resolver must descend IHDR → version → DATA and yield a leaf the DOM walk finds.
+            string layerId = doc.Layers[0].StableIdPath;
+            string ihdrLeaf = ResolveIhdrLeafStableId(doc.Mutable, layerId);
+            Assert.False(string.IsNullOrEmpty(ihdrLeaf));
+            MutableIffNode ihdrNode = FindNodeByStableId(doc.Mutable, ihdrLeaf);
+            Assert.NotNull(ihdrNode);
+            Assert.Equal(MutableIffNodeKind.Leaf, ihdrNode.Kind);
+
+            // (3) Active-flag toggle (false → true) round-trips: re-decode reports Active=true, name preserved.
+            byte[] flagEdited = InProcEditSave(source, ihdrLeaf, "IHDR", "active", "active", "1");
+            TerrainDocument reDecoded = TerrainDocument.FromBytes(flagEdited);
+            Assert.True(reDecoded.Layers[0].Active);
+            Assert.Equal("alpha", reDecoded.Layers[0].Name);
+
+            // (4) The typed AHCN sibling still round-trips byte-exact (no regression to the typed path).
+            string ascnNodeId = doc.Layers[0].Nodes[0].StableIdPath;
+            string typedLeaf = ResolveTypedDataLeafStableId(doc.Mutable, ascnNodeId);
+            Assert.False(string.IsNullOrEmpty(typedLeaf));
+            byte[] typedEdited = InProcEditSave(source, typedLeaf, "AHCN", TgenEraVersions.Low("AHCN"), "height", "321.0");
+            Assert.False(source.SequenceEqual(typedEdited));
+            Assert.Equal(typedEdited, TerrainDocument.FromBytes(typedEdited).Serialize());
+        }
+
         // ════════════════════════════════════════════════════════════════════
         // In-proc edit-save sequence (mirrors TerrainSaveTargets: locate leaf -> EncodeField -> SetPayload ->
         // Serialize). The non-gated form is used for the positive parity cases (editability already known);

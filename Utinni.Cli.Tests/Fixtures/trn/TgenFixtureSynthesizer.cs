@@ -337,6 +337,44 @@ namespace Utinni.Cli.Tests.Fixtures.Trn
         }
 
         /// <summary>
+        /// The DEEPER real high-era layer shape observed in shipped planet <c>.trn</c> (e.g. naboo, FORM
+        /// <c>PTAT/0014</c>): the <c>IHDR</c> layer-item-header <c>DATA</c> leaf is ONE version-form deeper
+        /// than <see cref="WithRealLayrWrapper"/> reproduces — the on-disk shape is
+        /// <c>LYRS → FORM:LAYR → FORM:&lt;layer-version&gt; → FORM:IHDR → FORM:&lt;IHDR-version&gt; → DATA</c>.
+        /// In <see cref="WithRealLayrWrapper"/> the <c>DATA</c> leaf is a DIRECT child of <c>IHDR</c>; HERE it
+        /// lives under an <c>IHDR</c>-version FORM (the literal token <c>IhdrVersion</c> names this distinction).
+        ///
+        /// <para>This is the 21-05 R1 regression fixture: pre-fix, <c>TgenDecoder.ReadLayerItemHeader</c> looks
+        /// only for a DATA leaf that is a DIRECT child of <c>IHDR</c>, finds none on this shape, and the layer's
+        /// <c>active</c> flag silently falls back to the C++ default <c>true</c> (the editor shows the default,
+        /// not the real flag); and <c>TerrainSaveTargets.ResolveIhdrLeafStableId</c> throws
+        /// "no IHDR DATA child leaf". The fix descends <c>IHDR → first-container-child (version) → DATA</c> with
+        /// a direct-DATA fallback so the collapsed (<see cref="WithLayerHeader"/>) and direct-DATA
+        /// (<see cref="WithRealLayrWrapper"/>) shapes stay green.</para>
+        /// </summary>
+        /// <param name="active">Seeds the on-disk active flag (int32 @ offset 0 of the deepest DATA leaf).</param>
+        /// <param name="name">The layer name (trailing cstring of the same DATA leaf).</param>
+        public static byte[] WithRealLayrIhdrVersion(bool active = true, string name = "layer0")
+        {
+            MutableIffNode tgen = MutableIffNode.NewContainer("FORM", "TGEN");
+            MutableIffNode body = tgen.AddContainer("FORM", "0000");
+            MutableIffNode lyrs = body.AddContainer("FORM", "LYRS");
+            MutableIffNode layr = lyrs.AddContainer("FORM", "LAYR");                    // literal LAYR wrapper
+            MutableIffNode ver = layr.AddContainer("FORM", TgenEraVersions.SwgEmuEra["LAYR"]); // layer-version body INSIDE LAYR
+
+            // IHDR layer-item header whose DATA leaf is ONE version-form deeper than WithRealLayrWrapper:
+            // FORM:IHDR → FORM:<IHDR-version> → DATA([int32 active][cstring name]). DATA is NOT a direct
+            // child of IHDR here — that is exactly the deeper nesting R1 must handle.
+            MutableIffNode ihdr = ver.AddContainer("FORM", "IHDR");
+            MutableIffNode ihdrVersion = ihdr.AddContainer("FORM", "0001"); // the IHDR-version FORM
+            ihdrVersion.AddLeaf("DATA", Concat(Int32Le(active ? 1 : 0), CString(name)));
+
+            // One typed AHCN affector sibling under the layer-version body (editable typed node).
+            AddTypedForm(ver, "AHCN", TgenEraVersions.Low("AHCN"), DefaultPayloadFor("AHCN", TgenEraVersions.Low("AHCN")));
+            return Emit(tgen);
+        }
+
+        /// <summary>
         /// A <c>FORM TGEN</c> whose single <c>LAYR</c> carries <paramref name="siblingCount"/> SAME-TAG
         /// (<c>AHCN</c>) sibling forms so node ordinals reach double digits — the CR-01 prefix-collision
         /// regression shape. Because every sibling is tag <c>AHCN</c>, the node at LAYR-child ordinal 1 has
