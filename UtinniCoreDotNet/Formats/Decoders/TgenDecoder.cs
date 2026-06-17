@@ -278,7 +278,15 @@ namespace UtinniCoreDotNet.Formats.Decoders
         {
             MutableIffNode ihdr = FindContainerChild(layerBody, LayerItemHeaderForm);
             if (ihdr == null) return;
-            foreach (var leaf in EnumerateLeaves(ihdr, "DATA"))
+
+            // The IHDR DATA leaf is, on the collapsed / current direct-DATA fixtures, a DIRECT child of IHDR;
+            // on real high-era terrain (naboo.trn, PTAT/0014) it is ONE version-form deeper —
+            // IHDR -> <IHDR-version FORM> -> DATA (R1). Prefer the direct-DATA leaf when present; otherwise
+            // descend one level via FirstContainerChild(ihdr) to the IHDR version FORM and read its DATA leaf.
+            // The save-side TerrainSaveTargets.ResolveIhdrLeafStableId mirrors this EXACT descent so read and
+            // write address the SAME leaf (concern #10).
+            MutableIffNode leafSearchRoot = HasDirectLeaf(ihdr, "DATA") ? ihdr : (FirstContainerChild(ihdr) ?? ihdr);
+            foreach (var leaf in EnumerateLeaves(leafSearchRoot, "DATA"))
             {
                 byte[] data = leaf.GetPayloadCopy();
                 var cursor = new IffPayloadCursor(data);
@@ -456,6 +464,16 @@ namespace UtinniCoreDotNet.Formats.Decoders
             foreach (var c in container.Children)
                 if (c.Kind == MutableIffNodeKind.Leaf && c.TypeId == typeId)
                     yield return c;
+        }
+
+        // True when `container` has a DIRECT leaf child of the given type id (the direct-DATA shape). Drives
+        // the IHDR direct-vs-version-form leaf-search-root choice in ReadLayerItemHeader.
+        private static bool HasDirectLeaf(MutableIffNode container, string typeId)
+        {
+            foreach (var c in container.Children)
+                if (c.Kind == MutableIffNodeKind.Leaf && c.TypeId == typeId)
+                    return true;
+            return false;
         }
 
         private static int IndexOf(MutableIffNode parent, MutableIffNode child)
