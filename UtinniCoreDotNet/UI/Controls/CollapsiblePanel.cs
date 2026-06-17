@@ -61,6 +61,13 @@ namespace UtinniCoreDotNet.UI.Controls
 
         private readonly SubPanel subPanel;
 
+        // Phase-21 R3: the wrapped SubPanel is realized into Controls lazily (only on expand — see
+        // btnExpand_CheckedChanged). It is, however, held in the subPanel field from construction
+        // (Plugin.cs constructs all SubPanels eagerly). This accessor exposes that instance regardless
+        // of expand state so a consumer (e.g. FormTreBrowser.FindTerrainSubPanel) can resolve the
+        // docked SubPanel while the section is collapsed, without disturbing the lazy-realize layout.
+        public SubPanel WrappedSubPanel { get { return subPanel; } }
+
         public CollapsiblePanel(SubPanel subPanel, string panelText = "", int width = 420)
         {
             InitializeComponent();
