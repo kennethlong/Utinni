@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: executing
-stopped_at: Phase 21 gap-closure 21-07 complete (R3 closed); 21-06 pending
-last_updated: "2026-06-17T14:50:26.519Z"
+status: verifying
+stopped_at: Completed 21-06-PLAN.md (R2 closed)
+last_updated: "2026-06-17T15:00:46.680Z"
 last_activity: 2026-06-17
 progress:
   total_phases: 17
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 19
-  completed_plans: 18
-  percent: 95
+  completed_plans: 19
+  percent: 100
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 
 ## Current Position
 
-Phase: 21 (terrain-tjt-subpanel-best-effort-live-preview) — EXECUTING (gap-closure)
-Plan: 21-07 of 7 complete (6/7 summaries; 21-06 pending execution)
-Status: 21-07 done (R3 closed) — next: execute 21-06
+Phase: 21 (terrain-tjt-subpanel-best-effort-live-preview) — gap-closure complete
+Plan: 7 of 7 complete (7/7 summaries; 21-06 R2 closed)
+Status: Phase complete — ready for verification
 Last activity: 2026-06-17
 
 **v2.1 milestone (Phases 17–24) — foundation-before-features:**
@@ -224,6 +224,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 21 P03 | 6min | 2 tasks | 6 files |
 | Phase 21 P05 | 14min | 3 tasks | 4 files |
 | Phase 21 P07 | ~12min | 2 tasks | 3 files |
+| Phase 21 P06 | ~22min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -297,6 +298,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: 21-03: Loose-override .trn picker single-sourced in FormTerrainEditor.PromptOpenLooseOverride; the thin TerrainSubPanel is a pure launcher (no modal of its own)
 - [Phase ?]: 21-03: TerrainSubPanel registered via the existing SubPanelContainer(Controls) array; GetSubPanels() stays null (MEF SPI not widened — CON-M-01/02, STAB-04)
 - [Phase ?]: 21-07: exposed CollapsiblePanel.WrappedSubPanel accessor (constructor-held SubPanel) instead of eager Controls realization — closes R3 collapsed-section terrain hand-off without altering the lazy-realize layout contract.
+- [Phase ?]: 21-06 R2: terrain loose overrides now land under <root>/loose/<logical> via the same two-step LooseOverridePath composition every other editor uses; PredictOverridePath aligned; [TerrainEditor] looseOverrideDir ini key defaults to 'loose'.
 
 ### Pending Todos
 
@@ -354,8 +356,8 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-17T14:42:33.985Z
-Stopped at: Phase 21 planned (4 plans, verified PASSED)
+Last session: 2026-06-17T15:00:46.660Z
+Stopped at: Completed 21-06-PLAN.md (R2 closed)
 Resume file: None
 
 ## Ingest Provenance
