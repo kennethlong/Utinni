@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: ready_to_execute
-stopped_at: Phase 21 gap-closure planned (3 new plans 21-05..07 close live-smoke residuals R1/R2/R3; checker PASSED; feature 4/4 already shipped)
-last_updated: "2026-06-17T00:00:00.000Z"
+status: executing
+stopped_at: Phase 21 planned (4 plans, verified PASSED)
+last_updated: "2026-06-17T14:42:44.661Z"
 last_activity: 2026-06-17
 progress:
   total_phases: 17
-  completed_phases: 5
+  completed_phases: 4
   total_plans: 19
-  completed_plans: 15
-  percent: 29
+  completed_plans: 17
+  percent: 89
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 21 gap closure — execute plans 21-05..07 (R1/R2/R3 live-smoke residuals), then Phase 22 — ClientEffect Editor
+**Current focus:** Phase 21 — terrain-tjt-subpanel-best-effort-live-preview
 
 ## Current Position
 
-Phase: 21 (terrain-tjt-subpanel) — feature shipped (4/4); 3 gap-closure plans pending execution
-Plan: 21-05 (R1), 21-06 (R2), 21-07 (R3) — planned + checker PASSED, not yet executed
-Status: Ready to execute (`/gsd:execute-phase 21`). Phase 22 (clienteffect-editor) is next-after.
+Phase: 21 (terrain-tjt-subpanel-best-effort-live-preview) — EXECUTING
+Plan: 2 of 7
+Status: Ready to execute
 Last activity: 2026-06-17
 
 **v2.1 milestone (Phases 17–24) — foundation-before-features:**
@@ -222,6 +222,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 21 P01 | 9min | 2 tasks | 8 files |
 | Phase 21 P02 | 25min | 2 tasks | 4 files |
 | Phase 21 P03 | 6min | 2 tasks | 6 files |
+| Phase 21 P05 | 14min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -351,7 +352,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-16T20:15:20.762Z
+Last session: 2026-06-17T14:42:33.985Z
 Stopped at: Phase 21 planned (4 plans, verified PASSED)
 Resume file: None
 

@@ -19,3 +19,15 @@
     (rebuild TJT, re-freeze fixture, commit together) is the Phase-17-owned remedy — not a Phase-21 task.
   - Action: NONE in Phase 21. Surfaced here for the verifier; the 21-01 acceptance gates
     (`TerrainReloadCandor` / `Classify_Trn` / `TerrainInProcSaveParity`) are all green.
+
+## 21-05
+
+- **`AbiSurfaceTests.GeneratedSurface_MatchesBlessedBaseline_IgnoringReorderChurn` STILL RED (pre-existing).**
+  - Discovered: 21-05 full `UtinniCoreDotNet.Tests` suite run — 781 passed / 1 failed (the same lone ABI gate).
+  - Drift detail this run: ADDED (0) / REMOVED (20) — the committed Generated surface lacks 20 blocks the
+    blessed baseline expects; ADDED=0 proves nothing 21-05 introduced any native surface.
+  - Why out of scope: Plan 21-05 changes ONLY managed C# (`TgenDecoder.cs`, `TerrainInProcSaveParityTests.cs`,
+    cross-repo `TerrainSaveTargets.cs`) + a test fixture; it adds ZERO CppSharp bindings. `git diff a42fc25 HEAD`
+    confirms the 21-05 commits touched neither `Generated/UtinniCore.cs` nor the baseline fixture.
+  - Same root cause + remedy as the 21-01 entry above (Phase-17-owned re-bless; needs `UtinniCoreDotNetGen.exe`
+    RUN — the incremental build used here skips the post-build gen). CI (which runs the gen) gates master.
