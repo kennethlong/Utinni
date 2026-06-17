@@ -54,6 +54,25 @@
     <Content Include="Fixtures\abi-baseline-blockhashes.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- 22-01 Task 2: the committed ClientEffect (FORM CLEF) golden fixture corpus — 8 synthesized
+       .iff goldens + 1 writer-INDEPENDENT hand-authored .hex (REVIEWS #6). Content-copied beside the
+       test assembly so ClientEffectCodecTests reads each by relative path under Fixtures\ClientEffect\.
+       Fixtures\** is in DefaultItemExcludes so these are referenced as Content (committed data), NOT
+       compiled. The fixtures are byte-stable (synthesized through IffWriter / the production codec) so
+       the byte-exact round-trip assertion is meaningful. -->
+  <ItemGroup>
+    <Content Include="Fixtures\ClientEffect\clef_v0001_cpap.iff" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\ClientEffect\clef_v0002_cpap.iff" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\ClientEffect\clef_v0003_cpap.iff" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\ClientEffect\clef_v0003_all5.iff" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\ClientEffect\clef_v0001_all5.iff" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\ClientEffect\clef_unknown_version.iff" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\ClientEffect\clef_unknown_command.iff" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\ClientEffect\clef_empty.iff" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\ClientEffect\clef_truncated_cpap.iff" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\ClientEffect\clef_v0003_clgt_handauthored.hex" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- Phase 17 CPPS-04b: the FROZEN The Jawa Toolbox host plugin DLL (broadest binding
        consumer, D-02). DELIBERATE inversion vs Fixtures/{BrokenPlugin,GoodPlugin}: this is
        a committed PRE-BUILT binary referenced as <Content>, with NO rebuild csproj — a
