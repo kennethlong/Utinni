@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: ready_to_plan
-stopped_at: Phase 21 complete + verified (gap-closure 21-05..07 closed R1/R2/R3; verifier PASS 3/3). Next: Phase 22 ClientEffect Editor.
-last_updated: "2026-06-17T15:00:46.680Z"
+status: planning
+stopped_at: Phase 22 context gathered
+last_updated: "2026-06-17T16:45:54.882Z"
 last_activity: 2026-06-17
 progress:
   total_phases: 17
-  completed_phases: 6
+  completed_phases: 5
   total_plans: 19
   completed_plans: 19
-  percent: 35
+  percent: 100
 ---
 
 # Project State
@@ -358,9 +358,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-17T15:00:46.660Z
-Stopped at: Completed 21-06-PLAN.md (R2 closed)
-Resume file: None
+Last session: 2026-06-17T16:45:54.762Z
+Stopped at: Phase 22 context gathered
+Resume file: .planning/phases/22-clienteffect-editor/22-CONTEXT.md
 
 ## Ingest Provenance
 
