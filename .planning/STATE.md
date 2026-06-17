@@ -4,14 +4,14 @@ milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: executing
 stopped_at: Completed 22-01-PLAN.md
-last_updated: "2026-06-17T21:56:40.374Z"
+last_updated: "2026-06-17T22:51:32.457Z"
 last_activity: 2026-06-17
 progress:
   total_phases: 17
   completed_phases: 5
   total_plans: 23
-  completed_plans: 21
-  percent: 91
+  completed_plans: 22
+  percent: 96
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 ## Current Position
 
 Phase: 22 (clienteffect-editor) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-06-17
 
@@ -229,6 +229,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 21 P06 | ~22min | 2 tasks | 3 files |
 | Phase 22 P01 | ~40min | 2 tasks | 18 files |
 | Phase 22 P03 | 25 min | 1 tasks | 5 files |
+| Phase 22 P02 | ~55min | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -304,6 +305,8 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: 21-07: exposed CollapsiblePanel.WrappedSubPanel accessor (constructor-held SubPanel) instead of eager Controls realization — closes R3 collapsed-section terrain hand-off without altering the lazy-realize layout contract.
 - [Phase ?]: 21-06 R2: terrain loose overrides now land under <root>/loose/<logical> via the same two-step LooseOverridePath composition every other editor uses; PredictOverridePath aligned; [TerrainEditor] looseOverrideDir ini key defaults to 'loose'.
 - [Phase ?]: Phase 22 CLEF codec: cloned Particle three-layer stack; ClefFieldCodec is the one new variable-length asset; StableId reuses DeriveStableId verbatim (REVIEWS #1)
+- [Phase ?]: 22-02: apply-save-effect verify splits by mutation mode (field-edit by stableId; reorder/add/remove by content) — REVIEWS HIGH #2
+- [Phase ?]: 22-02: ClefCommandDefaults (locked add-command defaults) lives in the codec namespace for CLI/fixture/Form parity — REVIEWS MEDIUM #5
 
 ### Pending Todos
 
@@ -361,7 +364,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-17T21:56:29.049Z
+Last session: 2026-06-17T22:51:03.258Z
 Stopped at: Completed 22-01-PLAN.md
 Resume file: None
 
