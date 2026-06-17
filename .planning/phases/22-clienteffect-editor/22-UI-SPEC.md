@@ -1,10 +1,11 @@
 ---
 phase: 22
 slug: clienteffect-editor
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-06-17
+reviewed_at: 2026-06-17
 ---
 
 # Phase 22 — UI Design Contract
@@ -275,11 +276,11 @@ vetting gate is N/A. No external packages are installed this phase (RESEARCH: pu
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS — CTA/empty/error/candor/list-mutation copy declared; Preview honest-disabled vocabulary locked verbatim from `FormParticleEditor`
-- [ ] Dimension 2 Visuals: PASS — two-surface (thin SubPanel → roomy Form) + flat-list/field-grid split + dock/z-order contract declared (adapted from web "components")
-- [ ] Dimension 3 Color: PASS — mapped to the fixed `Colors` dark theme, accent reserved-for list explicit, no green success hue
-- [ ] Dimension 4 Typography: PASS — Segoe UI 8.25pt base, Bold reserved to banner/title, Consolas 9pt monospace exception
-- [ ] Dimension 5 Spacing: PASS — 4px grid (multiples of 4), 2px accent-rule + 22px control-row + 30px footer exceptions documented
-- [ ] Dimension 6 Registry Safety: PASS — not applicable (no shadcn/third-party registry; WinForms; zero external packages)
+- [x] Dimension 1 Copywriting: PASS — CTA/empty/error/candor/list-mutation copy declared; Preview honest-disabled vocabulary locked verbatim from `FormParticleEditor`
+- [x] Dimension 2 Visuals: PASS — two-surface (thin SubPanel → roomy Form) + flat-list/field-grid split + dock/z-order contract declared (adapted from web "components")
+- [x] Dimension 3 Color: PASS — mapped to the fixed `Colors` dark theme, accent reserved-for list explicit, no green success hue
+- [x] Dimension 4 Typography: PASS — Segoe UI 8.25pt base, Bold reserved to banner/title, Consolas 9pt monospace exception
+- [x] Dimension 5 Spacing: PASS — 4px grid (multiples of 4), 2px accent-rule + 22px control-row + 30px footer exceptions documented
+- [x] Dimension 6 Registry Safety: PASS — not applicable (no shadcn/third-party registry; WinForms; zero external packages)
 
-**Approval:** pending
+**Approval:** approved 2026-06-17
