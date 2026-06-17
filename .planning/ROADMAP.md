@@ -148,7 +148,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 - [x] 21-04-PLAN.md — Maintainer live-smoke (D-07, autonomous:false): observe in-session reload disposition → set the shipped candor copy honestly
 - [x] 21-05-PLAN.md — R1 gap closure (terrain-codec): IHDR→version→DATA deeper-nesting descent in TgenDecoder.ReadLayerItemHeader + TerrainSaveTargets.ResolveIhdrLeafStableId (+ mirror), RED-first real-shape fixture
 - [ ] 21-06-PLAN.md — R2 gap closure (terrain-save): thread looseOverrideSubDir "loose" through TerrainSaveTargets.SaveLooseOverride so overrides land at <root>/loose/<logical> like every other editor
-- [ ] 21-07-PLAN.md — R3 gap closure (tjt-ui): CollapsiblePanel.WrappedSubPanel accessor + FormTreBrowser.FindTerrainSubPanel resolves the docked panel while the Terrain section is collapsed
+- [x] 21-07-PLAN.md — R3 gap closure (tjt-ui): CollapsiblePanel.WrappedSubPanel accessor + FormTreBrowser.FindTerrainSubPanel resolves the docked panel while the Terrain section is collapsed
 **UI hint**: yes
 
 ### Phase 22: ClientEffect Editor
@@ -214,7 +214,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 18. Render-Backend Seam + Dx9Backend | v2.1 | 2/2 | Complete    | 2026-06-15 |
 | 19. Dx11Backend + Detection + Resize | v2.1 | 3/3 | Complete    | 2026-06-16 |
 | 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 4/4 | Complete   | 2026-06-16 |
-| 21. Terrain TJT SubPanel | v2.1 | 5/7 | In Progress|  |
+| 21. Terrain TJT SubPanel | v2.1 | 6/7 | In Progress|  |
 | 22. ClientEffect Editor | v2.1 | 0/? | Not started | - |
 | 23. IFF Chunk Templates | v2.1 | 0/? | Not started | - |
 | 24. Client Entry-Point Advertisement | v2.1 | 0/? | Not started | - |
