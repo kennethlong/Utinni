@@ -340,6 +340,7 @@ namespace UtinniCoreDotNet.Tests.Formats.Terrain
                 if (child.Kind == MutableIffNodeKind.Container
                     && string.Equals(child.SubTypeId, "IHDR", StringComparison.Ordinal))
                 {
+                    // (a) Direct-DATA child of IHDR (collapsed / WithRealLayrWrapper fallback shape).
                     string ihdrPrefix = childId + "/";
                     for (int j = 0; j < child.Children.Count; j++)
                     {
@@ -347,6 +348,24 @@ namespace UtinniCoreDotNet.Tests.Formats.Terrain
                         if (g.Kind == MutableIffNodeKind.Leaf && string.Equals(g.TypeId, "DATA", StringComparison.Ordinal))
                         {
                             return MutableIffDocument.DeriveStableId(g, ihdrPrefix, j);
+                        }
+                    }
+
+                    // (b) No direct DATA — descend one level via FirstContainerChild to the IHDR version FORM
+                    //     and resolve its DATA leaf (real deeper shape, 21-05 R1). Mirrors the production
+                    //     TerrainSaveTargets.ResolveIhdrLeafStableId and the decoder's IHDR -> version descent.
+                    MutableIffNode versionForm = FirstContainerChild(child);
+                    if (versionForm != null)
+                    {
+                        string versionId = MutableIffDocument.DeriveStableId(versionForm, ihdrPrefix, IndexOf(child, versionForm));
+                        string versionPrefix = versionId + "/";
+                        for (int k = 0; k < versionForm.Children.Count; k++)
+                        {
+                            MutableIffNode g = versionForm.Children[k];
+                            if (g.Kind == MutableIffNodeKind.Leaf && string.Equals(g.TypeId, "DATA", StringComparison.Ordinal))
+                            {
+                                return MutableIffDocument.DeriveStableId(g, versionPrefix, k);
+                            }
                         }
                     }
                 }
