@@ -30,6 +30,10 @@
   <ItemGroup>
     <Content Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Goldens\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- methodDisplay=method so VSTest filter "Name~..." matches the short test-method name
+         (the 22-VALIDATION filter scheme; without this "Name~" resolves to zero tests because xUnit's
+         default DisplayName is the FQN). Must be copied next to the test dll for the runner to read it. -->
+    <None Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <!-- TASK 4.3 (Plan 04-04): Copy Utinni.CrtMatchPlugin.dll to valid-plugin/ fixture dir.
        This is the Phase 3 R-B "real plugin" fixture that validate-plugin should classify as kind=native pass. -->

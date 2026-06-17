@@ -42,9 +42,12 @@ namespace Utinni.Cli.Tests.Terrain
             catch { /* best-effort */ }
         }
 
+        // The asset is written under <_work>/loose/<rel> — the destination the verb now resolves to with
+        // the default --loose-subdir "loose" (21-06 R2 parity: a CLI terrain override lands under the
+        // documented <root>/loose searchPath, consistent with the editor + apply-save-effect).
         private string WriteLooseAsset(string rel, byte[] bytes)
         {
-            string p = Path.Combine(_work, rel.Replace('/', Path.DirectorySeparatorChar));
+            string p = Path.Combine(_work, "loose", rel.Replace('/', Path.DirectorySeparatorChar));
             Directory.CreateDirectory(Path.GetDirectoryName(p));
             File.WriteAllBytes(p, bytes);
             return p;
@@ -124,6 +127,39 @@ namespace Utinni.Cli.Tests.Terrain
             // round-trips whole-file byte-identical through the codec (clean nodes re-emit verbatim).
             byte[] rt = TerrainDocument.FromBytes(after).Serialize();
             Assert.True(after.SequenceEqual(rt));
+        }
+
+        // ── 22-03: loose-subdir parity — destination lands under <root>/loose/ ──
+
+        // The CLI half of the folded phase21-terrain-override-loose-subdir todo: assert apply-save-trn
+        // resolves/writes the override UNDER <root>/loose/ (the documented searchPath, consistent with
+        // the in-app editor + apply-save-effect), mirroring the framework-side TerrainLooseOverridePathTests
+        // \loose\ assertion. Filterable by `Name~TerrainLooseSubdir` (22-VALIDATION). The default
+        // --loose-subdir is "loose"; WriteLooseAsset seeds the asset there so the edit resolves correctly.
+        [Fact]
+        [Trait("Category", "ApplySaveTrn")]
+        public void ApplySaveTrn_TerrainLooseSubdir_LandsUnderLooseDir()
+        {
+            const string rel = "terrain/comp.trn";
+            byte[] original = TgenFixtureSynthesizer.CompositionalLayer();
+            string asset = WriteLooseAsset(rel, original);   // <root>/loose/terrain/comp.trn (default subdir)
+            string leafId = TypedDataLeafId(File.ReadAllBytes(asset), "AHCN");
+
+            JObject env = RunApply(out int exit, "apply-save-trn", rel, "--root", _work,
+                "--leaf", leafId, "--field", "height", "--value", "42.0");
+
+            Assert.Equal(0, exit);
+            JObject result = (JObject)env["result"];
+            Assert.True((bool)result["written"]);
+
+            // The resolved/written destination is UNDER <root>/loose/ (mirror TerrainLooseOverridePathTests).
+            string writtenPath = (string)result["path"];
+            string looseSegment = "loose" + Path.DirectorySeparatorChar;
+            Assert.Contains(looseSegment, writtenPath, StringComparison.OrdinalIgnoreCase);
+            string normalizedLooseBase = Path.GetFullPath(Path.Combine(_work, "loose"));
+            Assert.StartsWith(normalizedLooseBase, writtenPath, StringComparison.OrdinalIgnoreCase);
+            // The write actually landed where WriteLooseAsset seeded it (under <root>/loose).
+            Assert.True(File.Exists(asset));
         }
 
         [Fact]

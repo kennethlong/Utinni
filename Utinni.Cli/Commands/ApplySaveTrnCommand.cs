@@ -57,6 +57,9 @@ namespace Utinni.Cli.Commands
 
         [Option("value", Required = true, HelpText = "New value (invariant-culture decimal for floats; int for scalars/enums/familyId; true/false/1/0 for active).")]
         public string Value { get; set; }
+
+        [Option("loose-subdir", Default = "loose", HelpText = "Subdir under --root the loose override lands in (default \"loose\" — the documented searchPath every editor targets). Empty preserves the legacy <root>/<relAsset>.")]
+        public string LooseSubDir { get; set; }
     }
 
     /// <summary>
@@ -99,7 +102,23 @@ namespace Utinni.Cli.Commands
             string destPath;
             try
             {
-                destPath = LooseOverridePath.Resolve(o.Root, o.RelAsset);
+                // Two-step compose mirroring TerrainSaveTargets.SaveLooseOverride (the editor side, shipped
+                // 21-06 R2) and apply-save-effect (Plan 02, which owns its own --loose-subdir): place the
+                // override base under <root>/<loose-subdir> (default "loose" — the documented searchPath),
+                // then place the logical asset under that base, so a CLI-written terrain override lands at
+                // <root>/loose/<relAsset>. Empty --loose-subdir preserves the legacy <root>/<relAsset>.
+                // BOTH resolve legs fail-closed through LooseOverridePath.Resolve (rejects rooted paths,
+                // any ".." segment, prefix-match escapes), so a traversal in EITHER --loose-subdir or
+                // relAsset exits 2 PathContainment with no write (T-22-path-trn).
+                if (!string.IsNullOrEmpty(o.LooseSubDir))
+                {
+                    string overrideBase = LooseOverridePath.Resolve(o.Root, o.LooseSubDir);
+                    destPath = LooseOverridePath.Resolve(overrideBase, o.RelAsset);
+                }
+                else
+                {
+                    destPath = LooseOverridePath.Resolve(o.Root, o.RelAsset);
+                }
             }
             catch (ArgumentException ex)
             {
