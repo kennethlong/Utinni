@@ -160,7 +160,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
   1. A modder can open a ClientEffect `.iff`, view/edit its command list (CreateAppearance / PlaySound / CreateLight / CameraShake / ForceFeedback / …), and save byte-exact via the loose-override matrix — an `EffectsSubPanel` ships inside TJT (DEC-C4).
   2. ClientEffect decode/edit/save is exposed as golden-tested `utinni-cli` `effect-*` verbs (verbs-first per DEC-V2-VERBS-FIRST) + an MCP read tool, with reference-validation against the load order, validated across BOTH SWGEmu and Restoration fixtures (IFF no-pad, multi-chunk variants; raw-fallback never hard-abort).
 **Plans**: 4 plans (3 waves)
-- [ ] 22-01-PLAN.md — CLEF codec (model/decoder + variable-length ClefFieldCodec) + 8 synthesized goldens + codec tests (Wave 0)
+- [ ] 22-01-PLAN.md — CLEF codec (model/decoder + variable-length ClefFieldCodec, stableId contract, D-03 encode guard) + 9 goldens (8 synthesized + 1 hand-authored hex) + codec tests (Wave 1)
 - [ ] 22-02-PLAN.md — effect-* CLI verbs + decode-iff CLEF branch + MCP summarize_clienteffect + verb goldens
 - [ ] 22-03-PLAN.md — close folded terrain loose/-subdir todo (align apply-save-trn CLI half + test)
 - [ ] 22-04-PLAN.md — EffectsSubPanel + FormClientEffectEditor + ClientEffectSaveTargets (TJT, DEC-C4) + maintainer live smoke
