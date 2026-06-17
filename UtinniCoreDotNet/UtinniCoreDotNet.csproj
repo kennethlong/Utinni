@@ -100,6 +100,7 @@
     <Compile Include="Formats\Particle\ParticleEffectDocument.cs" />
     <Compile Include="Formats\Particle\ParticleEffectWriter.cs" />
     <Compile Include="Formats\ClientEffect\ClientEffectParseException.cs" />
+    <Compile Include="Formats\ClientEffect\ClefCommandDefaults.cs" />
     <Compile Include="Formats\ClientEffect\ClefFieldCodec.cs" />
     <Compile Include="Formats\ClientEffect\ClientEffectCommand.cs" />
     <Compile Include="Formats\ClientEffect\MutableClientEffect.cs" />

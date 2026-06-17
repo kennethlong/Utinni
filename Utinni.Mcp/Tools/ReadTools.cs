@@ -126,6 +126,23 @@ public static class ReadTools
         return CliResultMapper.ToCallToolResult(r);              // verbatim envelope pass-through; nonzero exit → tool error
     }
 
+    [McpServerTool(Name = "summarize_clienteffect", ReadOnly = true, Idempotent = true)]
+    [Description("Summarize a ClientEffect .iff (FORM CLEF) — the ordered command list (CPAP/PSND/CLGT/CAMS/FFBK), " +
+                 "each command's tag + per-command stableId + typed/raw kind, and the root version / raw-preserve " +
+                 "disposition — as the utinni-cli JSON envelope. Read-assist ONLY (no write/mutate): the same .iff " +
+                 "read path the in-app ClientEffect editor reuses. Dispatches decode-iff, which auto-routes a FORM " +
+                 "CLEF root. ZERO format logic here — the named pipe / subprocess boundary to the x86 utinni-cli IS " +
+                 "the architecture boundary (MCP-OOP, DEC-V2-MCP-OOP).")]
+    public static async Task<CallToolResult> SummarizeClientEffect(
+        ResolvedRoot root,
+        CliDispatcher cli,
+        [Description(PathParamDescription)] string relativePath)
+    {
+        string abs = root.Resolve(relativePath);                 // throws on escape → SDK tool error
+        CliInvocationResult r = await cli.RunAsync("decode-iff", new[] { abs }).ConfigureAwait(false);
+        return CliResultMapper.ToCallToolResult(r);              // verbatim envelope pass-through; nonzero exit → tool error
+    }
+
     [McpServerTool(Name = "list_world_objects", ReadOnly = true, Idempotent = true)]
     [Description("List world-snapshot objects from a ws.iff and return the utinni-cli JSON envelope.")]
     public static async Task<CallToolResult> ListWorldObjects(

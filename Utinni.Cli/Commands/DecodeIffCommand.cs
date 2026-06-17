@@ -106,6 +106,16 @@ namespace Utinni.Cli.Commands
                             UtinniCoreDotNet.Formats.Terrain.TerrainDocument.FromIff(doc, bytes), o.Path));
                 }
 
+                // A ClientEffect (FORM CLEF) root auto-dispatches into the Plan-01 CLEF codec and emits the
+                // command-list envelope (per-command stableId + typed/raw kind) — this is what gives the MCP
+                // decode_iff tool CLEF routing for free. Mirrors the PEFT/TGEN branches above.
+                if ((doc.Root as IffContainerChunk)?.SubTypeId == "CLEF")
+                {
+                    return JsonOutput.EmitSuccess("decode-iff",
+                        BuildClefResult(
+                            UtinniCoreDotNet.Formats.ClientEffect.ClientEffectDocument.FromIff(doc, bytes), o.Path));
+                }
+
                 object result;
                 if (!TryDecode(doc, o.Path, out result, out string unsupportedTag))
                 {
@@ -119,6 +129,10 @@ namespace Utinni.Cli.Commands
                 return JsonOutput.EmitError("decode-iff", ex.Kind.ToString(), ex.Message, exitCode: 2);
             }
             catch (UtinniCoreDotNet.Formats.Terrain.TerrainParseException ex)
+            {
+                return JsonOutput.EmitError("decode-iff", ex.Kind.ToString(), ex.Message, exitCode: 2);
+            }
+            catch (UtinniCoreDotNet.Formats.ClientEffect.ClientEffectParseException ex)
             {
                 return JsonOutput.EmitError("decode-iff", ex.Kind.ToString(), ex.Message, exitCode: 2);
             }
@@ -274,6 +288,75 @@ namespace Utinni.Cli.Commands
                 type = "particle",
                 version = effect.Version
             };
+        }
+
+        // ClientEffect (FORM CLEF) command-list envelope: rootType + version + raw-preserve disposition +
+        // an ORDERED commands array where each command carries {index, stableId, tag, isRaw, fields}. The
+        // stableId is the SAME ordinal-path id the terrain envelope emits as node.StableIdPath (sourced from
+        // ClientEffectCommand.StableId, set from MutableIffDocument.DeriveStableId) — MANDATORY per command
+        // (REVIEWS HIGH #1) so --leaf addressing and the editor have a real contract. The typed `fields`
+        // object exposes exactly the fields the command/version defines; a raw command (unknown tag /
+        // truncated-known / residual-byte) has isRaw=true and an empty fields object (its bytes re-emit
+        // verbatim). Routed without any MCP-layer change.
+        public static object BuildClefResult(
+            UtinniCoreDotNet.Formats.ClientEffect.MutableClientEffect effect, string sourcePath)
+        {
+            int rawCount = 0;
+            var commands = new System.Collections.Generic.List<object>();
+            int index = 0;
+            foreach (var cmd in effect.Commands)
+            {
+                if (cmd.IsRaw) rawCount++;
+                commands.Add(new
+                {
+                    fields = BuildClefCommandFields(cmd),
+                    index = index,
+                    isRaw = cmd.IsRaw,
+                    stableId = cmd.StableId,
+                    tag = cmd.Tag
+                });
+                index++;
+            }
+
+            return new
+            {
+                commandCount = commands.Count,
+                commands = commands,
+                rawCommandCount = rawCount,
+                rawPreserved = effect.IsRawPreserved,
+                rootType = "CLEF",
+                source = sourcePath,
+                type = "clienteffect",
+                version = effect.Version
+            };
+        }
+
+        // The typed field projection for one CLEF command. A raw command (or a raw-preserved effect) yields
+        // an empty object — the descriptive read tool never dumps bytes (the leaf re-emits verbatim on save).
+        private static object BuildClefCommandFields(UtinniCoreDotNet.Formats.ClientEffect.ClientEffectCommand cmd)
+        {
+            if (cmd.IsRaw) return new { };
+
+            switch (cmd.Tag)
+            {
+                case "CPAP":
+                    return new
+                    {
+                        appearanceTemplateName = cmd.StringValue,
+                        floats = cmd.Floats,
+                        softParticleTerminate = cmd.SoftParticleTerminate
+                    };
+                case "PSND":
+                    return new { soundTemplateName = cmd.StringValue };
+                case "CLGT":
+                    return new { floats = cmd.Floats, rgb = cmd.Bytes };
+                case "CAMS":
+                    return new { floats = cmd.Floats };
+                case "FFBK":
+                    return new { floats = cmd.Floats, forceFeedbackFile = cmd.StringValue, iterations = cmd.Int32Value };
+                default:
+                    return new { };
+            }
         }
 
         // Terrain (FORM TGEN / PTAT) NAVIGABLE envelope (#9): a layer tree (name + active + recursive
