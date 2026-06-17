@@ -141,11 +141,14 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
   1. A `TerrainSubPanel` (`IEditorPlugin`) ships inside TJT (DEC-C4) with a layer tree + property grid, opens from the TRE Browser and from a loose override, and saves via the loose-override matrix.
   2. On save, the terrain change previews live in-client where a heap-free hot-path regen is reachable; where it is not (this build), it degrades to save-then-reload with explicit candor — never a standalone Utinni renderer (DEC-A3 + the live-in-client lock).
   3. The preview/regen path is heap-free on the hot path (stack-allocated `dispatchSnapshot`, push-on-edit not per-frame) so it never re-triggers the `0x0051fb0a` scene-change crash (Pitfall 6); the SubPanel ctor is guarded against MEF silent-reject and uses Dock.Fill-front-most / nested SplitContainers (Pitfall 8).
-**Plans**: 4 plans
+**Plans**: 7 plans (4 original + 3 gap-closure from the 21-04 live smoke; PROD-W2-TRN-05 already MET)
 - [x] 21-01-PLAN.md — Wave-0 scaffold: framework-side TerrainReloadCandor copy-map + tests, explicit .trn-classifier assert, in-proc TerrainSaveTargets + byte-parity-vs-apply-save-trn test
 - [x] 21-02-PLAN.md — FormTerrainEditor roomy host (D-02 launched-Form, D-03 custom tree+detail pane): navigable TGEN tree + read-only palettes, typed/raw-fallback field editor, in-proc save, Save+Preview reload candor
 - [x] 21-03-PLAN.md — Thin docked TerrainSubPanel (D-01, fits 417px) + Plugin.cs SubPanelContainer registration + FormTreBrowser "Open in Terrain Editor" hand-off (D-08 both entry points; MEF-safe, undo null-checked)
 - [x] 21-04-PLAN.md — Maintainer live-smoke (D-07, autonomous:false): observe in-session reload disposition → set the shipped candor copy honestly
+- [ ] 21-05-PLAN.md — R1 gap closure (terrain-codec): IHDR→version→DATA deeper-nesting descent in TgenDecoder.ReadLayerItemHeader + TerrainSaveTargets.ResolveIhdrLeafStableId (+ mirror), RED-first real-shape fixture
+- [ ] 21-06-PLAN.md — R2 gap closure (terrain-save): thread looseOverrideSubDir "loose" through TerrainSaveTargets.SaveLooseOverride so overrides land at <root>/loose/<logical> like every other editor
+- [ ] 21-07-PLAN.md — R3 gap closure (tjt-ui): CollapsiblePanel.WrappedSubPanel accessor + FormTreBrowser.FindTerrainSubPanel resolves the docked panel while the Terrain section is collapsed
 **UI hint**: yes
 
 ### Phase 22: ClientEffect Editor
