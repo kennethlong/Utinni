@@ -1,9 +1,9 @@
 ---
 phase: 22
 slug: clienteffect-editor
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: planned
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-17
 ---
 
@@ -105,11 +105,11 @@ matrix. Keep real assets OUT of committed goldens unless small + unencrypted.
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies — every auto/tdd task carries MSBuild (build) or `dotnet test --no-build --filter` (test); the checkpoint (22-04 T3) is a maintainer live-smoke with no headless path.
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references — fixtures + codec tests in 22-01 Task 2; verb goldens in 22-02 Task 2; the terrain `\loose\` test verified/aligned in 22-03.
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s (quick subset `--filter "FullyQualifiedName~ClientEffect"`)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-06-17 (planner — Wave-0 coverage confirmed in plans 22-01/22-02/22-03)

@@ -397,16 +397,17 @@ bool identical = loaded.Length==rt.Length && loaded.SequenceEqual(rt);
 | A2 | The `apply-save-trn` CLI half of the loose-`/` subdir convention may still omit the subdir (`ApplySaveTrnCommand.cs:102` resolves with no subdir). | Runtime State Inventory | If the CLI's caller doesn't pre-compose `loose/`, the CLI-written terrain override still lands off the searchPath. Planner must confirm the actual CLI call shape. [ASSUMED — inferred from the CLI source; the caller convention not traced to a test.] |
 | A3 | CLEF assets in the modded clients are small + unencrypted enough to extract via `utinni-cli` TRE verbs (retail high-era TRE is v6000/encrypted → enumerate-only). | Validation (D-14) | If the only available CLEF lives in an encrypted v6000 TRE, D-14's real-asset pair is unreachable from that lineage; fall back to the SWGEmu lineage + synthesized goldens (D-13 still fully covers the version×command matrix). [ASSUMED] |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does an `apply-save-trn` byte-parity test already assert `<root>\loose\`?**
-   - What we know: `TerrainSaveTargets` threads `looseOverrideSubDir`; the todo's 3rd close-item asks for such a test.
-   - What's unclear: whether that test was added in 21-06 or is still outstanding.
-   - Recommendation: planner greps the test suite for an assertion on `\loose\` in the terrain save path; add one if absent (cheap, closes the folded todo cleanly).
+   - **RESOLVED (Plan 22-03):** The framework-side `UtinniCoreDotNet.Tests/SavingTests/TerrainLooseOverridePathTests.cs` already asserts the `\loose\` segment (21-06 R2). The residual — the CLI half (`apply-save-trn` resolved with NO subdir, A2) — is fixed in Plan 22-03: a `--loose-subdir` (default `"loose"`) two-step compose lands the CLI override under `<root>/loose/`, a new test asserts it, and the stale folded todo is closed pending→done.
+   - What we knew: `TerrainSaveTargets` threads `looseOverrideSubDir`; the todo's 3rd close-item asks for such a test.
+   - Original recommendation: planner greps the test suite for an assertion on `\loose\` in the terrain save path; add one if absent (cheap, closes the folded todo cleanly).
 
 2. **Exact `effect-*` verb names + `apply-save-effect` flag shape (Claude's discretion, D-11).**
-   - What we know: precedent is `apply-save-trn --root --leaf --field --value`. CLEF needs list-mutation (add/remove/reorder) which `--leaf/--field/--value` does not express.
-   - Recommendation: keep `apply-save-effect` field-edit using `--leaf/--field/--value` for in-place scalar/string edits; express add/remove/reorder either as separate flags (`--add-command CPAP@<index>`, `--remove-leaf <stableId>`, `--reorder <stableId> up|down`) or accept that the in-app editor (not the CLI) owns list authoring while the CLI covers field edits + roundtrip. Decide in PLAN; the DOM supports all of it.
+   - **RESOLVED (Plan 22-02 `<verb_decisions>`):** verbs are `decode-effect` / `roundtrip-effect` / `apply-save-effect`. `apply-save-effect` field edits use `--leaf/--field/--value` (length-changing allowed; the fixed-length guard is removed); list authoring uses `--add-command <tag>` / `--remove-leaf <stableId>` / `--reorder <stableId> up|down`, exactly ONE mutation per invocation. `decode-effect` is a thin alias delegating to `DecodeIffCommand.BuildClefResult`.
+   - What we knew: precedent is `apply-save-trn --root --leaf --field --value`. CLEF needs list-mutation (add/remove/reorder) which `--leaf/--field/--value` does not express.
+   - Original recommendation: keep field-edit on `--leaf/--field/--value`; express add/remove/reorder as separate flags or scope CLI to field edits while the in-app editor owns list authoring. Decided in PLAN (both: the CLI expresses all of it; the DOM supports it).
 
 ## Environment Availability
 
