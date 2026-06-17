@@ -66,7 +66,8 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 - [x] **Phase 18: Render-Backend Seam + Dx9Backend** — carve `IRenderBackend`, D3D9 overlay behaviorally unchanged (FOUNDATION) (completed 2026-06-15)
 - [x] **Phase 19: Dx11Backend + Config Detection + Resize** — DXGI `Present`/`ResizeBuffers` hooks, one-backend-per-session detect (FOUNDATION; research-phase) (all 3 plans code-complete + CI lanes green 2026-06-15; live-smoke D-22 / RNDR-02/03/04 acceptance DEFERRED to Phase 24 — UtinniCore's hardcoded RVAs crash on the from-source D3D11 client until it advertises its entry points)
 - [x] **Phase 20: Terrain `.trn` Codec + Verbs + MCP** — decode→navigable layer tree, typed tags, scalar-leaf edit/save, verbs-first (FEATURE / critical path; research-phase) (completed 2026-06-16)
-- [x] **Phase 21: Terrain TJT SubPanel (+ best-effort live preview)** — consumes the Phase 20 codec; live regen-on-save rides the seam, degrades honestly (FEATURE) (completed 2026-06-16)
+- [x] **Phase 21: Terrain TJT SubPanel (+ best-effort live preview)** — consumes the Phase 20 codec; live regen-on-save rides the seam, degrades honestly (FEATURE)
+ (completed 2026-06-16)
 - [ ] **Phase 22: ClientEffect Editor** — command-list `.iff` codec + verbs + MCP + SubPanel (FEATURE; lowest risk)
 - [ ] **Phase 23: User-Definable IFF Chunk Templates** — schema-driven decode/encode + manage-from-UI (QUICK WIN, Backlog 999.2)
 - [ ] **Phase 24: Client Entry-Point Advertisement (`GetEngineHookPoints`)** — SWG-Source client advertises its ~198 engine entry points; UtinniCore consumes them (dual-path), retiring hardcoded RVAs on that client; unblocks the 18/19 live-smokes on D3D11 (FOUNDATION; promotes Backlog 999.7 advertisement half; gated on external swg-client-v2 readiness; research-phase)
@@ -158,7 +159,11 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 **Success Criteria** (what must be TRUE):
   1. A modder can open a ClientEffect `.iff`, view/edit its command list (CreateAppearance / PlaySound / CreateLight / CameraShake / ForceFeedback / …), and save byte-exact via the loose-override matrix — an `EffectsSubPanel` ships inside TJT (DEC-C4).
   2. ClientEffect decode/edit/save is exposed as golden-tested `utinni-cli` `effect-*` verbs (verbs-first per DEC-V2-VERBS-FIRST) + an MCP read tool, with reference-validation against the load order, validated across BOTH SWGEmu and Restoration fixtures (IFF no-pad, multi-chunk variants; raw-fallback never hard-abort).
-**Plans**: TBD
+**Plans**: 4 plans (3 waves)
+- [ ] 22-01-PLAN.md — CLEF codec (model/decoder + variable-length ClefFieldCodec) + 8 synthesized goldens + codec tests (Wave 0)
+- [ ] 22-02-PLAN.md — effect-* CLI verbs + decode-iff CLEF branch + MCP summarize_clienteffect + verb goldens
+- [ ] 22-03-PLAN.md — close folded terrain loose/-subdir todo (align apply-save-trn CLI half + test)
+- [ ] 22-04-PLAN.md — EffectsSubPanel + FormClientEffectEditor + ClientEffectSaveTargets (TJT, DEC-C4) + maintainer live smoke
 **UI hint**: yes
 
 ### Phase 23: User-Definable IFF Chunk Templates
