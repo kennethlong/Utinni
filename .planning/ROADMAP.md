@@ -162,7 +162,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 **Plans**: 4 plans (3 waves)
 - [x] 22-01-PLAN.md — CLEF codec (model/decoder + variable-length ClefFieldCodec, stableId contract, D-03 encode guard) + 9 goldens (8 synthesized + 1 hand-authored hex) + codec tests (Wave 1)
 - [ ] 22-02-PLAN.md — effect-* CLI verbs + decode-iff CLEF branch + MCP summarize_clienteffect + verb goldens
-- [ ] 22-03-PLAN.md — close folded terrain loose/-subdir todo (align apply-save-trn CLI half + test)
+- [x] 22-03-PLAN.md — close folded terrain loose/-subdir todo (align apply-save-trn CLI half + test)
 - [ ] 22-04-PLAN.md — EffectsSubPanel + FormClientEffectEditor + ClientEffectSaveTargets (TJT, DEC-C4) + maintainer live smoke
 **UI hint**: yes
 
@@ -220,7 +220,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 19. Dx11Backend + Detection + Resize | v2.1 | 3/3 | Complete    | 2026-06-16 |
 | 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 4/4 | Complete   | 2026-06-16 |
 | 21. Terrain TJT SubPanel | v2.1 | 7/7 | Complete    | 2026-06-17 |
-| 22. ClientEffect Editor | v2.1 | 1/4 | In Progress|  |
+| 22. ClientEffect Editor | v2.1 | 2/4 | In Progress|  |
 | 23. IFF Chunk Templates | v2.1 | 0/? | Not started | - |
 | 24. Client Entry-Point Advertisement | v2.1 | 0/? | Not started | - |
 
