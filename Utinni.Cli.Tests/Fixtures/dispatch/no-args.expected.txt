@@ -97,6 +97,17 @@ ERROR(S):
                         3D/IFF codec. Emits a JSON envelope with explicit
                         valid/hasRejectedRefs fields.
 
+  decode-effect         Decode a ClientEffect .iff (FORM CLEF) to a JSON
+                        command-list envelope (per-command stableId).
+
+  roundtrip-effect      Parse -> serialize -> re-parse a ClientEffect .iff (FORM
+                        CLEF); assert byte-exact identity on the whole file.
+
+  apply-save-effect     Apply ONE ClientEffect mutation (length-changing field
+                        edit XOR add XOR remove XOR reorder) to a loose-override
+                        .iff, verify structurally by mutation mode, then
+                        atomically commit under <root>/loose.
+
   help                  Display more information on a specific command.
 
   version               Display version information.
