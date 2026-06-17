@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: executing
-stopped_at: Phase 22 UI-SPEC approved
-last_updated: "2026-06-17T20:39:29.834Z"
-last_activity: 2026-06-17 -- Phase 22 planning complete
+stopped_at: Completed 22-01-PLAN.md
+last_updated: "2026-06-17T21:47:45.062Z"
+last_activity: 2026-06-17
 progress:
   total_phases: 17
   completed_phases: 5
   total_plans: 23
-  completed_plans: 19
-  percent: 83
+  completed_plans: 20
+  percent: 87
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 22 — ClientEffect Editor (command-list `.iff` codec + verbs + MCP + SubPanel)
+**Current focus:** Phase 22 — clienteffect-editor
 
 ## Current Position
 
-Phase: 22 (clienteffect-editor) — next-up
-Plan: Not started (`/gsd:discuss-phase 22` → `/gsd:plan-phase 22`)
+Phase: 22 (clienteffect-editor) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-06-17 -- Phase 22 planning complete
+Last activity: 2026-06-17
 
 > Note: `gsd-sdk query phase.complete 21` set next_phase to 999.2 (the legacy backlog id for what is now Phase 23); hand-corrected to Phase 22 here per the documented phase.complete next-phase bug.
 
@@ -227,6 +227,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 21 P05 | 14min | 3 tasks | 4 files |
 | Phase 21 P07 | ~12min | 2 tasks | 3 files |
 | Phase 21 P06 | ~22min | 2 tasks | 3 files |
+| Phase 22 P01 | ~40min | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -301,6 +302,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: 21-03: TerrainSubPanel registered via the existing SubPanelContainer(Controls) array; GetSubPanels() stays null (MEF SPI not widened — CON-M-01/02, STAB-04)
 - [Phase ?]: 21-07: exposed CollapsiblePanel.WrappedSubPanel accessor (constructor-held SubPanel) instead of eager Controls realization — closes R3 collapsed-section terrain hand-off without altering the lazy-realize layout contract.
 - [Phase ?]: 21-06 R2: terrain loose overrides now land under <root>/loose/<logical> via the same two-step LooseOverridePath composition every other editor uses; PredictOverridePath aligned; [TerrainEditor] looseOverrideDir ini key defaults to 'loose'.
+- [Phase ?]: Phase 22 CLEF codec: cloned Particle three-layer stack; ClefFieldCodec is the one new variable-length asset; StableId reuses DeriveStableId verbatim (REVIEWS #1)
 
 ### Pending Todos
 
@@ -358,9 +360,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-17T17:10:11.438Z
-Stopped at: Phase 22 UI-SPEC approved
-Resume file: .planning/phases/22-clienteffect-editor/22-UI-SPEC.md
+Last session: 2026-06-17T21:47:45.025Z
+Stopped at: Completed 22-01-PLAN.md
+Resume file: None
 
 ## Ingest Provenance
 
