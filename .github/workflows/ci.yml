@@ -267,6 +267,21 @@ jobs:
         run: msbuild Utinni.sln /m /restore /p:Configuration=Release /p:Platform=x86 /p:RestorePackagesConfig=true
         # Fires CON-T-01 PostBuildEvent on UtinniCore (xcopy data/ + UtinniCoreDotNetGen.exe). STAB-04 preservation: invoke the chain; do not refactor.
 
+      - name: Regenerate CppSharp bridge for the ABI surface gate (CPPS-04a)
+        shell: powershell
+        run: |
+          # The UtinniCore PostBuildEvent already runs UtinniCoreDotNetGen.exe, but under the parallel (/m)
+          # build the generator exe is not guaranteed to be built before UtinniCore's post-build fires, so
+          # Generated/UtinniCore.cs can stay at its committed (reduced) surface — and AbiSurfaceTests, which
+          # reads that file from the source tree, then trips against the blessed baseline. Run the generator
+          # EXPLICITLY here so the test reads the full freshly-regenerated surface. Idempotent; the file is
+          # never committed (the .clang-format / regen rules keep it out of git).
+          $gen = "UtinniCoreDotNetGen\bin\Release\UtinniCoreDotNetGen.exe"
+          if (-not (Test-Path $gen)) { throw "Generator not found at $gen — the Build solution step should have produced it." }
+          & $gen "$env:GITHUB_WORKSPACE\"
+          if ($LASTEXITCODE -ne 0) { throw "UtinniCoreDotNetGen failed with exit $LASTEXITCODE" }
+          Write-Host "Bridge regenerated; AbiSurfaceTests will read the full surface."
+
       - name: Build tools solution (Debug|Win32) — AUTH-01 hard gate
         shell: powershell
         run: msbuild tools\Utinni.Tools.sln /m /p:Configuration=Debug /p:Platform=Win32
