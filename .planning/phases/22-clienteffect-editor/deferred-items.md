@@ -24,7 +24,20 @@ boundary: only auto-fix issues directly caused by the current task's changes).
   not intentionally change) and requires the lockstep TJT/native rebuild the Phase 17 gate documents.
 - **Disposition:** deferred — belongs to the ABI-gate / generator-run harness concern, not the
   ClientEffect editor. All ClientEffect codec + in-proc save-parity tests are green (53/53); the rest
-  of the UtinniCoreDotNet.Tests suite is green (837/838 — the single failure is this item).
+  of the UtinniCoreDotNet.Tests suite is green (the single failure is this item).
+- **CI-confirmed 2026-06-20 (run 27873206610):** with the self-hosted runner back online, the net472
+  lane ran for the first time in days and reproduced this exactly — **856 tests, 855 passed, 1 failed**,
+  the sole failure being `AbiSurfaceTests.GeneratedSurface_MatchesBlessedBaseline_IgnoringReorderChurn`.
+  The `EffectHandoffPolicy` tests (18) and the whole rest of the suite passed; the solution + tools built
+  clean. So this is the ONLY thing keeping master CI red, and it is NOT a 22-04 regression (22-04 added a
+  pure managed class + a test; zero bridge surface). Do NOT re-bless (would freeze the reduced surface).
+- **Next-session task (get master green):** make the CI `Build solution` step RUN `UtinniCoreDotNetGen.exe`
+  (the post-build gen) so `Generated/UtinniCore.cs` is regenerated to its full surface before the ABI test
+  reads it — OR exclude the ABI test from CI until the gen-step is wired. Root cause: an incremental
+  `msbuild /t:Build` skips the post-build gen, so the test reads the committed/reduced Generated file
+  instead of the freshly-generated full surface the blessed baseline was frozen from
+  (`[[project_phase17_cppsharp_v145_hardening]]`). This blocks ALL master CI now that the runner is online,
+  so it is the priority follow-up.
 
 ### Form-internal regression tests need a UtinniPlugins test project + CI — follow-up
 
