@@ -67,6 +67,7 @@ public sealed class RoundTripTests : IAsyncLifetime
     private static readonly string[] ExpectedTools =
     {
         "read_tre", "inspect_iff", "decode_iff", "summarize_particle", "summarize_terrain",
+        "summarize_clienteffect",
         "list_world_objects", "get_template_schema",
         "save_iff", "save_datatable", "save_stringtable", "save_object_template",
         "repack_tre", "roundtrip_check"
