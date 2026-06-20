@@ -270,16 +270,24 @@ jobs:
       - name: Regenerate CppSharp bridge for the ABI surface gate (CPPS-04a)
         shell: powershell
         run: |
-          # The UtinniCore PostBuildEvent already runs UtinniCoreDotNetGen.exe, but under the parallel (/m)
-          # build the generator exe is not guaranteed to be built before UtinniCore's post-build fires, so
-          # Generated/UtinniCore.cs can stay at its committed (reduced) surface — and AbiSurfaceTests, which
-          # reads that file from the source tree, then trips against the blessed baseline. Run the generator
-          # EXPLICITLY here so the test reads the full freshly-regenerated surface. Idempotent; the file is
-          # never committed (the .clang-format / regen rules keep it out of git).
+          # Why this exists: AbiSurfaceTests reads UtinniCoreDotNet/Generated/UtinniCore.cs from the source
+          # tree, but the committed file is the reduced surface; the full surface only exists after the
+          # generator runs. The UtinniCore PostBuildEvent is meant to run it, but the generator is an Any-CPU
+          # C# exe and the full `msbuild Utinni.sln /p:Platform=x86` build LEAKS the global Platform=x86 into
+          # it, misplacing/skipping its output — so the regen never lands in CI and the test trips on the
+          # (reduced) committed file.
+          #
+          # Fix: build the generator via the SOLUTION TARGET (which respects the .sln Release|x86 ->
+          # Release|Any CPU map AND sets $(SolutionDir) so the generator's own CppSharp-lib post-build works),
+          # landing it reliably at bin\Release\, then run it so the test reads the full freshly-regenerated
+          # surface. Verified locally: solution-target build -> bin\Release\UtinniCoreDotNetGen.exe -> regen
+          # grows Generated/UtinniCore.cs by ~15 KB to the blessed surface. The file is never committed.
+          msbuild Utinni.sln /t:UtinniCoreDotNetGen /p:Configuration=Release /p:Platform=x86 /nologo /v:minimal
+          if ($LASTEXITCODE -ne 0) { throw "UtinniCoreDotNetGen build (solution target) failed ($LASTEXITCODE)" }
           $gen = "UtinniCoreDotNetGen\bin\Release\UtinniCoreDotNetGen.exe"
-          if (-not (Test-Path $gen)) { throw "Generator not found at $gen — the Build solution step should have produced it." }
+          if (-not (Test-Path $gen)) { throw "Generator not found at $gen after the solution-target build." }
           & $gen "$env:GITHUB_WORKSPACE\"
-          if ($LASTEXITCODE -ne 0) { throw "UtinniCoreDotNetGen failed with exit $LASTEXITCODE" }
+          if ($LASTEXITCODE -ne 0) { throw "UtinniCoreDotNetGen run failed ($LASTEXITCODE)" }
           Write-Host "Bridge regenerated; AbiSurfaceTests will read the full surface."
 
       - name: Build tools solution (Debug|Win32) — AUTH-01 hard gate
