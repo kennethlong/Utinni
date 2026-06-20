@@ -62,6 +62,21 @@ runbook is [`../../AGENTS.md`](../../AGENTS.md); Claude also keeps fuller per-in
   starving `Top`/`Bottom` siblings. Keep Fill at front (add first / `BringToFront`); for multi-section
   panes prefer nested `SplitContainer`s (set `Size` before `SplitterDistance`).
   (`memory:feedback_winforms_dockfill_zorder`)
+- **A `Dock.Fill` `SplitContainer` ignores an explicit `Size` while unparented — defer `SplitterDistance`
+  to `OnShown`.** Setting `Size` on a `Dock.Fill` split before it has a parent/handle does NOT stick (the
+  layout engine owns its bounds), so its width stays at the ~150px default and any `SplitterDistance`
+  (or a `Panel1MinSize` wider than that default) is out of range → the setter throws. In a guarded
+  build (try/catch around content construction) this silently drops the editor to its failure surface —
+  it looks like a "blank window". Fix: build the split with no min-sizes / no `SplitterDistance`, then in
+  `OnShown` (real client width) set `SplitterDistance` FIRST (min-sizes still the 25px default), clamp it
+  into `[Panel1MinSize, Width − Panel2MinSize − SplitterWidth]`, THEN tighten the min-sizes. This
+  supersedes the "just set `Size` before `SplitterDistance`" advice above for the Fill case. Found in the
+  22-04 ClientEffect-editor live smoke; a process-isolated harness (`new Form…(null)` → assert
+  `Controls.Count`) reproduced it in seconds where the live inject only showed "blank". (Phase 22-04)
+- **A WinForms form's `Shown` event may not fire under `Application.Run` headless.** For a borderless
+  custom-painted singleton, driving it from a harness via `Application.Run` + a `Shown` handler can hang
+  with the handler never invoked. Use `form.Show()` + a few `Application.DoEvents()` pumps, then drive it
+  synchronously on the STA thread. (Phase 22-04 interactive harness)
 - **Locking around event `+=`/`-=` must wrap the USE window too.** Narrow add/remove-only locking still
   lets two threads run with both handlers installed. (`memory:feedback_event_handler_lock_scope`)
 
