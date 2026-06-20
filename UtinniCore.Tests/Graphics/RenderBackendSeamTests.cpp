@@ -52,16 +52,52 @@ struct MockBackend final : render_backend::IRenderBackend
     int stageSetCalls = 0;
     int lastStageSet = -1;
 
-    void newFrame() override { ++newFrameCalls; }
-    void renderDrawData(ImDrawData*) override { ++renderDrawCalls; }
-    void onPreResize() override { ++preResizeCalls; }
-    void onPostResize() override { ++postResizeCalls; }
-    int renderTargetWidth() override { ++rtwCalls; return 1920; }
-    int renderTargetHeight() override { ++rthCalls; return 1080; }
-    ImTextureID sceneDepthTexture() override { ++depthCalls; return (ImTextureID)0; }
-    ImTextureID sceneColorTexture() override { ++colorCalls; return (ImTextureID)0; }
-    int sceneDepthStage() override { ++stageGetCalls; return 7; }
-    void setSceneDepthStage(int stage) override { ++stageSetCalls; lastStageSet = stage; }
+    void newFrame() override
+    {
+        ++newFrameCalls;
+    }
+    void renderDrawData(ImDrawData*) override
+    {
+        ++renderDrawCalls;
+    }
+    void onPreResize() override
+    {
+        ++preResizeCalls;
+    }
+    void onPostResize() override
+    {
+        ++postResizeCalls;
+    }
+    int renderTargetWidth() override
+    {
+        ++rtwCalls;
+        return 1920;
+    }
+    int renderTargetHeight() override
+    {
+        ++rthCalls;
+        return 1080;
+    }
+    ImTextureID sceneDepthTexture() override
+    {
+        ++depthCalls;
+        return (ImTextureID)0;
+    }
+    ImTextureID sceneColorTexture() override
+    {
+        ++colorCalls;
+        return (ImTextureID)0;
+    }
+    int sceneDepthStage() override
+    {
+        ++stageGetCalls;
+        return 7;
+    }
+    void setSceneDepthStage(int stage) override
+    {
+        ++stageSetCalls;
+        lastStageSet = stage;
+    }
 };
 } // namespace
 

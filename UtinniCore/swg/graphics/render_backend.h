@@ -59,8 +59,8 @@ public:
     virtual ~IRenderBackend() = default;
 
     // Per-frame hot path (plain virtual call -- zero heap; see render_backend.cpp).
-    virtual void newFrame() = 0;                            // -> the backend's new-frame call
-    virtual void renderDrawData(ImDrawData* drawData) = 0;  // -> the backend's draw-data submit
+    virtual void newFrame() = 0;                           // -> the backend's new-frame call
+    virtual void renderDrawData(ImDrawData* drawData) = 0; // -> the backend's draw-data submit
 
     // Resize hooks (D-03): honest no-ops in Dx9Backend. They exist only so
     // Phase 19's Dx11 ResizeBuffers has a home; D3D9 NEVER Resets.
@@ -163,7 +163,7 @@ private:
 // get() is NULLABLE: it returns nullptr until setup() installs the backend, so
 // Plan 02 must guard every seam call site.
 IRenderBackend* get();
-void set(IRenderBackend* backend);   // setup() installs the Dx9 singleton; the D-07 test installs a mock
-Dx9Backend* dx9Singleton();          // address of the static-storage Dx9Backend (never heap-allocated)
-Dx11Backend* dx11Singleton();        // address of the static-storage Dx11Backend (Phase 19; impl in render_backend_dx11.cpp)
+void set(IRenderBackend* backend); // setup() installs the Dx9 singleton; the D-07 test installs a mock
+Dx9Backend* dx9Singleton();        // address of the static-storage Dx9Backend (never heap-allocated)
+Dx11Backend* dx11Singleton();      // address of the static-storage Dx11Backend (Phase 19; impl in render_backend_dx11.cpp)
 } // namespace render_backend

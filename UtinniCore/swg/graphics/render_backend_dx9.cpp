@@ -34,8 +34,8 @@
 #include "render_backend.h"
 #include <d3d9.h>
 #include <imgui_impl_dx9.h>
-#include "directx9.h"   // directX:: free functions (device/depth/etc.)
-#include "graphics.h"   // utinni::Graphics::getCurrentRenderTargetWidth/Height
+#include "directx9.h" // directX:: free functions (device/depth/etc.)
+#include "graphics.h" // utinni::Graphics::getCurrentRenderTargetWidth/Height
 #include <cassert>
 
 namespace render_backend

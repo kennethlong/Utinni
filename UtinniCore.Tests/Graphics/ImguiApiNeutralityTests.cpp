@@ -63,10 +63,10 @@ const std::vector<std::string>& dx9Tokens()
         "#include <d3d9.h>",
         "#include \"d3d9.h\"",
         "#include <imgui_impl_dx9.h>",
-        "imgui_impl_dx9",                 // the DX9 imgui backend header/symbol form
+        "imgui_impl_dx9", // the DX9 imgui backend header/symbol form
         "#include \"swg/graphics/directx9.h\"",
         "#include <swg/graphics/directx9.h>",
-        "directx9.h",                     // any include form of the DX9 tier header
+        "directx9.h", // any include form of the DX9 tier header
         "IDirect3DDevice9",
         "LPDIRECT3DDEVICE9",
         "LPDIRECT3D",
@@ -81,8 +81,8 @@ const std::vector<std::string>& dx9Tokens()
         "IDirect3DSurface9",
         "D3DPRESENT_PARAMETERS",
         "D3DFORMAT",
-        "ImGui_ImplDX9_",                 // prefix: _Init/_NewFrame/_RenderDrawData/_Invalidate/_Create
-        "directX::",                      // the DX9 namespace reach-in (getDepthTexture/getDevice)
+        "ImGui_ImplDX9_", // prefix: _Init/_NewFrame/_RenderDrawData/_Invalidate/_Create
+        "directX::",      // the DX9 namespace reach-in (getDepthTexture/getDevice)
     };
     return tokens;
 }
@@ -103,10 +103,10 @@ const std::vector<std::string>& dx11Tokens()
         "#include <dxgi1_2.h>",
         "#include <dxgi.h>",
         "#include <imgui_impl_dx11.h>",
-        "imgui_impl_dx11",                // the DX11 imgui backend header/symbol form
-        "directx11.h",                    // any include form of the DX11 tier header
-        "directX11::",                    // the DX11 namespace reach-in (tryInstall/getDevice)
-        "ID3D11Device",                   // also matches ID3D11DeviceContext
+        "imgui_impl_dx11", // the DX11 imgui backend header/symbol form
+        "directx11.h",     // any include form of the DX11 tier header
+        "directX11::",     // the DX11 namespace reach-in (tryInstall/getDevice)
+        "ID3D11Device",    // also matches ID3D11DeviceContext
         "ID3D11DeviceContext",
         "ID3D11RenderTargetView",
         "ID3D11ShaderResourceView",

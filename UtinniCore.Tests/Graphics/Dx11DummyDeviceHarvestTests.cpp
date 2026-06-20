@@ -92,11 +92,11 @@ TEST_CASE("RNDR-02 WARP swapchain harvest pins Present=8 / ResizeBuffers=13 + no
     // WARP is the software rasterizer -- available without a GPU, the right driver
     // for an offline CI harvest. If it still fails (A1), SKIP with a log.
     HRESULT hr = D3D11CreateDeviceAndSwapChain(
-        nullptr,                    // default adapter (ignored for WARP)
+        nullptr, // default adapter (ignored for WARP)
         D3D_DRIVER_TYPE_WARP,
-        nullptr,                    // no software module
-        0,                          // no flags
-        nullptr, 0,                 // default feature levels
+        nullptr,    // no software module
+        0,          // no flags
+        nullptr, 0, // default feature levels
         D3D11_SDK_VERSION,
         &scd,
         &swapChain,
@@ -106,9 +106,12 @@ TEST_CASE("RNDR-02 WARP swapchain harvest pins Present=8 / ResizeBuffers=13 + no
 
     if (FAILED(hr) || swapChain == nullptr || device == nullptr)
     {
-        if (swapChain) swapChain->Release();
-        if (device) device->Release();
-        if (context) context->Release();
+        if (swapChain)
+            swapChain->Release();
+        if (device)
+            device->Release();
+        if (context)
+            context->Release();
         DestroyWindow(hwnd);
         char buf[96];
         std::snprintf(buf, sizeof(buf), "Dx11 harvest: WARP device/swapchain create failed (hr=0x%08lX) -- SKIP", (unsigned long)hr);
@@ -120,8 +123,8 @@ TEST_CASE("RNDR-02 WARP swapchain harvest pins Present=8 / ResizeBuffers=13 + no
     // non-null code addresses (the DXGI port of directx9.cpp:542 `*(swgptr**)pDevice`).
     void** vtbl = *reinterpret_cast<void***>(swapChain);
     REQUIRE(vtbl != nullptr);
-    REQUIRE(vtbl[kDxgiPresentIndex] != nullptr);        // IDXGISwapChain::Present
-    REQUIRE(vtbl[kDxgiResizeBuffersIndex] != nullptr);  // IDXGISwapChain::ResizeBuffers
+    REQUIRE(vtbl[kDxgiPresentIndex] != nullptr);       // IDXGISwapChain::Present
+    REQUIRE(vtbl[kDxgiResizeBuffersIndex] != nullptr); // IDXGISwapChain::ResizeBuffers
 
     // Cross-check the snapshotted Present address equals the SDK pointer-to-member
     // target is not portable across compilers; instead confirm the two slots are
