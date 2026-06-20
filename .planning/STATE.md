@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: executing
-stopped_at: Completed 22-01-PLAN.md
-last_updated: "2026-06-17T22:51:32.457Z"
-last_activity: 2026-06-17
+status: ready_to_plan
+stopped_at: Completed 22-04-PLAN.md
+last_updated: "2026-06-20T00:00:00.000Z"
+last_activity: 2026-06-20
 progress:
   total_phases: 17
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 23
-  completed_plans: 22
-  percent: 96
+  completed_plans: 23
+  percent: 35
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 22 — clienteffect-editor
+**Current focus:** Phase 23 — user-definable-iff-chunk-templates (Phase 22 complete 2026-06-20)
 
 ## Current Position
 
-Phase: 22 (clienteffect-editor) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
-Last activity: 2026-06-17
+Phase: 23
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-06-20
 
-> Note: `gsd-sdk query phase.complete 21` set next_phase to 999.2 (the legacy backlog id for what is now Phase 23); hand-corrected to Phase 22 here per the documented phase.complete next-phase bug.
+> Note: `gsd-sdk query phase.complete 22` again set next_phase to `999.2` (the legacy backlog id for what is now Phase 23); hand-corrected to Phase 23 here per the documented phase.complete next-phase bug (same correction made at the 21→22 transition).
 
 **v2.1 milestone (Phases 17–24) — foundation-before-features:**
 
@@ -129,7 +129,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 
 **Velocity:**
 
-- Total plans completed: 57
+- Total plans completed: 61
 - Average duration: —
 - Total execution time: —
 
@@ -150,6 +150,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | 19 | 3 | - | - |
 | 20 | 4 | - | - |
 | 21 | 7 | - | - |
+| 22 | 4 | - | - |
 
 **Recent Trend:**
 

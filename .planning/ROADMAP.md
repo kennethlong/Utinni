@@ -68,7 +68,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 - [x] **Phase 20: Terrain `.trn` Codec + Verbs + MCP** — decode→navigable layer tree, typed tags, scalar-leaf edit/save, verbs-first (FEATURE / critical path; research-phase) (completed 2026-06-16)
 - [x] **Phase 21: Terrain TJT SubPanel (+ best-effort live preview)** — consumes the Phase 20 codec; live regen-on-save rides the seam, degrades honestly (FEATURE)
  (completed 2026-06-16)
-- [ ] **Phase 22: ClientEffect Editor** — command-list `.iff` codec + verbs + MCP + SubPanel (FEATURE; lowest risk)
+- [x] **Phase 22: ClientEffect Editor** — command-list `.iff` codec + verbs + MCP + SubPanel (FEATURE; lowest risk) (completed 2026-06-20)
 - [ ] **Phase 23: User-Definable IFF Chunk Templates** — schema-driven decode/encode + manage-from-UI (QUICK WIN, Backlog 999.2)
 - [ ] **Phase 24: Client Entry-Point Advertisement (`GetEngineHookPoints`)** — SWG-Source client advertises its ~198 engine entry points; UtinniCore consumes them (dual-path), retiring hardcoded RVAs on that client; unblocks the 18/19 live-smokes on D3D11 (FOUNDATION; promotes Backlog 999.7 advertisement half; gated on external swg-client-v2 readiness; research-phase)
 
@@ -163,7 +163,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 - [x] 22-01-PLAN.md — CLEF codec (model/decoder + variable-length ClefFieldCodec, stableId contract, D-03 encode guard) + 9 goldens (8 synthesized + 1 hand-authored hex) + codec tests (Wave 1)
 - [x] 22-02-PLAN.md — effect-* CLI verbs + decode-iff CLEF branch + MCP summarize_clienteffect + verb goldens
 - [x] 22-03-PLAN.md — close folded terrain loose/-subdir todo (align apply-save-trn CLI half + test)
-- [ ] 22-04-PLAN.md — EffectsSubPanel + FormClientEffectEditor + ClientEffectSaveTargets (TJT, DEC-C4) + maintainer live smoke
+- [x] 22-04-PLAN.md — EffectsSubPanel + FormClientEffectEditor + ClientEffectSaveTargets (TJT, DEC-C4) + maintainer live smoke
 **UI hint**: yes
 
 ### Phase 23: User-Definable IFF Chunk Templates
@@ -220,7 +220,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 19. Dx11Backend + Detection + Resize | v2.1 | 3/3 | Complete    | 2026-06-16 |
 | 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 4/4 | Complete   | 2026-06-16 |
 | 21. Terrain TJT SubPanel | v2.1 | 7/7 | Complete    | 2026-06-17 |
-| 22. ClientEffect Editor | v2.1 | 3/4 | In Progress|  |
+| 22. ClientEffect Editor | v2.1 | 4/4 | Complete    | 2026-06-20 |
 | 23. IFF Chunk Templates | v2.1 | 0/? | Not started | - |
 | 24. Client Entry-Point Advertisement | v2.1 | 0/? | Not started | - |
 
