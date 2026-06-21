@@ -230,37 +230,8 @@ namespace UtinniCoreDotNet.Formats.Template
         public Dictionary<string, object> Values { get; set; }
     }
 
-    /// <summary>
-    /// FROZEN entry-point surface (Wave 0): the schema-driven decode/encode the test files call. Bodies
-    /// are <see cref="NotImplementedException"/> stubs so the dependent test project COMPILES and runs
-    /// RED-via-Skip until Wave 1 supplies the engine. Do not implement logic here in Wave 0.
-    /// </summary>
-    public static class KernelCodec
-    {
-        /// <summary>
-        /// Decode a chunk payload against a template into a <see cref="DecodedTemplate"/> value carrier.
-        /// Wave 1 implements; the Wave-0 stub throws.
-        /// </summary>
-        public static DecodedTemplate Decode(TemplateModel template, byte[] payload)
-        {
-            throw new NotImplementedException("KernelCodec.Decode — Wave 1 (PROD-IFFT-01) implements; Wave-0 contract stub.");
-        }
-
-        /// <summary>
-        /// Encode a decoded value carrier back to a byte-exact chunk payload. Count-from-prior fields are
-        /// recomputed from the bound array element count (DEC-C3). Wave 1 implements; the Wave-0 stub throws.
-        /// </summary>
-        public static byte[] Encode(DecodedTemplate decoded)
-        {
-            throw new NotImplementedException("KernelCodec.Encode — Wave 1 (PROD-IFFT-01/02) implements; Wave-0 contract stub.");
-        }
-
-        /// <summary>
-        /// Report how exactly a template fits a payload (D-17.2). Wave 1/2 implements; the Wave-0 stub throws.
-        /// </summary>
-        public static FitReport Fit(TemplateModel template, byte[] payload)
-        {
-            throw new NotImplementedException("KernelCodec.Fit — Wave 1/2 (D-17.2) implements; Wave-0 contract stub.");
-        }
-    }
+    // KernelCodec (Decode/Encode) is implemented in KernelCodec.cs (Wave 1, plan 23-03); the FitReport
+    // PURE function (D-17.2) lives in FitReport.cs. The Wave-0 NotImplementedException stubs that formerly
+    // sat here were replaced by the real engine -- the frozen surface (the type + member NAMES the test
+    // files reference) is preserved, only the bodies moved into their own files.
 }
