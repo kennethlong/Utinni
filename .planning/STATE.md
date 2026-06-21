@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: ready_to_plan
-stopped_at: Completed 22-04-PLAN.md
-last_updated: "2026-06-20T00:00:00.000Z"
+status: planning
+stopped_at: Phase 23 context gathered
+last_updated: "2026-06-21T02:30:16.331Z"
 last_activity: 2026-06-20
 progress:
   total_phases: 17
   completed_phases: 6
   total_plans: 23
   completed_plans: 23
-  percent: 35
+  percent: 100
 ---
 
 # Project State
@@ -365,9 +365,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-17T22:51:03.258Z
-Stopped at: Completed 22-01-PLAN.md
-Resume file: None
+Last session: 2026-06-21T02:30:16.307Z
+Stopped at: Phase 23 context gathered
+Resume file: .planning/phases/23-user-definable-iff-chunk-templates/23-CONTEXT.md
 
 ## Ingest Provenance
 
