@@ -4,14 +4,14 @@ milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: executing
 stopped_at: Completed 23-03-PLAN.md
-last_updated: "2026-06-21T04:05:07.632Z"
+last_updated: "2026-06-21T04:17:58.071Z"
 last_activity: 2026-06-21
 progress:
   total_phases: 17
   completed_phases: 6
   total_plans: 31
-  completed_plans: 26
-  percent: 84
+  completed_plans: 27
+  percent: 87
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 ## Current Position
 
 Phase: 23 (user-definable-iff-chunk-templates) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Ready to execute
 Last activity: 2026-06-21
 
@@ -234,6 +234,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 23 P01 | 8min | 2 tasks | 6 files |
 | Phase 23 P02 | 6min | 2 tasks | 13 files |
 | Phase 23 P03 | 13min | 3 tasks | 9 files |
+| Phase 23 P04 | 8min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -317,6 +318,8 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: 23-03: byte-exactness lives entirely in the KernelCodec (D-08); presets are pure sugar and cannot introduce a parity bug
 - [Phase ?]: 23-03: D-10 count-from-prior encode AUTO-RECOMPUTES the count field from the bound array's current element count (DEC-C3 grow/shrink byte-exact)
 - [Phase ?]: 23-03: FitChecker.FitCheck is a pure (template,bytes)->FitReport fn; TypePlausibility is a standalone predicate lib (Tier-C substrate, D-17.2/.3)
+- [Phase ?]: 23-04: BuiltinRootForms is the single-source D-05 altitude built-in-root-FORM predicate
+- [Phase ?]: 23-04: template match key is a predicate over DeriveStableId; version-FORM awareness required even under tag-only widen (D-04)
 
 ### Pending Todos
 
@@ -374,7 +377,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-21T04:05:07.610Z
+Last session: 2026-06-21T04:17:37.147Z
 Stopped at: Completed 23-03-PLAN.md
 Resume file: None
 
