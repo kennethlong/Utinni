@@ -69,7 +69,8 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 - [x] **Phase 21: Terrain TJT SubPanel (+ best-effort live preview)** — consumes the Phase 20 codec; live regen-on-save rides the seam, degrades honestly (FEATURE)
  (completed 2026-06-16)
 - [x] **Phase 22: ClientEffect Editor** — command-list `.iff` codec + verbs + MCP + SubPanel (FEATURE; lowest risk) (completed 2026-06-20)
-- [x] **Phase 23: User-Definable IFF Chunk Templates** — schema-driven decode/encode + manage-from-UI (QUICK WIN, Backlog 999.2) (completed 2026-06-21)
+- [x] **Phase 23: User-Definable IFF Chunk Templates** — schema-driven decode/encode + manage-from-UI (QUICK WIN, Backlog 999.2)
+ (completed 2026-06-21)
 - [ ] **Phase 24: Client Entry-Point Advertisement (`GetEngineHookPoints`)** — SWG-Source client advertises its ~198 engine entry points; UtinniCore consumes them (dual-path), retiring hardcoded RVAs on that client; unblocks the 18/19 live-smokes on D3D11 (FOUNDATION; promotes Backlog 999.7 advertisement half; gated on external swg-client-v2 readiness; research-phase)
 
 ## Phase Details
@@ -194,7 +195,12 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
   2. The advertised contract is sourced in the swg-client-v2 build by compile-time symbol reference (`&fn`), versioned, and exported from the **exe** module; a coverage test asserts every UtinniCore-hooked `swg::*` endpoint (~198 across ~30 subsystems) has a populated pointer — zero missing.
   3. UtinniCore runs dual-path discovery: advertised contract on the SWG-Source client, hardcoded-RVA on SWGEmu (Pre-CU), auto-selected by detecting the export — no config toggle. The existing SWGEmu D3D9 live-smoke still passes unchanged (no regression to the working client).
   4. The Phase-19 DX11 overlay installs + renders on the advertised D3D11 client with the kickoff no longer gated on a hardcoded `graphics::install` address — closing the Phase 18 (D-08) and Phase 19 (D-22) live-smokes on `SwgClient_r.exe`.
-**Plans**: TBD (create via /gsd:plan-phase when swg-client-v2 is ready) — likely ~4: (1) contract struct/table design + exe-side export skeleton + coverage test in swg-client-v2; (2) UtinniCore consumer/resolver + dual-path selection + retire literals behind a `swg::endpoints` accessor; (3) decouple the DX11 kickoff from the SWGEmu install hook; (4) live-smoke acceptance (D-08 + D-22).
+**Plans**: 4 plans
+Plans:
+- [ ] 24-01-PLAN.md — Commit synced contract files + `swg::endpoints` resolver (testable dual-path resolve + X-macro subset assert + critical-path bindings) wired first in `utinni_init` + Wave-0 Catch2 units
+- [ ] 24-02-PLAN.md — Full-catalog binding (78 of 79 .inc names, minus the D-02 carve-out) + provider typedef verification + D-04 accessor-global read→call adaptation
+- [ ] 24-03-PLAN.md — EPA-03 DX11 kickoff decouple (D-05 Approach A: resolve `graphics::install`) + `directX::detour()` D3D11-safety gate
+- [ ] 24-04-PLAN.md — Maintainer live-smoke acceptance (3 blocking checkpoints: no crash / DX11 renders / SWGEmu unchanged; closes D-08 + D-22)
 **Design notes / open questions** (resolve in discuss/plan):
   - **Contract shape**: a single versioned struct of ~198 named pointers (explicit, greppable, but large + brittle) vs. a name→pointer table / `GetEngineEntryPoint(name)` lookup (data-driven, version-tolerant — a missing name degrades gracefully, self-documenting). Leaning table; settle in the spike.
   - **Single source of truth**: a generated header shared by both repos so the field/name list cannot drift between swg-client-v2's export and UtinniCore's consumer.
