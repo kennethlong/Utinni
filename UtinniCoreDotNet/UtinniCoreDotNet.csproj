@@ -12,6 +12,10 @@
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
+    <!-- 23-02: opt this classic-style project into NuGet PackageReference restore so the
+         Newtonsoft.Json <PackageReference> below resolves from the global package cache (the
+         project has no packages.config; PackageReference is the modern, lock-free restore style). -->
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <DebugSymbols>true</DebugSymbols>
@@ -45,6 +49,39 @@
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
+  <!-- 23-02: the template SCHEMA layer (TemplateJson) (de)serializes via Newtonsoft.Json — the
+       project's established JSON library (same 13.0.3 the Utinni.Cli verbs already pull). This adds
+       NO new package to the solution (threat T-23-02-SC: zero new packages); it references the
+       already-restored Newtonsoft.Json so the model layer can live in UtinniCoreDotNet next to the
+       other Formats/* codecs. -->
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+  <!-- 23-02: the shipped preset PACK (D-09 pinned byte layouts / D-14 teaching artifacts). They ship
+       next to the assembly so the schema layer can load the canonical preset set at runtime. -->
+  <ItemGroup>
+    <Content Include="Formats\Template\Presets\vector.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Formats\Template\Presets\quaternion.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Formats\Template\Presets\matrix.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Formats\Template\Presets\color.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Formats\Template\Presets\colorArgb32.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Formats\Template\Presets\colorArgbF.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Formats\Template\Presets\stringId.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
@@ -106,6 +143,8 @@
     <Compile Include="Formats\ClientEffect\MutableClientEffect.cs" />
     <Compile Include="Formats\ClientEffect\ClientEffectDocument.cs" />
     <Compile Include="Formats\Template\ITemplateContracts.cs" />
+    <Compile Include="Formats\Template\TemplateModel.cs" />
+    <Compile Include="Formats\Template\TemplateJson.cs" />
     <Compile Include="Formats\StringTable\StringTableParseException.cs" />
     <Compile Include="Formats\StringTable\StringTableEntry.cs" />
     <Compile Include="Formats\StringTable\StringTableDocument.cs" />

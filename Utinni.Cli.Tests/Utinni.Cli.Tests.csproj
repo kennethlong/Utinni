@@ -30,6 +30,13 @@
   <ItemGroup>
     <Content Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Goldens\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 23-02: link the shipped template preset pack into the test output under the same relative path
+         the runtime ships them (Formats/Template/Presets), so TemplatePresetTests can load them the
+         same way the product will. Content from the classic-style UtinniCoreDotNet ProjectReference does
+         not flow transitively to this SDK-style consumer, so mirror them explicitly here. -->
+    <Content Include="..\UtinniCoreDotNet\Formats\Template\Presets\*.json"
+             Link="Formats\Template\Presets\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" />
     <!-- methodDisplay=method so VSTest filter "Name~..." matches the short test-method name
          (the 22-VALIDATION filter scheme; without this "Name~" resolves to zero tests because xUnit's
          default DisplayName is the FQN). Must be copied next to the test dll for the runner to read it. -->
