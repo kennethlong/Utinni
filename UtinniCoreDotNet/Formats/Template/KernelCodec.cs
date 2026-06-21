@@ -73,6 +73,20 @@ namespace UtinniCoreDotNet.Formats.Template
         /// </summary>
         public static DecodedTemplate Decode(TemplateModel template, byte[] payload)
         {
+            int consumed;
+            int total;
+            return DecodeInternal(template, payload, out consumed, out total);
+        }
+
+        /// <summary>
+        /// Decode variant that also reports how many bytes of the payload the walk consumed and the total
+        /// payload length. Used by the pure <see cref="FitChecker.FitCheck"/> (D-17.2) to compute
+        /// consumed-exactly without re-walking the template; the public <see cref="Decode"/> hides the
+        /// out params. Same throw discipline as <see cref="Decode"/>.
+        /// </summary>
+        internal static DecodedTemplate DecodeInternal(TemplateModel template, byte[] payload,
+            out int bytesConsumed, out int bytesTotal)
+        {
             if (template == null) throw new TemplateException("Cannot decode against a null template.");
             if (template.Fields == null) throw new TemplateException("Template has no fields to decode.");
 
@@ -81,6 +95,8 @@ namespace UtinniCoreDotNet.Formats.Template
 
             DecodeFields(template.Fields, cursor, values);
 
+            bytesTotal = cursor.Length;
+            bytesConsumed = cursor.Length - cursor.Remaining;
             return new DecodedTemplate { Template = template, Values = values };
         }
 

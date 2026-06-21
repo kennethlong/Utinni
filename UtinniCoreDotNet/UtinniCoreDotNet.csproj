@@ -146,6 +146,8 @@
     <Compile Include="Formats\Template\TemplateModel.cs" />
     <Compile Include="Formats\Template\TemplateJson.cs" />
     <Compile Include="Formats\Template\KernelCodec.cs" />
+    <Compile Include="Formats\Template\FitReport.cs" />
+    <Compile Include="Formats\Template\TypePlausibility.cs" />
     <Compile Include="Formats\StringTable\StringTableParseException.cs" />
     <Compile Include="Formats\StringTable\StringTableEntry.cs" />
     <Compile Include="Formats\StringTable\StringTableDocument.cs" />
