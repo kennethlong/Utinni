@@ -110,3 +110,75 @@ UTINNI_HOOKPOINT(consoleHelper, sendInput)
 
 // -- commandParser (sharedCommandParser; CommandParser.h) --------------------
 UTINNI_HOOKPOINT(commandParser, addSubCommand)
+
+// ======================================================================
+// 37-03 full-catalog required set. Extends the 37-02 MVP. Every name here
+// has a source-confirmed, signature-checked row in utinni_advertise.cpp.
+// Symbols that the plan named but that do NOT exist in this tree (or are
+// virtual / inline / multiple-inheritance-inflated) are OMITTED here and
+// documented in the .cpp + 37-03-SUMMARY (graceful degradation, EPA-04:
+// "a wrong & is worse than a missing row"). Re-copied verbatim into
+// D:/Code/Utinni at wave close.
+// ======================================================================
+
+// -- extent (sharedCollision; BaseExtent.h) ---------------------------------
+// §8 #2: the NON-virtual BaseExtent::intersect overload (collapses the
+// UtinniCore retail/SWGEmu RVA split). Extent::intersect does NOT exist;
+// Extent::realIntersect is protected-virtual (skipped).
+UTINNI_HOOKPOINT(extent,        intersect)
+
+// -- object (sharedObject; Object.h) -- NON-VIRTUAL getters/setters only -----
+// (addToWorld/removeFromWorld/setParentCell are VIRTUAL -> skipped in .cpp;
+//  move_o is INLINE Object.h:1216 -> OMITTED; no plain getType/move symbol.)
+UTINNI_HOOKPOINT(object,        getObjectType)
+UTINNI_HOOKPOINT(object,        getObjectTemplate)
+UTINNI_HOOKPOINT(object,        getObjectTemplateName)
+UTINNI_HOOKPOINT(object,        getNetworkId)
+UTINNI_HOOKPOINT(object,        getParentCell)
+UTINNI_HOOKPOINT(object,        getTransform_o2w)
+UTINNI_HOOKPOINT(object,        setTransform_o2w)
+UTINNI_HOOKPOINT(object,        getPosition_w)
+UTINNI_HOOKPOINT(object,        setPosition_w)
+UTINNI_HOOKPOINT(object,        getAppearance)
+UTINNI_HOOKPOINT(object,        setAppearance)
+UTINNI_HOOKPOINT(object,        move_p)
+
+// -- objectTemplate (sharedObject/sharedGame) -------------------------------
+// Base ObjectTemplate is virtual-heavy; the filename getters live on the
+// NON-virtual SharedObjectTemplate (single-inheritance chain -> clean PMF).
+UTINNI_HOOKPOINT(objectTemplate, createObject)
+UTINNI_HOOKPOINT(objectTemplate, getAppearanceFilename)
+UTINNI_HOOKPOINT(objectTemplate, getPortalLayoutFilename)
+UTINNI_HOOKPOINT(objectTemplate, getClientDataFile)
+
+// -- worldSnapshot (clientGame; WorldSnapshot.h) -- ALL STATIC in this tree --
+// (the plan's instance methods openFile/saveFile/getNodeByIndex/... are the
+//  Utinni OFFLINE WorldSnapshot, not our runtime scene loader; OMITTED.)
+UTINNI_HOOKPOINT(worldSnapshot, load)
+UTINNI_HOOKPOINT(worldSnapshot, addObject)
+UTINNI_HOOKPOINT(worldSnapshot, removeObject)
+UTINNI_HOOKPOINT(worldSnapshot, moveObject)
+UTINNI_HOOKPOINT(worldSnapshot, getLoadingPercent)
+UTINNI_HOOKPOINT(worldSnapshot, detailLevelChanged)
+
+// -- camera (clientGraphics; Camera.h) -- NON-VIRTUAL setters (non-inline) ---
+UTINNI_HOOKPOINT(camera,        setViewport)
+UTINNI_HOOKPOINT(camera,        setNearPlane)
+UTINNI_HOOKPOINT(camera,        setFarPlane)
+UTINNI_HOOKPOINT(camera,        setHorizontalFieldOfView)
+UTINNI_HOOKPOINT(camera,        reverseProjectInViewportSpace)
+
+// -- misc statics (memory/audio/file/report) --------------------------------
+UTINNI_HOOKPOINT(memory,        allocate)
+UTINNI_HOOKPOINT(memory,        free)
+UTINNI_HOOKPOINT(audio,         setMasterVolume)
+UTINNI_HOOKPOINT(audio,         getMasterVolume)
+UTINNI_HOOKPOINT(treeFile,      open)
+UTINNI_HOOKPOINT(report,        print)
+
+// -- commandParser ctors (free-function __thiscall thunks) ------------------
+UTINNI_HOOKPOINT(commandParser, ctor1)
+UTINNI_HOOKPOINT(commandParser, ctor2)
+
+// -- globals (§8 #3) -- accessor-style; raw &g where genuinely accessible ----
+UTINNI_HOOKPOINT(graphics,      g_frameNumber)
