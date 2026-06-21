@@ -63,9 +63,15 @@ namespace UtinniCoreDotNet.Formats.Template
 
                 BuildPlausibility(template, decoded, perField);
 
+                // WR-05: a template with no fields decodes to consumed == total == 0 against an empty
+                // payload, which would report a vacuous green "fits". A zero-field template defines no
+                // layout, so it is NEVER a real fit -- treat it as does-not-fit regardless of byte counts
+                // so the live indicator (and Tier-C scoring) cannot be fooled by an empty layout.
+                bool hasFields = template != null && template.Fields != null && template.Fields.Count > 0;
+
                 return new FitReport
                 {
-                    ConsumedExactly = consumed == total,
+                    ConsumedExactly = hasFields && consumed == total,
                     BytesConsumed = consumed,
                     BytesTotal = total,
                     PerField = perField

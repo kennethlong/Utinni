@@ -73,6 +73,29 @@ namespace Utinni.Cli.Tests.Template
             Assert.True(report.BytesTotal - report.BytesConsumed > 0); // residual count
         }
 
+        // ── WR-05: a fields-empty template is NEVER a vacuous green fit — filter "Template&Fit" ──
+
+        [Fact]
+        [Trait("Category", "TemplateFit")]
+        public void Template_Fit_ZeroFieldTemplateOverEmptyPayload_DoesNotReportConsumedExactly()
+        {
+            // A template that defines NO fields decodes to consumed == total == 0 over an empty payload.
+            // That is a vacuous "fit" that would fool the live indicator: a zero-field template defines no
+            // layout, so ConsumedExactly must be false.
+            var template = new TemplateModel
+            {
+                Version = 1,
+                MatchLeafTag = "EMPT",
+                Fields = new List<FieldRecord>()
+            };
+
+            FitReport report = FitChecker.FitCheck(template, new byte[0]);
+
+            Assert.False(report.ConsumedExactly, "a zero-field template must not report a vacuous green fit");
+            Assert.Equal(0, report.BytesConsumed);
+            Assert.Equal(0, report.BytesTotal);
+        }
+
         // ── TypePlausibility predicates (D-17.3) — filter "Template&Plausibility" ──
 
         [Fact]
