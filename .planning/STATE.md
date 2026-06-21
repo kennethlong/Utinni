@@ -4,14 +4,14 @@ milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: executing
 stopped_at: Completed 23-07-PLAN.md
-last_updated: "2026-06-21T04:51:06.039Z"
+last_updated: "2026-06-21T04:55:37.004Z"
 last_activity: 2026-06-21
 progress:
   total_phases: 17
   completed_phases: 6
   total_plans: 31
-  completed_plans: 29
-  percent: 94
+  completed_plans: 30
+  percent: 97
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 ## Current Position
 
 Phase: 23 (user-definable-iff-chunk-templates) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Status: Ready to execute
 Last activity: 2026-06-21
 
@@ -237,6 +237,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 23 P04 | 8min | 2 tasks | 6 files |
 | Phase 23 P05 | 13min | 2 tasks | 14 files |
 | Phase 23 P07 | 10min | 2 tasks | 5 files |
+| Phase 23 P06 | 4min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -324,6 +325,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: 23-04: template match key is a predicate over DeriveStableId; version-FORM awareness required even under tag-only widen (D-04)
 - [Phase ?]: 23-07: Tier-B hex-driven template builder ships as a 4th FormIffEditor leaf-pane mode (DEC-C4); the pane is UI-only (D-16) and calls the headless 23-03/04 engine — owns no format logic
 - [Phase ?]: 23-07: btnTemplateMode added LAST in the Dock.Right cluster to render leftmost (WinForms reverse-add); the plan's literal 'added before' grep wording was inconsistent with its own 'leftmost' UI-SPEC goal
+- [Phase ?]: 23-06: summarize_with_template MCP tool shells decode-with-template with only the resolved path (no flag pass-through), preserving the verbatim 3-line MCP-OOP thin-shell
 
 ### Pending Todos
 
@@ -381,7 +383,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-21T04:50:51.261Z
+Last session: 2026-06-21T04:55:09.525Z
 Stopped at: Completed 23-07-PLAN.md
 Resume file: None
 
