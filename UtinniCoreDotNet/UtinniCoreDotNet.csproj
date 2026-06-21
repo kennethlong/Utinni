@@ -81,6 +81,14 @@
     <Content Include="Formats\Template\Presets\stringId.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- 23-05: the D-14 worked-example teaching templates (count-from-prior + flat-composite). They ship
+         next to the assembly and double as the byte-exact WorkedExample goldens (DEC-C3). -->
+    <Content Include="Formats\Template\Examples\counted_records.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Formats\Template\Examples\flat_composite.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />

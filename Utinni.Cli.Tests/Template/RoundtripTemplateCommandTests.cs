@@ -132,6 +132,52 @@ namespace Utinni.Cli.Tests.Template
             }
         }
 
+        // ── D-14 worked-example goldens (PROD-IFFT-03) — filter "Template&WorkedExample&Roundtrip" ──
+
+        [Theory]
+        [Trait("Category", "TemplateWorkedExampleRoundtrip")]
+        [InlineData(TemplateTestFixtures.VersionLow)]
+        [InlineData(TemplateTestFixtures.VersionHigh)]
+        public void Template_WorkedExample_Roundtrip_CountedRecords_BytesIdentical(string version)
+        {
+            using (var tmp = new TempDir())
+            {
+                // The count-from-prior worked example applied to its synthesized CNTR fixture round-trips
+                // byte-exact at both the low and high version FORM (matchTagOnly engages on either).
+                string iff = tmp.Write("cntr.iff", TemplateTestFixtures.BuildCountFromPrior(version, 3));
+
+                CliResult res = InProcessCliRunner.Run("roundtrip-template", iff, "--template", ExamplePath("counted_records.json"));
+
+                Assert.Equal(0, res.ExitCode);
+                JObject env = JObject.Parse(res.Stdout);
+                Assert.True((bool)env["result"]["bytesIdentical"]);
+            }
+        }
+
+        [Theory]
+        [Trait("Category", "TemplateWorkedExampleRoundtrip")]
+        [InlineData(TemplateTestFixtures.VersionLow)]
+        [InlineData(TemplateTestFixtures.VersionHigh)]
+        public void Template_WorkedExample_Roundtrip_FlatComposite_BytesIdentical(string version)
+        {
+            using (var tmp = new TempDir())
+            {
+                string iff = tmp.Write("prst.iff", TemplateTestFixtures.BuildPresets(version));
+
+                CliResult res = InProcessCliRunner.Run("roundtrip-template", iff, "--template", ExamplePath("flat_composite.json"));
+
+                Assert.Equal(0, res.ExitCode);
+                JObject env = JObject.Parse(res.Stdout);
+                Assert.True((bool)env["result"]["bytesIdentical"]);
+            }
+        }
+
+        // The shipped worked-example template path (CopyToOutputDirectory -> next to the test assembly).
+        private static string ExamplePath(string name)
+        {
+            return Path.Combine(System.AppContext.BaseDirectory, "Formats", "Template", "Examples", name);
+        }
+
         // ── list-templates inventory (D-12) — filter "Template&List" ──
 
         [Fact]

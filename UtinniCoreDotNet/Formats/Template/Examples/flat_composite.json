@@ -1,0 +1,44 @@
+{
+  "description": "Worked example (D-14): a flat composite leaf built from the D-09 presets. The PRST leaf payload lays out, in order: a Vector (3 x f32 = x,y,z), a Quaternion (4 x f32 = w,x,y,z with w FIRST), a Matrix (3x4 row-major = 12 x f32), and a PackedRgb color (3 x u8 = r,g,b). Each composite is a Struct sub-field group — pure JSON sugar over the kernel (D-08), so byte-exactness is the kernel's, never the preset's. This is the teaching template for any flat composite-of-presets chunk. matchTagOnly so it engages on the PRST leaf at every version-FORM.",
+  "version": 1,
+  "matchTagOnly": true,
+  "matchLeafTag": "PRST",
+  "fields": [
+    {
+      "name": "vector",
+      "type": "Struct",
+      "structFields": [
+        { "name": "x", "type": "F32" },
+        { "name": "y", "type": "F32" },
+        { "name": "z", "type": "F32" }
+      ]
+    },
+    {
+      "name": "quaternion",
+      "type": "Struct",
+      "structFields": [
+        { "name": "w", "type": "F32" },
+        { "name": "x", "type": "F32" },
+        { "name": "y", "type": "F32" },
+        { "name": "z", "type": "F32" }
+      ]
+    },
+    {
+      "name": "matrix",
+      "type": "Array",
+      "repeat": { "kind": "FixedCount", "fixedCount": 12 },
+      "structFields": [
+        { "name": "m", "type": "F32" }
+      ]
+    },
+    {
+      "name": "color",
+      "type": "Struct",
+      "structFields": [
+        { "name": "r", "type": "U8" },
+        { "name": "g", "type": "U8" },
+        { "name": "b", "type": "U8" }
+      ]
+    }
+  ]
+}

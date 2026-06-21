@@ -1,0 +1,18 @@
+{
+  "description": "Worked example (D-14): the count-from-prior chunk shape. A u32 'recordCount' field is followed by N records of { u16 id, f32 weight }. The array's repeat kind is CountFromField bound to recordCount, so on encode the count is AUTO-RECOMPUTED from the live element count (D-10) and a grow/shrink edit round-trips byte-exact (the DEC-C3 gate). This is the teaching template for any count-then-N-records leaf. matchTagOnly so it engages on the CNTR leaf at every version-FORM.",
+  "version": 1,
+  "matchTagOnly": true,
+  "matchLeafTag": "CNTR",
+  "fields": [
+    { "name": "recordCount", "type": "U32" },
+    {
+      "name": "records",
+      "type": "Array",
+      "repeat": { "kind": "CountFromField", "countFieldName": "recordCount" },
+      "structFields": [
+        { "name": "id", "type": "U16" },
+        { "name": "weight", "type": "F32" }
+      ]
+    }
+  ]
+}

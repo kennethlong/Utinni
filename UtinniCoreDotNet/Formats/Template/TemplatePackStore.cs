@@ -126,6 +126,12 @@ namespace UtinniCoreDotNet.Formats.Template
             string shipped = Path.Combine(AppContext.BaseDirectory, "Formats", "Template", "Presets");
             list.Add(new TemplatePackRoot { Directory = Canonical(shipped), Priority = 0, Label = "shipped" });
 
+            // (1b) shipped examples — the D-14 worked-example teaching templates (count-from-prior +
+            // flat-composite). They ship next to the assembly too, so list-templates / the resolver
+            // discover them by default; same lowest priority as the presets (they are reference artifacts).
+            string examples = Path.Combine(AppContext.BaseDirectory, "Formats", "Template", "Examples");
+            list.Add(new TemplatePackRoot { Directory = Canonical(examples), Priority = 1, Label = "shipped-examples" });
+
             // (2) app-data — per-user pack dir.
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             if (!string.IsNullOrEmpty(appData))
