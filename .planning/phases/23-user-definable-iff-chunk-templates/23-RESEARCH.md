@@ -638,18 +638,21 @@ CPAP-style 3-layout case is the canonical version-divergence exemplar to mirror.
 block planning.** Everything load-bearing (the encode-parity mechanism, the composite byte layouts,
 the grammar conventions, the verb/host surfaces) is VERIFIED.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **stringId universal on-wire form** (A1)
    - What we know: logically `table:text`; serialization is consumer-specific.
    - What's unclear: the single most common leaf-chunk encoding (two cstrings vs crc+string).
    - Recommendation: ship two-cstring as default; document as override-prone (D-09 makes this cheap).
+   - **RESOLVED:** plan 23-02 ships stringId as two NUL C-strings, documented override-prone. LOW-risk (A1).
 2. **Which two worked-example chunks to ship (D-14)**
    - What we know: they double as goldens + teaching artifacts.
    - What's unclear: exact chunk choice — planner's discretion.
    - Recommendation: one count-from-prior-array chunk (exercises the critical D-10 recompute) + one
      flat composite chunk (exercises vector/quaternion/color presets). That pairing maximizes golden
      coverage of the encode-parity risk.
+   - **RESOLVED:** plan 23-05 ships `counted_records.json` (count-from-prior) + `flat_composite.json`
+     (vector/quaternion/color presets) per the recommendation. LOW-risk (A2).
 
 ## Sources
 

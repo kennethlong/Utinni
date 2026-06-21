@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: planning
+status: executing
 stopped_at: Phase 23 UI-SPEC approved
-last_updated: "2026-06-21T02:54:46.588Z"
-last_activity: 2026-06-20
+last_updated: "2026-06-21T03:20:14.010Z"
+last_activity: 2026-06-21 -- Phase 23 planning complete
 progress:
   total_phases: 17
   completed_phases: 6
-  total_plans: 23
+  total_plans: 31
   completed_plans: 23
-  percent: 100
+  percent: 74
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 
 Phase: 23
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-06-20
+Status: Ready to execute
+Last activity: 2026-06-21 -- Phase 23 planning complete
 
 > Note: `gsd-sdk query phase.complete 22` again set next_phase to `999.2` (the legacy backlog id for what is now Phase 23); hand-corrected to Phase 23 here per the documented phase.complete next-phase bug (same correction made at the 21→22 transition).
 
