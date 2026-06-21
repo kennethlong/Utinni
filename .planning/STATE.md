@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
-status: verifying
-stopped_at: Completed 23-08-PLAN.md (Phase 23 complete, ready for verification)
+status: ready_to_plan
+stopped_at: Phase 23 complete + verified (passed 3/3); code review resolved; ready to plan Phase 24
 last_updated: "2026-06-21T21:38:12.921Z"
 last_activity: 2026-06-21
 progress:
   total_phases: 17
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 31
   completed_plans: 31
-  percent: 100
+  percent: 47
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 23 — user-definable-iff-chunk-templates
+**Current focus:** Phase 24 — client-entry-point-advertisement (GetEngineHookPoints); gated on external swg-client-v2 readiness (Phase 23 complete 2026-06-21)
 
 ## Current Position
 
-Phase: 23 (user-definable-iff-chunk-templates) — EXECUTING
-Plan: 8 of 8
-Status: Phase complete — ready for verification
+Phase: 24
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-06-21
 
 > Note: `gsd-sdk query phase.complete 22` again set next_phase to `999.2` (the legacy backlog id for what is now Phase 23); hand-corrected to Phase 23 here per the documented phase.complete next-phase bug (same correction made at the 21→22 transition).
@@ -129,7 +129,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 
 **Velocity:**
 
-- Total plans completed: 61
+- Total plans completed: 69
 - Average duration: —
 - Total execution time: —
 
@@ -151,6 +151,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | 20 | 4 | - | - |
 | 21 | 7 | - | - |
 | 22 | 4 | - | - |
+| 23 | 8 | - | - |
 
 **Recent Trend:**
 

@@ -229,7 +229,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 4/4 | Complete   | 2026-06-16 |
 | 21. Terrain TJT SubPanel | v2.1 | 7/7 | Complete    | 2026-06-17 |
 | 22. ClientEffect Editor | v2.1 | 4/4 | Complete    | 2026-06-20 |
-| 23. IFF Chunk Templates | v2.1 | 8/8 | Complete   | 2026-06-21 |
+| 23. IFF Chunk Templates | v2.1 | 8/8 | Complete    | 2026-06-21 |
 | 24. Client Entry-Point Advertisement | v2.1 | 0/? | Not started | - |
 
 **Shipped: 2 milestones, 16 phases (+02.1), 94 plans, 31 requirements (15 v1 + 16 v2.0).**
