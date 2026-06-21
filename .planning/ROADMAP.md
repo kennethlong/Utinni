@@ -197,9 +197,14 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
   4. The Phase-19 DX11 overlay installs + renders on the advertised D3D11 client with the kickoff no longer gated on a hardcoded `graphics::install` address — closing the Phase 18 (D-08) and Phase 19 (D-22) live-smokes on `SwgClient_r.exe`.
 **Plans**: 4 plans
 Plans:
+**Wave 1**
 - [ ] 24-01-PLAN.md — Commit synced contract files + `swg::endpoints` resolver (testable dual-path resolve + X-macro subset assert + critical-path bindings) wired first in `utinni_init` + Wave-0 Catch2 units
 - [ ] 24-02-PLAN.md — Full-catalog binding (78 of 79 .inc names, minus the D-02 carve-out) + provider typedef verification + D-04 accessor-global read→call adaptation
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 24-03-PLAN.md — EPA-03 DX11 kickoff decouple (D-05 Approach A: resolve `graphics::install`) + `directX::detour()` D3D11-safety gate
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 24-04-PLAN.md — Maintainer live-smoke acceptance (3 blocking checkpoints: no crash / DX11 renders / SWGEmu unchanged; closes D-08 + D-22)
 **Design notes / open questions** (resolve in discuss/plan):
   - **Contract shape**: a single versioned struct of ~198 named pointers (explicit, greppable, but large + brittle) vs. a name→pointer table / `GetEngineEntryPoint(name)` lookup (data-driven, version-tolerant — a missing name degrades gracefully, self-documenting). Leaning table; settle in the spike.
