@@ -362,21 +362,48 @@ namespace UtinniCoreDotNet.Formats.Template
         {
             switch (f.Type)
             {
+                // CR-02: range-check BEFORE writing so a too-large value (a count auto-recompute that
+                // outgrows its on-wire width, or a user --set that exceeds the field width) fails LOUD
+                // with a typed TemplateException rather than silently truncating and corrupting the file.
                 case KernelType.I8:
+                    RequireRange(f, value, sbyte.MinValue, sbyte.MaxValue);
+                    s.WriteByte(unchecked((byte)value));
+                    break;
                 case KernelType.U8:
+                    RequireRange(f, value, byte.MinValue, byte.MaxValue);
                     s.WriteByte(unchecked((byte)value));
                     break;
                 case KernelType.I16:
+                    RequireRange(f, value, short.MinValue, short.MaxValue);
+                    WriteInt16Le(s, value);
+                    break;
                 case KernelType.U16:
+                    RequireRange(f, value, ushort.MinValue, ushort.MaxValue);
                     WriteInt16Le(s, value);
                     break;
                 case KernelType.I32:
+                    RequireRange(f, value, int.MinValue, int.MaxValue);
+                    WriteInt32Le(s, value);
+                    break;
                 case KernelType.U32:
+                    RequireRange(f, value, uint.MinValue, uint.MaxValue);
                     WriteInt32Le(s, value);
                     break;
                 default:
                     throw new TemplateException("Field '" + f.Name + "' is not an integer kernel type ("
                         + f.Type + ") but was asked to encode an integer (count field?).");
+            }
+        }
+
+        // CR-02: throws a typed TemplateException when `value` does not fit the [min, max] range of the
+        // field's declared on-wire integer width. The bounds are passed as long (the widest unsigned bound,
+        // uint.MaxValue, fits a long) so the comparison is exact for every kernel integer width.
+        private static void RequireRange(FieldRecord f, long value, long min, long max)
+        {
+            if (value < min || value > max)
+            {
+                throw new TemplateException("count/value " + value + " does not fit field '" + f.Name
+                    + "' (" + f.Type + ").");
             }
         }
 

@@ -132,6 +132,80 @@ namespace Utinni.Cli.Tests.Template
             Assert.Equal(DecoderError.Truncated, ex.Kind);
         }
 
+        // ── CR-02: count auto-recompute overflowing its on-wire width throws, never wraps ──
+        // filter "Template&CountRecompute&Roundtrip"
+
+        [Fact]
+        [Trait("Category", "TemplateCountRecomputeRoundtrip")]
+        public void Template_CountRecompute_Roundtrip_GrowPastU8CountWidth_ThrowsRatherThanWraps()
+        {
+            // A count-from-prior array whose count field is declared U8 (max 255). Decode a 1-element
+            // payload, then grow the array to 256 elements. The auto-recomputed count (256) does NOT fit a
+            // U8 field: encode must throw a typed TemplateException, NOT silently write a wrapped 0.
+            TemplateModel template = BuildU8CountFromPriorTemplate();
+
+            // Hand-build a decoded carrier: a U8 count + an array of single-u8 records.
+            var records = new List<object>();
+            for (int i = 0; i < 256; i++) records.Add((long)1);
+            var decoded = new DecodedTemplate
+            {
+                Template = template,
+                Values = new Dictionary<string, object>
+                {
+                    { "count", (long)1 }, // stale; auto-recompute will derive 256 from the array
+                    { "records", records }
+                }
+            };
+
+            TemplateException ex = Assert.Throws<TemplateException>(() => KernelCodec.Encode(decoded));
+            Assert.Contains("does not fit", ex.Message);
+        }
+
+        [Fact]
+        [Trait("Category", "TemplateCountRecomputeRoundtrip")]
+        public void Template_CountRecompute_Roundtrip_GrowWithinU8CountWidth_Succeeds()
+        {
+            // The boundary case: 255 elements still fits a U8 count field, so encode must NOT throw.
+            TemplateModel template = BuildU8CountFromPriorTemplate();
+
+            var records = new List<object>();
+            for (int i = 0; i < 255; i++) records.Add((long)1);
+            var decoded = new DecodedTemplate
+            {
+                Template = template,
+                Values = new Dictionary<string, object>
+                {
+                    { "count", (long)0 },
+                    { "records", records }
+                }
+            };
+
+            byte[] reencoded = KernelCodec.Encode(decoded);
+            Assert.Equal(255, reencoded[0]); // U8 count recomputed to 255
+            Assert.Equal(1 + 255, reencoded.Length);
+        }
+
+        // CNT8: u8 count then count × u8 record (a count-from-prior array sized by a U8 field, for CR-02).
+        private static TemplateModel BuildU8CountFromPriorTemplate()
+        {
+            return new TemplateModel
+            {
+                Version = 1,
+                MatchLeafTag = "CNT8",
+                Fields = new List<FieldRecord>
+                {
+                    new FieldRecord { Name = "count", Type = KernelType.U8 },
+                    new FieldRecord
+                    {
+                        Name = "records",
+                        Type = KernelType.Array,
+                        Repeat = new RepeatSpec { Kind = RepeatKind.CountFromField, CountFieldName = "count" },
+                        StructFields = new List<FieldRecord> { new FieldRecord { Name = "b", Type = KernelType.U8 } }
+                    }
+                }
+            };
+        }
+
         // ── trailing-remainder + fixed-count arrays (PROD-IFFT-02) — filter "Template&Array&Roundtrip" ──
 
         [Fact]
