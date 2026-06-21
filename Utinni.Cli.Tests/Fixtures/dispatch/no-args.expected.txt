@@ -4,111 +4,136 @@ Copyright (c) 2005 - 2020 Giacomo Stelluti Scala & Contributors
 ERROR(S):
   No verb selected.
 
-  parse-tre             Parse a .tre archive and emit sorted-key JSON to stdout.
+  parse-tre               Parse a .tre archive and emit sorted-key JSON to
+                          stdout.
 
-  list-objects          List world-snapshot objects from a ws.iff via the TRE
-                        reader.
+  list-objects            List world-snapshot objects from a ws.iff via the TRE
+                          reader.
 
-  inspect-iff           Emit the chunk tree of an IFF file as JSON.
+  inspect-iff             Emit the chunk tree of an IFF file as JSON.
 
-  decode-iff            Decode a typed IFF asset (datatable / string-table /
-                        object-template) to JSON.
+  decode-iff              Decode a typed IFF asset (datatable / string-table /
+                          object-template) to JSON.
 
-  roundtrip-iff         Parse -> [optional mutate-leaf | remove-leaf] ->
-                        serialize -> re-parse an IFF; assert byte-exact
-                        untouched chunks.
+  roundtrip-iff           Parse -> [optional mutate-leaf | remove-leaf] ->
+                          serialize -> re-parse an IFF; assert byte-exact
+                          untouched chunks.
 
-  roundtrip-tab         Parse -> optional mutate -> serialize -> re-parse a
-                        .tab; assert byte-exact identity on untouched cells.
+  roundtrip-tab           Parse -> optional mutate -> serialize -> re-parse a
+                          .tab; assert byte-exact identity on untouched cells.
 
-  roundtrip-stf         Parse -> optional edit -> serialize -> re-parse a .stf;
-                        assert byte-exact identity on untouched entries.
+  roundtrip-stf           Parse -> optional edit -> serialize -> re-parse a
+                          .stf; assert byte-exact identity on untouched entries.
 
-  roundtrip-ot          Parse -> optional add/remove/edit override -> serialize
-                        -> re-parse an object-template .iff; assert byte-exact
-                        identity on untouched params.
+  roundtrip-ot            Parse -> optional add/remove/edit override ->
+                          serialize -> re-parse an object-template .iff; assert
+                          byte-exact identity on untouched params.
 
-  validate-plugin       Reflect on a plugin directory and report compliance.
-                        WARNING: Loads each .dll under the given directory; only
-                        run against trusted plugin directories. PluginLoader
-                        composition + managed-DLL inspection execute static
-                        initialisers as a side effect.
+  validate-plugin         Reflect on a plugin directory and report compliance.
+                          WARNING: Loads each .dll under the given directory;
+                          only run against trusted plugin directories.
+                          PluginLoader composition + managed-DLL inspection
+                          execute static initialisers as a side effect.
 
-  save                  Re-serialize an IFF/datatable/stf/OT asset and write it
-                        (loose-override by --root, or explicit --path).
+  save                    Re-serialize an IFF/datatable/stf/OT asset and write
+                          it (loose-override by --root, or explicit --path).
 
-  repack-tre            Destructively repack a .tre archive (full rebuild),
-                        taking a timestamped backup first. SEPARATE from save
-                        (D-10).
+  repack-tre              Destructively repack a .tre archive (full rebuild),
+                          taking a timestamped backup first. SEPARATE from save
+                          (D-10).
 
-  compile-template      Compile a .tpf object-template source to a byte-correct
-                        .iff via the revived TemplateCompiler (AUTH-03).
+  compile-template        Compile a .tpf object-template source to a
+                          byte-correct .iff via the revived TemplateCompiler
+                          (AUTH-03).
 
-  build-tre             Build a .tre archive via the revived TreeFileBuilder
-                        from an explicit --rsp recipe, or synthesize one from
-                        --from-tre (AUTH-04).
+  build-tre               Build a .tre archive via the revived TreeFileBuilder
+                          from an explicit --rsp recipe, or synthesize one from
+                          --from-tre (AUTH-04).
 
-  compile-definition    Run TemplateDefinitionCompiler over a .tdf and emit the
-                        per-class param->type schema JSON (AUTH-02, D-08).
+  compile-definition      Run TemplateDefinitionCompiler over a .tdf and emit
+                          the per-class param->type schema JSON (AUTH-02, D-08).
 
-  compile-datatable     Compile a tab-delimited spreadsheet (or .xml) to a
-                        datatable .iff via the revived DataTableTool (AUTH-06).
+  compile-datatable       Compile a tab-delimited spreadsheet (or .xml) to a
+                          datatable .iff via the revived DataTableTool
+                          (AUTH-06).
 
-  export-armor          Run the revived ArmorExporterTool over a datatable .iff
-                        (emits .tpf + chained .iff) (AUTH-06).
+  export-armor            Run the revived ArmorExporterTool over a datatable
+                          .iff (emits .tpf + chained .iff) (AUTH-06).
 
-  export-weapon         Run the revived CoreWeaponExporterTool over a datatable
-                        .iff (emits .tpf + chained .iff) (AUTH-06).
+  export-weapon           Run the revived CoreWeaponExporterTool over a
+                          datatable .iff (emits .tpf + chained .iff) (AUTH-06).
 
-  apply-save-tab        Apply ONE typed datatable mutation to a loose-override
-                        .tab/.iff, verify untouched cells byte-identical, then
-                        atomically commit the mutated bytes.
+  apply-save-tab          Apply ONE typed datatable mutation to a loose-override
+                          .tab/.iff, verify untouched cells byte-identical, then
+                          atomically commit the mutated bytes.
 
-  apply-save-ot         Apply ONE typed object-template override mutation to a
-                        loose-override .iff, verify untouched params
-                        byte-identical, then atomically commit the mutated
-                        bytes.
+  apply-save-ot           Apply ONE typed object-template override mutation to a
+                          loose-override .iff, verify untouched params
+                          byte-identical, then atomically commit the mutated
+                          bytes.
 
-  apply-save-iff        Apply ONE generic IFF leaf mutation to a loose-override
-                        .iff, verify untouched leaves byte-identical, then
-                        atomically commit the mutated bytes.
+  apply-save-iff          Apply ONE generic IFF leaf mutation to a
+                          loose-override .iff, verify untouched leaves
+                          byte-identical, then atomically commit the mutated
+                          bytes.
 
-  apply-save-stf        Apply ONE string-table text edit to a loose-override
-                        .stf, verify untouched entries byte-identical, then
-                        atomically commit the mutated bytes.
+  apply-save-stf          Apply ONE string-table text edit to a loose-override
+                          .stf, verify untouched entries byte-identical, then
+                          atomically commit the mutated bytes.
 
-  roundtrip-particle    Parse -> serialize -> re-parse a particle-effect .prt
-                        (FORM PEFT); assert byte-exact identity on the whole
-                        file.
+  roundtrip-particle      Parse -> serialize -> re-parse a particle-effect .prt
+                          (FORM PEFT); assert byte-exact identity on the whole
+                          file.
 
-  decode-trn            Decode a terrain .trn (FORM TGEN / PTAT) to a navigable
-                        JSON terrain envelope.
+  decode-trn              Decode a terrain .trn (FORM TGEN / PTAT) to a
+                          navigable JSON terrain envelope.
 
-  roundtrip-trn         Parse -> serialize -> re-parse a terrain .trn (FORM TGEN
-                        / PTAT); assert byte-exact identity on the whole file.
+  roundtrip-trn           Parse -> serialize -> re-parse a terrain .trn (FORM
+                          TGEN / PTAT); assert byte-exact identity on the whole
+                          file.
 
-  apply-save-trn        Apply ONE fixed-length terrain field edit
-                        (scalar/enum/familyId/active) to a loose-override .trn,
-                        verify only the target field's exact byte span changed,
-                        then atomically commit.
+  apply-save-trn          Apply ONE fixed-length terrain field edit
+                          (scalar/enum/familyId/active) to a loose-override
+                          .trn, verify only the target field's exact byte span
+                          changed, then atomically commit.
 
-  validate-bundle       Validate a Blender export bundle
-                        (swg_export_manifest.json + .rsp + .cfg) as TEXT - no
-                        3D/IFF codec. Emits a JSON envelope with explicit
-                        valid/hasRejectedRefs fields.
+  validate-bundle         Validate a Blender export bundle
+                          (swg_export_manifest.json + .rsp + .cfg) as TEXT - no
+                          3D/IFF codec. Emits a JSON envelope with explicit
+                          valid/hasRejectedRefs fields.
 
-  decode-effect         Decode a ClientEffect .iff (FORM CLEF) to a JSON
-                        command-list envelope (per-command stableId).
+  decode-effect           Decode a ClientEffect .iff (FORM CLEF) to a JSON
+                          command-list envelope (per-command stableId).
 
-  roundtrip-effect      Parse -> serialize -> re-parse a ClientEffect .iff (FORM
-                        CLEF); assert byte-exact identity on the whole file.
+  roundtrip-effect        Parse -> serialize -> re-parse a ClientEffect .iff
+                          (FORM CLEF); assert byte-exact identity on the whole
+                          file.
 
-  apply-save-effect     Apply ONE ClientEffect mutation (length-changing field
-                        edit XOR add XOR remove XOR reorder) to a loose-override
-                        .iff, verify structurally by mutation mode, then
-                        atomically commit under <root>/loose.
+  apply-save-effect       Apply ONE ClientEffect mutation (length-changing field
+                          edit XOR add XOR remove XOR reorder) to a
+                          loose-override .iff, verify structurally by mutation
+                          mode, then atomically commit under <root>/loose.
 
-  help                  Display more information on a specific command.
+  decode-with-template    Decode ONE template-eligible IFF leaf with a
+                          user-definable chunk template (resolved from a pack or
+                          supplied explicitly), emitting a navigable decode
+                          envelope plus the byte-exact fit report.
 
-  version               Display version information.
+  roundtrip-template      Decode then re-encode ONE template-eligible IFF leaf
+                          through its chunk template and assert the leaf payload
+                          is byte-identical (the DEC-C3 byte-exact gate).
+
+  list-templates          Enumerate the user-definable chunk templates
+                          discovered across the scanned pack allow-list (shipped
+                          -> app-data -> optional project-local), reporting each
+                          template's match key and source pack.
+
+  apply-save-template     Apply ONE template-field edit to a template-eligible
+                          IFF leaf in a loose-override .iff, verify untouched
+                          leaves byte-identical, then atomically commit the
+                          re-encoded bytes.
+
+  help                    Display more information on a specific command.
+
+  version                 Display version information.
 
