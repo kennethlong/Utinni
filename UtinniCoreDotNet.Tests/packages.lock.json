@@ -44,6 +44,11 @@
           "System.Reflection.Metadata": "1.6.0"
         }
       },
+      "Newtonsoft.Json": {
+        "type": "Transitive",
+        "resolved": "13.0.3",
+        "contentHash": "HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ=="
+      },
       "System.Collections.Immutable": {
         "type": "Transitive",
         "resolved": "1.5.0",
@@ -100,6 +105,7 @@
       "utinnicoredotnet": {
         "type": "Project",
         "dependencies": {
+          "Newtonsoft.Json": "[13.0.3, )",
           "UtinniCoreDotNet.PathContainment": "[1.0.0, )"
         }
       },

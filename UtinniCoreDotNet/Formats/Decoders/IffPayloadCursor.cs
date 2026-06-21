@@ -109,6 +109,100 @@ namespace UtinniCoreDotNet.Formats.Decoders
             return result;
         }
 
+        /// <summary>
+        /// Reads a 16-bit little-endian SIGNED integer as an <see cref="int"/>, advancing 2 bytes. A
+        /// kernel primitive (i16). Returning an int keeps the sign-extension explicit and overflow-safe.
+        /// Throws <see cref="DecoderError.Truncated"/> at end-of-payload.
+        /// </summary>
+        public int ReadInt16Le()
+        {
+            Need(2);
+            short v = (short)(_data[_pos] | (_data[_pos + 1] << 8));
+            _pos += 2;
+            return v;
+        }
+
+        /// <summary>
+        /// Reads a 16-bit little-endian UNSIGNED integer as an <see cref="int"/> (0 .. 65535), advancing
+        /// 2 bytes. A kernel primitive (u16). Returning an int keeps it overflow-safe (a ushort would
+        /// silently wrap on arithmetic). Throws <see cref="DecoderError.Truncated"/> at end-of-payload.
+        /// </summary>
+        public int ReadUInt16Le()
+        {
+            Need(2);
+            int v = _data[_pos] | (_data[_pos + 1] << 8);
+            _pos += 2;
+            return v;
+        }
+
+        /// <summary>
+        /// Reads a 64-bit little-endian IEEE-754 double, advancing 8 bytes. The kernel f64 primitive (a
+        /// kernel addition over the SOE .tdf type set, which has no 64-bit float). Assembled
+        /// host-independently like <see cref="ReadFloatLe"/>. Throws <see cref="DecoderError.Truncated"/>
+        /// at end-of-payload.
+        /// </summary>
+        public double ReadDoubleLe()
+        {
+            Need(8);
+            byte[] eight = new byte[8];
+            for (int i = 0; i < 8; i++)
+            {
+                eight[i] = _data[_pos + i];
+            }
+            _pos += 8;
+            if (!BitConverter.IsLittleEndian)
+            {
+                Array.Reverse(eight);
+            }
+            return BitConverter.ToDouble(eight, 0);
+        }
+
+        /// <summary>
+        /// Reads a fixed-width char[n] field, advancing exactly <paramref name="n"/> bytes. The kernel
+        /// FixedChar primitive. NOTE the asymmetry: the returned DISPLAY string is trimmed at the first
+        /// NUL (the conventional fixed-char display form), but the cursor still consumes the full
+        /// <paramref name="n"/>-byte span — the encoder must re-emit the full n-byte field (NUL pad on
+        /// the right) to round-trip byte-exact, so the codec keeps the raw n-byte span on encode rather
+        /// than re-deriving it from the trimmed string. Throws <see cref="DecoderError.Truncated"/> if
+        /// fewer than n bytes remain.
+        /// </summary>
+        public string ReadFixedChar(int n, Encoding encoding)
+        {
+            Need(n);
+            int len = 0;
+            while (len < n && _data[_pos + len] != 0)
+            {
+                len++;
+            }
+            string s = encoding.GetString(_data, _pos, len);
+            _pos += n; // consume the FULL fixed width, not just the trimmed prefix
+            return s;
+        }
+
+        /// <summary>
+        /// Reads <paramref name="n"/> raw bytes (the kernel RawBytes primitive), advancing past them.
+        /// A bounds-checked alias of <see cref="ReadBytes"/> kept as a distinct kernel-vocabulary name so
+        /// the codec's intent (opaque verbatim span) reads clearly. Throws
+        /// <see cref="DecoderError.Truncated"/> at end-of-payload.
+        /// </summary>
+        public byte[] ReadRawBytes(int n)
+        {
+            return ReadBytes(n);
+        }
+
+        /// <summary>
+        /// Skips <paramref name="n"/> padding bytes (the kernel Pad primitive), advancing the cursor
+        /// without returning them. The codec round-trips a Pad span by re-emitting the captured raw bytes
+        /// on encode (so it must capture, not discard, them — Pad fields carry their raw span in the
+        /// decoded value). This skip is the DECODE-position advance only. Throws
+        /// <see cref="DecoderError.Truncated"/> at end-of-payload.
+        /// </summary>
+        public void SkipPad(int n)
+        {
+            Need(n);
+            _pos += n;
+        }
+
         /// <summary>Reads a 32-bit little-endian IEEE-754 float, advancing 4 bytes.</summary>
         public float ReadFloatLe()
         {

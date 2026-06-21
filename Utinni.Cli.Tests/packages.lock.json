@@ -123,6 +123,7 @@
       "utinnicoredotnet": {
         "type": "Project",
         "dependencies": {
+          "Newtonsoft.Json": "[13.0.3, )",
           "UtinniCoreDotNet.PathContainment": "[1.0.0, )"
         }
       },
