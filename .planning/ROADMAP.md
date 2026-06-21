@@ -69,7 +69,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 - [x] **Phase 21: Terrain TJT SubPanel (+ best-effort live preview)** — consumes the Phase 20 codec; live regen-on-save rides the seam, degrades honestly (FEATURE)
  (completed 2026-06-16)
 - [x] **Phase 22: ClientEffect Editor** — command-list `.iff` codec + verbs + MCP + SubPanel (FEATURE; lowest risk) (completed 2026-06-20)
-- [ ] **Phase 23: User-Definable IFF Chunk Templates** — schema-driven decode/encode + manage-from-UI (QUICK WIN, Backlog 999.2)
+- [x] **Phase 23: User-Definable IFF Chunk Templates** — schema-driven decode/encode + manage-from-UI (QUICK WIN, Backlog 999.2) (completed 2026-06-21)
 - [ ] **Phase 24: Client Entry-Point Advertisement (`GetEngineHookPoints`)** — SWG-Source client advertises its ~198 engine entry points; UtinniCore consumes them (dual-path), retiring hardcoded RVAs on that client; unblocks the 18/19 live-smokes on D3D11 (FOUNDATION; promotes Backlog 999.7 advertisement half; gated on external swg-client-v2 readiness; research-phase)
 
 ## Phase Details
@@ -182,7 +182,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 - [x] 23-05-PLAN.md — utinni-cli template verbs (decode/roundtrip/apply-save/list) + Program.cs registration + 2 worked-example goldens
 - [x] 23-06-PLAN.md — thin MCP summarize_with_template tool (shell-out, MCP-OOP)
 - [x] 23-07-PLAN.md — TJT Tier-B hex-driven builder pane (select→assign, live round-trip indicator, auto-apply) inside FormIffEditor
-- [ ] 23-08-PLAN.md — pack management UI (save/select/import/export) + maintainer live-smoke
+- [x] 23-08-PLAN.md — pack management UI (save/select/import/export) + maintainer live-smoke
 **UI hint**: yes
 
 ### Phase 24: Client Entry-Point Advertisement (`GetEngineHookPoints`)
@@ -229,7 +229,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 4/4 | Complete   | 2026-06-16 |
 | 21. Terrain TJT SubPanel | v2.1 | 7/7 | Complete    | 2026-06-17 |
 | 22. ClientEffect Editor | v2.1 | 4/4 | Complete    | 2026-06-20 |
-| 23. IFF Chunk Templates | v2.1 | 7/8 | In Progress|  |
+| 23. IFF Chunk Templates | v2.1 | 8/8 | Complete   | 2026-06-21 |
 | 24. Client Entry-Point Advertisement | v2.1 | 0/? | Not started | - |
 
 **Shipped: 2 milestones, 16 phases (+02.1), 94 plans, 31 requirements (15 v1 + 16 v2.0).**

@@ -26,3 +26,21 @@ SCOPE BOUNDARY rule (only auto-fix issues directly caused by the current task's 
   verification (the Template `--filter` goldens) is fully green. Re-bless the ABI baseline in a dedicated
   CppSharp-toolchain task (run the gen, `AbiBlockHash.Rebless`, rebuild TJT, re-freeze the fixture,
   commit together) — out of scope here.
+
+## 23-08 (Wave 5, template pack management + live-smoke)
+
+### Live-smoke UX polish: byte-grid selection readout (non-blocking)
+
+- **Where:** `TemplateBuilderPane.cs` (UtinniPlugins) — the Tier-B raw-byte grid selection in the IFF
+  Editor Template mode.
+- **Symptom (cosmetic):** the byte-grid selection is a tolerant TextBox text-selection whose visual
+  highlight can visually span the offset column + the ASCII gutter, so the user cannot see at a glance
+  exactly which bytes are captured.
+- **Why it is NOT a bug:** the selection is FUNCTIONALLY correct — `CaptureSelection` /
+  `CaretToByteIndex` clamp the captured range to whole bytes (the offsets-are-selections D-02 contract),
+  so the assigned span is always the right bytes. The 23-08 maintainer live-smoke confirmed PASS with
+  byte-exact round-trip and no sibling-chunk corruption.
+- **Polish ask:** add a "selected: 0xNN–0xNN (N bytes)" readout and/or restrict the visual highlight to
+  the hex columns so the captured bytes are visible.
+- **Disposition:** DEFERRED (presentational only). Maintainer-acknowledged as non-blocking at the
+  23-08 live-smoke; PROD-IFFT-03 is met as shipped. A small UI follow-up.
