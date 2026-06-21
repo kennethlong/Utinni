@@ -92,11 +92,11 @@ REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 ca
 
 ### IFF chunk templates — quick win 999.2 (PROD-IFFT)
 
-- [ ] **PROD-IFFT-01**: A modder can describe an arbitrary IFF chunk's binary layout (primitives, colors,
+- [x] **PROD-IFFT-01**: A modder can describe an arbitrary IFF chunk's binary layout (primitives, colors,
   vectors, quaternions, matrices, arrays, structs) as a named, reusable template.
-- [ ] **PROD-IFFT-02**: Utinni auto-applies a matching template to decode/display an otherwise-hex chunk
+- [x] **PROD-IFFT-02**: Utinni auto-applies a matching template to decode/display an otherwise-hex chunk
   and re-encodes edits byte-exact (round-trip verified — the hidden encode-parity risk).
-- [ ] **PROD-IFFT-03**: Templates are manageable (create / edit / save / select) from the IFF Editor UI.
+- [x] **PROD-IFFT-03**: Templates are manageable (create / edit / save / select) from the IFF Editor UI.
 
 ---
 
@@ -159,8 +159,8 @@ Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no
 | PROD-W2-TRN-05 | Phase 21 — Terrain TJT SubPanel (+ live preview) | Complete |
 | PROD-W2-CFX-01 | Phase 22 — ClientEffect Editor | Complete |
 | PROD-W2-CFX-02 | Phase 22 — ClientEffect Editor | Complete |
-| PROD-IFFT-01 | Phase 23 — User-Definable IFF Chunk Templates | Pending |
-| PROD-IFFT-02 | Phase 23 — User-Definable IFF Chunk Templates | Pending |
-| PROD-IFFT-03 | Phase 23 — User-Definable IFF Chunk Templates | Pending |
+| PROD-IFFT-01 | Phase 23 — User-Definable IFF Chunk Templates | Complete |
+| PROD-IFFT-02 | Phase 23 — User-Definable IFF Chunk Templates | Complete |
+| PROD-IFFT-03 | Phase 23 — User-Definable IFF Chunk Templates | Complete |
 
 **Coverage:** 18/18 v2.1 requirements mapped ✓ · no orphans · no duplicates.

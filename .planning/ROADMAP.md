@@ -175,7 +175,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
   2. Utinni auto-applies a matching template to decode/display an otherwise-hex chunk and re-encodes edits byte-exact — round-trip verified, because the hidden risk here is encode parity, not decode.
   3. Templates are manageable (create / edit / save / select) from the IFF Editor UI.
 **Plans**: 8 plans
-- [ ] 23-01-PLAN.md — Wave-0 test scaffold: frozen engine contracts + synthesize-through-IffWriter fixtures + RED goldens (incl. the CRITICAL count-from-prior round-trip)
+- [x] 23-01-PLAN.md — Wave-0 test scaffold: frozen engine contracts + synthesize-through-IffWriter fixtures + RED goldens (incl. the CRITICAL count-from-prior round-trip)
 - [ ] 23-02-PLAN.md — Template JSON model + (de)serializer + 7 D-09-pinned preset JSON files
 - [ ] 23-03-PLAN.md — Kernel codec (byte-exact decode/encode + D-10 count auto-recompute) + FitReport + TypePlausibility + cursor primitives
 - [ ] 23-04-PLAN.md — TemplateResolver (version-FORM-aware match + D-05 altitude gate + D-07 fit-confidence) + scanned-dir pack store
@@ -229,7 +229,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 4/4 | Complete   | 2026-06-16 |
 | 21. Terrain TJT SubPanel | v2.1 | 7/7 | Complete    | 2026-06-17 |
 | 22. ClientEffect Editor | v2.1 | 4/4 | Complete    | 2026-06-20 |
-| 23. IFF Chunk Templates | v2.1 | 0/8 | Planned | - |
+| 23. IFF Chunk Templates | v2.1 | 1/8 | In Progress|  |
 | 24. Client Entry-Point Advertisement | v2.1 | 0/? | Not started | - |
 
 **Shipped: 2 milestones, 16 phases (+02.1), 94 plans, 31 requirements (15 v1 + 16 v2.0).**

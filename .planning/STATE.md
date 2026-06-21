@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: executing
-stopped_at: Phase 23 UI-SPEC approved
-last_updated: "2026-06-21T03:20:14.010Z"
-last_activity: 2026-06-21 -- Phase 23 planning complete
+stopped_at: Completed 23-01-PLAN.md
+last_updated: "2026-06-21T03:35:23.584Z"
+last_activity: 2026-06-21
 progress:
   total_phases: 17
   completed_phases: 6
   total_plans: 31
-  completed_plans: 23
-  percent: 74
+  completed_plans: 24
+  percent: 77
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 23 — user-definable-iff-chunk-templates (Phase 22 complete 2026-06-20)
+**Current focus:** Phase 23 — user-definable-iff-chunk-templates
 
 ## Current Position
 
-Phase: 23
-Plan: Not started
+Phase: 23 (user-definable-iff-chunk-templates) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-06-21 -- Phase 23 planning complete
+Last activity: 2026-06-21 -- 23-01 complete (Wave-0 template contracts + RED test suite)
 
 > Note: `gsd-sdk query phase.complete 22` again set next_phase to `999.2` (the legacy backlog id for what is now Phase 23); hand-corrected to Phase 23 here per the documented phase.complete next-phase bug (same correction made at the 21→22 transition).
 
@@ -231,6 +231,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 22 P01 | ~40min | 2 tasks | 18 files |
 | Phase 22 P03 | 25 min | 1 tasks | 5 files |
 | Phase 22 P02 | ~55min | 2 tasks | 16 files |
+| Phase 23 P01 | 8min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -308,6 +309,8 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: Phase 22 CLEF codec: cloned Particle three-layer stack; ClefFieldCodec is the one new variable-length asset; StableId reuses DeriveStableId verbatim (REVIEWS #1)
 - [Phase ?]: 22-02: apply-save-effect verify splits by mutation mode (field-edit by stableId; reorder/add/remove by content) — REVIEWS HIGH #2
 - [Phase ?]: 22-02: ClefCommandDefaults (locked add-command defaults) lives in the codec namespace for CLI/fixture/Form parity — REVIEWS MEDIUM #5
+- [Phase 23]: 23-01: Froze ITemplateContracts.cs as the single template-engine surface (kernel types/array kinds/value-maps/FitReport/DecodedTemplate + KernelCodec stubs); Waves 1-2 implement against it.
+- [Phase 23]: 23-01: RED-via-Skip Wave-0 scaffolding — 10 goldens discovered green-with-skips; CRITICAL DEC-C3 count-from-prior grow/shrink resolvable by --filter Template&CountRecompute&Roundtrip.
 
 ### Pending Todos
 
@@ -365,9 +368,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-21T02:54:46.569Z
-Stopped at: Phase 23 UI-SPEC approved
-Resume file: .planning/phases/23-user-definable-iff-chunk-templates/23-UI-SPEC.md
+Last session: 2026-06-21T03:35:23.562Z
+Stopped at: Completed 23-01-PLAN.md
+Resume file: None
 
 ## Ingest Provenance
 
