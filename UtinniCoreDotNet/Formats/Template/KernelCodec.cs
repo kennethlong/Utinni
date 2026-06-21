@@ -486,10 +486,10 @@ namespace UtinniCoreDotNet.Formats.Template
             s.WriteByte(0x00); // NUL terminator, NO length prefix
         }
 
-        // FixedChar / RawBytes / Pad all round-trip via the captured raw n-byte span (the decode-side
-        // asymmetry note in IffPayloadCursor.ReadFixedChar): re-emit the exact bytes that were read so the
-        // on-disk fixed-width field is byte-exact (NUL padding preserved). A short span is right-NUL-padded
-        // to the declared width; an over-long span is rejected.
+        // FixedChar / RawBytes / Pad all round-trip via the captured raw n-byte span (WR-04: FixedChar is
+        // an OPAQUE byte span, decoded via cursor.ReadRawBytes(n), never a string): re-emit the exact bytes
+        // that were read so the on-disk fixed-width field is byte-exact (NUL padding preserved). A short
+        // span is right-NUL-padded to the declared width; an over-long span is rejected.
         private static void WriteFixedSpan(FieldRecord f, object value, int width, Stream s)
         {
             byte[] span = value as byte[];

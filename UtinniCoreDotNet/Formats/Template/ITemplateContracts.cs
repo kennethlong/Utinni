@@ -65,7 +65,12 @@ namespace UtinniCoreDotNet.Formats.Template
         F64,
         /// <summary>NUL-terminated C-string (strlen+1 bytes on disk).</summary>
         CString,
-        /// <summary>Fixed-width char[n] (ByteWidth = n).</summary>
+        /// <summary>Fixed-width char[n] (ByteWidth = n). WR-04: decoded as an OPAQUE n-byte span (a
+        /// byte[], NOT a string) so it round-trips byte-exact -- the NUL padding and any bytes past the
+        /// first NUL are preserved verbatim. On the wire it is identical to <see cref="RawBytes"/>; the
+        /// distinct name only signals the editor's "char data" display intent. The <see
+        /// cref="FieldRecord.Encoding"/> member does NOT apply to FixedChar (it is inert; the dialog does
+        /// not offer it) -- a lossy string round-trip would break byte-exactness.</summary>
         FixedChar,
         /// <summary>Opaque byte span of fixed width (ByteWidth = n).</summary>
         RawBytes,
@@ -139,7 +144,9 @@ namespace UtinniCoreDotNet.Formats.Template
         /// <summary>Fixed byte width for FixedChar/RawBytes/Pad (and the on-disk width of the integer kinds where it disambiguates); 0 where implied by <see cref="Type"/>.</summary>
         public int ByteWidth { get; set; }
 
-        /// <summary>String encoding name for CString/FixedChar (e.g. "ascii"); null otherwise.</summary>
+        /// <summary>String encoding name for CString (e.g. "ascii"); null otherwise. WR-04: this is INERT
+        /// for FixedChar -- FixedChar is decoded as an opaque byte span, never a string, so no encoding
+        /// applies.</summary>
         public string Encoding { get; set; }
 
         /// <summary>Repeat policy when <see cref="Type"/> == <see cref="KernelType.Array"/>; null otherwise.</summary>

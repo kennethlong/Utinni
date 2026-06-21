@@ -157,27 +157,11 @@ namespace UtinniCoreDotNet.Formats.Decoders
             return BitConverter.ToDouble(eight, 0);
         }
 
-        /// <summary>
-        /// Reads a fixed-width char[n] field, advancing exactly <paramref name="n"/> bytes. The kernel
-        /// FixedChar primitive. NOTE the asymmetry: the returned DISPLAY string is trimmed at the first
-        /// NUL (the conventional fixed-char display form), but the cursor still consumes the full
-        /// <paramref name="n"/>-byte span — the encoder must re-emit the full n-byte field (NUL pad on
-        /// the right) to round-trip byte-exact, so the codec keeps the raw n-byte span on encode rather
-        /// than re-deriving it from the trimmed string. Throws <see cref="DecoderError.Truncated"/> if
-        /// fewer than n bytes remain.
-        /// </summary>
-        public string ReadFixedChar(int n, Encoding encoding)
-        {
-            Need(n);
-            int len = 0;
-            while (len < n && _data[_pos + len] != 0)
-            {
-                len++;
-            }
-            string s = encoding.GetString(_data, _pos, len);
-            _pos += n; // consume the FULL fixed width, not just the trimmed prefix
-            return s;
-        }
+        // WR-04: the former ReadFixedChar(n, encoding) string reader was removed. The kernel FixedChar
+        // primitive decodes as an OPAQUE n-byte span (cursor.ReadRawBytes(n)) so it round-trips byte-exact;
+        // the codec never re-derives a string from a trimmed display form (which would lose the NUL padding
+        // and any trailing bytes after the first NUL). FixedChar is an opaque byte span, identical on the
+        // wire to RawBytes -- the only difference is the editor's display intent.
 
         /// <summary>
         /// Reads <paramref name="n"/> raw bytes (the kernel RawBytes primitive), advancing past them.

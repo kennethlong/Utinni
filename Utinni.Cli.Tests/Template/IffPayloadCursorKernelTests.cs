@@ -32,7 +32,6 @@
 // IffPayloadCursor is `internal sealed`; Utinni.Cli.Tests has InternalsVisibleTo, so these tests
 // exercise the cursor directly.
 
-using System.Text;
 using UtinniCoreDotNet.Formats.Decoders;
 using Xunit;
 
@@ -105,19 +104,21 @@ namespace Utinni.Cli.Tests.Template
             Assert.Equal(DecoderError.Truncated, ex.Kind);
         }
 
-        // ── ReadFixedChar(n) — display trims at first NUL, but consumes the full n bytes ──
+        // ── WR-04: FixedChar decodes as an OPAQUE n-byte span (ReadRawBytes), preserving NUL padding ──
 
         [Fact]
         [Trait("Category", "TemplateCursor")]
-        public void Template_Cursor_ReadFixedChar_TrimsAtNulButConsumesFullWidth()
+        public void Template_Cursor_FixedChar_DecodesAsOpaqueSpan_PreservesNulPadding()
         {
-            // "CHAR8" right-padded to 8 with NUL: 43 48 41 52 38 00 00 00
-            var c = new IffPayloadCursor(new byte[] { 0x43, 0x48, 0x41, 0x52, 0x38, 0x00, 0x00, 0x00 });
-            Assert.Equal("CHAR8", c.ReadFixedChar(8, Encoding.ASCII));
+            // "CHAR8" right-padded to 8 with NUL: 43 48 41 52 38 00 00 00. As an opaque span the full 8
+            // bytes (incl. the trailing NUL padding) survive verbatim so encode is byte-exact.
+            byte[] raw = { 0x43, 0x48, 0x41, 0x52, 0x38, 0x00, 0x00, 0x00 };
+            var c = new IffPayloadCursor(raw);
+            Assert.Equal(raw, c.ReadRawBytes(8));
             Assert.Equal(0, c.Remaining); // consumed all 8
 
             var sevenWide = new IffPayloadCursor(new byte[7]);
-            DecoderException ex = Assert.Throws<DecoderException>(() => sevenWide.ReadFixedChar(8, Encoding.ASCII));
+            DecoderException ex = Assert.Throws<DecoderException>(() => sevenWide.ReadRawBytes(8));
             Assert.Equal(DecoderError.Truncated, ex.Kind);
         }
 
