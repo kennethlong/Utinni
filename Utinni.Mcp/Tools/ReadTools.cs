@@ -143,6 +143,24 @@ public static class ReadTools
         return CliResultMapper.ToCallToolResult(r);              // verbatim envelope pass-through; nonzero exit → tool error
     }
 
+    [McpServerTool(Name = "summarize_with_template", ReadOnly = true, Idempotent = true)]
+    [Description("Decode a template-eligible IFF chunk through a user-definable schema template — the " +
+                 "resolver matches a template to the leaf (by version-FORM) and emits the navigable decode " +
+                 "envelope + the D-07 FitReport, or a clear matched=false envelope when nothing fits. " +
+                 "Read-assist ONLY (no write/mutate): the same schema-driven read path the CLI + in-app " +
+                 "template editor reuse. Dispatches decode-with-template. ZERO format logic here — the named " +
+                 "pipe / subprocess boundary to the x86 utinni-cli IS the architecture boundary " +
+                 "(MCP-OOP, DEC-V2-MCP-OOP).")]
+    public static async Task<CallToolResult> SummarizeWithTemplate(
+        ResolvedRoot root,
+        CliDispatcher cli,
+        [Description(PathParamDescription)] string relativePath)
+    {
+        string abs = root.Resolve(relativePath);                 // throws on escape → SDK tool error
+        CliInvocationResult r = await cli.RunAsync("decode-with-template", new[] { abs }).ConfigureAwait(false);
+        return CliResultMapper.ToCallToolResult(r);              // verbatim envelope pass-through; nonzero exit → tool error
+    }
+
     [McpServerTool(Name = "list_world_objects", ReadOnly = true, Idempotent = true)]
     [Description("List world-snapshot objects from a ws.iff and return the utinni-cli JSON envelope.")]
     public static async Task<CallToolResult> ListWorldObjects(
