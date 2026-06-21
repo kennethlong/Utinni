@@ -33,6 +33,7 @@
 using System.Collections.Generic;
 using System.Text;
 using UtinniCoreDotNet.Formats.Decoders;
+using UtinniCoreDotNet.Formats.Iff;
 using UtinniCoreDotNet.Formats.Template;
 using Xunit;
 
@@ -46,9 +47,6 @@ namespace Utinni.Cli.Tests.Template
     /// </summary>
     public sealed class KernelCodecTests
     {
-        private const string RedVersion = "RED — Wave 2 (plan 23-04) implements version-FORM-aware match; tracking PROD-IFFT-02";
-        private const string RedPrecedence = "RED — Wave 2 (plan 23-04) implements D-05 altitude/precedence; tracking PROD-IFFT-02";
-
         // ── per-type decode/encode (PROD-IFFT-01) — filter "Template&KernelCodec" ──
 
         [Fact]
@@ -195,25 +193,53 @@ namespace Utinni.Cli.Tests.Template
         }
 
         // ── version-FORM divergence (PROD-IFFT-02) — filter "Template&VersionMatch" (Wave-2, plan 23-04) ──
+        // GREEN as of plan 23-04: the dedicated resolver-level assertions live in TemplateResolverTests
+        // (filters Template&VersionMatch / Template&Precedence / Template&MultiMatch / Template&Fit&Flag).
+        // These two anchors are kept so the original RED-via-Skip token row stays visible in this file's
+        // history; they delegate to the resolver so the VALIDATION.md --filter rows resolve here too.
 
-        [Theory(Skip = RedVersion)]
+        [Theory]
         [Trait("Category", "TemplateVersionMatch")]
         [InlineData(TemplateTestFixtures.VersionLow)]
         [InlineData(TemplateTestFixtures.VersionHigh)]
         public void Template_VersionMatch_DivergentCpapLayout_PicksRightLayoutPerVersionForm(string version)
         {
-            // Resolver-level (whole-file) behavior — plan 23-04 owns Template&VersionMatch.
-            Assert.True(false, "pending Wave 2 (plan 23-04) version-FORM-aware match");
+            byte[] file = TemplateTestFixtures.BuildVersionDivergent(version);
+            MutableIffDocument doc = TemplateResolverTests.LoadMutable(file);
+            string leafId = "FORM:TPLX/0/FORM:" + version + "/0/CPAP:CPAP/0";
+
+            var low = TemplateResolverTests.CpapTemplate(TemplateTestFixtures.VersionLow, 1);
+            var high = TemplateResolverTests.CpapTemplate(TemplateTestFixtures.VersionHigh, 5);
+            var resolver = new TemplateResolver(new[] { low, high });
+
+            TemplateResolution res = resolver.Resolve(doc, leafId);
+
+            Assert.NotNull(res.Best);
+            Assert.True(res.Best.Fits, "the version-specific template must round-trip the version's layout");
+            string expectedVersion = version == TemplateTestFixtures.VersionHigh
+                ? TemplateTestFixtures.VersionHigh
+                : TemplateTestFixtures.VersionLow;
+            Assert.Contains("FORM:" + expectedVersion, res.Best.Template.MatchAncestorPath);
         }
 
         // ── D-05 altitude / precedence (PROD-IFFT-02) — filter "Template&Precedence" (Wave-2, plan 23-04) ──
 
-        [Fact(Skip = RedPrecedence)]
+        [Fact]
         [Trait("Category", "TemplatePrecedence")]
         public void Template_Precedence_BuiltinRootForm_TemplateNeverEngages()
         {
-            // Resolver-level (whole-file) behavior — plan 23-04 owns Template&Precedence.
-            Assert.True(false, "pending Wave 2 (plan 23-04) D-05 altitude/precedence");
+            byte[] file = TemplateTestFixtures.BuildBuiltinRootFile(); // root FORM CLEF (built-in)
+            MutableIffDocument doc = TemplateResolverTests.LoadMutable(file);
+            string leafId = "FORM:CLEF/0/FORM:0001/0/CPAP:CPAP/0";
+
+            // A template that WOULD match the leaf tag — but the root FORM is built-in-owned (CLEF).
+            var t = TemplateResolverTests.CpapTemplate("0001", 1);
+            var resolver = new TemplateResolver(new[] { t });
+
+            TemplateResolution res = resolver.Resolve(doc, leafId);
+
+            Assert.True(res.SuppressedByBuiltin, "a built-in root FORM must suppress all templates (D-05)");
+            Assert.Null(res.Best);
         }
 
         // ── template builders mirroring TemplateTestFixtures payload shapes ──

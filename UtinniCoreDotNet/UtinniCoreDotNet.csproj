@@ -148,6 +148,7 @@
     <Compile Include="Formats\Template\KernelCodec.cs" />
     <Compile Include="Formats\Template\FitReport.cs" />
     <Compile Include="Formats\Template\TypePlausibility.cs" />
+    <Compile Include="Formats\Template\TemplateResolver.cs" />
     <Compile Include="Formats\StringTable\StringTableParseException.cs" />
     <Compile Include="Formats\StringTable\StringTableEntry.cs" />
     <Compile Include="Formats\StringTable\StringTableDocument.cs" />
@@ -181,6 +182,7 @@
     <Compile Include="Formats\Decoders\ObjectTemplateDecoder.cs" />
     <Compile Include="Formats\Decoders\TgenDecoder.cs" />
     <Compile Include="Formats\Decoders\ClefDecoder.cs" />
+    <Compile Include="Formats\Decoders\BuiltinRootForms.cs" />
     <Compile Include="Formats\Terrain\TerrainParseException.cs" />
     <Compile Include="Formats\Terrain\TgenFieldLayouts.cs" />
     <Compile Include="Formats\Terrain\TrnFieldEncoder.cs" />
