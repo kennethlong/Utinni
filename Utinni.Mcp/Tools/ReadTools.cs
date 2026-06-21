@@ -154,10 +154,21 @@ public static class ReadTools
     public static async Task<CallToolResult> SummarizeWithTemplate(
         ResolvedRoot root,
         CliDispatcher cli,
-        [Description(PathParamDescription)] string relativePath)
+        [Description(PathParamDescription)] string relativePath,
+        [Description("Optional leaf stableId to disambiguate a file with more than one template-eligible " +
+                     "leaf. Pass the stableId from the CLI's \"ambiguous\" envelope (the no-match envelope " +
+                     "lists the eligible leaves) to target a specific leaf. Omit when exactly one leaf is " +
+                     "eligible (the CLI auto-picks it).")]
+        string leafStableId = null)
     {
         string abs = root.Resolve(relativePath);                 // throws on escape → SDK tool error
-        CliInvocationResult r = await cli.RunAsync("decode-with-template", new[] { abs }).ConfigureAwait(false);
+        // WR-01: pure passthrough of --leaf so a multi-eligible-leaf file is reachable via MCP (the CLI
+        // auto-picks only when exactly one leaf is eligible; otherwise it returns an "ambiguous" envelope
+        // asking for --leaf). Still ZERO format logic here — just argv composition.
+        string[] args = string.IsNullOrEmpty(leafStableId)
+            ? new[] { abs }
+            : new[] { abs, "--leaf", leafStableId };
+        CliInvocationResult r = await cli.RunAsync("decode-with-template", args).ConfigureAwait(false);
         return CliResultMapper.ToCallToolResult(r);              // verbatim envelope pass-through; nonzero exit → tool error
     }
 

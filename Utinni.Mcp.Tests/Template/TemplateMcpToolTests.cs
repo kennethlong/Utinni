@@ -110,6 +110,44 @@ public class TemplateMcpToolTests
         Assert.StartsWith(Path.GetFullPath(rootDir), Path.GetFullPath(dispatched), StringComparison.OrdinalIgnoreCase);
     }
 
+    // ── Test 1b (WR-01): an optional leafStableId is passed through as --leaf <stableId> ──
+
+    [Fact]
+    [Trait("Category", "Template")]
+    public async Task SummarizeWithTemplate_WithLeafStableId_DispatchesLeafPassthrough()
+    {
+        var cli = new RecordingDispatcher(0, TemplateEnvelope());
+        (ResolvedRoot root, string rootDir) = MakeRoot();
+        File.WriteAllBytes(Path.Combine(rootDir, "multi.iff"), new byte[] { 0 });
+
+        CallToolResult result = await ReadTools.SummarizeWithTemplate(root, cli, "multi.iff", "CNTR:CNTR/0");
+
+        Assert.False(result.IsError ?? false);
+        Assert.Single(cli.Invocations);
+        Assert.Equal("decode-with-template", cli.Invocations[0].Verb);
+        // argv is [resolvedAbsPath, "--leaf", "CNTR:CNTR/0"] — pure passthrough, still zero format logic.
+        IReadOnlyList<string> args = cli.Invocations[0].Args;
+        Assert.Equal(3, args.Count);
+        Assert.True(Path.IsPathRooted(args[0]), "first arg is the resolved absolute path");
+        Assert.Equal("--leaf", args[1]);
+        Assert.Equal("CNTR:CNTR/0", args[2]);
+    }
+
+    [Fact]
+    [Trait("Category", "Template")]
+    public async Task SummarizeWithTemplate_NullOrEmptyLeaf_OmitsLeafFlag()
+    {
+        var cli = new RecordingDispatcher(0, TemplateEnvelope());
+        (ResolvedRoot root, string rootDir) = MakeRoot();
+        File.WriteAllBytes(Path.Combine(rootDir, "single.iff"), new byte[] { 0 });
+
+        CallToolResult result = await ReadTools.SummarizeWithTemplate(root, cli, "single.iff", "");
+
+        Assert.False(result.IsError ?? false);
+        // An empty leaf must NOT append a bare --leaf with no value — the CLI auto-picks the sole leaf.
+        Assert.Single(cli.Invocations[0].Args);
+    }
+
     // ── Test 2: the CLI envelope passes through verbatim (ZERO format logic in the MCP process) ──
 
     [Fact]
