@@ -246,6 +246,7 @@ namespace UtinniCoreDotNet.Formats.Template
             {
                 // Tag-only widen: ancestor prefix is dropped, but the match still REQUIRES the leaf carry a
                 // version-FORM in its path (version-FORM awareness is never dropped -- D-04). specificity 0.
+                if (versionSegment == null) return false; // D-04: never drop version-FORM awareness
                 specificity = 0;
                 return true;
             }
@@ -255,6 +256,7 @@ namespace UtinniCoreDotNet.Formats.Template
             {
                 // No ancestor constraint and not tag-only-flagged: behave as a low-specificity tag match
                 // that still respects version-FORM awareness (the leaf must have a version segment).
+                if (versionSegment == null) return false; // D-04: never drop version-FORM awareness
                 specificity = 0;
                 return true;
             }

@@ -226,6 +226,40 @@ namespace Utinni.Cli.Tests.Template
             Assert.True(res.Best.Fit.BytesConsumed < res.Best.Fit.BytesTotal);
         }
 
+        [Fact]
+        [Trait("Category", "TemplateVersionMatch")]
+        public void Template_VersionMatch_TagOnly_LeafWithNoVersionForm_DoesNotMatch()
+        {
+            // CR-01 regression: a tag-only template must NOT match a leaf whose stable-id path carries no
+            // enclosing FORM/LIST/CAT version sub-type. Dropping version-FORM awareness is exactly the
+            // CLEF-CPAP 3-layout silent mis-decode D-04 forbids. The leaf id has only the bare leaf
+            // segment (no FORM ancestor), so ExtractVersionFormSegment returns null.
+            var tagOnly = CpapTagOnlyTemplate(1);
+            var resolver = new TemplateResolver(new[] { tagOnly });
+
+            TemplateResolution res = resolver.MatchKey("CPAP:CPAP/0", "CPAP");
+
+            Assert.Null(res.Best);
+            Assert.Empty(res.Candidates);
+        }
+
+        [Fact]
+        [Trait("Category", "TemplateVersionMatch")]
+        public void Template_VersionMatch_EmptyAncestor_LeafWithNoVersionForm_DoesNotMatch()
+        {
+            // CR-01 regression (empty-ancestor branch): a template with neither MatchTagOnly nor a
+            // MatchAncestorPath must still require the leaf carry a version-FORM segment.
+            TemplateModel emptyAncestor = CpapTemplate(TemplateTestFixtures.VersionLow, 1);
+            emptyAncestor.MatchAncestorPath = null;
+            emptyAncestor.MatchTagOnly = false;
+            var resolver = new TemplateResolver(new[] { emptyAncestor });
+
+            TemplateResolution res = resolver.MatchKey("CPAP:CPAP/0", "CPAP");
+
+            Assert.Null(res.Best);
+            Assert.Empty(res.Candidates);
+        }
+
         // ── corpus-query substrate (D-17.4): MatchKey is a path predicate, no document needed ──
 
         [Fact]
