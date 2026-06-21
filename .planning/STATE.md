@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: executing
-stopped_at: Completed 23-01-PLAN.md
-last_updated: "2026-06-21T03:35:23.584Z"
+stopped_at: Completed 23-02-PLAN.md
+last_updated: "2026-06-21T03:46:34.197Z"
 last_activity: 2026-06-21
 progress:
   total_phases: 17
   completed_phases: 6
   total_plans: 31
-  completed_plans: 24
-  percent: 77
+  completed_plans: 25
+  percent: 81
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 ## Current Position
 
 Phase: 23 (user-definable-iff-chunk-templates) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
-Last activity: 2026-06-21 -- 23-01 complete (Wave-0 template contracts + RED test suite)
+Last activity: 2026-06-21 -- 23-02 complete (template schema layer: JSON (de)serializer + 7 D-09 presets)
 
 > Note: `gsd-sdk query phase.complete 22` again set next_phase to `999.2` (the legacy backlog id for what is now Phase 23); hand-corrected to Phase 23 here per the documented phase.complete next-phase bug (same correction made at the 21→22 transition).
 
@@ -232,6 +232,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 22 P03 | 25 min | 1 tasks | 5 files |
 | Phase 22 P02 | ~55min | 2 tasks | 16 files |
 | Phase 23 P01 | 8min | 2 tasks | 6 files |
+| Phase 23 P02 | 6min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -311,6 +312,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: 22-02: ClefCommandDefaults (locked add-command defaults) lives in the codec namespace for CLI/fixture/Form parity — REVIEWS MEDIUM #5
 - [Phase 23]: 23-01: Froze ITemplateContracts.cs as the single template-engine surface (kernel types/array kinds/value-maps/FitReport/DecodedTemplate + KernelCodec stubs); Waves 1-2 implement against it.
 - [Phase 23]: 23-01: RED-via-Skip Wave-0 scaffolding — 10 goldens discovered green-with-skips; CRITICAL DEC-C3 count-from-prior grow/shrink resolvable by --filter Template&CountRecompute&Roundtrip.
+- [Phase ?]: 23-02: template schema layer = Newtonsoft (de)serializer (sorted-key write, fixed-POCO read TypeNameHandling=None) over the frozen 23-01 POCOs + 7 D-09-pinned preset JSON files; presets are pure kernel sugar
 
 ### Pending Todos
 
@@ -368,7 +370,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-21T03:35:23.562Z
+Last session: 2026-06-21T03:46:13.747Z
 Stopped at: Completed 23-01-PLAN.md
 Resume file: None
 
