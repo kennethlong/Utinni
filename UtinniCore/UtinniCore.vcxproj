@@ -207,6 +207,7 @@ $(SolutionDir)UtinniCoreDotNetGen\bin\$(Configuration)\UtinniCoreDotNetGen.exe "
     <ClCompile Include="swg\misc\repository.cpp" />
     <ClCompile Include="swg\ui\imgui_impl.cpp" />
     <ClCompile Include="swg\misc\config.cpp" />
+    <ClCompile Include="swg\endpoints.cpp" />
     <ClCompile Include="swg\graphics\directx9.cpp" />
     <ClCompile Include="swg\graphics\directx11.cpp" />
     <ClCompile Include="swg\graphics\render_backend.cpp" />
@@ -290,6 +291,8 @@ $(SolutionDir)UtinniCoreDotNetGen\bin\$(Configuration)\UtinniCoreDotNetGen.exe "
     <ClInclude Include="swg\misc\repository.h" />
     <ClInclude Include="swg\ui\imgui_impl.h" />
     <ClInclude Include="swg\misc\config.h" />
+    <ClInclude Include="swg\endpoints.h" />
+    <ClInclude Include="swg\utinni_engine_hookpoints.h" />
     <ClInclude Include="swg\graphics\directx9.h" />
     <ClInclude Include="swg\graphics\directx11.h" />
     <ClInclude Include="swg\graphics\render_backend.h" />
