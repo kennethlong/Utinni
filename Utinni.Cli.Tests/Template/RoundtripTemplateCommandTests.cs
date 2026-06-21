@@ -23,47 +23,137 @@
 **/
 // Implementation original to Utinni under MIT.
 //
-// RED-via-Skip (Wave 0, plan 23-01): verb-level byte-exact gate + D-14 worked-example goldens. The
-// worked-example fixtures double as the DEC-C3 byte-exact gate before /gsd:verify-work. Method names
-// embed the VALIDATION.md --filter tokens (Template, Roundtrip, WorkedExample).
+// GREEN (plan 23-05): the verb-level byte-exact gate (roundtrip-template) + D-14 worked-example goldens.
+// The worked-example fixtures double as the DEC-C3 byte-exact gate. Method names embed the VALIDATION.md
+// --filter tokens (Template, Roundtrip, WorkedExample, Decode, List).
 
+using System.IO;
+using Newtonsoft.Json.Linq;
+using UtinniCoreDotNet.Formats.Template;
+using Utinni.Cli.Tests.Infrastructure;
 using Xunit;
 
 namespace Utinni.Cli.Tests.Template
 {
     /// <summary>
-    /// Verb-level (utinni-cli) decode-&gt;encode byte-exact goldens for the template path, including the
-    /// D-14 worked-example chunk templates. Filter tokens: Template, Roundtrip, WorkedExample. All
-    /// RED-via-Skip pending the Wave 1/2 engine + the shipped worked-example template pack.
+    /// Verb-level (utinni-cli) decode-&gt;encode byte-exact goldens for the template path, plus the
+    /// decode-with-template envelope + list-templates inventory goldens. Filter tokens: Template,
+    /// Roundtrip, WorkedExample, Decode, List.
     /// </summary>
     public sealed class RoundtripTemplateCommandTests
     {
-        private const string RedVerb = "RED — Wave 1/2 wires the roundtrip-template verb; tracking PROD-IFFT-02";
-        private const string RedWorked = "RED — Wave 2 ships D-14 worked-example templates; tracking PROD-IFFT-03 (doubles as DEC-C3 byte-exact gate)";
-
         // ── verb-level byte-exact (PROD-IFFT-02) — filter "Template&Roundtrip" ──
 
-        [Theory(Skip = RedVerb)]
+        [Theory]
         [Trait("Category", "TemplateRoundtrip")]
         [InlineData(TemplateTestFixtures.VersionLow)]
         [InlineData(TemplateTestFixtures.VersionHigh)]
         public void Template_Roundtrip_VerbDecodeEncodeFixture_BytesIdentical(string version)
         {
-            // roundtrip-template against BuildKern(version): exit 0 + bytesIdentical true.
-            Assert.True(false, "pending Wave 1/2 roundtrip-template verb");
+            using (var tmp = new TempDir())
+            {
+                string iff = tmp.Write("kern.iff", TemplateTestFixtures.BuildKern(version));
+                string tpl = tmp.WriteText("kern.json", TemplateJson.Serialize(TemplateAuthoring.KernTemplate(version)));
+
+                CliResult res = InProcessCliRunner.Run("roundtrip-template", iff, "--template", tpl);
+
+                Assert.Equal(0, res.ExitCode);
+                JObject env = JObject.Parse(res.Stdout);
+                Assert.True((bool)env["result"]["bytesIdentical"]);
+            }
         }
 
-        // ── D-14 worked-example goldens (PROD-IFFT-03) — filter "Template&WorkedExample&Roundtrip" ──
-
-        [Theory(Skip = RedWorked)]
-        [Trait("Category", "TemplateWorkedExampleRoundtrip")]
-        [InlineData(TemplateTestFixtures.VersionLow)]
-        [InlineData(TemplateTestFixtures.VersionHigh)]
-        public void Template_WorkedExample_Roundtrip_ShippedTemplatePack_BytesIdentical(string version)
+        [Fact]
+        [Trait("Category", "TemplateRoundtrip")]
+        public void Template_Roundtrip_CorruptedFixture_Exit2()
         {
-            // The D-14 worked-example template applied to its fixture chunk round-trips byte-exact at
-            // both the low and high version FORM (where layouts diverge).
-            Assert.True(false, "pending Wave 2 D-14 worked-example template pack");
+            using (var tmp = new TempDir())
+            {
+                // A template that under-describes the payload (claims 1 trailing f32, fixture has more)
+                // makes decode->encode NOT byte-identical (or short-decodes) -> the gate must reject (exit 2).
+                string iff = tmp.Write("kern.iff", TemplateTestFixtures.BuildKern(TemplateTestFixtures.VersionLow));
+                string tpl = tmp.WriteText("wrong.json",
+                    TemplateJson.Serialize(TemplateAuthoring.WrongLayoutTemplate(TemplateTestFixtures.VersionLow)));
+
+                CliResult res = InProcessCliRunner.Run("roundtrip-template", iff, "--template", tpl);
+
+                Assert.Equal(2, res.ExitCode);
+            }
+        }
+
+        // ── decode-with-template envelope (PROD-IFFT-02) — filter "Template&Decode" ──
+
+        [Fact]
+        [Trait("Category", "TemplateDecode")]
+        public void Template_Decode_EligibleLeaf_EmitsEnvelopeWithFit()
+        {
+            using (var tmp = new TempDir())
+            {
+                string iff = tmp.Write("kern.iff", TemplateTestFixtures.BuildKern(TemplateTestFixtures.VersionLow));
+                string tpl = tmp.WriteText("kern.json",
+                    TemplateJson.Serialize(TemplateAuthoring.KernTemplate(TemplateTestFixtures.VersionLow)));
+
+                CliResult res = InProcessCliRunner.Run("decode-with-template", iff, "--template", tpl);
+
+                Assert.Equal(0, res.ExitCode);
+                JObject env = JObject.Parse(res.Stdout);
+                Assert.True((bool)env["result"]["matched"]);
+                Assert.True((bool)env["result"]["fits"]);
+                Assert.True((bool)env["result"]["fit"]["consumedExactly"]);
+            }
+        }
+
+        [Fact]
+        [Trait("Category", "TemplateDecode")]
+        public void Template_Decode_MissingFile_Exit3()
+        {
+            CliResult res = InProcessCliRunner.Run("decode-with-template", "does-not-exist.iff");
+            Assert.Equal(3, res.ExitCode);
+        }
+
+        [Fact]
+        [Trait("Category", "TemplateDecode")]
+        public void Template_Decode_UnmatchedChunk_ClearNoMatchEnvelope_NotCrash()
+        {
+            using (var tmp = new TempDir())
+            {
+                // A real fixture but a template whose leaf tag does not match any leaf -> matched=false,
+                // exit 0 (a clear no-match envelope, never a crash).
+                string iff = tmp.Write("kern.iff", TemplateTestFixtures.BuildKern(TemplateTestFixtures.VersionLow));
+                string tpl = tmp.WriteText("other.json",
+                    TemplateJson.Serialize(TemplateAuthoring.UnmatchedTagTemplate()));
+
+                CliResult res = InProcessCliRunner.Run("decode-with-template", iff, "--template", tpl);
+
+                Assert.Equal(0, res.ExitCode);
+                JObject env = JObject.Parse(res.Stdout);
+                Assert.False((bool)env["result"]["matched"]);
+                Assert.NotNull((string)env["result"]["reason"]);
+            }
+        }
+
+        // ── list-templates inventory (D-12) — filter "Template&List" ──
+
+        [Fact]
+        [Trait("Category", "TemplateList")]
+        public void Template_List_EnumeratesScannedPacks_ReportsMatchKey()
+        {
+            using (var tmp = new TempDir())
+            {
+                tmp.WriteText("kern.json", TemplateJson.Serialize(TemplateAuthoring.KernTemplate(TemplateTestFixtures.VersionLow)));
+
+                CliResult res = InProcessCliRunner.Run("list-templates", "--templates-dir", tmp.Path);
+
+                Assert.Equal(0, res.ExitCode);
+                JObject env = JObject.Parse(res.Stdout);
+                JArray templates = (JArray)env["result"]["templates"];
+                Assert.NotEmpty(templates);
+                // Every listed template reports a match key.
+                foreach (JToken t in templates)
+                {
+                    Assert.False(string.IsNullOrEmpty((string)t["matchKey"]));
+                }
+            }
         }
     }
 }

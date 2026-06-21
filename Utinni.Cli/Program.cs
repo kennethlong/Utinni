@@ -74,7 +74,10 @@ namespace Utinni.Cli
                         typeof(Commands.ValidateBundleOptions),
                         typeof(Commands.DecodeEffectOptions),
                         typeof(Commands.RoundtripEffectOptions),
-                        typeof(Commands.ApplySaveEffectOptions))
+                        typeof(Commands.ApplySaveEffectOptions),
+                        typeof(Commands.DecodeWithTemplateOptions),
+                        typeof(Commands.RoundtripTemplateOptions),
+                        typeof(Commands.ListTemplatesOptions))
                     .MapResult(
                         (object opts) => Dispatch(opts),
                         errs => 1);  // exit 1 on usage error per D-02
@@ -114,6 +117,9 @@ namespace Utinni.Cli
                 case Commands.DecodeEffectOptions o:       return Commands.DecodeEffectCommand.Run(o);
                 case Commands.RoundtripEffectOptions o:    return Commands.RoundtripEffectCommand.Run(o);
                 case Commands.ApplySaveEffectOptions o:    return Commands.ApplySaveEffectCommand.Run(o);
+                case Commands.DecodeWithTemplateOptions o: return Commands.DecodeWithTemplateCommand.Run(o);
+                case Commands.RoundtripTemplateOptions o:  return Commands.RoundtripTemplateCommand.Run(o);
+                case Commands.ListTemplatesOptions o:      return Commands.ListTemplatesCommand.Run(o);
                 default:                                  return 1;
             }
         }
