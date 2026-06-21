@@ -27,7 +27,8 @@ findings:
   warning: 6
   info: 5
   total: 13
-status: issues_found
+status: resolved
+resolution: "2026-06-21 — all 2 critical + 6 warning fixed (CR-01,CR-02,WR-01..06); 5 info deferred. 10 atomic commits across Utinni + UtinniPlugins; regression tests added for CR-01/CR-02/WR-01/WR-03/WR-05; both solutions green."
 ---
 
 # Phase 23: Code Review Report
@@ -251,6 +252,27 @@ display key) are two separate implementations of "the match key." They will not 
 reader could assume the listed key is the shadow key.
 **Fix:** Name them distinctly (e.g. `ShadowKey` vs `DisplayKey`) or derive the display string from the
 single shadow-key source to make the relationship explicit.
+
+## Resolution (2026-06-21)
+
+All Critical + Warning findings fixed (user-selected scope: criticals + warnings). The 5 Info items
+(IN-01..05) are deferred as documented maintainability notes.
+
+| Finding | Status | Commit(s) |
+|---------|--------|-----------|
+| CR-01 | Fixed (+regression test) | `1db5496` (Utinni) |
+| CR-02 | Fixed (+regression test) | `d50b06a` (Utinni) |
+| WR-01 | Fixed (+MCP tests; +ExpectedTools list fix) | `aabb341`, `524dd11` (Utinni) |
+| WR-02 | Fixed (clone-on-seed) | `c5677d8` (UtinniPlugins) |
+| WR-03 | Fixed (+regression test) | `763ff74` (Utinni) |
+| WR-04 | Fixed (opaque-span contract + dialog) | `9065baa` (Utinni), `9cf94e8` (UtinniPlugins) |
+| WR-05 | Fixed (+FitReport test) | `a0bda36` (Utinni) |
+| WR-06 | Fixed (honest does-not-fit on decode throw) | `ced0056` (UtinniPlugins) |
+| IN-01..05 | Deferred | — (logged above) |
+
+Verification: Utinni.sln + TheJawaToolbox.sln build Release/x86 clean; Utinni.Cli.Tests 511✓,
+Utinni.Mcp.Tests 120✓, UtinniCoreDotNet.Tests 855✓ (sole exception: the known Phase-17
+`AbiSurfaceTests.GeneratedSurface_MatchesBlessedBaseline` stale-Generated harness gotcha). Both trees clean.
 
 ---
 
