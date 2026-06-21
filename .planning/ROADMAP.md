@@ -181,7 +181,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 - [x] 23-04-PLAN.md — TemplateResolver (version-FORM-aware match + D-05 altitude gate + D-07 fit-confidence) + scanned-dir pack store
 - [x] 23-05-PLAN.md — utinni-cli template verbs (decode/roundtrip/apply-save/list) + Program.cs registration + 2 worked-example goldens
 - [ ] 23-06-PLAN.md — thin MCP summarize_with_template tool (shell-out, MCP-OOP)
-- [ ] 23-07-PLAN.md — TJT Tier-B hex-driven builder pane (select→assign, live round-trip indicator, auto-apply) inside FormIffEditor
+- [x] 23-07-PLAN.md — TJT Tier-B hex-driven builder pane (select→assign, live round-trip indicator, auto-apply) inside FormIffEditor
 - [ ] 23-08-PLAN.md — pack management UI (save/select/import/export) + maintainer live-smoke
 **UI hint**: yes
 
@@ -229,7 +229,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 | 20. Terrain `.trn` Codec + Verbs + MCP | v2.1 | 4/4 | Complete   | 2026-06-16 |
 | 21. Terrain TJT SubPanel | v2.1 | 7/7 | Complete    | 2026-06-17 |
 | 22. ClientEffect Editor | v2.1 | 4/4 | Complete    | 2026-06-20 |
-| 23. IFF Chunk Templates | v2.1 | 5/8 | In Progress|  |
+| 23. IFF Chunk Templates | v2.1 | 6/8 | In Progress|  |
 | 24. Client Entry-Point Advertisement | v2.1 | 0/? | Not started | - |
 
 **Shipped: 2 milestones, 16 phases (+02.1), 94 plans, 31 requirements (15 v1 + 16 v2.0).**
