@@ -1,0 +1,15 @@
+{
+  "description": "SWG StringId preset (D-09 / Pitfall 2): two NUL-terminated C-strings = table then text (variable length). StringId is logically a table:text pair, but its IFF serialization is consumer-specific - this is the MOST COMMON on-wire form and the preset MOST LIKELY to need a per-chunk override (e.g. crc+string variants). A chunk that won't round-trip with this preset is a one-click preset edit, not an engine change (D-09 presets-are-editable-data). Pure JSON sugar over the kernel (D-08).",
+  "version": 1,
+  "matchTagOnly": false,
+  "fields": [
+    {
+      "name": "stringId",
+      "type": "Struct",
+      "structFields": [
+        { "name": "table", "type": "CString", "encoding": "ascii" },
+        { "name": "text", "type": "CString", "encoding": "ascii" }
+      ]
+    }
+  ]
+}

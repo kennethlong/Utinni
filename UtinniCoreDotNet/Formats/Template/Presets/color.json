@@ -1,0 +1,16 @@
+{
+  "description": "SWG color preset, default = PackedRgb (D-09): 3 x u8 = r, g, b (3 bytes). The most common leaf color form. SWG stores color THREE ways (3xu8 / packed u32-ARGB / 4xf32-ARGB); a chunk that disagrees is a one-click preset swap to colorArgb32 or colorArgbF, not an engine change. Source: PackedRgb.h public uint8 r,g,b; AffectorColor.cpp:170-172 reads r,g,b; :192-194 writes r,g,b. Pure JSON sugar over the kernel (D-08).",
+  "version": 1,
+  "matchTagOnly": false,
+  "fields": [
+    {
+      "name": "color",
+      "type": "Struct",
+      "structFields": [
+        { "name": "r", "type": "U8" },
+        { "name": "g", "type": "U8" },
+        { "name": "b", "type": "U8" }
+      ]
+    }
+  ]
+}

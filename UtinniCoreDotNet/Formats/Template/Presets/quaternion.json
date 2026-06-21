@@ -1,0 +1,17 @@
+{
+  "description": "SWG Quaternion preset (D-09): 4 x f32 LE = w, x, y, z (w FIRST, 16 bytes). Source: Quaternion.h declares w,x,y,z (w first); Iff.cpp:876 writes w,x,y,z; Iff.cpp:1512 reads w,x,y,z. Pure JSON sugar over the kernel (D-08).",
+  "version": 1,
+  "matchTagOnly": false,
+  "fields": [
+    {
+      "name": "quaternion",
+      "type": "Struct",
+      "structFields": [
+        { "name": "w", "type": "F32" },
+        { "name": "x", "type": "F32" },
+        { "name": "y", "type": "F32" },
+        { "name": "z", "type": "F32" }
+      ]
+    }
+  ]
+}

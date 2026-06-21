@@ -1,0 +1,16 @@
+{
+  "description": "SWG Vector preset (D-09): 3 x f32 LE = x, y, z (12 bytes). Source: Vector.h public floats x,y,z; Iff.cpp:826 insertChunkFloatVector writes x,y,z. Pure JSON sugar over the kernel (D-08) - no engine code.",
+  "version": 1,
+  "matchTagOnly": false,
+  "fields": [
+    {
+      "name": "vector",
+      "type": "Struct",
+      "structFields": [
+        { "name": "x", "type": "F32" },
+        { "name": "y", "type": "F32" },
+        { "name": "z", "type": "F32" }
+      ]
+    }
+  ]
+}

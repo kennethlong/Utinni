@@ -1,0 +1,8 @@
+{
+  "description": "SWG color preset, PackedArgb form (D-09): 1 x u32 LE, ARGB packed as (A<<24 | R<<16 | G<<8 | B), 4 bytes. The kernel decodes the single u32; the ARGB byte-packing is the value interpretation. Source: PackedArgb.h:72 uint32 m_argb; :77-84 convert packs A<<24,R<<16,G<<8,B<<0. Pure JSON sugar over the kernel (D-08).",
+  "version": 1,
+  "matchTagOnly": false,
+  "fields": [
+    { "name": "argb", "type": "U32" }
+  ]
+}

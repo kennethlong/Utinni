@@ -1,0 +1,25 @@
+{
+  "description": "SWG Transform/matrix preset (D-09): 12 x f32 LE in ROW-MAJOR 3x4 order m[y][x], y:0..2, x:0..3 (48 bytes). This is a 3x4 AFFINE transform (rotation 3x3 + translation column), NOT a 4x4 matrix. Source: Iff.cpp:861 insertChunkFloatTransform and Iff.cpp:1495 read_floatTransform both iterate for y in 0..2 { for x in 0..3 }. Pure JSON sugar over the kernel (D-08).",
+  "version": 1,
+  "matchTagOnly": false,
+  "fields": [
+    {
+      "name": "matrix",
+      "type": "Struct",
+      "structFields": [
+        { "name": "m00", "type": "F32" },
+        { "name": "m01", "type": "F32" },
+        { "name": "m02", "type": "F32" },
+        { "name": "m03", "type": "F32" },
+        { "name": "m10", "type": "F32" },
+        { "name": "m11", "type": "F32" },
+        { "name": "m12", "type": "F32" },
+        { "name": "m13", "type": "F32" },
+        { "name": "m20", "type": "F32" },
+        { "name": "m21", "type": "F32" },
+        { "name": "m22", "type": "F32" },
+        { "name": "m23", "type": "F32" }
+      ]
+    }
+  ]
+}

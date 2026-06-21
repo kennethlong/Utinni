@@ -1,0 +1,17 @@
+{
+  "description": "SWG color preset, VectorArgb form (D-09): 4 x f32 LE = a, r, g, b (16 bytes). Source: Iff.cpp:843 insertChunkFloatVectorArgb writes a,r,g,b. Pure JSON sugar over the kernel (D-08).",
+  "version": 1,
+  "matchTagOnly": false,
+  "fields": [
+    {
+      "name": "color",
+      "type": "Struct",
+      "structFields": [
+        { "name": "a", "type": "F32" },
+        { "name": "r", "type": "F32" },
+        { "name": "g", "type": "F32" },
+        { "name": "b", "type": "F32" }
+      ]
+    }
+  ]
+}
