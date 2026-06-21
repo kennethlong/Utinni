@@ -149,6 +149,7 @@
     <Compile Include="Formats\Template\FitReport.cs" />
     <Compile Include="Formats\Template\TypePlausibility.cs" />
     <Compile Include="Formats\Template\TemplateResolver.cs" />
+    <Compile Include="Formats\Template\TemplatePackStore.cs" />
     <Compile Include="Formats\StringTable\StringTableParseException.cs" />
     <Compile Include="Formats\StringTable\StringTableEntry.cs" />
     <Compile Include="Formats\StringTable\StringTableDocument.cs" />
