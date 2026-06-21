@@ -1,10 +1,11 @@
 ---
 phase: 23
 slug: user-definable-iff-chunk-templates
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-06-20
+reviewed_at: 2026-06-20
 platform: winforms-desktop
 host_form: FormIffEditor (The Jawa Toolbox, net4.7.2 WinForms)
 ---
@@ -310,11 +311,11 @@ auto-passes.
 > "Visuals" = Pitfall-8 layout (Dock.Fill front-most, nested SplitContainer Size-before-SplitterDistance,
 > MEF-safe ctor). Web token rubrics (8-point scale, 60/30/10, line-heights, shadcn) do not apply.
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS (N/A — no registries)
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS (N/A — no registries)
 
-**Approval:** pending
+**Approval:** approved
