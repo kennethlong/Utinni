@@ -231,6 +231,65 @@ namespace Utinni.Cli.Tests.Template
             Assert.Equal(payload, reencoded);
         }
 
+        // ── WR-03: a non-terminal until-end array is rejected structurally — filter "Template&Array" ──
+
+        [Fact]
+        [Trait("Category", "TemplateArrayRoundtrip")]
+        public void Template_Array_NonTerminalUntilEnd_ThrowsStructuralTemplateException()
+        {
+            // An until-end array followed by a trailing field is malformed: the array would greedily eat
+            // the whole payload and starve the trailing field. Reject it at decode-walk time with a clear
+            // structural error rather than a confusing downstream Truncated.
+            var template = new TemplateModel
+            {
+                Version = 1,
+                MatchLeafTag = "BADL",
+                Fields = new List<FieldRecord>
+                {
+                    new FieldRecord
+                    {
+                        Name = "rest",
+                        Type = KernelType.Array,
+                        Repeat = new RepeatSpec { Kind = RepeatKind.UntilEnd },
+                        StructFields = new List<FieldRecord> { new FieldRecord { Name = "v", Type = KernelType.U8 } }
+                    },
+                    new FieldRecord { Name = "trailer", Type = KernelType.U32 }
+                }
+            };
+
+            TemplateException ex = Assert.Throws<TemplateException>(
+                () => KernelCodec.Decode(template, new byte[] { 1, 2, 3, 4, 5, 6 }));
+            Assert.Contains("until-end", ex.Message);
+        }
+
+        [Fact]
+        [Trait("Category", "TemplateArrayRoundtrip")]
+        public void Template_Array_UntilEnd_RaggedTail_SurfacesClearStructuralError()
+        {
+            // An until-end array of 4-byte (f32) elements over a payload whose length is NOT a multiple of
+            // 4 leaves a ragged tail: surface a clear TemplateException, not the bare DecoderException.
+            var template = new TemplateModel
+            {
+                Version = 1,
+                MatchLeafTag = "RAGD",
+                Fields = new List<FieldRecord>
+                {
+                    new FieldRecord
+                    {
+                        Name = "rest",
+                        Type = KernelType.Array,
+                        Repeat = new RepeatSpec { Kind = RepeatKind.UntilEnd },
+                        StructFields = new List<FieldRecord> { new FieldRecord { Name = "v", Type = KernelType.F32 } }
+                    }
+                }
+            };
+
+            // 6 bytes = one whole f32 (4) + a 2-byte ragged tail.
+            TemplateException ex = Assert.Throws<TemplateException>(
+                () => KernelCodec.Decode(template, new byte[] { 0, 0, 0, 0, 9, 9 }));
+            Assert.Contains("trailing byte", ex.Message);
+        }
+
         // ── D-09 presets (PROD-IFFT-01) — filter "Template&Preset" ──
 
         [Fact]

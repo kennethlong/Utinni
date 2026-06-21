@@ -127,10 +127,24 @@ namespace UtinniCoreDotNet.Formats.Template
         private static void DecodeFields(List<FieldRecord> fields, IffPayloadCursor cursor,
             Dictionary<string, object> into)
         {
-            foreach (FieldRecord f in fields)
+            for (int i = 0; i < fields.Count; i++)
             {
+                FieldRecord f = fields[i];
                 if (f == null) throw new TemplateException("Template contains a null field record.");
                 if (string.IsNullOrEmpty(f.Name)) throw new TemplateException("Template field is missing a name.");
+
+                // WR-03: an UntilEnd array consumes the WHOLE remaining payload, so it MUST be the last
+                // field of its (sub)record. A field after it would either be starved (Truncated) or, worse,
+                // the UntilEnd would greedily eat that field's bytes. Reject the malformed layout structurally
+                // with a clear message rather than producing a confusing downstream Truncated.
+                if (f.Type == KernelType.Array && f.Repeat != null
+                    && f.Repeat.Kind == RepeatKind.UntilEnd && i != fields.Count - 1)
+                {
+                    throw new TemplateException("Array '" + f.Name + "' is an until-end array but is not the "
+                        + "last field of its record; an until-end array must be terminal (it consumes all "
+                        + "remaining bytes).");
+                }
+
                 into[f.Name] = DecodeField(f, cursor, into);
             }
         }
@@ -202,7 +216,30 @@ namespace UtinniCoreDotNet.Formats.Template
                 }
                 case RepeatKind.UntilEnd:
                 {
-                    while (cursor.Remaining > 0) elements.Add(DecodeArrayElement(f, cursor));
+                    while (cursor.Remaining > 0)
+                    {
+                        int before = cursor.Remaining;
+                        try
+                        {
+                            elements.Add(DecodeArrayElement(f, cursor));
+                        }
+                        catch (DecoderException ex) when (ex.Kind == DecoderError.Truncated)
+                        {
+                            // WR-03: a non-zero remainder that does not make up one whole element width is a
+                            // ragged tail -- the payload is NOT cleanly an array of this element type. Surface
+                            // a clear structural error rather than the bare Truncated.
+                            throw new TemplateException("Until-end array '" + f.Name + "' has " + before
+                                + " trailing byte(s) that do not form a whole element; the payload is not a "
+                                + "clean array of this element shape.", ex);
+                        }
+
+                        // Guard against a zero-width element (e.g. an empty struct) that would loop forever.
+                        if (cursor.Remaining == before)
+                        {
+                            throw new TemplateException("Until-end array '" + f.Name + "' element consumed no "
+                                + "bytes; a zero-width element would loop forever.");
+                        }
+                    }
                     break;
                 }
                 default:
