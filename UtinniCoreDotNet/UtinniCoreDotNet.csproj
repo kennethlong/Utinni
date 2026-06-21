@@ -105,6 +105,7 @@
     <Compile Include="Formats\ClientEffect\ClientEffectCommand.cs" />
     <Compile Include="Formats\ClientEffect\MutableClientEffect.cs" />
     <Compile Include="Formats\ClientEffect\ClientEffectDocument.cs" />
+    <Compile Include="Formats\Template\ITemplateContracts.cs" />
     <Compile Include="Formats\StringTable\StringTableParseException.cs" />
     <Compile Include="Formats\StringTable\StringTableEntry.cs" />
     <Compile Include="Formats\StringTable\StringTableDocument.cs" />
