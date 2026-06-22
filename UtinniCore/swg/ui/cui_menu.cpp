@@ -23,6 +23,7 @@
  **/
 
 #include "cui_menu.h"
+#include "swg/endpoints.h"
 #include "swg/ui/imgui_impl.h"
 #include "swg/object/client_object.h"
 
@@ -48,6 +49,9 @@ swgptr __cdecl hkInfoTypesFindDefaultCursor(ClientObject* obj)
 
 void cuiMenu::detour()
 {
+    // Phase 24: skip on the advertised client when the primary target is unresolved.
+    if (!swg::endpoints::installable((const void*)swg::cuiMenu::infoTypesFindDefaultCursor)) return;
+
     swg::cuiMenu::infoTypesFindDefaultCursor = (swg::cuiMenu::pInfoTypesFindDefaultCursor)Detour::Create((LPVOID)swg::cuiMenu::infoTypesFindDefaultCursor, hkInfoTypesFindDefaultCursor, DETOUR_TYPE_PUSH_RET);
 }
 

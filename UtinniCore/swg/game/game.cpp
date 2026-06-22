@@ -25,6 +25,7 @@
 #include "game.h"
 #include "game_test_internal.h"
 #include "utinni.h"
+#include "swg/endpoints.h"
 #include <mutex>
 #include <vector>
 #include "swg/client/client.h"
@@ -495,6 +496,16 @@ void __cdecl hkCleanupScene()
 
 void Game::detour()
 {
+    // Phase 24: this subsystem is SWGEmu-addressed. getMainLoopCount() reads a hardcoded
+    // counter (0x1908830) and the mainLoop hook binds game::mainLoop -> the provider's
+    // Game::run (24-02 name mismatch) whose signature differs from this __cdecl(bool,HWND,
+    // int,int) trampoline, so installing it corrupts the stack on the first frame ->
+    // 0xC0000096 privileged-instruction crash in game code. Skip the whole subsystem on the
+    // advertised client until the provider advertises ABI-compatible game entry points.
+    // No-op on SWGEmu (D-00).
+    if (swg::endpoints::isAdvertisedClient())
+        return;
+
     if (getMainLoopCount() == 0) // Checks the Games main loop count, if 0, we're in the 'suspended' startup entry point loop
     {
         // utility::showMessageBox("");

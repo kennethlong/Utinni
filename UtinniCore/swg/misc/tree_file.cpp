@@ -23,6 +23,7 @@
  **/
 
 #include "tree_file.h"
+#include "swg/endpoints.h"
 #include <set>
 
 namespace swg::treefile
@@ -68,6 +69,15 @@ swgptr __fastcall hkSearchTree(swgptr pThis, DWORD EDX, int priority, const char
 
 void detour()
 {
+    // Phase 24: treeFile::open resolves on the advertised client, but the provider symbol
+    // is __cdecl while this hook (hkSearchTree) is __thiscall (24-02 flagged ABI mismatch).
+    // Installing it corrupts the stack when the engine calls TreeFile::open during login
+    // asset loading -> 0xC0000096 privileged-instruction crash in game code. The primary is
+    // mapped, so installable() can't catch this; skip the whole hook on the advertised client
+    // until the provider advertises an ABI-compatible symbol. No-op on SWGEmu (D-00).
+    if (swg::endpoints::isAdvertisedClient())
+        return;
+
     swg::treefile::searchTree = (swg::treefile::pSearchTree)Detour::Create(swg::treefile::searchTree, hkSearchTree, DETOUR_TYPE_PUSH_RET);
 }
 } // namespace utinni::treefile

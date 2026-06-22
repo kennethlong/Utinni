@@ -74,4 +74,18 @@ int resolve(const UtinniEngineHookPoints* table, const Binding* bindings, size_t
 // (SWGEmu Pre-CU no-op, D-00). If present -> call it and delegate to
 // resolve(table, s_bindings, ...). Returns true iff the export was present.
 bool resolveFromExe();
+
+// Phase 24 advertised-client per-subsystem install gate.
+// isAdvertisedClient() reflects whether resolveFromExe() found the GetEngineHookPoints
+// export this session (the gl11/D3D11-or-SwgClient_* path vs SWGEmu Pre-CU).
+// installable(target) is the gate each createDetours()/createPatches() subsystem checks
+// on its PRIMARY hooked target BEFORE installing anything: on SWGEmu (export absent) it is
+// ALWAYS true -- the full hook set installs byte-for-byte unchanged (D-00); on the
+// advertised client it is true only when `target` is committed + executable, i.e. the
+// subsystem's entry point WAS resolved from the catalog. A subsystem whose primary stayed
+// at its (unmapped) SWGEmu literal is skipped WHOLE, so none of its detours, patches, or
+// inline pointer derefs ever touch the wrong address. The lean-header contract is preserved
+// (only bool / const void* named -- no Windows/DX types).
+bool isAdvertisedClient();
+bool installable(const void* target);
 } // namespace swg::endpoints

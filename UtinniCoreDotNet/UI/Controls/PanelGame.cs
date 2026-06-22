@@ -48,9 +48,17 @@ namespace UtinniCoreDotNet.UI.Controls
         // asserts the literal RVA does not re-appear in this file.)
         private readonly IntPtr swgWndProcAddr;
 
+        // Phase 24: on the advertised (GetEngineHookPoints) client, client::wndProc is
+        // NOT in the catalog, so swgWndProcAddr keeps its hardcoded SWGEmu RVA, which is
+        // unmapped here -- forwarding to it faults (0xC0000005 EXEC). Validate once at
+        // ctor time; on SWGEmu the address is a valid mapped WndProc so this is true and
+        // forwarding is unchanged.
+        private readonly bool swgWndProcValid;
+
         protected override void WndProc(ref Message m)
         {
-            Native.CallWindowProc(swgWndProcAddr, m.HWnd, m.Msg, m.WParam, m.LParam); // Call and handle SWG's WndProc
+            if (swgWndProcValid)
+                Native.CallWindowProc(swgWndProcAddr, m.HWnd, m.Msg, m.WParam, m.LParam); // Call and handle SWG's WndProc
             base.WndProc(ref m);
         }
 
@@ -124,6 +132,7 @@ namespace UtinniCoreDotNet.UI.Controls
             // from the cache on the hot path -- no per-message P/Invoke
             // overhead.
             swgWndProcAddr = Native.GetSwgWndProc();
+            swgWndProcValid = Native.IsExecutableAddress(swgWndProcAddr);
 
             base.Dock = DockStyle.Fill;
             base.AllowDrop = true;

@@ -23,6 +23,7 @@
  **/
 
 #include "client.h"
+#include "swg/endpoints.h"
 #include "swg/graphics/graphics.h"
 #include "swg/game/game.h"
 #include "swg/misc/direct_input.h"
@@ -275,6 +276,10 @@ __declspec(naked) void midCrashLogWrite()
 
 void Client::detour()
 {
+    // Phase 24: skip the whole client subsystem on the advertised client when its primary
+    // entry point did not resolve from the catalog (its SWGEmu literals are unmapped here).
+    if (!swg::endpoints::installable((const void*)swg::client::setupStartDataInstall)) return;
+
     swg::client::setupStartDataInstall = (swg::client::pSetupInstall)Detour::Create((LPVOID)swg::client::setupStartDataInstall, hkSetupStartInstall, DETOUR_TYPE_PUSH_RET);
     swg::client::clientMain = (swg::client::pMainLoop)Detour::Create((LPVOID)swg::client::clientMain, hkMainLoop, DETOUR_TYPE_PUSH_RET);
     // swg::client::wndProc = (swg::client::pWndProc)Detour::Create((LPVOID)swg::client::wndProc, hkWndProc, DETOUR_TYPE_PUSH_RET);

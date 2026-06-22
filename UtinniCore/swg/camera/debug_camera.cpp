@@ -23,6 +23,7 @@
  **/
 
 #include "debug_camera.h"
+#include "swg/endpoints.h"
 #include "camera.h"
 #include "swg/scene/ground_scene.h"
 #include "swg/object/player_object.h"
@@ -298,11 +299,17 @@ float __fastcall hkAlter(GameCamera* pThis, swgptr EDX, float time)
 
 void detour()
 {
+    // Phase 24: skip on the advertised client when the primary target is unresolved.
+    if (!swg::endpoints::installable((const void*)swg::debugCamera::alter)) return;
+
     swg::debugCamera::alter = (swg::debugCamera::pAlter)Detour::Create((LPVOID)swg::debugCamera::alter, hkAlter, DETOUR_TYPE_PUSH_RET);
 }
 
 void patch()
 {
+    // Phase 24: skip on the advertised client when this SWGEmu patch site is unmapped.
+    if (!swg::endpoints::installable((const void*)0x0051AA8D)) return;
+
     // Enable mouse wheel to be sent to debugCamera::alter
     memory::nopAddress(0x0051AA8D, 2);
 }

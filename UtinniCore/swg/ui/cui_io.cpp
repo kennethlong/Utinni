@@ -23,6 +23,7 @@
  **/
 
 #include "cui_io.h"
+#include "swg/endpoints.h"
 #include "swg/ui/imgui_impl.h"
 #include "utility/log.h"
 
@@ -158,6 +159,9 @@ void __fastcall hkDraw(swgptr pThis, swgptr EDX)
 
 void cuiIo::detour()
 {
+    // Phase 24: skip on the advertised client when the primary target is unresolved.
+    if (!swg::endpoints::installable((const void*)swg::cuiIo::processEvent)) return;
+
     swg::cuiIo::processEvent = (swg::cuiIo::pProcessEvent)Detour::Create((LPVOID)swg::cuiIo::processEvent, hkProcessEvent, DETOUR_TYPE_PUSH_RET);
     // swg::cuiIo::draw = (swg::cuiIo::pDraw)Detour::Create((LPVOID)swg::cuiIo::draw, hkDraw, DETOUR_TYPE_PUSH_RET);
 }

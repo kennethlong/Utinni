@@ -23,6 +23,7 @@
  **/
 
 #include "cui_hud.h"
+#include "swg/endpoints.h"
 #include "swg/ui/imgui_impl.h"
 #include "swg/misc/swg_misc.h"
 #include "swg/camera/camera.h"
@@ -325,6 +326,9 @@ swgptr __fastcall hkSwgCuiGameMenuCtor(swgptr pThis, swgptr EDX, swgptr pPage)
 
 void detour()
 {
+    // Phase 24: skip on the advertised client when the primary target is unresolved.
+    if (!swg::endpoints::installable((const void*)swg::cuiHud::actionPerformAction)) return;
+
     // swg::cuiHud::update = (swg::cuiHud::pUpdate)Detour::Create((LPVOID)swg::cuiHud::update, hkUpdate, DETOUR_TYPE_PUSH_RET);
     swg::cuiHud::actionPerformAction = (swg::cuiHud::pActionPerformAction)Detour::Create((LPVOID)swg::cuiHud::actionPerformAction, hkActionPerformAction, DETOUR_TYPE_PUSH_RET);
     swg::cuiHud::getTarget = (swg::cuiHud::pGetTarget)Detour::Create((LPVOID)swg::cuiHud::getTarget, hkGetTarget, DETOUR_TYPE_PUSH_RET);

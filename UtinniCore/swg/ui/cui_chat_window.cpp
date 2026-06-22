@@ -23,6 +23,7 @@
  **/
 
 #include "cui_chat_window.h"
+#include "swg/endpoints.h"
 #include "command_parser.h"
 #include "utinni_command_parser.h"
 #include "swg/misc/swg_memory.h"
@@ -538,6 +539,9 @@ void __fastcall hkChatEnter(swgptr pThis, swgptr EDX)
 
 void CuiChatWindow::detour()
 {
+    // Phase 24: skip on the advertised client when the primary target is unresolved.
+    if (!swg::endpoints::installable((const void*)swg::cuiChatWindow::ctor)) return;
+
     swg::cuiChatWindow::ctor = (swg::cuiChatWindow::pCtor)Detour::Create(swg::cuiChatWindow::ctor, hkCtor, DETOUR_TYPE_PUSH_RET);
 
     // DIAG 2026-05-20 Issue #11 Phase E: enabled for caller-tracing. Was

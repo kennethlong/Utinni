@@ -144,6 +144,52 @@ namespace UtinniCoreDotNet.Utility
             EntryPoint = "getSwgWndProcExport")]
         public static extern IntPtr GetSwgWndProc();
 
+        // Phase 24: gate calls through SWG function pointers that may be UNRESOLVED
+        // on the advertised (GetEngineHookPoints) client. On that client a SWG entry
+        // point absent from the catalog keeps its hardcoded SWGEmu RVA, which is
+        // unmapped -- CALLing it faults (0xC0000005 EXEC). IsExecutableAddress lets a
+        // caller check ONCE (e.g. at ctor time) whether the target is committed +
+        // executable. On SWGEmu the address is a valid mapped function, so this
+        // returns true and behaviour is unchanged.
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MEMORY_BASIC_INFORMATION
+        {
+            public IntPtr BaseAddress;
+            public IntPtr AllocationBase;
+            public uint AllocationProtect;
+            public IntPtr RegionSize;
+            public uint State;
+            public uint Protect;
+            public uint Type;
+        }
+
+        [DllImport("kernel32.dll")]
+        public static extern IntPtr VirtualQuery(IntPtr lpAddress, out MEMORY_BASIC_INFORMATION lpBuffer, IntPtr dwLength);
+
+        public static bool IsExecutableAddress(IntPtr addr)
+        {
+            if (addr == IntPtr.Zero)
+                return false;
+
+            const uint MEM_COMMIT = 0x1000;
+            const uint PAGE_GUARD = 0x100;
+            const uint PAGE_NOACCESS = 0x01;
+            const uint PAGE_EXECUTE = 0x10, PAGE_EXECUTE_READ = 0x20,
+                       PAGE_EXECUTE_READWRITE = 0x40, PAGE_EXECUTE_WRITECOPY = 0x80;
+
+            if (VirtualQuery(addr, out MEMORY_BASIC_INFORMATION mbi,
+                    (IntPtr)Marshal.SizeOf(typeof(MEMORY_BASIC_INFORMATION))) == IntPtr.Zero)
+                return false;
+            if (mbi.State != MEM_COMMIT)
+                return false;
+            if ((mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS)) != 0)
+                return false;
+
+            uint prot = mbi.Protect & 0xFF;
+            return prot == PAGE_EXECUTE || prot == PAGE_EXECUTE_READ ||
+                   prot == PAGE_EXECUTE_READWRITE || prot == PAGE_EXECUTE_WRITECOPY;
+        }
+
         // 2026-05-19: signal the named ready event so the Launcher can restore
         // SWGEmu's PE entry bytes (originally patched to EB FE to stall the main
         // thread during injection). Called from Startup.EntryPoint right before

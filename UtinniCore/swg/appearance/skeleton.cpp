@@ -23,6 +23,7 @@
  **/
 
 #include "skeleton.h"
+#include "swg/endpoints.h"
 
 namespace swg::skeleton
 {
@@ -67,6 +68,9 @@ void __fastcall hkRender(swgptr pThis)
 }
 void detour()
 {
+    // Phase 24: skip on the advertised client when the primary target is unresolved.
+    if (!swg::endpoints::installable((const void*)swg::skeletalAppearance::render)) return;
+
     swg::skeletalAppearance::render = (swg::skeletalAppearance::pRender)Detour::Create(swg::skeletalAppearance::render, hkRender, DETOUR_TYPE_PUSH_RET);
 }
 

@@ -23,6 +23,7 @@
  **/
 
 #include "cui_radial_menu.h"
+#include "swg/endpoints.h"
 #include "swg/ui/imgui_impl.h"
 
 namespace swg::cuiRadialMenuManager
@@ -49,6 +50,9 @@ void __cdecl hkUpdate()
 
 void cuiRadialMenuManager::detour()
 {
+    // Phase 24: skip on the advertised client when the primary target is unresolved.
+    if (!swg::endpoints::installable((const void*)swg::cuiRadialMenuManager::update)) return;
+
     swg::cuiRadialMenuManager::update = (swg::cuiRadialMenuManager::pUpdate)Detour::Create((LPVOID)swg::cuiRadialMenuManager::update, hkUpdate, DETOUR_TYPE_PUSH_RET);
 }
 

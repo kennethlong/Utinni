@@ -115,6 +115,17 @@ void createDetours()
     const bool skipRender = bisectSkip("skipRenderGroup");
     const bool skipMisc = bisectSkip("skipMiscGroup");
 
+    // Phase 24: on the advertised client (GetEngineHookPoints present) the MISC + INPUT
+    // subsystems are SWGEmu-addressed -- their hooks bind/call hardcoded RVAs and
+    // ABI-mismatched symbols that are NOT in the advertised catalog (only ~77 of ~230 hook
+    // points are advertised this milestone), so installing them corrupts the relocated
+    // client. Until those hook points are advertised + ported, run RENDER-only on the
+    // advertised client (the overlay path is self-contained in graphics::install -> kickoff).
+    // No-op on SWGEmu Pre-CU (export absent) -- the full hook set installs unchanged (D-00).
+    const bool advertised = swg::endpoints::isAdvertisedClient();
+    if (advertised)
+        utinni::log::info("createDetours: advertised client -- running RENDER-only (MISC/INPUT subsystems deferred to full-catalog milestone)");
+
     // 2026-05-19: full detour set restored after bisection (rounds 0-10).
     // The audio-init stall was traced to Client::detour's hkSetupStartInstall
     // writing pStartupData->createOwnWindow=false, which SWG's setupStartDataInstall
@@ -123,7 +134,7 @@ void createDetours()
     // the bisection; restoring them here.
 
     // --- MISC / UI / lifecycle group ---
-    if (!skipMisc)
+    if (!skipMisc && !advertised)
     {
         swg::config::detour();
 
@@ -144,7 +155,7 @@ void createDetours()
     }
 
     // --- INPUT / EVENT / MOVEMENT / LOCOMOTION group (prime suspect) ---
-    if (!skipInput)
+    if (!skipInput && !advertised)
     {
         utinni::creatureObject::detour();
         utinni::cuiHud::detour();
@@ -173,9 +184,13 @@ void createPatches()
     const bool skipInput = ini.getBool("DebugBisect", "skipInputGroup");
     const bool skipMisc = ini.getBool("DebugBisect", "skipMiscGroup");
 
+    // Phase 24: same advertised-client RENDER-only policy as createDetours -- these patches
+    // write to hardcoded SWGEmu addresses that are wrong on the relocated client.
+    const bool advertised = swg::endpoints::isAdvertisedClient();
+
     // cuiMisc::patch is itself fully gated on enableOfflineScenes; group it with
     // MISC for completeness.
-    if (!skipMisc)
+    if (!skipMisc && !advertised)
     {
         utinni::cuiMisc::patch();
     }
@@ -185,7 +200,7 @@ void createPatches()
     // input-map control flow ("enable mouse wheel to debugCamera"). Grouped with
     // INPUT so the bisect can disable the only unconditional code-write that sits
     // directly on the locomotion input path.
-    if (!skipInput)
+    if (!skipInput && !advertised)
     {
         utinni::debugCamera::patch();
     }

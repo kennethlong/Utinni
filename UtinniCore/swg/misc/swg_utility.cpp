@@ -23,6 +23,7 @@
  **/
 
 #include "swg_utility.h"
+#include "swg/endpoints.h"
 
 namespace swg::utility
 {
@@ -43,6 +44,13 @@ unsigned int calculateCrc(const char* string)
 
 swgptr treeFileOpen(const char* filename, int priorityType, bool allowFail)
 {
+    // Phase 24: swg::utility::treeFileOpen is a hardcoded SWGEmu address (0x00A931E0) that is
+    // NOT in the advertised catalog, so it is not resolved on the advertised client -- calling
+    // it executes the wrong code and crashes. Fail safe (return 0 = "not found"; callers pass
+    // allowFail) on the advertised client. No-op on SWGEmu (D-00).
+    if (swg::endpoints::isAdvertisedClient())
+        return 0;
+
     return swg::utility::treeFileOpen(filename, priorityType, allowFail);
 }
 

@@ -577,6 +577,43 @@ static_assert([]() constexpr {
 }(), "consoleHelper::sendInput must remain the unbound D-02 carve-out");
 } // namespace
 
+// Phase 24: set true by resolveFromExe() when the GetEngineHookPoints export is present.
+// Drives installable() below so createDetours()/createPatches() can skip wholly-unresolved
+// subsystems on the advertised client while staying a strict no-op on SWGEmu.
+static bool s_advertisedClient = false;
+
+bool isAdvertisedClient()
+{
+    return s_advertisedClient;
+}
+
+// Committed + executable check (same predicate as the Detour::Create / memory:: guards).
+static bool isCommittedExecutable(const void* addr)
+{
+    if (addr == nullptr)
+        return false;
+
+    MEMORY_BASIC_INFORMATION mbi;
+    if (VirtualQuery(addr, &mbi, sizeof(mbi)) == 0)
+        return false;
+    if (mbi.State != MEM_COMMIT)
+        return false;
+    if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS))
+        return false;
+
+    const DWORD prot = mbi.Protect & 0xFF; // strip PAGE_GUARD/NOCACHE/WRITECOMBINE modifiers
+    return prot == PAGE_EXECUTE || prot == PAGE_EXECUTE_READ ||
+           prot == PAGE_EXECUTE_READWRITE || prot == PAGE_EXECUTE_WRITECOPY;
+}
+
+bool installable(const void* target)
+{
+    // SWGEmu (export absent): always install -- every literal is a valid mapped address,
+    // so the full hook set installs unchanged (D-00). Advertised client: install only when
+    // the subsystem's primary target resolved to committed + executable memory.
+    return !s_advertisedClient || isCommittedExecutable(target);
+}
+
 bool resolveFromExe()
 {
     using pGetEngineHookPoints = const UtinniEngineHookPoints*(__cdecl*)();
@@ -592,6 +629,10 @@ bool resolveFromExe()
         utinni::log::info("endpoints: no GetEngineHookPoints export -- RVA path (SWGEmu Pre-CU)");
         return false;
     }
+
+    // Advertised client: latch the dual-path flag BEFORE resolving so the per-subsystem
+    // install gate (installable()) is armed for createDetours()/createPatches().
+    s_advertisedClient = true;
 
     const UtinniEngineHookPoints* table = pGet();
     resolve(table, s_bindings, sizeof(s_bindings) / sizeof(s_bindings[0]));
