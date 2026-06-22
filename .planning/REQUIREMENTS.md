@@ -148,9 +148,9 @@ Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no
 | RNDR-02 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete (CI-green; live D3D11 acceptance deferred to Phase 24 — RVA crash on `SwgClient_r.exe` blocks inject until entry-point advertisement) |
 | RNDR-03 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete (CI-green; live D3D11 acceptance deferred to Phase 24) |
 | RNDR-04 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete (CI-green; live D3D11 acceptance deferred to Phase 24) |
-| EPA-01 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Pending |
+| EPA-01 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Complete (live-proven 2026-06-22: `SwgClient_r.exe` injects + reaches login, no crash; advertised client runs RENDER-only — full ~198/230 hook coverage is a follow-on milestone) |
 | EPA-02 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Complete |
-| EPA-03 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Complete |
+| EPA-03 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Complete (headless 24-03; DX11 *live* acceptance — and the Phase-19 RNDR-02/03/04 / D-22 live-smokes — DEFERRED to the follow-on milestone: maintainer waived DX11 here, the DX11 swapchain acquisition isn't wired on the advertised client yet) |
 | EPA-04 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Complete |
 | PROD-W2-TRN-01 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Complete |
 | PROD-W2-TRN-02 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Complete |

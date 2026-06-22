@@ -71,7 +71,7 @@ editors (21/22) ride their codecs plus the seam; the IFF-template quick win (23)
 - [x] **Phase 22: ClientEffect Editor** — command-list `.iff` codec + verbs + MCP + SubPanel (FEATURE; lowest risk) (completed 2026-06-20)
 - [x] **Phase 23: User-Definable IFF Chunk Templates** — schema-driven decode/encode + manage-from-UI (QUICK WIN, Backlog 999.2)
  (completed 2026-06-21)
-- [ ] **Phase 24: Client Entry-Point Advertisement (`GetEngineHookPoints`)** — SWG-Source client advertises its ~198 engine entry points; UtinniCore consumes them (dual-path), retiring hardcoded RVAs on that client; unblocks the 18/19 live-smokes on D3D11 (FOUNDATION; promotes Backlog 999.7 advertisement half; gated on external swg-client-v2 readiness; research-phase)
+- [x] **Phase 24: Client Entry-Point Advertisement (`GetEngineHookPoints`)** — SWG-Source client advertises its ~198 engine entry points; UtinniCore consumes them (dual-path), retiring hardcoded RVAs on that client; unblocks the 18/19 live-smokes on D3D11 (FOUNDATION; promotes Backlog 999.7 advertisement half; gated on external swg-client-v2 readiness; research-phase) — **COMPLETE 2026-06-22**: resolver consumes the 77-of-78 catalog; `SwgClient_r.exe` injects + reaches login live (Checkpoint 1 PASS), SWGEmu byte-for-byte unchanged (Checkpoint 3 PASS / D-00). EPA-01/02/04 live-proven; EPA-03 headless done. Advertised client runs **RENDER-only** (the ~77/230 advertised subset); **DX11 live acceptance + full ~198/230 hook coverage DEFERRED to a follow-on milestone** (maintainer waived DX11 — provider DX11 hook points not wired yet). 1 maintainer step pending: ABI baseline re-bless (28 ADDED, additive/binary-compatible; TJT MEF-compose already live-confirmed).
 
 ## Phase Details
 

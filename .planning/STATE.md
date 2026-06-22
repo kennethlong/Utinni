@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: executing
-stopped_at: Phase 24 context gathered
-last_updated: "2026-06-22T01:34:23.376Z"
+stopped_at: Phase 24 COMPLETE (live-smoke Checkpoints 1+3 PASS; 2 deferred) — last phase of v2.1
+last_updated: "2026-06-22T10:30:00.000Z"
 last_activity: 2026-06-22
 progress:
   total_phases: 17
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 35
-  completed_plans: 34
-  percent: 97
+  completed_plans: 35
+  percent: 100
 ---
 
 # Project State
@@ -21,14 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 24 — client-entry-point-advertisement-getenginehookpoints
+**Current focus:** Phase 24 COMPLETE — v2.1 milestone (Phases 17–24) done; ready for milestone close / next milestone.
 
 ## Current Position
 
-Phase: 24 (client-entry-point-advertisement-getenginehookpoints) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
+Phase: 24 (client-entry-point-advertisement-getenginehookpoints) — COMPLETE 2026-06-22 (last phase of v2.1)
+Plan: 4 of 4 complete
+Status: Phase complete. Live-smoke Checkpoints 1 (advertised-client inject, no crash) + 3 (SWGEmu no-regression / D-00) PASS; Checkpoint 2 (DX11 overlay) deferred by maintainer (DX11 provider hooks not wired). Advertised client runs RENDER-only.
 Last activity: 2026-06-22
+
+> FOLLOW-ON MILESTONE (captured, out of v2.1 scope): full advertised-client hook coverage (~198/230 entry points) + DX11 live acceptance (closes Phase-18 D-08 / Phase-19 D-22 / RNDR-02/03/04). Requires the swg-client-v2 PROVIDER to advertise more entry points (incl. D3D11 swapchain) + per-function ABI adapters on the consumer side.
+> MAINTAINER STEP PENDING: ABI baseline re-bless (AbiSurfaceTests: 28 ADDED, 0 REMOVED — additive/binary-compatible; TJT MEF-compose already live-confirmed). Run AbiBlockHash.Rebless → re-freeze FrozenPlugin fixture → commit together (Phase-17 CPPS-04 lockstep).
 
 > Note: `gsd-sdk query phase.complete 22` again set next_phase to `999.2` (the legacy backlog id for what is now Phase 23); hand-corrected to Phase 23 here per the documented phase.complete next-phase bug (same correction made at the 21→22 transition).
 
