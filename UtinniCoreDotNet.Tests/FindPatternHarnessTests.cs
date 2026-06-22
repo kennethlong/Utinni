@@ -128,7 +128,10 @@ namespace UtinniCoreDotNet.Tests
             Assert.Equal(UIntPtr.Zero, result);
         }
 
-        [Fact]
+        [Fact(Skip = "WR-05: HAL CreateDevice unavailable on the headless self-hosted runner " +
+                     "(NETWORK SERVICE / Session 0, no graphics adapter — confirmed 2026-06-22 " +
+                     "after the runner became a Windows service); null-path test " +
+                     "GetVtbl_WithoutD3d9Loaded_ReturnsNull retains regression coverage per CONTEXT.md D-05")]
         public void GetVtbl_WithD3d9Loaded_ReturnsNonZero()
         {
             // WR-05: affirmative test for getVtbl. As of 2026-05-19 the d3d9.dll code-pattern
@@ -137,10 +140,11 @@ namespace UtinniCoreDotNet.Tests
             // semantics are unchanged: with d3d9.dll loaded the function should succeed; without
             // it, the null-path test (GetVtbl_WithoutD3d9Loaded_ReturnsNull) covers the early-out.
             //
-            // Headless CI caveat: CreateDevice(HAL) may fail on the windows-2022 GitHub runner
-            // if no graphics adapter is exposed. If that happens, mark this test:
-            //   [Fact(Skip = "WR-05: HAL CreateDevice unavailable on headless windows-2022; " +
-            //                 "null-path test retains regression coverage per CONTEXT.md D-05")]
+            // Skipped on CI: CreateDevice(HAL) needs a real graphics adapter, which the runner
+            // lost when it migrated from an interactive desktop session (GPU available) to a
+            // Windows service in Session 0 on 2026-06-20. The dummy-device dance is still
+            // exercised locally on a desktop session; restore this [Fact] (drop the Skip) if the
+            // runner is ever given desktop/GPU access again.
             IntPtr hD3d9 = IntPtr.Zero;
             try
             {
