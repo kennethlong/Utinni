@@ -57,7 +57,7 @@ REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 ca
   populates the `swg::*` function pointers, retiring the hardcoded `0x00xxxxxx` literals on that client. The
   old SWGEmu (Pre-CU) client keeps the hardcoded-RVA path; discovery is dual-path, auto-selected by detecting
   the export (no config toggle). No hardcoded literal is dereferenced on the advertised client.
-- [ ] **EPA-03**: The DX11 overlay kickoff is decoupled from the SWGEmu-addressed `graphics::install` hook —
+- [x] **EPA-03**: The DX11 overlay kickoff is decoupled from the SWGEmu-addressed `graphics::install` hook —
   `directX11::kickoff()` is driven from the advertised contract / a binary-agnostic trigger, so the Phase-19
   DX11 path starts on the advertised client without relying on any hardcoded install detour.
 - [x] **EPA-04**: A client missing the export (older/unpatched) or shipping a partial contract is detected and
@@ -150,7 +150,7 @@ Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no
 | RNDR-04 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete (CI-green; live D3D11 acceptance deferred to Phase 24) |
 | EPA-01 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Pending |
 | EPA-02 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Complete |
-| EPA-03 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Pending |
+| EPA-03 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Complete |
 | EPA-04 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Complete |
 | PROD-W2-TRN-01 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Complete |
 | PROD-W2-TRN-02 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Complete |

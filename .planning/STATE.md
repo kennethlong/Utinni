@@ -4,14 +4,14 @@ milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: executing
 stopped_at: Phase 24 context gathered
-last_updated: "2026-06-22T00:22:10.025Z"
+last_updated: "2026-06-22T01:34:23.376Z"
 last_activity: 2026-06-22
 progress:
   total_phases: 17
   completed_phases: 7
   total_plans: 35
-  completed_plans: 33
-  percent: 94
+  completed_plans: 34
+  percent: 97
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 ## Current Position
 
 Phase: 24 (client-entry-point-advertisement-getenginehookpoints) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-06-22
 
@@ -242,6 +242,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 23 P08 | ~22h (auto + live-smoke gate) | 2 tasks | 2 files |
 | Phase 24 P01 | 67min | 3 tasks | 8 files |
 | Phase 24 P02 | 80min | 2 tasks | 8 files |
+| Phase 24 P03 | ~25min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -333,6 +334,7 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase 23]: [Phase 23]: 23-08 (PROD-IFFT-03 manage half) COMPLETE 2026-06-21; maintainer live-smoke APPROVED/PASS. TemplateBuilderPane Save-drop-down: Save to writable pack (User/Project; Shipped disabled+store-rejected), Select-and-apply (clone-on-apply), Import/Export (Open/SaveFileDialog); save serializes via TemplateJson WITHIN pack root via LooseOverridePath (T-23-08-PATH); overwrite/delete via FormSaveConfirmDialog (T-23-08-DESTRUCT); non-destructive until explicit Save. Live-smoke (scene/game_music_manager.iff root GMUS, NUL-term C-string over WATR leaf 31/31 bytes) round-tripped byte-exact, silent auto-apply on re-open, no sibling corruption. Phase 23 COMPLETE (8/8). UtinniPlugins 55515e9; UX residual (byte-grid selection readout) deferred non-blocking.
 - [Phase ?]: Phase 24-01: swg::endpoints resolver split into pure endpoints.cpp (testable, compiled into the test exe) + symbol-bearing endpoints_bindings.cpp (UtinniCore.dll only) to avoid LNK2001 on the not-exported subsystem pFn literals (Option-A split, mirrors render_backend_dx9.cpp)
 - [Phase ?]: Phase 24-01: consoleHelper::sendInput (D-02/WR-05) allow-listed out of the coverage gate and kept on its RVA literal -- NOT placed in s_bindings[]
+- [Phase ?]: EPA-03 (24-03): D-05 Approach A confirmed - resolving graphics::install from the table (Plan 02) redirects the unchanged hkInstall detour to the real Graphics::install on the advertised client so directX11::kickoff() fires naturally; the isD3D11Client() (gl11-loaded) gate no-ops directX::detour()'s D3D9 harvest on the D3D11 client while SWGEmu stays byte-for-byte unchanged (D-00).
 
 ### Pending Todos
 
@@ -390,7 +392,7 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-22T00:22:04.155Z
+Last session: 2026-06-22T01:34:01.163Z
 Stopped at: Phase 24 context gathered
 Resume file: None
 

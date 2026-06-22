@@ -202,7 +202,7 @@ Plans:
 - [x] 24-02-PLAN.md — Full-catalog binding (78 of 79 .inc names, minus the D-02 carve-out) + provider typedef verification + D-04 accessor-global read→call adaptation
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 24-03-PLAN.md — EPA-03 DX11 kickoff decouple (D-05 Approach A: resolve `graphics::install`) + `directX::detour()` D3D11-safety gate
+- [x] 24-03-PLAN.md — EPA-03 DX11 kickoff decouple (D-05 Approach A: resolve `graphics::install`) + `directX::detour()` D3D11-safety gate
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 24-04-PLAN.md — Maintainer live-smoke acceptance (3 blocking checkpoints: no crash / DX11 renders / SWGEmu unchanged; closes D-08 + D-22)
@@ -241,7 +241,7 @@ Plans:
 | 21. Terrain TJT SubPanel | v2.1 | 7/7 | Complete    | 2026-06-17 |
 | 22. ClientEffect Editor | v2.1 | 4/4 | Complete    | 2026-06-20 |
 | 23. IFF Chunk Templates | v2.1 | 8/8 | Complete    | 2026-06-21 |
-| 24. Client Entry-Point Advertisement | v2.1 | 2/4 | In Progress|  |
+| 24. Client Entry-Point Advertisement | v2.1 | 3/4 | In Progress|  |
 
 **Shipped: 2 milestones, 16 phases (+02.1), 94 plans, 31 requirements (15 v1 + 16 v2.0).**
 **In progress: v2.1 — 8 phases (17–24), 22 requirements, ~14% complete (3/8 phases code-complete).**
