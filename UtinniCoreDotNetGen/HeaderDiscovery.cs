@@ -98,6 +98,22 @@ namespace UtinniCoreDotNetGen
                 {
                     continue;
                 }
+                // Phase 24 / EPA-02: endpoints.h is the internal swg::endpoints
+                // resolver seam (the CONSUMER half of the GetEngineHookPoints()
+                // advertisement contract). It declares ZERO UTINNI_API symbols --
+                // it is an injection-side resolver with no intended managed binding
+                // surface (mirror of the render_backend.h seam above). When left in
+                // the parse set, CppSharp emits a managed binding for its public
+                // `Binding { void** slot; }` struct whose generated `Slot` property
+                // getter returns IntPtr into a `void**`-typed property -> CS0266 in
+                // the regenerated UtinniCore.cs, breaking the managed build. Exclude
+                // it at DISCOVERY (pre-parse): the resolver projects no managed
+                // surface, so nothing is lost. (Surfaced by the Phase 24-04 full-
+                // solution build; plans 24-01..03 ran only the native Catch2 suite.)
+                if (string.Equals(fileName, "endpoints.h", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
                 // CppSharp expects backslash-separated relative paths.
                 results.Add(relPath.Replace('/', '\\'));
             }
