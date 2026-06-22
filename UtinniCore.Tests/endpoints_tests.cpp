@@ -45,6 +45,9 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <cstring>
+#include <vector>
+
 #include "swg/endpoints.h"
 
 using swg::endpoints::Binding;
@@ -139,6 +142,117 @@ TEST_CASE("endpoints: version mismatch still binds names (soft-warn path)", "[en
 }
 
 TEST_CASE("endpoints: coverage counts resolved/missing, carve-out not in binding list", "[endpoints][coverage]")
+{
+    // The advertised table has one of the two requested names; the D-02 carve-out
+    // (consoleHelper::sendInput) is NOT placed in the binding list -- it is
+    // allow-listed, so its absence is NOT a coverage failure.
+    const UtinniEngineHookPoint entries[] = {
+        {"config::loadOverrideConfig", kRealA},
+    };
+    UtinniEngineHookPoints table = makeTable(UTINNI_HOOKPOINTS_VERSION, entries, 1);
+
+    void* slotA = kSentinelA; // present in the table
+    void* slotB = kSentinelB; // requested but absent from the table -> counted missing
+
+    const Binding bindings[] = {
+        {"config::loadOverrideConfig", &slotA},
+        {"graphics::install", &slotB},
+    };
+
+    const int resolved = resolve(&table, bindings, 2);
+
+    REQUIRE(resolved == 1);          // exactly one of two requested names resolved
+    REQUIRE(slotA == kRealA);
+    REQUIRE(slotB == kSentinelB);    // missing -> RVA literal kept
+
+    // The carve-out name is intentionally never requested; lookupByName confirms it
+    // is simply not in this fixture (the resolver allow-lists it from the gate).
+    REQUIRE(lookupByName(&table, "consoleHelper::sendInput") == nullptr);
+}
+
+// ----------------------------------------------------------------------
+// Plan 02 / D-01: full-catalog coverage. The complete advertised name set is the
+// .inc X-macro list MINUS the single D-02 carve-out (consoleHelper::sendInput).
+// We build that name set HERE from the canonical .inc (re-included with a local
+// UTINNI_HOOKPOINT macro) so this test fails the moment the .inc and the expected
+// 78-name override scope drift apart -- the same single-source-of-truth gate the
+// resolver's compile-time static_assert uses, exercised at runtime over a synthetic
+// table. No injection, no real s_bindings[] -- pure process-isolated proof that the
+// resolver resolves the entire catalog when every name is advertised.
+// ----------------------------------------------------------------------
+namespace
+{
+// The carve-out the coverage gate allow-lists (D-02 / WR-05): in the .inc, NOT bound.
+constexpr const char* kCarveOut = "consoleHelper::sendInput";
+
+bool sameName(const char* a, const char* b)
+{
+    return std::strcmp(a, b) == 0;
+}
+} // namespace
+
+TEST_CASE("endpoints: full catalog (77 of 78 .inc names) all resolve, carve-out excluded", "[endpoints][coverage]")
+{
+    // Every .inc name, in declaration order, sourced from the canonical X-macro list.
+    static const char* const kAllIncNames[] = {
+#define UTINNI_HOOKPOINT(group, name) #group "::" #name,
+#include "swg/utinni_engine_hookpoints.inc"
+#undef UTINNI_HOOKPOINT
+    };
+    constexpr size_t kIncCount = sizeof(kAllIncNames) / sizeof(kAllIncNames[0]);
+    REQUIRE(kIncCount == 78); // the contract size (drift gate -- mirrors the provider count)
+
+    // The expected override scope is the .inc MINUS the one carve-out -> 77.
+    std::vector<const char*> expectedNames;
+    for (const char* n : kAllIncNames)
+    {
+        if (!sameName(n, kCarveOut))
+        {
+            expectedNames.push_back(n);
+        }
+    }
+    REQUIRE(expectedNames.size() == 77);
+
+    // Synthesize a table advertising EVERY .inc name (incl. the carve-out -- the
+    // provider DOES advertise it; the consumer simply does not bind it). Each row
+    // gets a distinct non-null sentinel address.
+    std::vector<UtinniEngineHookPoint> entries;
+    entries.reserve(kIncCount);
+    for (size_t i = 0; i < kIncCount; ++i)
+    {
+        void* addr = reinterpret_cast<void*>(static_cast<uintptr_t>(0xC0DE0000u + i));
+        entries.push_back({kAllIncNames[i], addr});
+    }
+    UtinniEngineHookPoints table =
+        makeTable(UTINNI_HOOKPOINTS_VERSION, entries.data(), static_cast<unsigned int>(entries.size()));
+
+    // Build the binding list = the 78 expected names over local slot cells. The
+    // carve-out is deliberately NOT in this list (allow-listed out of the gate).
+    std::vector<void*> slots(expectedNames.size(), nullptr);
+    std::vector<Binding> bindings;
+    bindings.reserve(expectedNames.size());
+    for (size_t i = 0; i < expectedNames.size(); ++i)
+    {
+        bindings.push_back({expectedNames[i], &slots[i]});
+    }
+
+    const int resolved = resolve(&table, bindings.data(), bindings.size());
+
+    REQUIRE(resolved == 77);          // full catalog resolved (D-01)
+    for (void* s : slots)             // every requested name overwrote its slot
+    {
+        REQUIRE(s != nullptr);
+    }
+
+    // The carve-out is advertised by the table but never requested -> not a failure.
+    REQUIRE(lookupByName(&table, kCarveOut) != nullptr); // it IS in the table
+    for (const Binding& b : bindings)                    // but never in the binding list
+    {
+        REQUIRE_FALSE(sameName(b.name, kCarveOut));
+    }
+}
+
+TEST_CASE("endpoints: coverage counts resolved/missing with one absent name", "[endpoints][coverage]")
 {
     // The advertised table has one of the two requested names; the D-02 carve-out
     // (consoleHelper::sendInput) is NOT placed in the binding list -- it is
