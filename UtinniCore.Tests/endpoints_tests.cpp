@@ -46,9 +46,11 @@
 #include <catch2/catch_all.hpp>
 
 #include <cstring>
+#include <cstdint>
 #include <vector>
 
 #include "swg/endpoints.h"
+#include "swg/vtbl_resolve.h"
 
 using swg::endpoints::Binding;
 using swg::endpoints::lookupByName;
@@ -372,5 +374,62 @@ TEST_CASE("endpoints: null entries / zero count / null addr degrade without cras
         UtinniEngineHookPoints table = makeTable(UTINNI_HOOKPOINTS_VERSION, entries, 1);
         const Binding badBindings[] = {{"config::loadOverrideConfig", nullptr}};
         REQUIRE(resolve(&table, badBindings, 1) == 0); // null slot -> skipped
+    }
+}
+
+// ============================================================================
+// Phase 24 Item-2 -- consumer-side virtual-method vtable resolution (vtbl_resolve.h).
+// Pure, process-isolated: a synthetic vtable + a synthetic instance prove slot()
+// reads the right entry, that the SWGEmu empirical self-check LOGIC trips on a wrong
+// index, and that the source-derived + Codex-validated indices stay pinned. The LIVE
+// empirical check (slot(liveInstance,index) == known SWGEmu RVA) runs in
+// cui_io.cpp::hkProcessEvent on the next SWGEmu smoke.
+// ============================================================================
+TEST_CASE("vtbl::slot resolves the correct vtable entry; indices pinned", "[endpoints][vtbl]")
+{
+    using namespace swg::vtbl;
+
+    // A real C++ object's first word is its vtable pointer; the vtable is an array of
+    // code addresses. Build that shape synthetically (16 fake entries).
+    void* fakeVtable[16];
+    for (int i = 0; i < 16; ++i)
+    {
+        fakeVtable[i] = reinterpret_cast<void*>(static_cast<std::uintptr_t>(0x00B20000 + i * 0x10));
+    }
+    void* vtablePtr = &fakeVtable[0];
+    const void* instance = &vtablePtr; // *instance == &fakeVtable[0]
+
+    SECTION("slot() returns the entry at the given index")
+    {
+        REQUIRE(slot(instance, 0) == fakeVtable[0]);
+        REQUIRE(slot(instance, kCuiIoProcessEvent) == fakeVtable[1]);
+        REQUIRE(slot(instance, kObjectAddToWorld) == fakeVtable[2]);
+        REQUIRE(slot(instance, kObjectRemoveFromWorld) == fakeVtable[3]);
+        REQUIRE(slot(instance, kObjectSetParentCell) == fakeVtable[13]);
+    }
+
+    SECTION("slot() is null-safe (null instance / null vtable pointer)")
+    {
+        REQUIRE(slot(nullptr, 0) == nullptr);
+        void* nullVtbl = nullptr;
+        const void* badInstance = &nullVtbl;
+        REQUIRE(slot(badInstance, 5) == nullptr);
+    }
+
+    SECTION("the empirical self-check logic detects a WRONG index")
+    {
+        // The known-good RVA sits at the CORRECT slot; the self-check passes there and
+        // trips at any other index -- exactly the SWGEmu guard in hkProcessEvent.
+        const void* knownRva = fakeVtable[kObjectSetParentCell];
+        REQUIRE(slot(instance, kObjectSetParentCell) == knownRva);     // correct -> PASS
+        REQUIRE(slot(instance, kObjectSetParentCell - 1) != knownRva); // wrong   -> FAIL trips
+    }
+
+    SECTION("derived indices are pinned (a vtbl_resolve.h regression trips CI here)")
+    {
+        REQUIRE(kCuiIoProcessEvent == 1);
+        REQUIRE(kObjectAddToWorld == 2);
+        REQUIRE(kObjectRemoveFromWorld == 3);
+        REQUIRE(kObjectSetParentCell == 13);
     }
 }

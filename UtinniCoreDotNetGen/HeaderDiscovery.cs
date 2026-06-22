@@ -114,6 +114,20 @@ namespace UtinniCoreDotNetGen
                 {
                     continue;
                 }
+                // Phase 24 Item-2: vtbl_resolve.h is the internal consumer-side virtual
+                // vtable-resolution seam (the swg::vtbl slot() primitive + the
+                // source-derived vtable-index constants). It declares ZERO UTINNI_API
+                // symbols -- an injection-side helper included only from .cpp files, with
+                // no intended managed surface (mirror of endpoints.h / render_backend.h).
+                // Left in the parse set, CppSharp emits managed bindings for its inline
+                // slot()/inline-constexpr index constants that reference
+                // CppSharp.SymbolResolver -> CS0103 ('CppSharp' undefined) in the
+                // regenerated UtinniCore.cs, breaking the managed build. Exclude at
+                // DISCOVERY (pre-parse); nothing managed is lost.
+                if (string.Equals(fileName, "vtbl_resolve.h", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
                 // CppSharp expects backslash-separated relative paths.
                 results.Add(relPath.Replace('/', '\\'));
             }

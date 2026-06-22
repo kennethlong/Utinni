@@ -24,6 +24,7 @@
 
 #include "cui_io.h"
 #include "swg/endpoints.h"
+#include "swg/vtbl_resolve.h"
 #include "swg/ui/imgui_impl.h"
 #include "utility/log.h"
 
@@ -40,6 +41,11 @@ pProcessEvent processEvent = (pProcessEvent)0x093BD50;
 pSetKeyboardInputActive setKeyboardInputActive = (pSetKeyboardInputActive)0x0093D490;
 pRequestKeyboard requestKeyboard = (pRequestKeyboard)0x0093D560;
 pDraw draw = (pDraw)0x0093B2B0;
+
+// Phase 24 Item-2: original processEvent address captured in detour() BEFORE the inline
+// detour overwrites the function-pointer literal with the trampoline. The vtbl self-check
+// (hkProcessEvent) compares the live CuiIoWin vtable slot against THIS, not the literal.
+swgptr origProcessEventRva = 0;
 
 // Phase 24 / D-04 accessor-style global. Provider advertises cuiIo::g_instance as
 // &CuiManager::getIoWin (call-not-read): the CuiIoWin singleton accessor (CuiManager
@@ -97,6 +103,33 @@ bool cuiIo::isInputBlocked()
 
 swgptr __fastcall hkProcessEvent(swgptr pThis, swgptr EDX, swgptr pEvent)
 {
+    // Phase 24 Item-2 (EPA virtual-resolve): empirical vtable-index self-check. On SWGEmu
+    // the original processEvent RVA is known-good, so the live CuiIoWin vtable slot at the
+    // source-derived index (swg::vtbl::kCuiIoProcessEvent) MUST equal it -- this confirms
+    // the index the advertised client will resolve processEvent off. Runs once; gated to
+    // SWGEmu (advertised client never reaches here -- the detour is installable()-skipped).
+    static bool s_vtblChecked = false;
+    if (!s_vtblChecked && !swg::endpoints::isAdvertisedClient() && swg::cuiIo::origProcessEventRva != 0)
+    {
+        s_vtblChecked = true;
+        const swgptr resolved =
+            (swgptr)swg::vtbl::slot((const void*)pThis, swg::vtbl::kCuiIoProcessEvent);
+        const bool ok = (resolved == swg::cuiIo::origProcessEventRva);
+        char m[176];
+        snprintf(m, sizeof(m),
+                 "vtbl self-check: CuiIoWin::processEvent index=%d -> 0x%08X expected 0x%08X [%s]",
+                 swg::vtbl::kCuiIoProcessEvent, (unsigned)resolved,
+                 (unsigned)swg::cuiIo::origProcessEventRva, ok ? "PASS" : "FAIL -- index wrong");
+        if (ok)
+        {
+            utinni::log::info(m);
+        }
+        else
+        {
+            utinni::log::error(m);
+        }
+    }
+
     const int eventType = memory::read<int>(pEvent + 4);
 
     // DIAG 2026-05-20 Issue #11: log any keyboard-event drop. If
@@ -162,6 +195,10 @@ void cuiIo::detour()
     // Phase 24: skip on the advertised client when the primary target is unresolved.
     if (!swg::endpoints::installable((const void*)swg::cuiIo::processEvent))
         return;
+
+    // Capture the original processEvent address BEFORE the inline detour overwrites the
+    // literal -- the vtbl self-check (hkProcessEvent) compares the live vtable slot to this.
+    swg::cuiIo::origProcessEventRva = (swgptr)swg::cuiIo::processEvent;
 
     swg::cuiIo::processEvent = (swg::cuiIo::pProcessEvent)Detour::Create((LPVOID)swg::cuiIo::processEvent, hkProcessEvent, DETOUR_TYPE_PUSH_RET);
     // swg::cuiIo::draw = (swg::cuiIo::pDraw)Detour::Create((LPVOID)swg::cuiIo::draw, hkDraw, DETOUR_TYPE_PUSH_RET);
