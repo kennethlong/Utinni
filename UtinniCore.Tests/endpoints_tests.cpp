@@ -281,6 +281,61 @@ TEST_CASE("endpoints: coverage counts resolved/missing with one absent name", "[
     REQUIRE(lookupByName(&table, "consoleHelper::sendInput") == nullptr);
 }
 
+// ----------------------------------------------------------------------
+// Plan 03 / EPA-03: the DX11 kickoff depends on graphics::install resolving from
+// the advertised table (Plan 02 bound it). On the advertised client the resolver
+// overwrites the graphics::install literal so the existing hkInstall detour installs
+// on the REAL Graphics::install and directX11::kickoff() fires naturally (D-05
+// Approach A). This unit LOCKS that dependency headlessly: if a future change drops
+// graphics::install from the bindings, the DX11 overlay would silently regress (the
+// detour would stay on the wrong hardcoded 0x007548A0 on SwgClient_r.exe). Proving
+// the resolver still binds graphics::install here keeps the maintainer live-smoke
+// (Plan 04) focused on proving render, not re-discovering a dropped binding.
+// ----------------------------------------------------------------------
+TEST_CASE("endpoints: graphics::install resolves from the table (EPA-03 DX11 kickoff dependency)", "[endpoints][epa03]")
+{
+    SECTION("advertised graphics::install overwrites its slot (DX11 kickoff path)")
+    {
+        // A synthetic table advertising graphics::install at a sentinel "real" address.
+        const UtinniEngineHookPoint entries[] = {
+            {"graphics::install", kRealB},
+        };
+        UtinniEngineHookPoints table = makeTable(UTINNI_HOOKPOINTS_VERSION, entries, 1);
+
+        // The slot stands in for swg::graphics::install (hardcoded 0x007548A0 literal).
+        void* installSlot = kSentinelB; // == 0x007548A0, the SWGEmu install RVA
+        const Binding bindings[] = {
+            {"graphics::install", &installSlot},
+        };
+
+        const int resolved = resolve(&table, bindings, 1);
+
+        REQUIRE(resolved == 1);
+        REQUIRE(installSlot == kRealB); // resolved -> hkInstall now detours the REAL fn
+    }
+
+    SECTION("absent graphics::install leaves the install literal untouched (SWGEmu no-op)")
+    {
+        // The table advertises something else; graphics::install is NOT in it. On
+        // SWGEmu (export absent / name not advertised) the literal stays on its RVA so
+        // the existing D3D9 hkInstall path is byte-for-byte unchanged (D-00).
+        const UtinniEngineHookPoint entries[] = {
+            {"config::loadOverrideConfig", kRealA},
+        };
+        UtinniEngineHookPoints table = makeTable(UTINNI_HOOKPOINTS_VERSION, entries, 1);
+
+        void* installSlot = kSentinelB; // 0x007548A0 -- must remain the RVA literal
+        const Binding bindings[] = {
+            {"graphics::install", &installSlot},
+        };
+
+        const int resolved = resolve(&table, bindings, 1);
+
+        REQUIRE(resolved == 0);
+        REQUIRE(installSlot == kSentinelB); // untouched -> SWGEmu D3D9 install path intact
+    }
+}
+
 TEST_CASE("endpoints: null entries / zero count / null addr degrade without crash or mutation", "[endpoints][robustness]")
 {
     void* slotA = kSentinelA;
