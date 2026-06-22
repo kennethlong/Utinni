@@ -45,8 +45,8 @@
 // ----------------------------------------------------------------------
 struct UtinniEngineHookPoint
 {
-	const char * name;   // stable contract identity, e.g. "config::loadOverrideConfig"
-	void *       addr;   // &EngineSymbol (or thunk) -- borrowed, process-lifetime
+    const char* name; // stable contract identity, e.g. "config::loadOverrideConfig"
+    void* addr;       // &EngineSymbol (or thunk) -- borrowed, process-lifetime
 };
 
 // ----------------------------------------------------------------------
@@ -56,9 +56,9 @@ struct UtinniEngineHookPoint
 // ----------------------------------------------------------------------
 struct UtinniEngineHookPoints
 {
-	unsigned int                 version;   // == UTINNI_HOOKPOINTS_VERSION at build time
-	unsigned int                 count;     // number of rows in entries[]
-	const UtinniEngineHookPoint * entries;  // static array of `count` rows
+    unsigned int version;                 // == UTINNI_HOOKPOINTS_VERSION at build time
+    unsigned int count;                   // number of rows in entries[]
+    const UtinniEngineHookPoint* entries; // static array of `count` rows
 };
 
 #endif // INCLUDED_utinni_engine_hookpoints_H

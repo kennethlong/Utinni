@@ -57,7 +57,8 @@ void reloadUi()
 void patch()
 {
     // Phase 24: skip on the advertised client when these SWGEmu patch sites are unmapped.
-    if (!swg::endpoints::installable((const void*)0x00C8D250)) return;
+    if (!swg::endpoints::installable((const void*)0x00C8D250))
+        return;
 
     if (getConfig().getBool("UtinniCore", "enableOfflineScenes"))
     {
@@ -122,7 +123,8 @@ void __fastcall hkActivate(swgptr pThis)
 void detour()
 {
     // Phase 24: skip on the advertised client when the primary target is unresolved.
-    if (!swg::endpoints::installable((const void*)swg::cuiLoginScreen::ctor)) return;
+    if (!swg::endpoints::installable((const void*)swg::cuiLoginScreen::ctor))
+        return;
 
     swg::cuiLoginScreen::ctor = (swg::cuiLoginScreen::pCtor)Detour::Create(swg::cuiLoginScreen::ctor, hkCtor, DETOUR_TYPE_PUSH_RET);
     swg::cuiLoginScreen::activate = (swg::cuiLoginScreen::pActivate)Detour::Create(swg::cuiLoginScreen::activate, hkActivate, DETOUR_TYPE_PUSH_RET);

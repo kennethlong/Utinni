@@ -199,7 +199,8 @@ void addPostSceneRenderCallback(void (*func)())
 void detour()
 {
     // Phase 24: skip on the advertised client when the primary target is unresolved.
-    if (!swg::endpoints::installable((const void*)swg::bloom::preSceneRender)) return;
+    if (!swg::endpoints::installable((const void*)swg::bloom::preSceneRender))
+        return;
 
     swg::bloom::preSceneRender = (swg::bloom::pPreSceneRender)Detour::Create(swg::bloom::preSceneRender, hkPreSceneRender, DETOUR_TYPE_PUSH_RET);
     swg::bloom::postSceneRender = (swg::bloom::pPostSceneRender)Detour::Create(swg::bloom::postSceneRender, hkPostSceneRender, DETOUR_TYPE_PUSH_RET);

@@ -98,7 +98,8 @@ void __fastcall hkAppendMessageData(MessageQueue* pThis, DWORD EDX, int msg, flo
 void MessageQueue::detour()
 {
     // Phase 24: skip on the advertised client when the primary target is unresolved.
-    if (!swg::endpoints::installable((const void*)swg::messageQueue::appendMessage)) return;
+    if (!swg::endpoints::installable((const void*)swg::messageQueue::appendMessage))
+        return;
 
     swg::messageQueue::appendMessage = (swg::messageQueue::pAppendMessage)Detour::Create(swg::messageQueue::appendMessage, hkAppendMessage, DETOUR_TYPE_PUSH_RET);
     swg::messageQueue::appendMessageData = (swg::messageQueue::pAppendMessageData)Detour::Create(swg::messageQueue::appendMessageData, hkAppendMessageData, DETOUR_TYPE_PUSH_RET);

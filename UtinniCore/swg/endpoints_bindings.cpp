@@ -48,9 +48,9 @@
 
 #include "endpoints.h"
 
-#include "utinni.h"               // byte/swgptr + the build's common prelude
-#include "swg/misc/swg_math.h"    // swg::math::{Transform, Vector}
-#include "swg/ui/command_parser.h"// utinni::CommandParser (+ nested CommandData)
+#include "utinni.h"                // byte/swgptr + the build's common prelude
+#include "swg/misc/swg_math.h"     // swg::math::{Transform, Vector}
+#include "swg/ui/command_parser.h" // utinni::CommandParser (+ nested CommandData)
 
 // resolveFromExe() uses GetModuleHandleA/GetProcAddress -- the only Windows reach.
 #include <Windows.h>
@@ -198,9 +198,9 @@ extern pGetIoWin g_instance;
 // -- commandParser (ui/command_parser.cpp:29-39) ----------------------------
 namespace swg::commandParser
 {
-using pCtor1 = utinni::CommandParser*(__thiscall*)(utinni::CommandParser* pThis, const char* command, size_t argCount, const char* args, const char* helpInfo, utinni::CommandParser* delegate);
-using pCtor2 = utinni::CommandParser*(__thiscall*)(utinni::CommandParser* pThis, const utinni::CommandParser::CommandData& commandData, utinni::CommandParser* delegate);
-using pAddSubCommand = utinni::CommandParser*(__thiscall*)(utinni::CommandParser* pThis, utinni::CommandParser* subCommand);
+using pCtor1 = utinni::CommandParser*(__thiscall*)(utinni::CommandParser * pThis, const char* command, size_t argCount, const char* args, const char* helpInfo, utinni::CommandParser* delegate);
+using pCtor2 = utinni::CommandParser*(__thiscall*)(utinni::CommandParser * pThis, const utinni::CommandParser::CommandData& commandData, utinni::CommandParser* delegate);
+using pAddSubCommand = utinni::CommandParser*(__thiscall*)(utinni::CommandParser * pThis, utinni::CommandParser* subCommand);
 
 extern pCtor1 ctor1;
 extern pCtor2 ctor2;
@@ -219,16 +219,16 @@ extern pIntersect intersect;
 namespace swg::object
 {
 using pGetType = unsigned int(__thiscall*)(utinni::Object* pThis);
-using pGetParentCell = utinni::CellProperty*(__thiscall*)(utinni::Object* pThis);
-using pGetTransform_o2w = swg::math::Transform*(__thiscall*)(utinni::Object* pThis);
+using pGetParentCell = utinni::CellProperty*(__thiscall*)(utinni::Object * pThis);
+using pGetTransform_o2w = swg::math::Transform*(__thiscall*)(utinni::Object * pThis);
 using pSetTransform_o2w = void(__thiscall*)(utinni::Object* pThis, swg::math::Transform& objectToWorld);
-using pGetPosition = swg::math::Vector*(__thiscall*)(utinni::Object* pThis);
+using pGetPosition = swg::math::Vector*(__thiscall*)(utinni::Object * pThis);
 using pSetPosition = void(__thiscall*)(utinni::Object* pThis, swg::math::Vector& position);
-using pGetAppearance = utinni::Appearance*(__thiscall*)(utinni::Object* pThis);
+using pGetAppearance = utinni::Appearance*(__thiscall*)(utinni::Object * pThis);
 using pSetAppearance = void(__thiscall*)(utinni::Object* pThis, utinni::Appearance* appearance);
 using pMove = void(__thiscall*)(utinni::Object* pThis, const swg::math::Vector& vector);
 using pGetObjectTemplate = swgptr(__thiscall*)(utinni::Object* pThis);
-using pGetObjectTemplateName = const char*(__thiscall*)(utinni::Object* pThis);
+using pGetObjectTemplateName = const char*(__thiscall*)(utinni::Object * pThis);
 using pGetNetworkId = swgptr(__thiscall*)(utinni::Object* pThis);
 
 extern pGetType getType;
@@ -254,9 +254,9 @@ extern pCreateObject createObject;
 
 namespace swg::sharedObjectTemplate
 {
-using pGetAppearancetFilename = const char**(__thiscall*)(utinni::SharedObjectTemplate* pThis, bool unk);
-using pGetPortalLayoutFilename = const char**(__thiscall*)(utinni::SharedObjectTemplate* pThis, bool unk);
-using pGetClientDataFilename = const char**(__thiscall*)(utinni::SharedObjectTemplate* pThis, bool unk);
+using pGetAppearancetFilename = const char**(__thiscall*)(utinni::SharedObjectTemplate * pThis, bool unk);
+using pGetPortalLayoutFilename = const char**(__thiscall*)(utinni::SharedObjectTemplate * pThis, bool unk);
+using pGetClientDataFilename = const char**(__thiscall*)(utinni::SharedObjectTemplate * pThis, bool unk);
 
 extern pGetAppearancetFilename getAppearancetFilename;
 extern pGetPortalLayoutFilename getPortalLayoutFilename;
@@ -290,7 +290,7 @@ using pSetViewport = void(__thiscall*)(utinni::Camera* pThis, int x0, int y0, in
 using pSetNearPlane = void(__thiscall*)(utinni::Camera* pThis, float nearPlane);
 using pSetFarPlane = void(__thiscall*)(utinni::Camera* pThis, float farPlane);
 using pSetHorizontalFieldOfView = void(__thiscall*)(utinni::Camera* pThis, float fieldOfView);
-using pReverseProjectInViewportSpaceInt = swg::math::Vector*(__thiscall*)(utinni::Camera* pThis, swg::math::Vector& result, int x, int y);
+using pReverseProjectInViewportSpaceInt = swg::math::Vector*(__thiscall*)(utinni::Camera * pThis, swg::math::Vector& result, int x, int y);
 
 extern pSetViewport setViewport;
 extern pSetNearPlane setNearPlane;
@@ -359,7 +359,7 @@ static const Binding s_bindings[] = {
     // -- game --
     {"game::install", (void**)&swg::game::install},
     {"game::quit", (void**)&swg::game::quit},
-    {"game::mainLoop", (void**)&swg::game::mainLoop},                 // MISMATCH: provider Game::run
+    {"game::mainLoop", (void**)&swg::game::mainLoop}, // MISMATCH: provider Game::run
     {"game::setupScene", (void**)&swg::game::setupScene},
     {"game::cleanupScene", (void**)&swg::game::cleanupScene},
     {"game::getPlayer", (void**)&swg::game::getPlayer},
@@ -368,7 +368,7 @@ static const Binding s_bindings[] = {
     {"game::getConstCamera", (void**)&swg::game::getConstCamera},
     {"game::isViewFirstPerson", (void**)&swg::game::isViewFirstPerson},
     {"game::isHudSceneTypeSpace", (void**)&swg::game::isHudSceneTypeSpace},
-    {"game::g_runningFlags", (void**)&swg::game::g_runningFlags},     // D-04 ACCESSOR: provider &Game::isOver (call-not-read)
+    {"game::g_runningFlags", (void**)&swg::game::g_runningFlags}, // D-04 ACCESSOR: provider &Game::isOver (call-not-read)
 
     // -- graphics --
     {"graphics::install", (void**)&swg::graphics::install},
@@ -379,7 +379,7 @@ static const Binding s_bindings[] = {
     {"graphics::presentWindow", (void**)&swg::graphics::presentWindow},
     {"graphics::resize", (void**)&swg::graphics::resize},
     {"graphics::flushResources", (void**)&swg::graphics::flushResources},
-    {"graphics::screenshot", (void**)&swg::graphics::screenshot},     // MISMATCH: provider Graphics::screenShot
+    {"graphics::screenshot", (void**)&swg::graphics::screenshot},               // MISMATCH: provider Graphics::screenShot
     {"graphics::useHardwareCursor", (void**)&swg::graphics::useHardwareCursor}, // MISMATCH: provider setHardwareMouseCursorEnabled
     {"graphics::showMouseCursor", (void**)&swg::graphics::showMouseCursor},
     {"graphics::setSystemMouseCursorPosition", (void**)&swg::graphics::setSystemMouseCursorPosition},
@@ -392,12 +392,12 @@ static const Binding s_bindings[] = {
     {"cuiManager::setSize", (void**)&swg::cuiManager::setSize},
     {"cuiManager::togglePointer", (void**)&swg::cuiManager::togglePointer}, // MISMATCH: provider CuiManager::setPointerToggledOn
     {"cuiManager::restartMusic", (void**)&swg::cuiManager::restartMusic},
-    {"cuiManager::g_instance", (void**)&swg::cuiManager::g_instance},       // D-04 ACCESSOR: provider &CuiManager::getIoWin
+    {"cuiManager::g_instance", (void**)&swg::cuiManager::g_instance}, // D-04 ACCESSOR: provider &CuiManager::getIoWin
 
     // -- cuiIo --
     {"cuiIo::setKeyboardInputActive", (void**)&swg::cuiIo::setKeyboardInputActive},
     {"cuiIo::requestKeyboard", (void**)&swg::cuiIo::requestKeyboard},
-    {"cuiIo::g_instance", (void**)&swg::cuiIo::g_instance},                 // D-04 ACCESSOR: provider &CuiManager::getIoWin
+    {"cuiIo::g_instance", (void**)&swg::cuiIo::g_instance}, // D-04 ACCESSOR: provider &CuiManager::getIoWin
 
     // -- consoleHelper::sendInput -- D-02 / WR-05 CARVE-OUT: intentionally NOT bound.
 
@@ -409,30 +409,30 @@ static const Binding s_bindings[] = {
 
     // -- object (name mismatches: contract object::getObjectType -> swg::object::getType,
     //    getPosition_w -> getPosition, setPosition_w -> setPosition, move_p -> move) --
-    {"object::getObjectType", (void**)&swg::object::getType},          // MISMATCH name
+    {"object::getObjectType", (void**)&swg::object::getType},                       // MISMATCH name
     {"object::getObjectTemplate", (void**)&swg::object::getObjectTemplate},         // D-01 new slot
     {"object::getObjectTemplateName", (void**)&swg::object::getObjectTemplateName}, // D-01 new slot
-    {"object::getNetworkId", (void**)&swg::object::getNetworkId},      // D-01 new slot
+    {"object::getNetworkId", (void**)&swg::object::getNetworkId},                   // D-01 new slot
     {"object::getParentCell", (void**)&swg::object::getParentCell},
     {"object::getTransform_o2w", (void**)&swg::object::getTransform_o2w},
     {"object::setTransform_o2w", (void**)&swg::object::setTransform_o2w},
-    {"object::getPosition_w", (void**)&swg::object::getPosition},      // MISMATCH name
-    {"object::setPosition_w", (void**)&swg::object::setPosition},      // MISMATCH name
+    {"object::getPosition_w", (void**)&swg::object::getPosition}, // MISMATCH name
+    {"object::setPosition_w", (void**)&swg::object::setPosition}, // MISMATCH name
     {"object::getAppearance", (void**)&swg::object::getAppearance},
     {"object::setAppearance", (void**)&swg::object::setAppearance},
-    {"object::move_p", (void**)&swg::object::move},                    // MISMATCH name
+    {"object::move_p", (void**)&swg::object::move}, // MISMATCH name
 
     // -- objectTemplate (getClientDataFile -> swg::sharedObjectTemplate::getClientDataFilename) --
     {"objectTemplate::createObject", (void**)&swg::objectTemplate::createObject},
-    {"objectTemplate::getAppearanceFilename", (void**)&swg::sharedObjectTemplate::getAppearancetFilename},   // MISMATCH name
+    {"objectTemplate::getAppearanceFilename", (void**)&swg::sharedObjectTemplate::getAppearancetFilename}, // MISMATCH name
     {"objectTemplate::getPortalLayoutFilename", (void**)&swg::sharedObjectTemplate::getPortalLayoutFilename},
-    {"objectTemplate::getClientDataFile", (void**)&swg::sharedObjectTemplate::getClientDataFilename},        // MISMATCH name
+    {"objectTemplate::getClientDataFile", (void**)&swg::sharedObjectTemplate::getClientDataFilename}, // MISMATCH name
 
     // -- worldSnapshot (contract worldSnapshot::* -> swg::worldsnapshot::*) --
     {"worldSnapshot::load", (void**)&swg::worldsnapshot::load},
     {"worldSnapshot::addObject", (void**)&swg::worldsnapshot::addObject},
-    {"worldSnapshot::removeObject", (void**)&swg::worldsnapshot::removeObject},      // D-01 new slot
-    {"worldSnapshot::moveObject", (void**)&swg::worldsnapshot::moveObject},          // D-01 new slot
+    {"worldSnapshot::removeObject", (void**)&swg::worldsnapshot::removeObject},           // D-01 new slot
+    {"worldSnapshot::moveObject", (void**)&swg::worldsnapshot::moveObject},               // D-01 new slot
     {"worldSnapshot::getLoadingPercent", (void**)&swg::worldsnapshot::getLoadingPercent}, // D-01 new slot
     {"worldSnapshot::detailLevelChanged", (void**)&swg::worldsnapshot::detailLevelChanged},
 
@@ -445,14 +445,14 @@ static const Binding s_bindings[] = {
 
     // -- memory (memory::free -> swg::memory::deallocate) --
     {"memory::allocate", (void**)&swg::memory::allocate},
-    {"memory::free", (void**)&swg::memory::deallocate},               // MISMATCH name
+    {"memory::free", (void**)&swg::memory::deallocate}, // MISMATCH name
 
     // -- audio --
     {"audio::setMasterVolume", (void**)&swg::audio::setMasterVolume},
     {"audio::getMasterVolume", (void**)&swg::audio::getMasterVolume},
 
     // -- treeFile (treeFile::open -> swg::treefile::searchTree) --
-    {"treeFile::open", (void**)&swg::treefile::searchTree},           // MISMATCH name
+    {"treeFile::open", (void**)&swg::treefile::searchTree}, // MISMATCH name
 
     // -- report --
     {"report::print", (void**)&swg::report::print},
@@ -514,36 +514,82 @@ static_assert(kBindingCount == kIncCount - 1, "exactly one .inc name (consoleHel
 // This array MUST stay in lockstep with s_bindings[] (same names, same order); the
 // count static_assert below ties them together so a drift between the two trips here.
 constexpr const char* kBindingNames[] = {
-    "config::loadOverrideConfig", "config::loadConfigFileBuffer", "config::loadConfigFileString",
+    "config::loadOverrideConfig",
+    "config::loadConfigFileBuffer",
+    "config::loadConfigFileString",
     "client::clientMain",
-    "game::install", "game::quit", "game::mainLoop", "game::setupScene", "game::cleanupScene",
-    "game::getPlayer", "game::getPlayerCreatureObject", "game::getCamera", "game::getConstCamera",
-    "game::isViewFirstPerson", "game::isHudSceneTypeSpace", "game::g_runningFlags",
-    "graphics::install", "graphics::update", "graphics::beginScene", "graphics::endScene",
-    "graphics::present", "graphics::presentWindow", "graphics::resize", "graphics::flushResources",
-    "graphics::screenshot", "graphics::useHardwareCursor", "graphics::showMouseCursor",
-    "graphics::setSystemMouseCursorPosition", "graphics::setStaticShader",
-    "graphics::g_renderTargetWidth", "graphics::g_renderTargetHeight",
-    "cuiManager::render", "cuiManager::setSize", "cuiManager::togglePointer",
-    "cuiManager::restartMusic", "cuiManager::g_instance",
-    "cuiIo::setKeyboardInputActive", "cuiIo::requestKeyboard", "cuiIo::g_instance",
+    "game::install",
+    "game::quit",
+    "game::mainLoop",
+    "game::setupScene",
+    "game::cleanupScene",
+    "game::getPlayer",
+    "game::getPlayerCreatureObject",
+    "game::getCamera",
+    "game::getConstCamera",
+    "game::isViewFirstPerson",
+    "game::isHudSceneTypeSpace",
+    "game::g_runningFlags",
+    "graphics::install",
+    "graphics::update",
+    "graphics::beginScene",
+    "graphics::endScene",
+    "graphics::present",
+    "graphics::presentWindow",
+    "graphics::resize",
+    "graphics::flushResources",
+    "graphics::screenshot",
+    "graphics::useHardwareCursor",
+    "graphics::showMouseCursor",
+    "graphics::setSystemMouseCursorPosition",
+    "graphics::setStaticShader",
+    "graphics::g_renderTargetWidth",
+    "graphics::g_renderTargetHeight",
+    "cuiManager::render",
+    "cuiManager::setSize",
+    "cuiManager::togglePointer",
+    "cuiManager::restartMusic",
+    "cuiManager::g_instance",
+    "cuiIo::setKeyboardInputActive",
+    "cuiIo::requestKeyboard",
+    "cuiIo::g_instance",
     "commandParser::addSubCommand",
     "extent::intersect",
-    "object::getObjectType", "object::getObjectTemplate", "object::getObjectTemplateName",
-    "object::getNetworkId", "object::getParentCell", "object::getTransform_o2w",
-    "object::setTransform_o2w", "object::getPosition_w", "object::setPosition_w",
-    "object::getAppearance", "object::setAppearance", "object::move_p",
-    "objectTemplate::createObject", "objectTemplate::getAppearanceFilename",
-    "objectTemplate::getPortalLayoutFilename", "objectTemplate::getClientDataFile",
-    "worldSnapshot::load", "worldSnapshot::addObject", "worldSnapshot::removeObject",
-    "worldSnapshot::moveObject", "worldSnapshot::getLoadingPercent", "worldSnapshot::detailLevelChanged",
-    "camera::setViewport", "camera::setNearPlane", "camera::setFarPlane",
-    "camera::setHorizontalFieldOfView", "camera::reverseProjectInViewportSpace",
-    "memory::allocate", "memory::free",
-    "audio::setMasterVolume", "audio::getMasterVolume",
+    "object::getObjectType",
+    "object::getObjectTemplate",
+    "object::getObjectTemplateName",
+    "object::getNetworkId",
+    "object::getParentCell",
+    "object::getTransform_o2w",
+    "object::setTransform_o2w",
+    "object::getPosition_w",
+    "object::setPosition_w",
+    "object::getAppearance",
+    "object::setAppearance",
+    "object::move_p",
+    "objectTemplate::createObject",
+    "objectTemplate::getAppearanceFilename",
+    "objectTemplate::getPortalLayoutFilename",
+    "objectTemplate::getClientDataFile",
+    "worldSnapshot::load",
+    "worldSnapshot::addObject",
+    "worldSnapshot::removeObject",
+    "worldSnapshot::moveObject",
+    "worldSnapshot::getLoadingPercent",
+    "worldSnapshot::detailLevelChanged",
+    "camera::setViewport",
+    "camera::setNearPlane",
+    "camera::setFarPlane",
+    "camera::setHorizontalFieldOfView",
+    "camera::reverseProjectInViewportSpace",
+    "memory::allocate",
+    "memory::free",
+    "audio::setMasterVolume",
+    "audio::getMasterVolume",
     "treeFile::open",
     "report::print",
-    "commandParser::ctor1", "commandParser::ctor2",
+    "commandParser::ctor1",
+    "commandParser::ctor2",
     "graphics::g_frameNumber",
 };
 
@@ -565,7 +611,8 @@ static_assert(sizeof(kBindingNames) / sizeof(kBindingNames[0]) == kBindingCount,
 // ... and every name MUST be advertised in the .inc (subset invariant / drift gate).
 static_assert(allNamesInInc(), "an s_bindings[] name is not advertised in the .inc (drift)");
 // The carve-out must NOT appear among the bound names (D-02).
-static_assert([]() constexpr {
+static_assert([]() constexpr
+              {
     for (const char* n : kBindingNames)
     {
         if (ceStrEq(n, "consoleHelper::sendInput"))
@@ -573,8 +620,7 @@ static_assert([]() constexpr {
             return false;
         }
     }
-    return true;
-}(), "consoleHelper::sendInput must remain the unbound D-02 carve-out");
+    return true; }(), "consoleHelper::sendInput must remain the unbound D-02 carve-out");
 } // namespace
 
 // Phase 24: set true by resolveFromExe() when the GetEngineHookPoints export is present.

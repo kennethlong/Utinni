@@ -152,7 +152,8 @@ void __fastcall hkSetTarget(swgptr pThis, DWORD EDX, const int64_t& id)
 void detour()
 {
     // Phase 24: skip on the advertised client when the primary target is unresolved.
-    if (!swg::endpoints::installable((const void*)swg::creatureObject::setTarget)) return;
+    if (!swg::endpoints::installable((const void*)swg::creatureObject::setTarget))
+        return;
 
     swg::creatureObject::setTarget = (swg::creatureObject::pSetTarget)Detour::Create(swg::creatureObject::setTarget, hkSetTarget, DETOUR_TYPE_PUSH_RET);
 };

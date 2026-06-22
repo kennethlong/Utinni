@@ -42,8 +42,8 @@
 #include <cstring>
 #include <cstdio>
 
-#include "utinni.h"          // byte/swgptr + the build's common prelude
-#include "utility/log.h"     // utinni::log::{info,warning}
+#include "utinni.h"      // byte/swgptr + the build's common prelude
+#include "utility/log.h" // utinni::log::{info,warning}
 
 namespace swg::endpoints
 {

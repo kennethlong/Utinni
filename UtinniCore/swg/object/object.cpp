@@ -181,7 +181,7 @@ pGetTemplateFilename getTemplateFilename = (pGetTemplateFilename)0x00B23C40;
 // The consumer keeps using its existing getType/getTemplateFilename literals for the
 // SWGEmu path; these advertised slots are inert until a future consumer call-site uses them.
 using pGetObjectTemplate = swgptr(__thiscall*)(utinni::Object* pThis);
-using pGetObjectTemplateName = const char*(__thiscall*)(utinni::Object* pThis);
+using pGetObjectTemplateName = const char*(__thiscall*)(utinni::Object * pThis);
 using pGetNetworkId = swgptr(__thiscall*)(utinni::Object* pThis);
 
 pGetObjectTemplate getObjectTemplate = nullptr;

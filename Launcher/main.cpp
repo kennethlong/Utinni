@@ -238,8 +238,8 @@ void loadDll(const std::string& cmdLine)
                 {
                     DWORD_PTR remoteImageBase = 0;
                     if (ReadProcessMemory(hProcess, (LPCVOID)(startCtx.Ebx + 0x08),
-                                          &remoteImageBase, sizeof(remoteImageBase), nullptr)
-                        && remoteImageBase != 0)
+                                          &remoteImageBase, sizeof(remoteImageBase), nullptr) &&
+                        remoteImageBase != 0)
                     {
                         actualBase = remoteImageBase;
                     }

@@ -327,7 +327,8 @@ swgptr __fastcall hkSwgCuiGameMenuCtor(swgptr pThis, swgptr EDX, swgptr pPage)
 void detour()
 {
     // Phase 24: skip on the advertised client when the primary target is unresolved.
-    if (!swg::endpoints::installable((const void*)swg::cuiHud::actionPerformAction)) return;
+    if (!swg::endpoints::installable((const void*)swg::cuiHud::actionPerformAction))
+        return;
 
     // swg::cuiHud::update = (swg::cuiHud::pUpdate)Detour::Create((LPVOID)swg::cuiHud::update, hkUpdate, DETOUR_TYPE_PUSH_RET);
     swg::cuiHud::actionPerformAction = (swg::cuiHud::pActionPerformAction)Detour::Create((LPVOID)swg::cuiHud::actionPerformAction, hkActionPerformAction, DETOUR_TYPE_PUSH_RET);

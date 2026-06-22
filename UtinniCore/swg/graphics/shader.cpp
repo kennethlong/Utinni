@@ -190,7 +190,8 @@ void drawPhaseCallback(void (*func)(int currentPhase))
 void detour()
 {
     // Phase 24: skip on the advertised client when this SWGEmu patch site is unmapped.
-    if (!swg::endpoints::installable((const void*)start_midPopCell)) return;
+    if (!swg::endpoints::installable((const void*)start_midPopCell))
+        return;
 
     memory::createJMP(start_midPopCell, (swgptr)midPopCell, 6);
 }

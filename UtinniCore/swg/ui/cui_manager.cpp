@@ -265,7 +265,8 @@ void __cdecl hkReceiveMessage(swgptr pChatSystemMsg)
 void SystemMessageManager::detour()
 {
     // Phase 24: skip on the advertised client when the primary target is unresolved.
-    if (!swg::endpoints::installable((const void*)swg::systemMessageManager::receiveMessage)) return;
+    if (!swg::endpoints::installable((const void*)swg::systemMessageManager::receiveMessage))
+        return;
 
     swg::systemMessageManager::receiveMessage = (swg::systemMessageManager::pReceiveMessage)Detour::Create(swg::systemMessageManager::receiveMessage, hkReceiveMessage, DETOUR_TYPE_PUSH_RET);
 }

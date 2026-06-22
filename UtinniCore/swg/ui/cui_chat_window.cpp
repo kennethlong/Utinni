@@ -540,7 +540,8 @@ void __fastcall hkChatEnter(swgptr pThis, swgptr EDX)
 void CuiChatWindow::detour()
 {
     // Phase 24: skip on the advertised client when the primary target is unresolved.
-    if (!swg::endpoints::installable((const void*)swg::cuiChatWindow::ctor)) return;
+    if (!swg::endpoints::installable((const void*)swg::cuiChatWindow::ctor))
+        return;
 
     swg::cuiChatWindow::ctor = (swg::cuiChatWindow::pCtor)Detour::Create(swg::cuiChatWindow::ctor, hkCtor, DETOUR_TYPE_PUSH_RET);
 

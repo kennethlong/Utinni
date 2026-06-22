@@ -100,9 +100,9 @@ TEST_CASE("endpoints: resolve overwrites bound slots, leaves an absent name's sl
     const int resolved = resolve(&table, bindings, 3);
 
     REQUIRE(resolved == 2);
-    REQUIRE(slotA == kRealA);       // overwritten by name
-    REQUIRE(slotB == kRealB);       // overwritten by name
-    REQUIRE(slotC == kSentinelC);   // absent name -> RVA literal untouched (graceful)
+    REQUIRE(slotA == kRealA);     // overwritten by name
+    REQUIRE(slotB == kRealB);     // overwritten by name
+    REQUIRE(slotC == kSentinelC); // absent name -> RVA literal untouched (graceful)
 }
 
 TEST_CASE("endpoints: null table is a strict no-op (export-absent / SWGEmu path)", "[endpoints][dualpath]")
@@ -137,7 +137,7 @@ TEST_CASE("endpoints: version mismatch still binds names (soft-warn path)", "[en
 
     const int resolved = resolve(&table, bindings, 1);
 
-    REQUIRE(resolved > 0);    // soft path: resolves by name despite version drift
+    REQUIRE(resolved > 0); // soft path: resolves by name despite version drift
     REQUIRE(slotA == kRealA);
 }
 
@@ -161,9 +161,9 @@ TEST_CASE("endpoints: coverage counts resolved/missing, carve-out not in binding
 
     const int resolved = resolve(&table, bindings, 2);
 
-    REQUIRE(resolved == 1);          // exactly one of two requested names resolved
+    REQUIRE(resolved == 1); // exactly one of two requested names resolved
     REQUIRE(slotA == kRealA);
-    REQUIRE(slotB == kSentinelB);    // missing -> RVA literal kept
+    REQUIRE(slotB == kSentinelB); // missing -> RVA literal kept
 
     // The carve-out name is intentionally never requested; lookupByName confirms it
     // is simply not in this fixture (the resolver allow-lists it from the gate).
@@ -238,8 +238,8 @@ TEST_CASE("endpoints: full catalog (77 of 78 .inc names) all resolve, carve-out 
 
     const int resolved = resolve(&table, bindings.data(), bindings.size());
 
-    REQUIRE(resolved == 77);          // full catalog resolved (D-01)
-    for (void* s : slots)             // every requested name overwrote its slot
+    REQUIRE(resolved == 77); // full catalog resolved (D-01)
+    for (void* s : slots)    // every requested name overwrote its slot
     {
         REQUIRE(s != nullptr);
     }
@@ -272,9 +272,9 @@ TEST_CASE("endpoints: coverage counts resolved/missing with one absent name", "[
 
     const int resolved = resolve(&table, bindings, 2);
 
-    REQUIRE(resolved == 1);          // exactly one of two requested names resolved
+    REQUIRE(resolved == 1); // exactly one of two requested names resolved
     REQUIRE(slotA == kRealA);
-    REQUIRE(slotB == kSentinelB);    // missing -> RVA literal kept
+    REQUIRE(slotB == kSentinelB); // missing -> RVA literal kept
 
     // The carve-out name is intentionally never requested; lookupByName confirms it
     // is simply not in this fixture (the resolver allow-lists it from the gate).
