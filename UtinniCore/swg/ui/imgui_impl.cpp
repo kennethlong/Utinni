@@ -281,7 +281,14 @@ void setup(HWND hwnd)
         return;
 
     IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
+    // Idempotent: the DX11 hook-tier path (render_backend_dx11.cpp::Dx11Backend::init)
+    // creates the ImGui context BEFORE setup() runs (ImGui_ImplDX11_Init needs it), so
+    // only create here if one does not already exist -- avoids a double CreateContext on
+    // the DX11 path while preserving the DX9 path (which reaches setup() with no context).
+    if (ImGui::GetCurrentContext() == nullptr)
+    {
+        ImGui::CreateContext();
+    }
 
     // (1) Install the active backend BEFORE isSetup flips true, so no seam call
     //     site can fire through the isSetup gate with a null backend.

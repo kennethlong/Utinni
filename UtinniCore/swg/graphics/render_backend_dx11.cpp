@@ -36,6 +36,7 @@
 #include "render_backend.h"
 #include <d3d11.h>
 #include <dxgi1_2.h>
+#include <imgui.h>
 #include <imgui_impl_dx11.h>
 #include "directx11.h" // directX11:: getSwapChain/getDevice/getContext
 #include "graphics.h"  // utinni::Graphics::getCurrentRenderTargetWidth/Height
@@ -174,6 +175,18 @@ HWND Dx11Backend::init(ID3D11Device* device, ID3D11DeviceContext* context)
     {
         utinni::log::warning("Dx11Backend::init: swapChain->GetHwnd failed; no overlay HWND");
         return nullptr;
+    }
+
+    // ImGui_ImplDX11_Init touches ImGui::GetIO(), which dereferences the global ImGui
+    // context. On the DX11 path the hook tier (directX11::tryInstall) calls this init
+    // BEFORE imgui_impl::setup() creates the context, so GetIO() would write through a
+    // null context (the advertised-client DX11 crash: 0xC0000005 WRITE target=0x34 in
+    // ImGui_ImplDX11_Init). Ensure a context exists first. Idempotent: setup() guards its
+    // own CreateContext the same way, so whichever path runs first owns the single context.
+    if (ImGui::GetCurrentContext() == nullptr)
+    {
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
     }
 
     ImGui_ImplDX11_Init(device, context);
