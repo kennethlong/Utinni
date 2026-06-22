@@ -550,8 +550,41 @@ swgptr* getVtbl()
     return s_vtbl;
 }
 
+// Phase 24 / EPA-03 / Open Q3 (D-05): is this a D3D11-only client?
+// On the advertised D3D11 client, graphics::install resolves from the
+// GetEngineHookPoints table (Plan 02), so the existing hkInstall detour now fires
+// on the CORRECT function -- which then reaches this directX::detour(). The D3D9
+// throwaway-device harvest below (getVtbl) is meaningless on a D3D11-only client:
+// SWG never calls the d3d9.dll Present/EndScene/etc. functions it would detour, and
+// creating a real throwaway HAL device on a process that renders via D3D11 is pure
+// waste (the DXGI swapchain overlay path -- directX11::kickoff -> tryInstall -- owns
+// rendering there). getVtbl() is already crash-safe (it creates its OWN device via
+// Direct3DCreate9 and null-checks every step -- it NEVER harvests SWG's device, so
+// there is no "non-existent D3D9 device" to deref), but gating it off entirely on
+// the D3D11 client avoids the needless device creation and 7 dead detours.
+//
+// The gate signal mirrors directX11::tryInstall(): the presence of gl11_{r,d}.dll
+// (the from-source D3D11 render module) IS the "this is a D3D11 client" tell. On
+// SWGEmu Pre-CU gl11 is never loaded -> the gate is false -> the D3D9 harvest runs
+// EXACTLY as today (D-00, SWGEmu path byte-for-byte unchanged).
+static bool isD3D11Client()
+{
+    return GetModuleHandleA("gl11_r.dll") != nullptr ||
+           GetModuleHandleA("gl11_d.dll") != nullptr;
+}
+
 void detour()
 {
+    // Phase 24 / EPA-03 / Open Q3: skip the D3D9 throwaway-device harvest on the
+    // advertised D3D11 client (gl11 loaded). directX11::kickoff() (fired right after
+    // this in hkInstall) owns the DXGI overlay path there. SWGEmu (no gl11) is
+    // unaffected -- it falls through to the harvest below exactly as before.
+    if (isD3D11Client())
+    {
+        utinni::log::info("directX::detour: D3D11 client detected (gl11 loaded); skipping D3D9 throwaway-device harvest (DXGI overlay owns rendering)");
+        return;
+    }
+
     // DIAG 2026-05-19: log entry, vtable-harvest result, and exit. Lets us see
     // if the dummy-device CreateDevice + Release sequence completes when called
     // from inside SWG's graphics::install context (different from injection time).

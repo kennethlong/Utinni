@@ -638,6 +638,9 @@ bool __cdecl hkInstall()
         utinni::log::info(msg);
     }
 
+    // Phase 24 / EPA-03 / D-05 Approach A: directX::detour() no-ops on the advertised
+    // D3D11 client (gl11 loaded) -- see directx9.cpp. On SWGEmu it runs the D3D9
+    // throwaway-device harvest exactly as today (D-00, byte-for-byte unchanged).
     directX::detour();
 
     // Phase 19 / RNDR-02: the SINGLE owned DX11 kick-off site (mirrors directX::detour()).
@@ -645,6 +648,13 @@ bool __cdecl hkInstall()
     // the poll acquires the client's advertised DXGI swapchain (GetHookPoints) and installs
     // the D3D11 overlay once it latches. A DXGI Present detour cannot exist before the
     // swapchain exists, so the kick-off MUST be this already-installed prePresent callback.
+    //
+    // Phase 24 / EPA-03 / D-05 Approach A: this kickoff site is UNCHANGED -- no new
+    // trigger was added (Pitfall 6). On the advertised D3D11 client, graphics::install
+    // resolves from the GetEngineHookPoints table (Plan 02), so this hkInstall detour
+    // now installs on the REAL Graphics::install address and fires naturally -> kickoff
+    // runs as part of the existing chain. The hardcoded 0x007548A0 was the wrong address
+    // on SwgClient_r.exe, which is exactly why the DX11 overlay never started before.
     directX11::kickoff();
 
     if (firstFire)
