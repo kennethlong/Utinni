@@ -31,7 +31,7 @@ Status: Phase complete. Live-smoke Checkpoints 1 (advertised-client inject, no c
 Last activity: 2026-06-22
 
 > FOLLOW-ON MILESTONE (captured, out of v2.1 scope): full advertised-client hook coverage (~198/230 entry points) + DX11 live acceptance (closes Phase-18 D-08 / Phase-19 D-22 / RNDR-02/03/04). Requires the swg-client-v2 PROVIDER to advertise more entry points (incl. D3D11 swapchain) + per-function ABI adapters on the consumer side.
-> MAINTAINER STEP PENDING: ABI baseline re-bless (AbiSurfaceTests: 28 ADDED, 0 REMOVED — additive/binary-compatible; TJT MEF-compose already live-confirmed). Run AbiBlockHash.Rebless → re-freeze FrozenPlugin fixture → commit together (Phase-17 CPPS-04 lockstep).
+> MAINTAINER STEP DONE 2026-06-22: ABI baseline re-blessed (4488→4516 block hashes; 28 ADDED, 0 REMOVED, additive) + FrozenPlugin fixture re-frozen (commit 9275187). AbiSurfaceTests+FrozenPluginComposeTests 9/9 green; CI green (run 27967675932). The same CI run surfaced + fixed three runner-as-service (NETWORK SERVICE / Session 0) consequences of the 06-20 migration: PowerShell execution policy (LocalMachine→RemoteSigned, maintainer-elevated), clang-format drift in 21 Phase-24 C++ files (91f8c70), and the headless-D3D9 GetVtbl HAL test skipped (7b943a1).
 
 > Note: `gsd-sdk query phase.complete 22` again set next_phase to `999.2` (the legacy backlog id for what is now Phase 23); hand-corrected to Phase 23 here per the documented phase.complete next-phase bug (same correction made at the 21→22 transition).
 
