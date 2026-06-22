@@ -25,10 +25,17 @@
 // Phase 24 / EPA-02, EPA-04: swg::endpoints resolver implementation.
 //
 // The header (endpoints.h) is deliberately lean (only utinni_engine_hookpoints.h
-// + <cstddef>). All the heavy machinery -- the GetModuleHandle/GetProcAddress
-// shell, the logging, the per-subsystem pFn extern declarations, the s_bindings[]
-// critical-path seed, and the D-03a compile-time X-macro subset static_assert --
-// lives HERE so the pure resolve() the test exercises stays injection-free.
+// + <cstddef>). This TU carries the INJECTION-FREE half -- the pure resolve(),
+// lookupByName(), the D-02 allow-list, and the D-03a compile-time X-macro subset
+// static_assert -- none of which reference any subsystem symbol, so the test
+// project can compile it standalone (Option-A split, mirroring render_backend.cpp).
+//
+// The symbol-bearing half -- the extern config/graphics pFn declarations, the
+// s_bindings[] critical-path seed, and the resolveFromExe() GetProcAddress shell --
+// lives in endpoints_bindings.cpp so it is compiled ONLY into UtinniCore.dll and
+// never drags the not-exported subsystem literals into the test link (LNK2001).
+// The subset static_assert lives HERE next to the .inc re-include and is duplicated
+// against the s_bindings[] names in endpoints_bindings.cpp (one assert per side).
 
 #include "endpoints.h"
 
@@ -38,55 +45,8 @@
 #include "utinni.h"          // byte/swgptr + the build's common prelude
 #include "utility/log.h"     // utinni::log::{info,warning}
 
-// resolveFromExe() uses GetModuleHandleA/GetProcAddress -- the only Windows reach.
-// The pure resolve()/lookupByName() above never touch the OS so the test exe can
-// compile this TU and call resolve() without injection.
-#include <Windows.h>
-
-// ----------------------------------------------------------------------
-// The per-subsystem pFn literal storage cells we bind THIS plan (the
-// critical-path rows that compile against existing literals -- config + the
-// EPA-03 graphics::install seam). These pointers are namespace-scope
-// definitions with external linkage in misc/config.cpp + graphics/graphics.cpp;
-// re-declared extern here so we can take their addresses for s_bindings[]. The
-// typedefs MUST byte-match the originating TUs (verified against config.cpp:30-39
-// + graphics.cpp:37,61). The full 79-name catalog binds in Plan 02.
-// ----------------------------------------------------------------------
-namespace swg::config
-{
-using pLoadConfigFileBuffer = bool(__cdecl*)(byte* buffer, int bufferLength);
-using pLoadConfigFileString = bool(__cdecl*)(const char* filename);
-using pLoadOverrideConfig = int(__cdecl*)();
-
-extern pLoadConfigFileBuffer loadConfigFileBuffer;
-extern pLoadConfigFileString loadConfigFileString;
-extern pLoadOverrideConfig loadOverrideConfig;
-} // namespace swg::config
-
-namespace swg::graphics
-{
-using pInstall = bool(__cdecl*)();
-
-extern pInstall install;
-} // namespace swg::graphics
-
 namespace swg::endpoints
 {
-// ----------------------------------------------------------------------
-// Critical-path binding seed (this plan): config crash-fixer + buffer/string
-// loaders + the EPA-03 graphics::install row. The contract NAME is the key; the
-// slot is the storage cell of the existing pFn literal. consoleHelper::sendInput
-// (D-02 / WR-05) is deliberately ABSENT -- it stays on its RVA literal (3-arg ABI
-// mismatch) and is allow-listed out of the coverage gate. The remaining 74 names
-// bind in Plan 02.
-// ----------------------------------------------------------------------
-static const Binding s_bindings[] = {
-    {"config::loadOverrideConfig", (void**)&swg::config::loadOverrideConfig},
-    {"config::loadConfigFileBuffer", (void**)&swg::config::loadConfigFileBuffer},
-    {"config::loadConfigFileString", (void**)&swg::config::loadConfigFileString},
-    {"graphics::install", (void**)&swg::graphics::install},
-};
-
 // ----------------------------------------------------------------------
 // D-03a: compile-time X-macro subset assert. Re-include the canonical .inc with
 // a UTINNI_HOOKPOINT macro that builds a constexpr "is this name in the .inc set?"
@@ -218,26 +178,5 @@ int resolve(const UtinniEngineHookPoints* table, const Binding* bindings, size_t
                   resolved, count, missing);
     utinni::log::info(msg);
     return resolved;
-}
-
-bool resolveFromExe()
-{
-    using pGetEngineHookPoints = const UtinniEngineHookPoints*(__cdecl*)();
-
-    HMODULE hExe = GetModuleHandleA(nullptr); // the injected SWG client exe
-    auto pGet = reinterpret_cast<pGetEngineHookPoints>(
-        GetProcAddress(hExe, "GetEngineHookPoints"));
-    if (pGet == nullptr)
-    {
-        // SWGEmu Pre-CU: no export -> STRICT NO-OP. Every swg::* RVA literal is
-        // left exactly as-is so the existing D3D9 path is byte-for-byte unchanged
-        // (D-00 / criterion 3 / T-24-03).
-        utinni::log::info("endpoints: no GetEngineHookPoints export -- RVA path (SWGEmu Pre-CU)");
-        return false;
-    }
-
-    const UtinniEngineHookPoints* table = pGet();
-    resolve(table, s_bindings, sizeof(s_bindings) / sizeof(s_bindings[0]));
-    return true;
 }
 } // namespace swg::endpoints

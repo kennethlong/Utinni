@@ -34,6 +34,7 @@
 #include "swg/game/game.h"
 #include "swg/graphics/graphics.h"
 #include "swg/misc/config.h"
+#include "swg/endpoints.h"
 #include "swg/misc/io_win.h"
 #include "swg/misc/tree_file.h"
 #include "swg/object/creature_object.h"
@@ -370,6 +371,17 @@ extern "C" __declspec(dllexport) DWORD WINAPI utinni_init(LPVOID lpThreadParam)
     // CON-N-01: these are NOT Detour::Create calls.
     directX::initPresentBlockedEvent(); // CR-04: hPresentBlockedEvent eager init
     directX::initDepthTexture();        // WR-03: depthTexture eager init
+
+    // Phase 24 / EPA-02: the SINGLE dual-path branch. Probe the advertised
+    // GetEngineHookPoints() export and, on the advertised client, overwrite the
+    // swg::* function-pointer literals BY NAME *before* createDetours() runs --
+    // fixing the first-detour 0xC0000005 READ crash (the detour-length disassembly
+    // reads bytes at the wrong hardcoded RVA otherwise). On SWGEmu Pre-CU (export
+    // absent) this is a strict no-op and the RVA literals are used exactly as today
+    // (D-00). Reuses the already-captured g_swgModule. CON-H-01: this runs in
+    // utinni_init (launcher remote thread), NEVER DllMain.
+    swg::endpoints::resolveFromExe();
+    utinni::log::info("endpoints: resolver ran before createDetours()");
 
     // Adds hooks to functions inside the game
     createDetours();
