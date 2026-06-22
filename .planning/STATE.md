@@ -4,14 +4,14 @@ milestone: v2.1
 milestone_name: Wave-2 Editors + Foundation Hardening
 status: executing
 stopped_at: Phase 24 context gathered
-last_updated: "2026-06-21T23:49:51.777Z"
-last_activity: 2026-06-21 -- Phase 24 planning complete
+last_updated: "2026-06-22T00:04:35.854Z"
+last_activity: 2026-06-22
 progress:
   total_phases: 17
   completed_phases: 7
   total_plans: 35
-  completed_plans: 31
-  percent: 89
+  completed_plans: 32
+  percent: 91
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** Phase 24 — client-entry-point-advertisement (GetEngineHookPoints); gated on external swg-client-v2 readiness (Phase 23 complete 2026-06-21)
+**Current focus:** Phase 24 — client-entry-point-advertisement-getenginehookpoints
 
 ## Current Position
 
-Phase: 24
-Plan: Not started
+Phase: 24 (client-entry-point-advertisement-getenginehookpoints) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-06-21 -- Phase 24 planning complete
+Last activity: 2026-06-22
 
 > Note: `gsd-sdk query phase.complete 22` again set next_phase to `999.2` (the legacy backlog id for what is now Phase 23); hand-corrected to Phase 23 here per the documented phase.complete next-phase bug (same correction made at the 21→22 transition).
 
@@ -240,6 +240,7 @@ All 8 CON-O-01..08 now dispositioned in `assessment.md` §Open questions. Execut
 | Phase 23 P07 | 10min | 2 tasks | 5 files |
 | Phase 23 P06 | 4min | 1 tasks | 2 files |
 | Phase 23 P08 | ~22h (auto + live-smoke gate) | 2 tasks | 2 files |
+| Phase 24 P01 | 67min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -329,6 +330,8 @@ Full decision log lives in PROJECT.md Key Decisions table. V1 starts with four l
 - [Phase ?]: 23-07: btnTemplateMode added LAST in the Dock.Right cluster to render leftmost (WinForms reverse-add); the plan's literal 'added before' grep wording was inconsistent with its own 'leftmost' UI-SPEC goal
 - [Phase ?]: 23-06: summarize_with_template MCP tool shells decode-with-template with only the resolved path (no flag pass-through), preserving the verbatim 3-line MCP-OOP thin-shell
 - [Phase 23]: [Phase 23]: 23-08 (PROD-IFFT-03 manage half) COMPLETE 2026-06-21; maintainer live-smoke APPROVED/PASS. TemplateBuilderPane Save-drop-down: Save to writable pack (User/Project; Shipped disabled+store-rejected), Select-and-apply (clone-on-apply), Import/Export (Open/SaveFileDialog); save serializes via TemplateJson WITHIN pack root via LooseOverridePath (T-23-08-PATH); overwrite/delete via FormSaveConfirmDialog (T-23-08-DESTRUCT); non-destructive until explicit Save. Live-smoke (scene/game_music_manager.iff root GMUS, NUL-term C-string over WATR leaf 31/31 bytes) round-tripped byte-exact, silent auto-apply on re-open, no sibling corruption. Phase 23 COMPLETE (8/8). UtinniPlugins 55515e9; UX residual (byte-grid selection readout) deferred non-blocking.
+- [Phase ?]: Phase 24-01: swg::endpoints resolver split into pure endpoints.cpp (testable, compiled into the test exe) + symbol-bearing endpoints_bindings.cpp (UtinniCore.dll only) to avoid LNK2001 on the not-exported subsystem pFn literals (Option-A split, mirrors render_backend_dx9.cpp)
+- [Phase ?]: Phase 24-01: consoleHelper::sendInput (D-02/WR-05) allow-listed out of the coverage gate and kept on its RVA literal -- NOT placed in s_bindings[]
 
 ### Pending Todos
 
@@ -386,9 +389,9 @@ Eleven open questions (CON-O-01..CON-O-11) are tracked as phase-gated unresolved
 
 ## Session Continuity
 
-Last session: 2026-06-21T23:29:35.148Z
+Last session: 2026-06-22T00:04:24.610Z
 Stopped at: Phase 24 context gathered
-Resume file: .planning/phases/24-client-entry-point-advertisement-getenginehookpoints/24-CONTEXT.md
+Resume file: None
 
 ## Ingest Provenance
 
