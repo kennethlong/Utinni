@@ -602,11 +602,23 @@ const Camera* Game::getConstCamera()
 
 bool Game::isSafeToUse()
 {
-    // Returns true only when both SWG-internal safety flags are set. Per docs/ai/internals.md:218-231,
-    // "AND ... Both must be true" — the operator was previously || (logical-OR), which returned true
-    // when only one flag was set, allowing world-snapshot mutations during scene transitions that the
-    // second flag would have blocked. CON-O-01 disposition: docs/ai/internals.md is the source of truth;
-    // the operator is &&. See assessment.md Open Questions §1.
+    // Phase 24 / D-04 read->call dual-path. The advertised client exposes the run-state
+    // through the static accessor game::g_runningFlags -> &Game::isOver() (call-not-read;
+    // the two raw safety-flag globals are private). isOver() is true when the game is
+    // shutting down / has no window; "safe to use" is its inverse, so on the advertised
+    // path we CALL the resolved accessor and negate it. A function pointer cannot be
+    // memory::read'd (Pitfall 4). On SWGEmu the slot is null -> keep the existing two-bool
+    // memory::read expression byte-for-byte (D-00, no regression).
+    if (swg::game::g_runningFlags != nullptr)
+    {
+        return !swg::game::g_runningFlags();
+    }
+    // SWGEmu RVA path: returns true only when both SWG-internal safety flags are set.
+    // Per docs/ai/internals.md:218-231, "AND ... Both must be true" — the operator was
+    // previously || (logical-OR), which returned true when only one flag was set, allowing
+    // world-snapshot mutations during scene transitions that the second flag would have
+    // blocked. CON-O-01 disposition: docs/ai/internals.md is the source of truth; the
+    // operator is &&. See assessment.md Open Questions §1.
     return memory::read<bool>(0x01908858) && memory::read<bool>(0x01919410);
 }
 

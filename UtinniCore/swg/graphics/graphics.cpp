@@ -567,12 +567,27 @@ void Graphics::setSystemMouseCursorPosition(int X, int Y)
 
 int Graphics::getCurrentRenderTargetWidth() // 0x00754DB0 is the clients function address
 {
-    return memory::read<int>(0x1922E64); // static ptr to RenderTargetWidth
+    // Phase 24 / D-04 read->call dual-path. The advertised client exposes the RT width
+    // ONLY through a static accessor (g_renderTargetWidth -> &Graphics::getCurrentRenderTargetWidth);
+    // the underlying global is private (no &g). On the advertised path the resolver bound
+    // the accessor pointer -> CALL it (a function pointer cannot be memory::read'd: that
+    // would read a code address as data, Pitfall 4). On SWGEmu the slot is null -> keep
+    // the existing memory::read of the global byte-for-byte (D-00, no regression).
+    if (swg::graphics::g_renderTargetWidth != nullptr)
+    {
+        return swg::graphics::g_renderTargetWidth();
+    }
+    return memory::read<int>(0x1922E64); // static ptr to RenderTargetWidth (SWGEmu RVA path)
 }
 
 int Graphics::getCurrentRenderTargetHeight() // 0x00754DC0 is the clients function address
 {
-    return memory::read<int>(0x1922E60); // static ptr to RenderTargetHeight
+    // Phase 24 / D-04 read->call dual-path (see getCurrentRenderTargetWidth above).
+    if (swg::graphics::g_renderTargetHeight != nullptr)
+    {
+        return swg::graphics::g_renderTargetHeight();
+    }
+    return memory::read<int>(0x1922E60); // static ptr to RenderTargetHeight (SWGEmu RVA path)
 }
 
 void Graphics::flushResources(bool fullFlush)
