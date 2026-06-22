@@ -34,6 +34,7 @@
 #include <d3d11.h>
 #include <dxgi1_2.h>
 #include "utinni.h"
+#include <cstdio> // std::snprintf for the one-shot acquisition diagnostic (tryInstall)
 #include "swg/ui/imgui_impl.h"
 #include "graphics.h" // utinni::Graphics::subscribe/unsubscribePrePresentCallback
 #include "render_backend.h"
@@ -146,7 +147,34 @@ bool tryInstall()
     }
 
     UtinniDx11HookPoints hp = getHookPoints();
-    if (hp.swapChain == nullptr)
+
+    // One-shot acquisition diagnostic (24-DX11-ADVERTISED-CLIENT-GAP.md). The first
+    // time the advertised swapChain is non-null, log all THREE borrowed pointers. On a
+    // correct gl11 provider they are non-null together (EPA-08 proof: D3D11CreateDevice
+    // populates device+context BEFORE CreateSwapChainForHwnd, and destroy() resets the
+    // swapChain first -- so there is no window where swapChain != null && (device == null
+    // || context == null)). Logging them turns the otherwise-silent advertised-exe + DX11
+    // 0xC0000005 WRITE target=0x34 into an observable: if device/context were ever null
+    // behind a non-null swapChain, this line shows it instead of faulting downstream in
+    // dx11Singleton()->init(s_device, s_context).
+    static bool s_loggedAcquire = false;
+    if (!s_loggedAcquire && hp.swapChain != nullptr)
+    {
+        s_loggedAcquire = true;
+        char buf[176];
+        std::snprintf(buf, sizeof(buf),
+                      "directX11::tryInstall: GetHookPoints acquired -- swapChain=0x%p device=0x%p context=0x%p",
+                      (void*)hp.swapChain, (void*)hp.device, (void*)hp.context);
+        utinni::log::info(buf);
+    }
+
+    // Poll until ALL THREE advertised pointers are live, not just the swapChain. The
+    // LOCKED install sequence below dereferences device + context (step 4,
+    // dx11Singleton()->init(s_device, s_context)); requiring them here converts a null
+    // device/context into a clean poll-again instead of a downstream null-deref. Per
+    // EPA-08 the provider already guarantees all three together, so on a correct client
+    // this never delays install beyond the existing swapChain-null wait.
+    if (hp.swapChain == nullptr || hp.device == nullptr || hp.context == nullptr)
     {
         return false; // not ready (spec §3.3 / T-19-03) -- poll again next frame
     }
