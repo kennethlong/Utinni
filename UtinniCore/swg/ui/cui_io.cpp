@@ -40,6 +40,13 @@ pSetKeyboardInputActive setKeyboardInputActive = (pSetKeyboardInputActive)0x0093
 pRequestKeyboard requestKeyboard = (pRequestKeyboard)0x0093D560;
 pDraw draw = (pDraw)0x0093B2B0;
 
+// Phase 24 / D-04 accessor-style global. Provider advertises cuiIo::g_instance as
+// &CuiManager::getIoWin (call-not-read): the CuiIoWin singleton accessor (CuiManager
+// owns ms_theIoWin). No SWGEmu RVA literal -- the consumer has no g_instance read-site
+// today, so this slot is bound for catalog completeness and resolves only on the
+// advertised client (null on SWGEmu).
+using pGetIoWin = swgptr(__cdecl*)();
+pGetIoWin g_instance = nullptr;
 } // namespace swg::cuiIo
 
 namespace utinni

@@ -172,6 +172,21 @@ pPositionAndRotationChanged positionAndRotationChanged = (pPositionAndRotationCh
 pGetClientObject getClientObject = (pGetClientObject)0x00554BC0;
 
 pGetTemplateFilename getTemplateFilename = (pGetTemplateFilename)0x00B23C40;
+
+// Phase 24 / D-01 full-catalog rows the consumer did not previously hook. The
+// provider advertises these NON-VIRTUAL Object members (getObjectTemplate,
+// getObjectTemplateName, getNetworkId); the consumer had no literal for them. They
+// have NO SWGEmu RVA (no existing consumer call-site), so the slot starts null and
+// resolves only on the advertised client -- bound for catalog completeness (D-01).
+// The consumer keeps using its existing getType/getTemplateFilename literals for the
+// SWGEmu path; these advertised slots are inert until a future consumer call-site uses them.
+using pGetObjectTemplate = swgptr(__thiscall*)(utinni::Object* pThis);
+using pGetObjectTemplateName = const char*(__thiscall*)(utinni::Object* pThis);
+using pGetNetworkId = swgptr(__thiscall*)(utinni::Object* pThis);
+
+pGetObjectTemplate getObjectTemplate = nullptr;
+pGetObjectTemplateName getObjectTemplateName = nullptr;
+pGetNetworkId getNetworkId = nullptr;
 } // namespace swg::object
 
 namespace utinni

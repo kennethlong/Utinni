@@ -46,6 +46,14 @@ pSetSize setSize = (pSetSize)0x00882410;
 pTogglePointer togglePointer = (pTogglePointer)0x00881940;
 
 pRestartMusic restartMusic = (pRestartMusic)0x00881560;
+
+// Phase 24 / D-04 accessor-style global. Provider advertises cuiManager::g_instance
+// as &CuiManager::getIoWin (call-not-read): CuiManager is all-static (no instance);
+// getIoWin() returns the CuiIoWin singleton. No SWGEmu RVA literal -- the consumer has
+// no g_instance read-site today, so this slot is bound for catalog completeness and
+// resolves only on the advertised client (null on SWGEmu).
+using pGetIoWin = swgptr(__cdecl*)();
+pGetIoWin g_instance = nullptr;
 } // namespace swg::cuiManager
 
 namespace swg::uiManager

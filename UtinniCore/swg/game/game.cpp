@@ -68,6 +68,16 @@ pGetConstCamera getConstCamera = (pGetConstCamera)0x00425BE0;
 
 pIsViewFirstPerson isViewFirstPerson = (pIsViewFirstPerson)0x00425C10;
 pIsHudSceneTypeSpace isHudSceneTypeSpace = (pIsHudSceneTypeSpace)0x00426170;
+
+// Phase 24 / D-04 accessor-style global. The provider advertises game::g_runningFlags
+// as the STATIC ACCESSOR &Game::isOver (call-not-read): there is no addressable raw
+// global, so the only legitimate handle is the bool() accessor. There is NO SWGEmu RVA
+// literal -- the consumer's isSafeToUse() reads two engine safety-flag globals directly
+// via memory::read on the SWGEmu path. The slot starts null and resolves only on the
+// advertised client; the read-site (Task 2) calls !isOver() when non-null, else the
+// existing two-bool memory::read expression.
+using pIsOver = bool(__cdecl*)();
+pIsOver g_runningFlags = nullptr;
 } // namespace swg::game
 
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries

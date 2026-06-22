@@ -101,6 +101,19 @@ pCreateObject createObject = (pCreateObject)0x0059BBA0;
 pAddObject addObject = (pAddObject)0x0059BF20;
 
 pDetailLevelChanged detailLevelChanged = (pDetailLevelChanged)0x0059DC30;
+
+// Phase 24 / D-01 full-catalog rows the consumer did not previously hook. The
+// provider advertises these static WorldSnapshot members (removeObject, moveObject,
+// getLoadingPercent); the consumer had no literal for them. They have NO SWGEmu RVA
+// (no existing consumer call-site), so the slot starts null and resolves only on the
+// advertised client -- bound for catalog completeness (D-01). Inert on SWGEmu.
+using pRemoveObject = void(__cdecl*)(swgptr networkId);
+using pMoveObject = void(__cdecl*)(swgptr networkId, const swg::math::Transform& transform);
+using pGetLoadingPercent = int(__cdecl*)();
+
+pRemoveObject removeObject = nullptr;
+pMoveObject moveObject = nullptr;
+pGetLoadingPercent getLoadingPercent = nullptr;
 } // namespace swg::worldsnapshot
 
 namespace utinni

@@ -81,6 +81,20 @@ pSetObjectToWorldTransformAndScale setObjectToWorldTransformAndScale = (pSetObje
 pDrawExtent drawExtent = (pDrawExtent)0x00759A70;
 
 pScreenshot screenshot = (pScreenshot)0x00755890;
+
+// Phase 24 / D-04 accessor-style globals. The provider advertises these "globals"
+// as STATIC ACCESSOR function pointers (call-not-read): g_renderTargetWidth ->
+// &Graphics::getCurrentRenderTargetWidth, g_renderTargetHeight -> getCurrentRenderTargetHeight,
+// g_frameNumber -> &Graphics::getFrameNumber. There is NO SWGEmu RVA literal for these
+// (the consumer reads the underlying global directly via memory::read on the SWGEmu path),
+// so the slot starts null and is overwritten ONLY when the advertised export resolves it.
+// The read-site (Task 2) calls the accessor when the slot is non-null, else memory::read.
+using pRenderTargetAccessor = int(__cdecl*)();
+using pFrameNumberAccessor = int(__cdecl*)();
+
+pRenderTargetAccessor g_renderTargetWidth = nullptr;
+pRenderTargetAccessor g_renderTargetHeight = nullptr;
+pFrameNumberAccessor g_frameNumber = nullptr;
 } // namespace swg::graphics
 
 static std::string screenshotsDir = "screenshots/";
