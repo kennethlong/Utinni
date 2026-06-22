@@ -23,11 +23,51 @@
  **/
 
 #include "memory.h"
+#include "log.h"
 #include <TlHelp32.h>
 #include <Psapi.h>
+#include <cstdio>
 
 namespace memory
 {
+
+// Utinni guard (Phase 24): the raw patch helpers below VirtualProtect a target
+// address and then write, ignoring VirtualProtect failure. On the ASLR-relocated
+// advertised client a hardcoded SWGEmu literal that was NOT resolved from the
+// GetEngineHookPoints catalog is unmapped, so the write faults (0xC0000005 WRITE).
+// This validates the target page is committed (and covers the write) before the
+// helper proceeds; if not, the patch is skipped. On SWGEmu every target is a valid
+// mapped address, so nothing is skipped (byte-for-byte unchanged). The inline
+// write<T>/read<T> templates in memory.h are intentionally NOT guarded -- they run
+// on already-resolved/valid pointers on hot paths.
+static bool isTargetCommitted(swgptr address, size_t length)
+{
+    if (address == 0)
+        return false;
+
+    MEMORY_BASIC_INFORMATION mbi;
+    if (VirtualQuery((LPCVOID)address, &mbi, sizeof(mbi)) == 0)
+        return false;
+    if (mbi.State != MEM_COMMIT)
+        return false;
+    if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS))
+        return false;
+
+    const BYTE* regionEnd = (const BYTE*)mbi.BaseAddress + mbi.RegionSize;
+    if ((const BYTE*)address + length > regionEnd)
+        return false;
+
+    return true;
+}
+
+static void logSkippedWrite(const char* fn, swgptr address)
+{
+    char dbg[128];
+    _snprintf_s(dbg, sizeof(dbg), _TRUNCATE,
+                "%s skipped unmapped target 0x%08X (endpoint unresolved on advertised client)",
+                fn, (DWORD)address);
+    utinni::log::warning(dbg);
+}
 
 swgptr findPattern(swgptr startAddress, size_t length, const char* pattern, const char* mask)
 {
@@ -62,6 +102,12 @@ swgptr findPattern(const char* moduleName, const char* pattern, const char* mask
 
 void copy(swgptr pDest, swgptr pSource, size_t length)
 {
+    if (length != 0 && !isTargetCommitted(pDest, length))
+    {
+        logSkippedWrite("memory::copy", pDest);
+        return;
+    }
+
     DWORD oldProtect;
     DWORD newProtect;
 
@@ -78,6 +124,12 @@ void write(swgptr address, swgptr value, int length)
 
 void set(swgptr pDest, swgptr value, size_t length)
 {
+    if (length != 0 && !isTargetCommitted(pDest, length))
+    {
+        logSkippedWrite("memory::set", pDest);
+        return;
+    }
+
     DWORD oldProtect;
     DWORD newProtect;
 
@@ -89,6 +141,12 @@ void set(swgptr pDest, swgptr value, size_t length)
 
 void patchAddress(swgptr address, swgptr value)
 {
+    if (!isTargetCommitted(address, 4))
+    {
+        logSkippedWrite("memory::patchAddress", address);
+        return;
+    }
+
     DWORD oldProtect;
     DWORD newProtect;
 
@@ -99,6 +157,12 @@ void patchAddress(swgptr address, swgptr value)
 
 std::tuple<swgptr, std::vector<char>> nopAddress(swgptr address, int nopCount)
 {
+    if (nopCount > 0 && !isTargetCommitted(address, (size_t)nopCount))
+    {
+        logSkippedWrite("memory::nopAddress", address);
+        return std::tuple<swgptr, std::vector<char>>(address, std::vector<char>());
+    }
+
     // Not the most efficient. ToDo improve in the future
     std::vector<char> originalBytes((const char*)address, (const char*)address + nopCount);
     set(address, 0x90, nopCount); // 0x90 = NOP
@@ -112,6 +176,12 @@ void restoreBytes(const std::tuple<swgptr, std::vector<char>>& originalBytes)
 
 void createJMP(swgptr address, swgptr jumpToAddress, size_t overrideLength)
 {
+    if (!isTargetCommitted(address, overrideLength))
+    {
+        logSkippedWrite("memory::createJMP", address);
+        return;
+    }
+
     DWORD oldProtect;
     DWORD newProtect;
 

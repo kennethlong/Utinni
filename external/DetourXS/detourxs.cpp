@@ -1,7 +1,49 @@
 #include "DetourXS.h"
 #include <cstdlib>
+#include <cstdio>
+#include <windows.h>
 #include <libloaderapi.h>
 #include <memoryapi.h>
+
+// Utinni log (Phase 24). Forward-declared instead of #include "utility/log.h" to
+// keep this vendored TU free of the utinni.h dependency; detourxs.cpp links into
+// UtinniCore.dll where utinni::log::warning is defined, so the call resolves
+// directly within the module.
+namespace utinni { namespace log { void warning(const char* text); } }
+
+// Utinni guard (Phase 24): a detour target that was NOT resolved from the
+// GetEngineHookPoints advertised catalog still holds its raw SWGEmu absolute
+// address. On the ASLR-relocated advertised client that address is unmapped, and
+// GetDetourLenAuto() disassembles bytes AT the target to size the detour -- reading
+// an unmapped target faults (0xC0000005, the createDetours crash). This validates
+// the target is committed + executable before any read. On SWGEmu every target is a
+// valid mapped address, so this never rejects (the path stays byte-for-byte unchanged).
+static bool utinniIsDetourTargetExecutable(LPCVOID addr, SIZE_T needBytes)
+{
+    if (addr == nullptr)
+        return false;
+
+    MEMORY_BASIC_INFORMATION mbi;
+    if (VirtualQuery(addr, &mbi, sizeof(mbi)) == 0)
+        return false;
+    if (mbi.State != MEM_COMMIT)
+        return false;
+    if (mbi.Protect & PAGE_GUARD)
+        return false;
+
+    const DWORD base = mbi.Protect & 0xFF; // strip PAGE_GUARD/NOCACHE/WRITECOMBINE modifiers
+    const bool executable = (base == PAGE_EXECUTE) || (base == PAGE_EXECUTE_READ) ||
+                            (base == PAGE_EXECUTE_READWRITE) || (base == PAGE_EXECUTE_WRITECOPY);
+    if (!executable)
+        return false;
+
+    // Ensure the bytes the disassembler may touch lie inside this committed region.
+    const BYTE* regionEnd = (const BYTE*)mbi.BaseAddress + mbi.RegionSize;
+    if ((const BYTE*)addr + needBytes > regionEnd)
+        return false;
+
+    return true;
+}
 
 #define DETOUR_MAX_SRCH_OPLEN 64
 
@@ -67,6 +109,23 @@ namespace Detour
 
     LPVOID Create(LPVOID lpFuncOrig, LPVOID lpFuncDetour, DETOUR_TYPE patchType, int detourLen)
     {
+	    // Utinni guard (Phase 24): skip a detour whose target is not committed +
+	    // executable -- i.e. an endpoint left at its raw SWGEmu literal because it
+	    // was not in the advertised catalog, which is unmapped on the relocated
+	    // advertised client. Returning lpFuncOrig unchanged honours the dual-path
+	    // design's "unresolved => don't install" precondition and prevents the
+	    // 0xC0000005 read fault in GetDetourLenAuto() below. DETOUR_MAX_SRCH_OPLEN
+	    // bounds how far the disassembler can walk past the target.
+	    if (!utinniIsDetourTargetExecutable(lpFuncOrig, DETOUR_MAX_SRCH_OPLEN))
+	    {
+		    char dbg[112];
+		    _snprintf_s(dbg, sizeof(dbg), _TRUNCATE,
+		                "Detour::Create skipped unmapped target 0x%08X (endpoint unresolved on advertised client)",
+		                (DWORD)(DWORD_PTR)lpFuncOrig);
+		    utinni::log::warning(dbg);
+		    return lpFuncOrig;
+	    }
+
 	    LPVOID lpMallocPtr = nullptr;
 	    DWORD dwProt = NULL;
 	    PBYTE pbMallocPtr = nullptr;
