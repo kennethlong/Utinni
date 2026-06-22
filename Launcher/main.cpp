@@ -219,7 +219,43 @@ void loadDll(const std::string& cmdLine)
             LPVOID hFileMapping = CreateFileMapping(hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
             PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)MapViewOfFile(hFileMapping, FILE_MAP_READ, 0, 0, 0);
             PIMAGE_NT_HEADERS peHeader = (PIMAGE_NT_HEADERS)((u_char*)dosHeader + dosHeader->e_lfanew);
-            LPVOID entry = (LPVOID)(peHeader->OptionalHeader.ImageBase + peHeader->OptionalHeader.AddressOfEntryPoint);
+            const DWORD entryRva = peHeader->OptionalHeader.AddressOfEntryPoint;
+
+            // Resolve the ACTUAL load base of the suspended target. OptionalHeader.ImageBase is
+            // only the *preferred* base; an ASLR (/DYNAMICBASE) image such as the advertised
+            // SwgClient_r.exe (DllCharacteristics 0x8140) is relocated by the loader, so adding
+            // AddressOfEntryPoint to the preferred base points at the wrong VA -- the EB FE patch
+            // lands on stale memory, the real entry runs unpatched, and the spin-wait below times
+            // out ("Timed out trying to reach the entry point") even though the SWG window opens.
+            // On x86 the initial thread of a CREATE_SUSPENDED process has EBX = PEB; the actual
+            // image base lives at PEB+0x08 (PEB.ImageBaseAddress). Fixed-base SWGEmu.exe
+            // (DllCharacteristics 0x0000) resolves to its usual 0x00400000 -- no behaviour change.
+            DWORD_PTR actualBase = peHeader->OptionalHeader.ImageBase;
+            {
+                CONTEXT startCtx{};
+                startCtx.ContextFlags = CONTEXT_INTEGER;
+                if (GetThreadContext(procInfo.hThread, &startCtx))
+                {
+                    DWORD_PTR remoteImageBase = 0;
+                    if (ReadProcessMemory(hProcess, (LPCVOID)(startCtx.Ebx + 0x08),
+                                          &remoteImageBase, sizeof(remoteImageBase), nullptr)
+                        && remoteImageBase != 0)
+                    {
+                        actualBase = remoteImageBase;
+                    }
+                }
+            }
+            LPVOID entry = (LPVOID)(actualBase + entryRva);
+
+            // DIAG: surface preferred-vs-actual base so an ASLR relocation is visible in the log.
+            {
+                char dbg[176];
+                _snprintf_s(dbg, sizeof(dbg), _TRUNCATE,
+                            "[LAUNCHER] image base preferred=0x%08X actual=0x%08X entryRVA=0x%08X entry=0x%08X\n",
+                            (DWORD)peHeader->OptionalHeader.ImageBase, (DWORD)actualBase,
+                            (DWORD)entryRva, (DWORD)entry);
+                OutputDebugStringA(dbg);
+            }
 
             // store original entry point
             unsigned char oep[2];
