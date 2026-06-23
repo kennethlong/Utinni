@@ -170,3 +170,36 @@ DX11 path (D3D9's RT-space stretch masked this; DXGI doesn't).
 headless fix.** See `24-DX11-EMBED-RESIZE-DEBUG-PLAN.md` (symptom + established facts + what to
 instrument + ranked candidate fixes + guardrails). Checkpoint 2's overlay-install milestone is reached;
 embed-resize correctness is the follow-on.
+
+---
+
+## EMBED-RESIZE — instrumented finding (2026-06-23): half-done client-side resize (viewport/RT, NOT swapchain)
+
+DIAG (directx11.cpp present/resize hooks, commit 405fc8d) localized it:
+- Swapchain is **flip-model** (`swapEffect=4` FLIP_DISCARD) + `scaling=0` (STRETCH). The **backbuffer
+  TRACKS the window** — `ResizeBuffers` fires from the SWG window's OWN `WM_SIZE` (the carve-out never
+  broke resize). Sample: login `clientRect=1600x900 backbuffer=1600x900`; after a panel grow,
+  `hkResizeBuffers(w=1455 h=1040)` and the backbuffer converges (one-frame lag while the window leads).
+- **Symptom (maintainer): "scaling is right but the render is cropped — only the upper-left of the scene
+  shows."** Since the backbuffer == window (DIAG), the crop is NOT a swapchain/stretch issue. The client
+  is rendering the **3D scene into a viewport / scene render-target that does not match the resized
+  backbuffer**, so only the top-left region lands in the (correctly-sized) backbuffer.
+
+**Root cause (PROVIDER side):** the client's DX11 resize path (`WM_SIZE → displayModeChanged →
+ResizeBuffers`) resizes the **swapchain backbuffer** but does NOT fully resize the **scene viewport +
+render target(s) + projection**. Standalone never resizes (renders at the cfg 1600x900), so it is
+correct; the embed's `SetWindowPos` is the only thing that triggers a resize, exposing the half-done path.
+
+**Provider action:** on `displayModeChanged`/resize, also resize the scene viewport (`RSSetViewports`) +
+the off-screen render target(s) + the projection/aspect to the new backbuffer size — not just
+`ResizeBuffers`. Confirm via RenderDoc: capture a post-resize in-game frame and compare the bound
+viewport + scene RT dims against the swapchain backbuffer (they will be smaller / top-left-anchored).
+
+**Consumer (Utinni) side is correct here** — the swapchain backbuffer already tracks the window; Utinni
+does not own the client's scene viewport/RT. No Utinni change indicated for the crop.
+
+(Separately, the WORLD-LOAD crash is a client UI-teardown assert: `UIComboBox::~UIComboBox`
+[UIComboBox.cpp:141] on a null callback member during the scene transition -- same family as the
+`CuiMediator::deactivate` crash the provider fixed in 38-06. Note the staged `SwgClient_r.exe` is
+19:25, the 38-06 fix is 19:29 -> the staged exe PREDATES the fix; rebuild + restage, and guard
+`UIComboBox::~UIComboBox` the same way.)
