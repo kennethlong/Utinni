@@ -422,7 +422,13 @@ void GroundScene::detour()
     if (swg::endpoints::installable((const void*)swg::groundScene::handleInputMapEvent))
         swg::groundScene::handleInputMapEvent = (swg::groundScene::pHandleInputMapEvent)Detour::Create(swg::groundScene::handleInputMapEvent, hkHandleInputEvent, DETOUR_TYPE_PUSH_RET);
 
-    WorldSnapshot::setPreloadSnapshot(false);
+    // setPreloadSnapshot writes a hardcoded SWGEmu DATA global (0x191113C) that is unmapped
+    // on the advertised client -> 0xC0000005 WRITE during createDetours. installable() is an
+    // EXECUTABLE-target check (wrong for a data write), so gate on the dual-path flag directly:
+    // SWGEmu writes the flag; the advertised client has no equivalent global -> skip. (Restores
+    // the protection the old whole-subsystem early-return gave before the per-target refactor.)
+    if (!swg::endpoints::isAdvertisedClient())
+        WorldSnapshot::setPreloadSnapshot(false);
 }
 
 void GroundScene::removeDetour()
