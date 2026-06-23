@@ -539,22 +539,27 @@ void __fastcall hkChatEnter(swgptr pThis, swgptr EDX)
 
 void CuiChatWindow::detour()
 {
-    // Phase 24: skip on the advertised client when the primary target is unresolved.
-    if (!swg::endpoints::installable((const void*)swg::cuiChatWindow::ctor))
-        return;
-
-    swg::cuiChatWindow::ctor = (swg::cuiChatWindow::pCtor)Detour::Create(swg::cuiChatWindow::ctor, hkCtor, DETOUR_TYPE_PUSH_RET);
+    // Phase 24 v3: PER-TARGET installable gating. ctor is DEFERRED (MI ctor, not advertised),
+    // so it + its mid-ctor JMP patch (a Pre-CU instruction offset) install ONLY on SWGEmu
+    // (installable() true there -> D-00 unchanged); both are skipped on the advertised client
+    // where the ctor RVA + the 0x00F36797 offset are unmapped. enableTextInput +
+    // chatEnterHandler ARE advertised (v3 real-entry) and install on both.
+    if (swg::endpoints::installable((const void*)swg::cuiChatWindow::ctor))
+    {
+        swg::cuiChatWindow::ctor = (swg::cuiChatWindow::pCtor)Detour::Create(swg::cuiChatWindow::ctor, hkCtor, DETOUR_TYPE_PUSH_RET);
+        memory::createJMP(0x00F36797, (swgptr)midCtor, 6); // Mid CuiChatWindow::ctor detour (SWGEmu offset)
+    }
 
     // DIAG 2026-05-20 Issue #11 Phase E: enabled for caller-tracing. Was
     // commented-out historically (likely because of the pCuiChatWindow vs
     // pThis bug now fixed in hkEnableTextInput). Logs every caller of
     // enableTextInput; nothing is suppressed -- pure passthrough.
-    swg::cuiChatWindow::enableTextInput = (swg::cuiChatWindow::pEnableTextInput)Detour::Create(swg::cuiChatWindow::enableTextInput, hkEnableTextInput, DETOUR_TYPE_PUSH_RET);
+    if (swg::endpoints::installable((const void*)swg::cuiChatWindow::enableTextInput))
+        swg::cuiChatWindow::enableTextInput = (swg::cuiChatWindow::pEnableTextInput)Detour::Create(swg::cuiChatWindow::enableTextInput, hkEnableTextInput, DETOUR_TYPE_PUSH_RET);
 
     // Phase H (Issue #11): chatEnter override (see hkChatEnter above).
-    swg::cuiChatWindow::chatEnterHandler = (swg::cuiChatWindow::pChatEnterHandler)Detour::Create((LPVOID)swg::cuiChatWindow::chatEnterHandler, hkChatEnter, DETOUR_TYPE_PUSH_RET);
-
-    memory::createJMP(0x00F36797, (swgptr)midCtor, 6); // Mid CuiChatWindow::ctor detour
+    if (swg::endpoints::installable((const void*)swg::cuiChatWindow::chatEnterHandler))
+        swg::cuiChatWindow::chatEnterHandler = (swg::cuiChatWindow::pChatEnterHandler)Detour::Create((LPVOID)swg::cuiChatWindow::chatEnterHandler, hkChatEnter, DETOUR_TYPE_PUSH_RET);
 }
 
 } // namespace utinni

@@ -410,13 +410,17 @@ void __fastcall hkHandleInputEvent(GroundScene* pThis, DWORD EDX, IoEvent* ioEve
 
 void GroundScene::detour()
 {
-    // Phase 24: skip on the advertised client when the primary target is unresolved.
-    if (!swg::endpoints::installable((const void*)swg::groundScene::draw))
-        return;
-
-    swg::groundScene::draw = (swg::groundScene::pDraw)Detour::Create(swg::groundScene::draw, hkDrawLoop, DETOUR_TYPE_PUSH_RET);
-    swg::groundScene::update = (swg::groundScene::pUpdate)Detour::Create(swg::groundScene::update, hkUpdateLoop, DETOUR_TYPE_PUSH_RET);
-    swg::groundScene::handleInputMapEvent = (swg::groundScene::pHandleInputMapEvent)Detour::Create(swg::groundScene::handleInputMapEvent, hkHandleInputEvent, DETOUR_TYPE_PUSH_RET);
+    // Phase 24 v3: PER-TARGET installable gating. On SWGEmu every RVA is mapped, so all
+    // three install (installable() == true there -> D-00 unchanged). On the advertised
+    // client, `draw` stays at its unmapped SWGEmu RVA -- it is a VIRTUAL the provider does
+    // not advertise (consumer vtable-resolve-for-detour is a deferred follow-up), so it is
+    // skipped; `update` + `handleInputMapEvent` ARE advertised (v3 real-entry) and install.
+    if (swg::endpoints::installable((const void*)swg::groundScene::draw))
+        swg::groundScene::draw = (swg::groundScene::pDraw)Detour::Create(swg::groundScene::draw, hkDrawLoop, DETOUR_TYPE_PUSH_RET);
+    if (swg::endpoints::installable((const void*)swg::groundScene::update))
+        swg::groundScene::update = (swg::groundScene::pUpdate)Detour::Create(swg::groundScene::update, hkUpdateLoop, DETOUR_TYPE_PUSH_RET);
+    if (swg::endpoints::installable((const void*)swg::groundScene::handleInputMapEvent))
+        swg::groundScene::handleInputMapEvent = (swg::groundScene::pHandleInputMapEvent)Detour::Create(swg::groundScene::handleInputMapEvent, hkHandleInputEvent, DETOUR_TYPE_PUSH_RET);
 
     WorldSnapshot::setPreloadSnapshot(false);
 }

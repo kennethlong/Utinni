@@ -51,6 +51,8 @@
 #include "utinni.h"                // byte/swgptr + the build's common prelude
 #include "swg/misc/swg_math.h"     // swg::math::{Transform, Vector}
 #include "swg/ui/command_parser.h" // utinni::CommandParser (+ nested CommandData)
+#include "swg/camera/camera.h"     // v3 (38-01): utinni::Camera::Modes (nested enum, not fwd-declarable) for groundScene::changeCamera
+#include "swg/misc/swg_string.h"   // v3 (38-03): swg::WString for cuiChatWindow::writeTo{All,Current}Tab
 
 // resolveFromExe() uses GetModuleHandleA/GetProcAddress -- the only Windows reach.
 #include <Windows.h>
@@ -79,6 +81,7 @@ class CellProperty;
 class ExtentBase;
 class GroundScene;
 class SharedObjectTemplate;
+struct IoEvent; // v3 (38-01): groundScene::handleInputMapEvent param (by pointer; struct, not class -- MSVC mangles the tag)
 } // namespace utinni
 
 // -- config (misc/config.cpp:30-39) -----------------------------------------
@@ -333,6 +336,61 @@ using pPrint = void(__cdecl*)(const char* msg);
 extern pPrint print;
 } // namespace swg::report
 
+// ===== v3 (Phase 38) additions: 16 new advertised endpoints. GLOBAL scope (NOT inside
+// swg::endpoints) so the names mangle as ::swg::<sub>::* and match the originating TUs.
+// Typedefs copied verbatim from those TUs (LNK2001 guard, per the ABI note above). =====
+
+// -- config setModalChat/getModalChat (misc/config.cpp:34-42) --
+namespace swg::config
+{
+using pSetModalChat = void(__cdecl*)(bool value);
+using pGetModalChat = bool(__cdecl*)();
+extern pSetModalChat setModalChat;
+extern pGetModalChat getModalChat;
+} // namespace swg::config
+
+// -- client wndProc/writeMiniDump (client/client.cpp:36-47) --
+namespace swg::client
+{
+using pWndProc = int(__stdcall*)(HWND Hwnd, UINT Message, WPARAM wParam, LPARAM lParam);
+using pWriteMiniDump = bool(__cdecl*)(const char* filename, swgptr unk);
+extern pWndProc wndProc;
+extern pWriteMiniDump writeMiniDump;
+} // namespace swg::client
+
+// -- groundScene (scene/ground_scene.cpp:45-69) -- 38-01 MI thunks/forwarders --
+namespace swg::groundScene
+{
+using pCtor = utinni::GroundScene*(__thiscall*)(void* pThis, const char* terrainFilename, const char* avatarObjectFilename, swgptr customPlayer);
+using pReloadTerrain = void(__thiscall*)(utinni::GroundScene* pThis);
+using pChangeCamera = int(__thiscall*)(utinni::GroundScene* pThis, utinni::Camera::Modes cameraMode, float);
+using pGetCurrentCamera = utinni::Camera*(__thiscall*)(utinni::GroundScene * pThis);
+using pUpdate = void(__thiscall*)(utinni::GroundScene* pThis, float time);
+using pHandleInputMapUpdate = void(__thiscall*)(utinni::GroundScene* pThis);
+using pHandleInputMapEvent = void(__thiscall*)(utinni::GroundScene* pThis, utinni::IoEvent* ioEvent);
+using pInit = void(__thiscall*)(utinni::GroundScene* pThis, const char* terrain, utinni::Object* playerObj, float time);
+extern pCtor ctor;
+extern pReloadTerrain reloadTerrain;
+extern pChangeCamera changeCamera;
+extern pGetCurrentCamera getCurrentCamera;
+extern pUpdate update;
+extern pHandleInputMapUpdate handleInputMapUpdate;
+extern pHandleInputMapEvent handleInputMapEvent;
+extern pInit init;
+} // namespace swg::groundScene
+
+// -- cuiChatWindow (ui/cui_chat_window.cpp:40-55) -- 38-03 MI thunks/real-entry --
+namespace swg::cuiChatWindow
+{
+using pEnableTextInput = void(__thiscall*)(swgptr pThis, bool value, bool setKeyboardInput, bool unfocus);
+using pWriteToTab = swgptr(__thiscall*)(swgptr pThis, const WString& str);
+using pChatEnterHandler = void(__thiscall*)(swgptr pThis);
+extern pEnableTextInput enableTextInput;
+extern pWriteToTab writeToAllTabs;
+extern pWriteToTab writeToCurrentTab;
+extern pChatEnterHandler chatEnterHandler;
+} // namespace swg::cuiChatWindow
+
 namespace swg::endpoints
 {
 // ----------------------------------------------------------------------
@@ -347,6 +405,7 @@ namespace swg::endpoints
 // provider's real &symbol per contract name). Signature concerns recorded in the
 // 24-02-SUMMARY. The order below matches the .inc declaration order.
 // ----------------------------------------------------------------------
+
 static const Binding s_bindings[] = {
     // -- config --
     {"config::loadOverrideConfig", (void**)&swg::config::loadOverrideConfig},
@@ -463,6 +522,28 @@ static const Binding s_bindings[] = {
 
     // -- graphics::g_frameNumber (globals tail) --
     {"graphics::g_frameNumber", (void**)&swg::graphics::g_frameNumber}, // D-04 ACCESSOR: provider &Graphics::getFrameNumber
+
+    // ===== v3 (Phase 38) additions: 16 new endpoints (name -> consumer slot) =====
+    // -- config (38-02; provider CuiPreferences::set/getModalChat) --
+    {"config::setModalChat", (void**)&swg::config::setModalChat},
+    {"config::getModalChat", (void**)&swg::config::getModalChat},
+    // -- client (38-02; provider Os::WindowProc shim + DebugHelp::writeMiniDump) --
+    {"client::wndProc", (void**)&swg::client::wndProc},
+    {"client::writeMiniDump", (void**)&swg::client::writeMiniDump},
+    // -- groundScene (38-01; MI thunks/forwarders; update+handleInputMapEvent are REAL-ENTRY in v3) --
+    {"groundScene::ctor", (void**)&swg::groundScene::ctor},
+    {"groundScene::init", (void**)&swg::groundScene::init},
+    {"groundScene::reloadTerrain", (void**)&swg::groundScene::reloadTerrain},
+    {"groundScene::changeCamera", (void**)&swg::groundScene::changeCamera}, // contract changeCamera -> provider setView
+    {"groundScene::getCurrentCamera", (void**)&swg::groundScene::getCurrentCamera},
+    {"groundScene::update", (void**)&swg::groundScene::update},
+    {"groundScene::handleInputMapUpdate", (void**)&swg::groundScene::handleInputMapUpdate},
+    {"groundScene::handleInputMapEvent", (void**)&swg::groundScene::handleInputMapEvent},
+    // -- cuiChatWindow (38-03; enableTextInput+chatEnterHandler are REAL-ENTRY in v3) --
+    {"cuiChatWindow::enableTextInput", (void**)&swg::cuiChatWindow::enableTextInput},
+    {"cuiChatWindow::writeToAllTabs", (void**)&swg::cuiChatWindow::writeToAllTabs},
+    {"cuiChatWindow::writeToCurrentTab", (void**)&swg::cuiChatWindow::writeToCurrentTab},
+    {"cuiChatWindow::chatEnterHandler", (void**)&swg::cuiChatWindow::chatEnterHandler},
 };
 
 // ----------------------------------------------------------------------
@@ -503,8 +584,8 @@ constexpr size_t kIncCount = 0
 
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
 
-static_assert(kIncCount == 78, "contract .inc size drifted from the expected 78 names");
-static_assert(kBindingCount == 77, "s_bindings[] must bind 77 of 78 (.inc minus the D-02 carve-out)");
+static_assert(kIncCount == 94, "contract .inc size drifted from the expected 94 names (v3 / Phase 38)");
+static_assert(kBindingCount == 93, "s_bindings[] must bind 93 of 94 (.inc minus the D-02 carve-out)");
 static_assert(kBindingCount == kIncCount - 1, "exactly one .inc name (consoleHelper::sendInput) is the carve-out");
 
 // Every s_bindings[] name MUST be a member of the .inc catalog (subset invariant).
@@ -591,6 +672,23 @@ constexpr const char* kBindingNames[] = {
     "commandParser::ctor1",
     "commandParser::ctor2",
     "graphics::g_frameNumber",
+    // ===== v3 (Phase 38) additions — lockstep with s_bindings[] above =====
+    "config::setModalChat",
+    "config::getModalChat",
+    "client::wndProc",
+    "client::writeMiniDump",
+    "groundScene::ctor",
+    "groundScene::init",
+    "groundScene::reloadTerrain",
+    "groundScene::changeCamera",
+    "groundScene::getCurrentCamera",
+    "groundScene::update",
+    "groundScene::handleInputMapUpdate",
+    "groundScene::handleInputMapEvent",
+    "cuiChatWindow::enableTextInput",
+    "cuiChatWindow::writeToAllTabs",
+    "cuiChatWindow::writeToCurrentTab",
+    "cuiChatWindow::chatEnterHandler",
 };
 
 constexpr bool allNamesInInc()

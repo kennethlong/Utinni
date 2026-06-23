@@ -48,13 +48,25 @@
 //   commandParser::{ctor1,ctor2}(thunk) + createDelegateCommands(PROTECTED).
 // ----------------------------------------------------------------------
 
-// -- config (sharedFoundation, all static; ConfigFile.h) --------------------
+// -- config (sharedFoundation ConfigFile statics + 38-02 CuiPreferences statics) --
+// setModalChat/getModalChat are the 37-02 CORRECTION: they exist as PUBLIC
+// CuiPreferences statics (NOT config/ConfigFile) -- the row comments in
+// utinni_advertise.cpp carry the class MISMATCH; this list keeps the CONTRACT
+// names.
 UTINNI_HOOKPOINT(config,        loadOverrideConfig)
 UTINNI_HOOKPOINT(config,        loadConfigFileBuffer)
 UTINNI_HOOKPOINT(config,        loadConfigFileString)
+UTINNI_HOOKPOINT(config,        setModalChat)
+UTINNI_HOOKPOINT(config,        getModalChat)
 
-// -- client (exe entry; ClientMain.h) ---------------------------------------
+// -- client (exe entry + win32 exe-statics; ClientMain.h / Os.cpp / DebugHelp.cpp) --
+// wndProc/writeMiniDump (38-02) are external-linkage shims over the PRIVATE
+// Os::WindowProc (__stdcall) and DebugHelp::writeMiniDump (win32-private header).
+// writeCrashLog + setupStartDataInstall are NONEXISTENT in this tree (grep = 0
+// hits) -> OMITTED here + in the .cpp, flagged for the EPA-08 handback.
 UTINNI_HOOKPOINT(client,        clientMain)
+UTINNI_HOOKPOINT(client,        wndProc)
+UTINNI_HOOKPOINT(client,        writeMiniDump)
 
 // -- game (clientGame, all static; Game.h) ----------------------------------
 UTINNI_HOOKPOINT(game,          install)
@@ -87,11 +99,36 @@ UTINNI_HOOKPOINT(graphics,      setStaticShader)
 UTINNI_HOOKPOINT(graphics,      g_renderTargetWidth)
 UTINNI_HOOKPOINT(graphics,      g_renderTargetHeight)
 
-// -- scene::groundScene -- ALL DEFERRED to 37-03: GroundScene is a MULTIPLE-
-//    INHERITANCE class (via NetworkScene : public Scene, public MessageDispatch::
-//    Receiver) -> inflated member PMFs fail the pmfToVoid sizeof guard. Even the
-//    "clean" reloadTerrain/getCurrentCamera/setView rows need a __thiscall thunk
-//    (37-03 tier). Not advertised this wave (kept out of the required set).
+// -- scene::groundScene (clientGame; GroundScene.h) -- 38-01, EPA-05 ---------
+// GroundScene is MULTIPLE-INHERITANCE (NetworkScene : public Scene, public
+// MessageDispatch::Receiver) -> every PMF inflated, so each row is a __fastcall
+// thunk (public methods + ctor in utinni_advertise.cpp; PRIVATE init/update/
+// handleInputMap* as in-TU GroundScene.cpp forwarders). draw is VIRTUAL (SKIP,
+// vtable-resolved) and g_instance is inline-getter/private (OMIT) -> both kept
+// OUT of this required set (see the .cpp SKIP/OMIT notes).
+UTINNI_HOOKPOINT(groundScene,   ctor)
+UTINNI_HOOKPOINT(groundScene,   init)
+UTINNI_HOOKPOINT(groundScene,   reloadTerrain)
+UTINNI_HOOKPOINT(groundScene,   changeCamera)
+UTINNI_HOOKPOINT(groundScene,   getCurrentCamera)
+UTINNI_HOOKPOINT(groundScene,   update)
+UTINNI_HOOKPOINT(groundScene,   handleInputMapUpdate)
+UTINNI_HOOKPOINT(groundScene,   handleInputMapEvent)
+
+// -- cui::chatWindow (swgClientUserInterface; SwgCuiChatWindow.h) -- 38-03, EPA-05 --
+// SwgCuiChatWindow is TRIPLE-INHERITANCE (SwgCuiLockableMediator, UINotification,
+// MessageDispatch::Receiver [SwgCuiChatWindow.h:58-61]) -> every PMF inflated, so
+// each row is a __fastcall thunk in utinni_advertise.cpp (all 4 target PUBLIC
+// non-virtual methods -- no friend decl needed). Contract names here are the SPEC
+// names; the in-tree method NAME MISMATCH (acceptTextInput/appendToAllTabs/
+// appendTextToCurrentTab/performEnterKey) is baked into the .cpp row comments.
+// ctor is an MI ctor requiring a live UIPage& arg (37-03 already deferred) -> OMIT
+// here (DEFER); chatEnterHandler advertises the CLEAN-entry performEnterKey only,
+// the Issue #11 mid-function NOP is a separate SWGEmu-only joint decision (.cpp note).
+UTINNI_HOOKPOINT(cuiChatWindow, enableTextInput)
+UTINNI_HOOKPOINT(cuiChatWindow, writeToAllTabs)
+UTINNI_HOOKPOINT(cuiChatWindow, writeToCurrentTab)
+UTINNI_HOOKPOINT(cuiChatWindow, chatEnterHandler)
 
 // -- cui::manager (clientUserInterface, all static; CuiManager.h) ------------
 UTINNI_HOOKPOINT(cuiManager,    render)
