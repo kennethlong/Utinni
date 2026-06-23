@@ -141,3 +141,32 @@ bound, `swgWndProcValid` flips true → forwarding restored → `WM_SIZE` reache
 fires → the DX11 backbuffer tracks the panel. `client::wndProc` is a CALLED endpoint (`CallWindowProc`),
 so the call-through shim is the correct mechanism (not subject to the detour-vs-call finding). No separate
 fix — this rides the gated post-v3 binding wiring.
+
+---
+
+## LIVE-SMOKE RESULTS round 2 (2026-06-22 PM) — overlay-install crash class closed; embed-resize remains
+
+The post-v3 consumer wiring + a string of fixes took the advertised DX11 client from "crashes on
+overlay install" to "boots + renders correct content, mis-sized embed". Sequence (all committed):
+
+- **Overlay install** — FIXED (ImGui context before ImGui_ImplDX11_Init, 7ed9403).
+- **setPreloadSnapshot** hardcoded data-global write on the advertised client — gated (fe97a52).
+- **client::wndProc binding** ("DX11 resize fix") — REVERTED to a carve-out (4072eb1): it forwarded
+  the TJT panel's WM_SIZE to the embedded client -> ResizeBuffers to the wrong size -> corrupted render
+  (login narrow strip / in-game oversized). It did not fix resize; it broke the render.
+- **getSwgWndProcExport ASLR crash** — FIXED (c842b84): returns null on the advertised client so
+  PanelGame never forwards to the stale SWGEmu wndProc RVA (which, at a low ASLR base, lands in the
+  relocated client's mapped+executable range and IsExecutableAddress() wrongly passed -> jump-to-garbage
+  startup crash). Pre-existing ASLR-roulette latent bug, now deterministic-safe.
+
+**Current state:** advertised DX11 client BOOTS reliably + the DX11 overlay installs + content renders
+CORRECTLY, but the embed is **mis-sized** — black bar at the bottom of the login screen (doesn't fill
+vertical space) + in-game redraw tearing. Backbuffer is 1600x900, the gl11 swapchain already uses
+DXGI_SCALING_STRETCH, client::wndProc is carved out (no WM_SIZE->ResizeBuffers), so the backbuffer
+stays at creation size and the embedded window / RTV / viewport don't match the TJT panel rect on the
+DX11 path (D3D9's RT-space stretch masked this; DXGI doesn't).
+
+**This is the remaining RNDR-04 work — an instrumented, maintainer-live, RenderDoc debug session, NOT a
+headless fix.** See `24-DX11-EMBED-RESIZE-DEBUG-PLAN.md` (symptom + established facts + what to
+instrument + ranked candidate fixes + guardrails). Checkpoint 2's overlay-install milestone is reached;
+embed-resize correctness is the follow-on.
