@@ -323,5 +323,14 @@ extern "C" __declspec(dllexport) HWND __cdecl getSwgHwndExport()
 // VirtualProtect bracket required (no protected memory access).
 extern "C" __declspec(dllexport) void* __cdecl getSwgWndProcExport()
 {
+    // On the advertised client, client::wndProc is a CARVE-OUT (never resolved) -- the literal
+    // stays the STALE SWGEmu RVA (0x00AA0970). That RVA must NOT be forwarded to: depending on
+    // the relocated client's ASLR base it can coincidentally land inside its mapped+executable
+    // range, so PanelGame's IsExecutableAddress() check passes and CallWindowProc jumps into
+    // garbage code -> 0xC0000005 (an ASLR-roulette crash at startup). Return null so
+    // PanelGame.swgWndProcValid is reliably false on the advertised client (no forwarding).
+    // On SWGEmu the RVA is the real WndProc -> forward as before (D-00 unchanged).
+    if (swg::endpoints::isAdvertisedClient())
+        return nullptr;
     return reinterpret_cast<void*>(swg::client::wndProc);
 }
