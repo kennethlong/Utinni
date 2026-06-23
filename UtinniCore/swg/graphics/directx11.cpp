@@ -73,6 +73,50 @@ static bool s_installed = false;
 // --- The per-frame poll handle (Graphics::subscribePrePresentCallback return). ---
 static int s_pollHandle = 0;
 
+// --- RNDR-04 embed-resize diagnostic (24-DX11-EMBED-RESIZE-DEBUG-PLAN.md §3). Logs the ---
+// --- present-window client rect vs the backbuffer (+ scaling/swapEffect) whenever the    ---
+// --- window rect CHANGES (initial + each panel resize), capped. Localizes the black-bar  ---
+// --- mismatch: backbuffer<window, window<panel, or a non-STRETCH swapEffect. Log-only.   ---
+static void diagLogRectsIfChanged()
+{
+    if (s_swapChain == nullptr)
+    {
+        return;
+    }
+    static int s_diagCount = 0;
+    if (s_diagCount >= 12)
+    {
+        return;
+    }
+    HWND hwnd = nullptr;
+    s_swapChain->GetHwnd(&hwnd);
+    RECT rc{};
+    if (hwnd != nullptr)
+    {
+        GetClientRect(hwnd, &rc);
+    }
+    const long w = rc.right - rc.left;
+    const long h = rc.bottom - rc.top;
+    static long s_lastW = -1;
+    static long s_lastH = -1;
+    if (w == s_lastW && h == s_lastH)
+    {
+        return; // only log when the present window rect changes
+    }
+    s_lastW = w;
+    s_lastH = h;
+    ++s_diagCount;
+
+    DXGI_SWAP_CHAIN_DESC1 d{};
+    s_swapChain->GetDesc1(&d);
+    char m[240];
+    std::snprintf(m, sizeof(m),
+                  "directX11 DIAG: presentHwnd=0x%p clientRect=%ldx%ld  backbuffer=%ux%u "
+                  "scaling=%d swapEffect=%d",
+                  (void*)hwnd, w, h, d.Width, d.Height, (int)d.Scaling, (int)d.SwapEffect);
+    utinni::log::info(m);
+}
+
 // --- DXGI Present hook. One-shot first-fire log; render BEFORE the original; NO ---
 // --- blockPresentCall branch and NO depth-texture reach-in (D3D9-only). ---
 HRESULT __stdcall hkSwapChainPresent(IDXGISwapChain* sc, UINT syncInterval, UINT flags)
@@ -83,6 +127,7 @@ HRESULT __stdcall hkSwapChainPresent(IDXGISwapChain* sc, UINT syncInterval, UINT
         s_firstPresent = false;
         utinni::log::info("directX11::hkSwapChainPresent: first fire (DXGI detour confirmed)");
     }
+    diagLogRectsIfChanged(); // RNDR-04 embed-resize instrumentation (cheap; logs only on rect change)
 
     imgui_impl::render(); // -> seam newFrame()/renderDrawData() (render_backend_dx11.cpp)
 
@@ -95,6 +140,17 @@ HRESULT __stdcall hkSwapChainPresent(IDXGISwapChain* sc, UINT syncInterval, UINT
 // --- DXGI_ERROR_INVALID_CALL (Pitfall 2 / T-19-07). ---
 HRESULT __stdcall hkResizeBuffers(IDXGISwapChain* sc, UINT bufferCount, UINT width, UINT height, DXGI_FORMAT newFormat, UINT swapChainFlags)
 {
+    static int s_resizeLogCount = 0;
+    if (s_resizeLogCount < 12)
+    {
+        ++s_resizeLogCount;
+        char m[160];
+        std::snprintf(m, sizeof(m),
+                      "directX11 DIAG: hkResizeBuffers(w=%u h=%u bufferCount=%u flags=0x%X)", width,
+                      height, bufferCount, swapChainFlags);
+        utinni::log::info(m); // RNDR-04 embed-resize instrumentation
+    }
+
     render_backend::IRenderBackend* backend = render_backend::get();
     if (backend != nullptr)
     {
