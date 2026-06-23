@@ -175,6 +175,24 @@ void createDetours()
         utinni::shaderPrimitiveSorter::detour();
         utinni::postProcessing::detour();
     }
+
+    // --- Phase 24 v3: SELECTIVE advertised-client editor unlock ---
+    // The blanket MISC/INPUT skip above STAYS. A wholesale drop is UNSAFE: installable()
+    // catches only UNMAPPED targets (and Detour::Create/memory:: guard those anyway), NOT
+    // ABI mismatches on mapped+advertised targets -- e.g. game::mainLoop resolves to the
+    // provider's Game::run with a DIFFERENT signature -> stack-corrupt crash (Game::detour
+    // self-skips on the advertised client for exactly this reason). Each remaining
+    // MISC/INPUT subsystem needs its own ABI live-verification before it can unlock.
+    // groundScene + cuiChatWindow are the editor-critical pair already prepared: their
+    // detour() is PER-TARGET installable()-gated (unmapped targets skipped) and their
+    // advertised targets are provider-verified REAL entries (delta==0, v3), so they are
+    // selectively enabled here. On SWGEmu `advertised` is false and they ran in the groups
+    // above, so each installs EXACTLY ONCE.
+    if (advertised)
+    {
+        utinni::GroundScene::detour();
+        utinni::CuiChatWindow::detour();
+    }
 }
 
 void createPatches()
