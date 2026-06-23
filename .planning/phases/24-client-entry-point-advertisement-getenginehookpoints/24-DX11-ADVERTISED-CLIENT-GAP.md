@@ -95,3 +95,49 @@ DX11 overlay renders + takes input (render-target space) on `SwgClient_r.exe` wi
 log shows `directX11::tryInstall: D3D11 overlay installed (advertised swapchain latched)`, no
 `0xC0000005`. That closes the deferred Phase-18 (D-08) and Phase-19 (D-22) DX11 live-smokes and
 Checkpoint 2 of Phase 24.
+
+---
+
+## LIVE-SMOKE RESULTS (2026-06-22) — overlay install FIXED; two follow-on findings
+
+First real live inject of the advertised client (`SwgClient_r.exe`) + DX11 (`rasterMajor=11`,
+`gl11_r.dll`). The added 3-pointer diagnostic resolved the hypotheses immediately.
+
+### Overlay install — FIXED (Utinni commit 7ed9403)
+
+- The diagnostic logged **all three pointers non-null**: `GetHookPoints acquired -- swapChain=0x1328CEE8
+  device=0x02E4207C context=0x12FCAF18`. So **hypothesis #1 is REFUTED** and EPA-08 is confirmed: the
+  provider populates device+context together; the crash was **consumer-side**.
+- Root cause (symbolized): `ImGui_ImplDX11_Init` (imgui_impl_dx11.cpp:641) ran via the DX11 hook tier
+  (`dx11Singleton()->init()`) BEFORE `imgui_impl::setup()` called `ImGui::CreateContext()`, so
+  `ImGui::GetIO()` wrote through a null global context (+0x34). Fixed by creating the context (idempotent)
+  in `Dx11Backend::init()` before `ImGui_ImplDX11_Init`, and guarding `setup()`'s CreateContext.
+- Result: `directX11::tryInstall: D3D11 overlay installed (advertised swapchain latched)` — overlay
+  installs, session ran ~5 min. **Checkpoint 2's overlay-install milestone is reached.**
+
+### Finding 1 (PROVIDER ACTION) — `CuiMediator::deactivate()` null-deref
+
+After ~5 min the **client** crashed (not Utinni): `module=SwgClient_r.exe rva=0x00BCF045 READ
+target=0x00000014`, symbolized to **`CuiMediator::deactivate()` (CuiMediator.cpp:494**, the
+`getSettingsEnabled()`/`saveSettings()` deactivate path). It fires on a `WM_ACTIVATE INACTIVE` /
+focus change immediately after Utinni's RESID-04 embed-reassert watchdog re-styled the window to an
+owned popup (focus bouncing between the TJT host HWND `0x00F90A88` and `0x004C0EF0`). It is a client
+null-deref (a mediator member at +0x14) **exposed by the embed focus/activate churn**. Provider:
+add a null-guard in `deactivate()` and/or investigate why a mediator is in a half-torn-down state when
+deactivated during the embedded focus transition. Utinni may also be able to damp the focus churn — joint.
+
+### Finding 2 (RESOLVED BY THE POST-v3 BINDING) — embed resize doesn't rescale the backbuffer
+
+Observed: the embedded SWG window didn't size to the host panel until an input event, and when it did
+resize the **render didn't rescale** (no `ResizeBuffers` ever logged). Root cause: on the advertised
+client `PanelGame.WndProc` forwards to SWG's WndProc only when `swgWndProcValid` (PanelGame.cs:60-61),
+which is **false** because `client::wndProc` is unbound in the current 78-name set — so `swgWndProcAddr`
+keeps the unmapped SWGEmu RVA and **no window message (incl. `WM_SIZE`) reaches the client's WndProc**.
+The client's `WM_SIZE → ms_displayModeChangedHookFunction → ResizeBuffers` path EXISTS (Os.cpp, added
+for exactly this embed case, DX11 spec §6) but never receives the message. **Fix: bind `client::wndProc`
+in the post-v3 consumer pass.** The provider already advertised it as `utinni_osWindowProc` (38-02);
+`getSwgWndProcExport()` (client.cpp:326) returns the resolver-managed `swg::client::wndProc`, so once
+bound, `swgWndProcValid` flips true → forwarding restored → `WM_SIZE` reaches the client → `ResizeBuffers`
+fires → the DX11 backbuffer tracks the panel. `client::wndProc` is a CALLED endpoint (`CallWindowProc`),
+so the call-through shim is the correct mechanism (not subject to the detour-vs-call finding). No separate
+fix — this rides the gated post-v3 binding wiring.
