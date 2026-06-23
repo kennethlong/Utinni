@@ -527,8 +527,10 @@ static const Binding s_bindings[] = {
     // -- config (38-02; provider CuiPreferences::set/getModalChat) --
     {"config::setModalChat", (void**)&swg::config::setModalChat},
     {"config::getModalChat", (void**)&swg::config::getModalChat},
-    // -- client (38-02; provider Os::WindowProc shim + DebugHelp::writeMiniDump) --
-    {"client::wndProc", (void**)&swg::client::wndProc},
+    // -- client (38-02; provider DebugHelp::writeMiniDump) --
+    // client::wndProc is a 2nd CARVE-OUT (intentionally NOT bound): binding it forwards the
+    // TJT panel's WM_SIZE to the embedded DX11 client -> ResizeBuffers to the wrong size ->
+    // corrupted render. Allow-listed in endpoints.cpp; embed-resize is RNDR-04 follow-on.
     {"client::writeMiniDump", (void**)&swg::client::writeMiniDump},
     // -- groundScene (38-01; MI thunks/forwarders; update+handleInputMapEvent are REAL-ENTRY in v3) --
     {"groundScene::ctor", (void**)&swg::groundScene::ctor},
@@ -585,8 +587,10 @@ constexpr size_t kIncCount = 0
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
 
 static_assert(kIncCount == 94, "contract .inc size drifted from the expected 94 names (v3 / Phase 38)");
-static_assert(kBindingCount == 93, "s_bindings[] must bind 93 of 94 (.inc minus the D-02 carve-out)");
-static_assert(kBindingCount == kIncCount - 1, "exactly one .inc name (consoleHelper::sendInput) is the carve-out");
+static_assert(kBindingCount == 92, "s_bindings[] must bind 92 of 94 (.inc minus the TWO carve-outs)");
+static_assert(kBindingCount == kIncCount - 2,
+              "exactly two .inc names are carve-outs: consoleHelper::sendInput (D-02) + "
+              "client::wndProc (embed-resize regression; RNDR-04 follow-on)");
 
 // Every s_bindings[] name MUST be a member of the .inc catalog (subset invariant).
 // s_bindings[] itself is NOT constexpr (its .slot initializers take the address of
@@ -675,7 +679,6 @@ constexpr const char* kBindingNames[] = {
     // ===== v3 (Phase 38) additions — lockstep with s_bindings[] above =====
     "config::setModalChat",
     "config::getModalChat",
-    "client::wndProc",
     "client::writeMiniDump",
     "groundScene::ctor",
     "groundScene::init",

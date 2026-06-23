@@ -92,7 +92,11 @@ static_assert(!isInHookpointInc("config::bogusNotAdvertised"), "predicate too pe
 // D-02 carve-out is allow-listed OUT of the coverage gate: it IS in the .inc but
 // is intentionally NOT bound. Counting it missing would read as a false EPA-04
 // failure. Kept as a named constant so the coverage log can exclude it.
-constexpr const char* kIntentionalUnbound[] = {"consoleHelper::sendInput"};
+// client::wndProc is a 2nd carve-out: binding it made PanelGame forward the TJT panel's
+// WM_SIZE to the embedded client -> DX11 ResizeBuffers to the wrong (panel-message) size ->
+// corrupted render (login narrow strip / in-game oversized). Unbound here so the advertised
+// client keeps the prior known-good RT-space render; the embed-resize is RNDR-04 follow-on.
+constexpr const char* kIntentionalUnbound[] = {"consoleHelper::sendInput", "client::wndProc"};
 
 bool isIntentionalUnbound(const char* name)
 {

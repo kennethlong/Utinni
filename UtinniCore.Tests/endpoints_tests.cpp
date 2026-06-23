@@ -184,16 +184,29 @@ TEST_CASE("endpoints: coverage counts resolved/missing, carve-out not in binding
 // ----------------------------------------------------------------------
 namespace
 {
-// The carve-out the coverage gate allow-lists (D-02 / WR-05): in the .inc, NOT bound.
-constexpr const char* kCarveOut = "consoleHelper::sendInput";
+// The carve-outs the coverage gate allow-lists: in the .inc, intentionally NOT bound.
+// consoleHelper::sendInput (D-02/WR-05) + client::wndProc (embed-resize regression; RNDR-04).
+constexpr const char* kCarveOuts[] = {"consoleHelper::sendInput", "client::wndProc"};
 
 bool sameName(const char* a, const char* b)
 {
     return std::strcmp(a, b) == 0;
 }
+
+bool isCarveOut(const char* n)
+{
+    for (const char* c : kCarveOuts)
+    {
+        if (sameName(n, c))
+        {
+            return true;
+        }
+    }
+    return false;
+}
 } // namespace
 
-TEST_CASE("endpoints: full catalog (93 of 94 .inc names) all resolve, carve-out excluded", "[endpoints][coverage]")
+TEST_CASE("endpoints: full catalog (92 of 94 .inc names) all resolve, carve-outs excluded", "[endpoints][coverage]")
 {
     // Every .inc name, in declaration order, sourced from the canonical X-macro list.
     static const char* const kAllIncNames[] = {
@@ -204,16 +217,16 @@ TEST_CASE("endpoints: full catalog (93 of 94 .inc names) all resolve, carve-out 
     constexpr size_t kIncCount = sizeof(kAllIncNames) / sizeof(kAllIncNames[0]);
     REQUIRE(kIncCount == 94); // the contract size (drift gate -- mirrors the provider count, v3)
 
-    // The expected override scope is the .inc MINUS the one carve-out -> 93.
+    // The expected override scope is the .inc MINUS the two carve-outs -> 92.
     std::vector<const char*> expectedNames;
     for (const char* n : kAllIncNames)
     {
-        if (!sameName(n, kCarveOut))
+        if (!isCarveOut(n))
         {
             expectedNames.push_back(n);
         }
     }
-    REQUIRE(expectedNames.size() == 93);
+    REQUIRE(expectedNames.size() == 92);
 
     // Synthesize a table advertising EVERY .inc name (incl. the carve-out -- the
     // provider DOES advertise it; the consumer simply does not bind it). Each row
@@ -228,7 +241,7 @@ TEST_CASE("endpoints: full catalog (93 of 94 .inc names) all resolve, carve-out 
     UtinniEngineHookPoints table =
         makeTable(UTINNI_HOOKPOINTS_VERSION, entries.data(), static_cast<unsigned int>(entries.size()));
 
-    // Build the binding list = the 93 expected names over local slot cells. The
+    // Build the binding list = the 92 expected names over local slot cells. The
     // carve-out is deliberately NOT in this list (allow-listed out of the gate).
     std::vector<void*> slots(expectedNames.size(), nullptr);
     std::vector<Binding> bindings;
@@ -240,17 +253,20 @@ TEST_CASE("endpoints: full catalog (93 of 94 .inc names) all resolve, carve-out 
 
     const int resolved = resolve(&table, bindings.data(), bindings.size());
 
-    REQUIRE(resolved == 93); // full catalog resolved (D-01, v3)
+    REQUIRE(resolved == 92); // full catalog resolved (D-01, v3 minus 2 carve-outs)
     for (void* s : slots)    // every requested name overwrote its slot
     {
         REQUIRE(s != nullptr);
     }
 
-    // The carve-out is advertised by the table but never requested -> not a failure.
-    REQUIRE(lookupByName(&table, kCarveOut) != nullptr); // it IS in the table
-    for (const Binding& b : bindings)                    // but never in the binding list
+    // The carve-outs are advertised by the table but never requested -> not a failure.
+    for (const char* c : kCarveOuts)
     {
-        REQUIRE_FALSE(sameName(b.name, kCarveOut));
+        REQUIRE(lookupByName(&table, c) != nullptr); // each IS in the table
+        for (const Binding& b : bindings)            // but never in the binding list
+        {
+            REQUIRE_FALSE(sameName(b.name, c));
+        }
     }
 }
 
