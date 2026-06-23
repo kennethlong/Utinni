@@ -176,23 +176,18 @@ void createDetours()
         utinni::postProcessing::detour();
     }
 
-    // --- Phase 24 v3: SELECTIVE advertised-client editor unlock ---
-    // The blanket MISC/INPUT skip above STAYS. A wholesale drop is UNSAFE: installable()
-    // catches only UNMAPPED targets (and Detour::Create/memory:: guard those anyway), NOT
-    // ABI mismatches on mapped+advertised targets -- e.g. game::mainLoop resolves to the
-    // provider's Game::run with a DIFFERENT signature -> stack-corrupt crash (Game::detour
-    // self-skips on the advertised client for exactly this reason). Each remaining
-    // MISC/INPUT subsystem needs its own ABI live-verification before it can unlock.
-    // groundScene + cuiChatWindow are the editor-critical pair already prepared: their
-    // detour() is PER-TARGET installable()-gated (unmapped targets skipped) and their
-    // advertised targets are provider-verified REAL entries (delta==0, v3), so they are
-    // selectively enabled here. On SWGEmu `advertised` is false and they ran in the groups
-    // above, so each installs EXACTLY ONCE.
-    if (advertised)
-    {
-        utinni::GroundScene::detour();
-        utinni::CuiChatWindow::detour();
-    }
+    // --- Phase 24 v3: advertised-client editor unlock -- DEFERRED (per-subsystem live work) ---
+    // groundScene + cuiChatWindow are per-target installable()-gated (commit d3b5468) and the
+    // resolver binds their v3 real-entry targets, but a live-smoke of the selective unlock
+    // showed that ENABLING their detours on the advertised client hits per-HOOK runtime
+    // crashes (not just install-time address issues): the trailing setPreloadSnapshot write
+    // (now gated), then a client-side std::string fault (0xC0000005 READ 0xFFFFFFFF) ~1s after
+    // load. installable() / the memory guards cannot catch these -- each hook needs its own
+    // advertised-client ABI + state-precondition live-verification (e.g. cuiChatWindow's method
+    // hooks vs its ctor hook, which is gated off because the ctor is not advertised). So the
+    // advertised client stays RENDER-only here; the bindings + per-target gating remain ready
+    // for a per-hook follow-on. The DX11 embed-resize fix (client::wndProc binding) is
+    // independent of this unlock and stays active.
 }
 
 void createPatches()
