@@ -87,3 +87,31 @@ no-op until after the first successful present (item 2), independent of who trig
 The Utinni mitigation is harmless + retained (it correctly defers the reparent and will matter once
 startup is fixed); it did not cause this and has now served as the diagnostic that exonerates the
 embed-resize.
+
+---
+
+## ROOT CAUSE FOUND — Utinni-side (NOT §1). Fixed consumer-side (commit d2040ca, 2026-06-23 21:xx)
+
+The injected-startup crash was a **Utinni bug, not the provider's §1**. A fresh re-smoke (this time on
+the matching 20:20 build, so it symbolized cleanly) produced `VEH FATAL code=0xC0000096`
+(privileged instruction) at `SwgClient_r.exe` rva `0x182D61` — the **CuiStringIds static-init region** —
+and **no `displayModeChanged DEFERRED` WARNING fired**, so the client died BEFORE ever reaching the
+§1 resize path the provider gated.
+
+Cause: Utinni's `createDetours` RENDER group unconditionally ran 5 detours that target **hardcoded
+SWGEmu absolute addresses** and are **NOT in the advertised .inc** (so the resolver never overwrites
+them): shaderPrimitiveSorter `0x00773E39`, renderWorld `0x00766DE0`, postProcessing/bloom `0x0064B500`,
+ParticleEffectAppearance, skeletalAppearance. On the relocated advertised client all three live-symbolize
+to the §1 client's **CuiStringIds** dynamic initializers (committed+executable), so `installable()`
+wrongly passed and `Detour::Create` wrote JMPs into CuiStringIds code → corruption → the 0xC0000096
+during CuiStringIds dynamic-init. Same failure class as the earlier `getSwgWndProcExport` stale-RVA bug;
+the §1 build's new layout is what shifted those stale addresses onto committed code (hence intermittent /
+ASLR-dependent, and why the pre-§1 client sometimes survived).
+
+**Fix (Utinni, d2040ca):** gate those 5 non-advertised RENDER detours on `!advertised`. `graphics::*` are
+advertised (resolver overwrites the literals) so the overlay kickoff stays and is safe.
+
+**Provider takeaway:** your §1 resize-defer fix is correct and was simply never reached — the Utinni
+corruption killed the client first. After this consumer fix the client should reach the render path and
+your `displayModeChanged ... DEFERRED` → `applying deferred gl11 resize` WARNINGs should finally appear.
+No provider action needed for THIS crash; §1 stays.
