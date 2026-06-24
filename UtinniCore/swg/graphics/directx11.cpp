@@ -50,13 +50,13 @@ namespace directX11
 {
 // --- The advertised contract POD (spec §3.1 / producer Direct3d11.cpp:872-877). ---
 // Field order/type MUST be byte-identical to the producer (Pitfall 6 ABI match).
-struct UtinniDx11HookPoints
+struct EngineDx11HookPoints
 {
     IDXGISwapChain1* swapChain;
     ID3D11Device* device;
     ID3D11DeviceContext* context;
 };
-using pGetHookPoints = UtinniDx11HookPoints(__cdecl*)();
+using pGetHookPoints = EngineDx11HookPoints(__cdecl*)();
 
 // --- Trampoline typedefs. base IDXGISwapChain::Present -- the base-interface     ---
 // --- present slot (idx 8), NOT the IDXGISwapChain1 variant (spec §4.4);          ---
@@ -156,7 +156,7 @@ bool tryInstall()
         return false; // graceful bail (T-19-04) -- must NOT crash
     }
 
-    UtinniDx11HookPoints hp = getHookPoints();
+    EngineDx11HookPoints hp = getHookPoints();
 
     // One-shot acquisition diagnostic (24-DX11-ADVERTISED-CLIENT-GAP.md). The first
     // time the advertised swapChain is non-null, log all THREE borrowed pointers. On a

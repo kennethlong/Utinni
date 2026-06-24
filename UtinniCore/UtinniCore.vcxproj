@@ -293,7 +293,7 @@ $(SolutionDir)UtinniCoreDotNetGen\bin\$(Configuration)\UtinniCoreDotNetGen.exe "
     <ClInclude Include="swg\ui\imgui_impl.h" />
     <ClInclude Include="swg\misc\config.h" />
     <ClInclude Include="swg\endpoints.h" />
-    <ClInclude Include="swg\utinni_engine_hookpoints.h" />
+    <ClInclude Include="swg\engine_hookpoints.h" />
     <ClInclude Include="swg\graphics\directx9.h" />
     <ClInclude Include="swg\graphics\directx11.h" />
     <ClInclude Include="swg\graphics\render_backend.h" />

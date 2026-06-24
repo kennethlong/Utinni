@@ -154,7 +154,7 @@
     <!-- Phase 24 / EPA-02, EPA-04 D-03b: the swg::endpoints resolver unit harness.
          Pull the resolver TU in DIRECTLY (same pattern as render_backend.cpp above)
          so the pure resolve() is compiled + tested standalone; it relies on the lean
-         endpoints.h (only utinni_engine_hookpoints.h + <cstddef>). The extern
+         endpoints.h (only engine_hookpoints.h + <cstddef>). The extern
          config/graphics pFn literals + utinni::log::* resolve against UtinniCore.lib
          (the test already links it). -->
     <ClCompile Include="endpoints_tests.cpp" />

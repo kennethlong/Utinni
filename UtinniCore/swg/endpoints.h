@@ -37,12 +37,12 @@
 // unchanged (D-00).
 //
 // LEAN-HEADER CONTRACT (mirror backend_select.h): this header transitively
-// includes ONLY utinni_engine_hookpoints.h + <cstddef>. It names ZERO
+// includes ONLY engine_hookpoints.h + <cstddef>. It names ZERO
 // DX/DXGI/injection/Windows types so the test project can compile endpoints.cpp
 // standalone (the pure resolve() is unit-testable WITHOUT injection -- D-03b). The
 // GetModuleHandle/GetProcAddress shell + the logging live in the .cpp only.
 
-#include "swg/utinni_engine_hookpoints.h"
+#include "swg/engine_hookpoints.h"
 #include <cstddef>
 
 namespace swg::endpoints
@@ -58,7 +58,7 @@ struct Binding
 
 // Linear scan of table->entries for `name`; returns the borrowed addr or nullptr.
 // Null-safe: a null table, null entries, or zero count returns nullptr.
-const void* lookupByName(const UtinniEngineHookPoints* table, const char* name);
+const void* lookupByName(const EngineHookPoints* table, const char* name);
 
 // The PURE resolver (testable; no injection, no DLL access). For each binding whose
 // name is found in the table with a non-null addr, overwrites *slot with that addr
@@ -67,7 +67,7 @@ const void* lookupByName(const UtinniEngineHookPoints* table, const char* name);
 // would turn a graceful degrade into a guaranteed null-deref). Returns the resolved
 // count. A null table / null entries / zero count resolves nothing and mutates
 // nothing. A version mismatch logs a soft warning but still resolves by name.
-int resolve(const UtinniEngineHookPoints* table, const Binding* bindings, size_t count);
+int resolve(const EngineHookPoints* table, const Binding* bindings, size_t count);
 
 // The thin dual-path shell (EPA-02): GetProcAddress(GetModuleHandleA(NULL),
 // "GetEngineHookPoints"). If absent -> log info, return false, mutate nothing

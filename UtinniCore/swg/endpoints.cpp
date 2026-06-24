@@ -24,7 +24,7 @@
 
 // Phase 24 / EPA-02, EPA-04: swg::endpoints resolver implementation.
 //
-// The header (endpoints.h) is deliberately lean (only utinni_engine_hookpoints.h
+// The header (endpoints.h) is deliberately lean (only engine_hookpoints.h
 // + <cstddef>). This TU carries the INJECTION-FREE half -- the pure resolve(),
 // lookupByName(), the D-02 allow-list, and the D-03a compile-time X-macro subset
 // static_assert -- none of which reference any subsystem symbol, so the test
@@ -49,7 +49,7 @@ namespace swg::endpoints
 {
 // ----------------------------------------------------------------------
 // D-03a: compile-time X-macro subset assert. Re-include the canonical .inc with
-// a UTINNI_HOOKPOINT macro that builds a constexpr "is this name in the .inc set?"
+// a ENGINE_HOOKPOINT macro that builds a constexpr "is this name in the .inc set?"
 // predicate, then static_assert each s_bindings[] name is a member. A bogus
 // binding name (drift, Pitfall 5) fails the BUILD here, not silently at runtime.
 //
@@ -73,9 +73,9 @@ constexpr bool isInHookpointInc(const char* n)
 {
     return false
 // Each .inc row contributes an OR term: name == "group::name".
-#define UTINNI_HOOKPOINT(group, name) || ceStrEq(n, #group "::" #name)
-#include "swg/utinni_engine_hookpoints.inc"
-#undef UTINNI_HOOKPOINT
+#define ENGINE_HOOKPOINT(group, name) || ceStrEq(n, #group "::" #name)
+#include "swg/engine_hookpoints.inc"
+#undef ENGINE_HOOKPOINT
         ;
 }
 
@@ -111,7 +111,7 @@ bool isIntentionalUnbound(const char* name)
 }
 } // namespace
 
-const void* lookupByName(const UtinniEngineHookPoints* table, const char* name)
+const void* lookupByName(const EngineHookPoints* table, const char* name)
 {
     if (table == nullptr || table->entries == nullptr || name == nullptr)
     {
@@ -120,7 +120,7 @@ const void* lookupByName(const UtinniEngineHookPoints* table, const char* name)
 
     for (unsigned int i = 0; i < table->count; ++i)
     {
-        const UtinniEngineHookPoint& e = table->entries[i];
+        const EngineHookPoint& e = table->entries[i];
         if (e.name != nullptr && std::strcmp(e.name, name) == 0)
         {
             return e.addr; // may itself be null -> caller treats as "not bindable"
@@ -129,7 +129,7 @@ const void* lookupByName(const UtinniEngineHookPoints* table, const char* name)
     return nullptr;
 }
 
-int resolve(const UtinniEngineHookPoints* table, const Binding* bindings, size_t count)
+int resolve(const EngineHookPoints* table, const Binding* bindings, size_t count)
 {
     // T-24-01: null/partial table or empty binding list -> resolve nothing, mutate
     // nothing, no deref. (table->entries / table->count are guarded in lookupByName.)
@@ -141,7 +141,7 @@ int resolve(const UtinniEngineHookPoints* table, const Binding* bindings, size_t
 
     // T-24-02: version drift logs a soft warning but still resolves BY NAME (the
     // real drift gate is the byte-identical .inc + the compile-time subset assert).
-    if (table->version != UTINNI_HOOKPOINTS_VERSION)
+    if (table->version != ENGINE_HOOKPOINTS_VERSION)
     {
         utinni::log::warning("endpoints: contract version mismatch -- resolving by name anyway");
     }

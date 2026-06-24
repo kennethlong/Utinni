@@ -62,9 +62,9 @@ jobs:
           # BYTE-IDENTICAL across both repos (sha256-verified at each catalog wave; provider-authored,
           # re-synced verbatim into UtinniCore/swg/). It carries the provider's formatting; reformatting
           # it here would drift it from the provider copy and break the byte-identical contract. Exclude
-          # it from the style gate. (utinni_engine_hookpoints.inc is already outside the gate -- only
+          # it from the style gate. (engine_hookpoints.inc is already outside the gate -- only
           # *.cpp/*.h are checked.)
-          $files = $files | Where-Object { $_.FullName -notmatch $excludePattern -and $_.Name -ne 'utinni_engine_hookpoints.h' } | Sort-Object FullName -Unique
+          $files = $files | Where-Object { $_.FullName -notmatch $excludePattern -and $_.Name -ne 'engine_hookpoints.h' } | Sort-Object FullName -Unique
           Write-Host "Checking $($files.Count) C++ files against .clang-format ..."
           # --dry-run --Werror exits non-zero if any file is not already formatted.
           & $clangFormat --style=file --dry-run --Werror -- $files.FullName

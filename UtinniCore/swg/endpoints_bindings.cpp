@@ -33,7 +33,7 @@
 // injection-free pure resolve()/lookupByName() + the subset static_assert live in
 // endpoints.cpp and ARE compiled into the test.
 //
-// Plan 02 / D-01: the FULL catalog -- every utinni_engine_hookpoints.inc name
+// Plan 02 / D-01: the FULL catalog -- every engine_hookpoints.inc name
 // (78 total) MINUS the single D-02 carve-out (consoleHelper::sendInput) -> 77
 // bound rows. Each row's slot is the storage cell of the consumer's existing
 // per-subsystem pFn literal; the contract NAME is the resolution key (so the
@@ -394,7 +394,7 @@ extern pChatEnterHandler chatEnterHandler;
 namespace swg::endpoints
 {
 // ----------------------------------------------------------------------
-// FULL CATALOG (Plan 02 / D-01): every utinni_engine_hookpoints.inc name MINUS the
+// FULL CATALOG (Plan 02 / D-01): every engine_hookpoints.inc name MINUS the
 // single D-02 carve-out (consoleHelper::sendInput) -> 77 rows. The contract NAME is
 // the resolution key; the slot is the storage cell of the consumer literal that
 // serves that engine function (so the name-mismatch rows -- listed inline -- resolve
@@ -569,9 +569,9 @@ constexpr bool ceStrEq(const char* a, const char* b)
 constexpr bool isInHookpointInc(const char* n)
 {
     return false
-#define UTINNI_HOOKPOINT(group, name) || ceStrEq(n, #group "::" #name)
-#include "swg/utinni_engine_hookpoints.inc"
-#undef UTINNI_HOOKPOINT
+#define ENGINE_HOOKPOINT(group, name) || ceStrEq(n, #group "::" #name)
+#include "swg/engine_hookpoints.inc"
+#undef ENGINE_HOOKPOINT
         ;
 }
 
@@ -579,9 +579,9 @@ constexpr bool isInHookpointInc(const char* n)
 // MUST be exactly this minus the one D-02 carve-out (77 of 78). A drifted .inc or a
 // dropped/duplicated binding row trips this BUILD-time gate (EPA-04 / Pitfall 5).
 constexpr size_t kIncCount = 0
-#define UTINNI_HOOKPOINT(group, name) +1
-#include "swg/utinni_engine_hookpoints.inc"
-#undef UTINNI_HOOKPOINT
+#define ENGINE_HOOKPOINT(group, name) +1
+#include "swg/engine_hookpoints.inc"
+#undef ENGINE_HOOKPOINT
     ;
 
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
@@ -763,7 +763,7 @@ bool installable(const void* target)
 
 bool resolveFromExe()
 {
-    using pGetEngineHookPoints = const UtinniEngineHookPoints*(__cdecl*)();
+    using pGetEngineHookPoints = const EngineHookPoints*(__cdecl*)();
 
     HMODULE hExe = GetModuleHandleA(nullptr); // the injected SWG client exe
     auto pGet = reinterpret_cast<pGetEngineHookPoints>(
@@ -781,7 +781,7 @@ bool resolveFromExe()
     // install gate (installable()) is armed for createDetours()/createPatches().
     s_advertisedClient = true;
 
-    const UtinniEngineHookPoints* table = pGet();
+    const EngineHookPoints* table = pGet();
     resolve(table, s_bindings, sizeof(s_bindings) / sizeof(s_bindings[0]));
     return true;
 }

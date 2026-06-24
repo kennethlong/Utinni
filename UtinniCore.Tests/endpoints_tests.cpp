@@ -25,7 +25,7 @@
 // ============================================================================
 // Phase 24 / EPA-02, EPA-04 / D-03b -- the swg::endpoints resolver unit harness.
 // resolve() is a PURE function (endpoints.h) that takes a synthetic
-// UtinniEngineHookPoints table + a Binding list over LOCAL void* slot cells, so the
+// EngineHookPoints table + a Binding list over LOCAL void* slot cells, so the
 // table-parse + name-bind logic is exercised process-isolated -- NO injection, NO
 // GetProcAddress, runs in CI (mirrors Dx11DetectionTests.cpp's pure-fn shape). The
 // 3 maintainer live-smokes (Plan 04) then prove only inject + render, not the
@@ -69,10 +69,10 @@ void* const kSentinelC = reinterpret_cast<void*>(static_cast<uintptr_t>(0x00A9C6
 void* const kRealA = reinterpret_cast<void*>(static_cast<uintptr_t>(0xAAAA0001));
 void* const kRealB = reinterpret_cast<void*>(static_cast<uintptr_t>(0xBBBB0002));
 
-UtinniEngineHookPoints makeTable(unsigned int version, const UtinniEngineHookPoint* entries,
+EngineHookPoints makeTable(unsigned int version, const EngineHookPoint* entries,
                                  unsigned int count)
 {
-    UtinniEngineHookPoints t{};
+    EngineHookPoints t{};
     t.version = version;
     t.count = count;
     t.entries = entries;
@@ -82,12 +82,12 @@ UtinniEngineHookPoints makeTable(unsigned int version, const UtinniEngineHookPoi
 
 TEST_CASE("endpoints: resolve overwrites bound slots, leaves an absent name's slot", "[endpoints][resolve]")
 {
-    const UtinniEngineHookPoint entries[] = {
+    const EngineHookPoint entries[] = {
         {"config::loadOverrideConfig", kRealA},
         {"graphics::install", kRealB},
         // NOTE: "config::loadConfigFileBuffer" deliberately NOT advertised.
     };
-    UtinniEngineHookPoints table = makeTable(UTINNI_HOOKPOINTS_VERSION, entries, 2);
+    EngineHookPoints table = makeTable(ENGINE_HOOKPOINTS_VERSION, entries, 2);
 
     void* slotA = kSentinelA; // config::loadOverrideConfig  -> should bind to kRealA
     void* slotB = kSentinelB; // graphics::install           -> should bind to kRealB
@@ -127,10 +127,10 @@ TEST_CASE("endpoints: null table is a strict no-op (export-absent / SWGEmu path)
 
 TEST_CASE("endpoints: version mismatch still binds names (soft-warn path)", "[endpoints][version]")
 {
-    const UtinniEngineHookPoint entries[] = {
+    const EngineHookPoint entries[] = {
         {"config::loadOverrideConfig", kRealA},
     };
-    UtinniEngineHookPoints table = makeTable(/*version=*/999, entries, 1);
+    EngineHookPoints table = makeTable(/*version=*/999, entries, 1);
 
     void* slotA = kSentinelA;
     const Binding bindings[] = {
@@ -148,10 +148,10 @@ TEST_CASE("endpoints: coverage counts resolved/missing, carve-out not in binding
     // The advertised table has one of the two requested names; the D-02 carve-out
     // (consoleHelper::sendInput) is NOT placed in the binding list -- it is
     // allow-listed, so its absence is NOT a coverage failure.
-    const UtinniEngineHookPoint entries[] = {
+    const EngineHookPoint entries[] = {
         {"config::loadOverrideConfig", kRealA},
     };
-    UtinniEngineHookPoints table = makeTable(UTINNI_HOOKPOINTS_VERSION, entries, 1);
+    EngineHookPoints table = makeTable(ENGINE_HOOKPOINTS_VERSION, entries, 1);
 
     void* slotA = kSentinelA; // present in the table
     void* slotB = kSentinelB; // requested but absent from the table -> counted missing
@@ -176,7 +176,7 @@ TEST_CASE("endpoints: coverage counts resolved/missing, carve-out not in binding
 // Plan 02 / D-01: full-catalog coverage. The complete advertised name set is the
 // .inc X-macro list MINUS the single D-02 carve-out (consoleHelper::sendInput).
 // We build that name set HERE from the canonical .inc (re-included with a local
-// UTINNI_HOOKPOINT macro) so this test fails the moment the .inc and the expected
+// ENGINE_HOOKPOINT macro) so this test fails the moment the .inc and the expected
 // 78-name override scope drift apart -- the same single-source-of-truth gate the
 // resolver's compile-time static_assert uses, exercised at runtime over a synthetic
 // table. No injection, no real s_bindings[] -- pure process-isolated proof that the
@@ -210,9 +210,9 @@ TEST_CASE("endpoints: full catalog (92 of 94 .inc names) all resolve, carve-outs
 {
     // Every .inc name, in declaration order, sourced from the canonical X-macro list.
     static const char* const kAllIncNames[] = {
-#define UTINNI_HOOKPOINT(group, name) #group "::" #name,
-#include "swg/utinni_engine_hookpoints.inc"
-#undef UTINNI_HOOKPOINT
+#define ENGINE_HOOKPOINT(group, name) #group "::" #name,
+#include "swg/engine_hookpoints.inc"
+#undef ENGINE_HOOKPOINT
     };
     constexpr size_t kIncCount = sizeof(kAllIncNames) / sizeof(kAllIncNames[0]);
     REQUIRE(kIncCount == 94); // the contract size (drift gate -- mirrors the provider count, v3)
@@ -231,15 +231,15 @@ TEST_CASE("endpoints: full catalog (92 of 94 .inc names) all resolve, carve-outs
     // Synthesize a table advertising EVERY .inc name (incl. the carve-out -- the
     // provider DOES advertise it; the consumer simply does not bind it). Each row
     // gets a distinct non-null sentinel address.
-    std::vector<UtinniEngineHookPoint> entries;
+    std::vector<EngineHookPoint> entries;
     entries.reserve(kIncCount);
     for (size_t i = 0; i < kIncCount; ++i)
     {
         void* addr = reinterpret_cast<void*>(static_cast<uintptr_t>(0xC0DE0000u + i));
         entries.push_back({kAllIncNames[i], addr});
     }
-    UtinniEngineHookPoints table =
-        makeTable(UTINNI_HOOKPOINTS_VERSION, entries.data(), static_cast<unsigned int>(entries.size()));
+    EngineHookPoints table =
+        makeTable(ENGINE_HOOKPOINTS_VERSION, entries.data(), static_cast<unsigned int>(entries.size()));
 
     // Build the binding list = the 92 expected names over local slot cells. The
     // carve-out is deliberately NOT in this list (allow-listed out of the gate).
@@ -275,10 +275,10 @@ TEST_CASE("endpoints: coverage counts resolved/missing with one absent name", "[
     // The advertised table has one of the two requested names; the D-02 carve-out
     // (consoleHelper::sendInput) is NOT placed in the binding list -- it is
     // allow-listed, so its absence is NOT a coverage failure.
-    const UtinniEngineHookPoint entries[] = {
+    const EngineHookPoint entries[] = {
         {"config::loadOverrideConfig", kRealA},
     };
-    UtinniEngineHookPoints table = makeTable(UTINNI_HOOKPOINTS_VERSION, entries, 1);
+    EngineHookPoints table = makeTable(ENGINE_HOOKPOINTS_VERSION, entries, 1);
 
     void* slotA = kSentinelA; // present in the table
     void* slotB = kSentinelB; // requested but absent from the table -> counted missing
@@ -315,10 +315,10 @@ TEST_CASE("endpoints: graphics::install resolves from the table (EPA-03 DX11 kic
     SECTION("advertised graphics::install overwrites its slot (DX11 kickoff path)")
     {
         // A synthetic table advertising graphics::install at a sentinel "real" address.
-        const UtinniEngineHookPoint entries[] = {
+        const EngineHookPoint entries[] = {
             {"graphics::install", kRealB},
         };
-        UtinniEngineHookPoints table = makeTable(UTINNI_HOOKPOINTS_VERSION, entries, 1);
+        EngineHookPoints table = makeTable(ENGINE_HOOKPOINTS_VERSION, entries, 1);
 
         // The slot stands in for swg::graphics::install (hardcoded 0x007548A0 literal).
         void* installSlot = kSentinelB; // == 0x007548A0, the SWGEmu install RVA
@@ -337,10 +337,10 @@ TEST_CASE("endpoints: graphics::install resolves from the table (EPA-03 DX11 kic
         // The table advertises something else; graphics::install is NOT in it. On
         // SWGEmu (export absent / name not advertised) the literal stays on its RVA so
         // the existing D3D9 hkInstall path is byte-for-byte unchanged (D-00).
-        const UtinniEngineHookPoint entries[] = {
+        const EngineHookPoint entries[] = {
             {"config::loadOverrideConfig", kRealA},
         };
-        UtinniEngineHookPoints table = makeTable(UTINNI_HOOKPOINTS_VERSION, entries, 1);
+        EngineHookPoints table = makeTable(ENGINE_HOOKPOINTS_VERSION, entries, 1);
 
         void* installSlot = kSentinelB; // 0x007548A0 -- must remain the RVA literal
         const Binding bindings[] = {
@@ -363,31 +363,31 @@ TEST_CASE("endpoints: null entries / zero count / null addr degrade without cras
 
     SECTION("null entries pointer")
     {
-        UtinniEngineHookPoints table = makeTable(UTINNI_HOOKPOINTS_VERSION, nullptr, 3);
+        EngineHookPoints table = makeTable(ENGINE_HOOKPOINTS_VERSION, nullptr, 3);
         REQUIRE(resolve(&table, bindings, 1) == 0);
         REQUIRE(slotA == kSentinelA);
     }
 
     SECTION("zero count")
     {
-        const UtinniEngineHookPoint entries[] = {{"config::loadOverrideConfig", kRealA}};
-        UtinniEngineHookPoints table = makeTable(UTINNI_HOOKPOINTS_VERSION, entries, 0);
+        const EngineHookPoint entries[] = {{"config::loadOverrideConfig", kRealA}};
+        EngineHookPoints table = makeTable(ENGINE_HOOKPOINTS_VERSION, entries, 0);
         REQUIRE(resolve(&table, bindings, 1) == 0);
         REQUIRE(slotA == kSentinelA); // zero count -> nothing scanned, literal kept
     }
 
     SECTION("entry with a null addr is treated as not-bindable (slot untouched)")
     {
-        const UtinniEngineHookPoint entries[] = {{"config::loadOverrideConfig", nullptr}};
-        UtinniEngineHookPoints table = makeTable(UTINNI_HOOKPOINTS_VERSION, entries, 1);
+        const EngineHookPoint entries[] = {{"config::loadOverrideConfig", nullptr}};
+        EngineHookPoints table = makeTable(ENGINE_HOOKPOINTS_VERSION, entries, 1);
         REQUIRE(resolve(&table, bindings, 1) == 0);
         REQUIRE(slotA == kSentinelA); // null addr -> never written
     }
 
     SECTION("a binding row with a null slot pointer is skipped, not dereferenced")
     {
-        const UtinniEngineHookPoint entries[] = {{"config::loadOverrideConfig", kRealA}};
-        UtinniEngineHookPoints table = makeTable(UTINNI_HOOKPOINTS_VERSION, entries, 1);
+        const EngineHookPoint entries[] = {{"config::loadOverrideConfig", kRealA}};
+        EngineHookPoints table = makeTable(ENGINE_HOOKPOINTS_VERSION, entries, 1);
         const Binding badBindings[] = {{"config::loadOverrideConfig", nullptr}};
         REQUIRE(resolve(&table, badBindings, 1) == 0); // null slot -> skipped
     }
