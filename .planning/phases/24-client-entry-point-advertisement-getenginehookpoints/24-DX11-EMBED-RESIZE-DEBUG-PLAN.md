@@ -1,6 +1,10 @@
 # DX11 Embedded-Window Resize — Instrumented Debug Plan (RNDR-04 follow-on)
 
-**Status:** PLAN for a focused, RenderDoc-instrumented, maintainer-live debug session. NOT yet started.
+**Status:** RESOLVED 2026-06-23 — the embed-resize works (scales on login + maximize). The instrument-
+first approach (this plan) localized it; root cause + resolution are in `24-DX11-ADVERTISED-CLIENT-GAP.md`
+(provider CuiManager UI reflow + Graphics::beginScene poll-fallback + scene RT/proj resize; consumer
+deferred-reparent + backbuffer tracks window). The temporary DIAG instrumentation has been removed.
+Kept below for the record.
 **Author:** Utinni Phase-24 close-out (2026-06-22), after the advertised DX11 client reached
 stable-but-mis-sized embed rendering.
 **Scope:** the advertised client (`SwgClient_r.exe` + `gl11_r.dll`, `rasterMajor=11`) embedded in the
