@@ -70,7 +70,7 @@ void* const kRealA = reinterpret_cast<void*>(static_cast<uintptr_t>(0xAAAA0001))
 void* const kRealB = reinterpret_cast<void*>(static_cast<uintptr_t>(0xBBBB0002));
 
 EngineHookPoints makeTable(unsigned int version, const EngineHookPoint* entries,
-                                 unsigned int count)
+                           unsigned int count)
 {
     EngineHookPoints t{};
     t.version = version;
