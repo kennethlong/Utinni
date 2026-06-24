@@ -240,3 +240,21 @@ viewport/projection stay at the old size and the content won't scale. Need: conf
 **Consumer (Utinni) side looks correct:** RepositionSwgWindow sizes the SWG window to the panel and the
 backbuffer tracks it (ResizeBuffers fires). The remaining gap is the client-side scene rescale. The
 one-step lag (backbuffer applies on the frame after the window resize) is a secondary polish item.
+
+---
+
+## RESOLVED — embed-resize scaling works (2026-06-23 22:15)
+
+Provider fix (CuiManager::render() UI reflow + Graphics::beginScene() poll fallback + the stable-
+frameBufferMax guard) live-confirmed: the advertised DX11 client **resizes correctly on login and on
+maximize** — 3D world + login UI + HUD all scale/reflow. `swgclient-resize-trace.log` shows BOTH
+mechanisms in play: the startup 735x460 went via the EVENT path (displayModeChanged CALLED→REQUEST→
+APPLY→Graphics::resize ENTER), and the maximize 1455x1040 went via the POLL fallback (the embed WM_SIZE
+didn't reach the client WndProc under injection — exactly the case the poll backstops). Utinni DIAG now
+shows backbuffer == window with NO lag (735x460=735x460, 1455x1040=1455x1040); the earlier one-step lag
+was the scene-resize not applying and is gone. No FATAL.
+
+**Advertised DX11 client is now FULLY FUNCTIONAL under injection: boots → renders login → loads world
+(Mos Eisley) → embed scales on startup + maximize.** This closes the deferred DX11 acceptance
+(Checkpoint 2) + the embed-resize (RNDR-04 scaling). Remaining is the separate per-hook editor-unlock
+follow-on (MISC/INPUT subsystems on the advertised client), which is orthogonal to render.
