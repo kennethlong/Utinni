@@ -168,12 +168,30 @@ void createDetours()
     // --- RENDER group ---
     if (!skipRender)
     {
+        // graphics::* ARE advertised -> the resolver overwrites the hardcoded literals with
+        // valid relocated addresses, so this drives the overlay kickoff (graphics::install)
+        // and is safe on both targets.
         utinni::Graphics::detour();
-        utinni::ParticleEffectAppearance::detour();
-        utinni::skeletalAppearance::detour();
-        utinni::renderWorld::detour();
-        utinni::shaderPrimitiveSorter::detour();
-        utinni::postProcessing::detour();
+
+        // Phase 24: these 5 detour HARDCODED SWGEmu absolute addresses (shaderPrimitiveSorter
+        // 0x00773E39, renderWorld 0x00766DE0, bloom 0x0064B500, + particle/skeletal) and are
+        // NOT in the advertised .inc catalog, so the resolver never overwrites them. On the
+        // advertised client those literals land on UNRELATED relocated code -- live-confirmed:
+        // all three symbolize to the §1 client's CuiStringIds static-init region -- and
+        // installable() (committed+executable only) WRONGLY passes, so Detour::Create writes a
+        // JMP into that code and corrupts it -> 0xC0000096 privileged-instruction crash during
+        // the client's CuiStringIds dynamic-init at startup (ASLR-roulette; same failure class
+        // as the getSwgWndProcExport stale-RVA bug). None are needed for the overlay (which
+        // graphics::install self-contains). Skip on the advertised client until they are
+        // advertised + ported.
+        if (!advertised)
+        {
+            utinni::ParticleEffectAppearance::detour();
+            utinni::skeletalAppearance::detour();
+            utinni::renderWorld::detour();
+            utinni::shaderPrimitiveSorter::detour();
+            utinni::postProcessing::detour();
+        }
     }
 
     // --- Phase 24 v3: advertised-client editor unlock -- DEFERRED (per-subsystem live work) ---
