@@ -203,3 +203,40 @@ does not own the client's scene viewport/RT. No Utinni change indicated for the 
 `CuiMediator::deactivate` crash the provider fixed in 38-06. Note the staged `SwgClient_r.exe` is
 19:25, the 38-06 fix is 19:29 -> the staged exe PREDATES the fix; rebuild + restage, and guard
 `UIComboBox::~UIComboBox` the same way.)
+
+---
+
+## MILESTONE — advertised DX11 client renders end-to-end under injection (2026-06-23 21:36)
+
+After the full crash-fix chain, the advertised client (SwgClient_r.exe + gl11_r.dll, injected) BOOTS,
+renders the login screen, LOADS INTO THE WORLD (Mos Eisley), and renders the scene correctly. All
+crashes resolved:
+- overlay-install ordering (7ed9403), setPreloadSnapshot data-global (fe97a52), wndProc ASLR
+  (c842b84), CuiStringIds stale-RVA RENDER detours (d2040ca), beginScene trampoline / DetourXS
+  explicit-length trap (46b189b). VEH stack-walk diagnostic (43116f0) made the last one one-smoke.
+
+## REMAINING — embed-resize SCALING (polish, not a crash): scene doesn't rescale to the backbuffer
+
+DIAG (directx11.cpp), this run:
+```
+login:    clientRect=1600x900  backbuffer=1600x900
+reposition: clientRect=735x460   backbuffer=1600x900  -> hkResizeBuffers(735x460)
+maximize:  clientRect=1455x1040 backbuffer=735x460   -> hkResizeBuffers(1455x1040)
+```
+- The **backbuffer DOES track the window** (ResizeBuffers fires each time) but **lags by one step**
+  (it is the previous size at each window-rect change, then catches up).
+- **The provider's `displayModeChanged(gl11) ... DEFERRED` / `applying deferred gl11 resize` WARNINGs
+  did NOT appear** in any stage log this run. Since §1's scene viewport/RT/projection resize runs
+  through that path, its absence suggests the **scene-resize isn't applying** -- the backbuffer resizes
+  but the scene content does not rescale to it -> the maintainer's "didn't scale on startup / on
+  maximize" symptom (login + in-game).
+
+**Provider question / action:** is §1's `displayModeChanged` deferred-resize path actually firing on
+these embed-driven `WM_SIZE`s? The one-shot WARNINGs are the tell and they're absent. If the path is
+firing but not applying the scene resize (only ResizeBuffers happens via another route), the scene RT/
+viewport/projection stay at the old size and the content won't scale. Need: confirm the WARNINGs fire
+(where do they log?), and that `Graphics::resize` (scene RTs + projection) runs, not just ResizeBuffers.
+
+**Consumer (Utinni) side looks correct:** RepositionSwgWindow sizes the SWG window to the panel and the
+backbuffer tracks it (ResizeBuffers fires). The remaining gap is the client-side scene rescale. The
+one-step lag (backbuffer applies on the frame after the window resize) is a secondary polish item.
