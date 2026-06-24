@@ -55,3 +55,35 @@ embedder. Consumer will smoke this independently if useful.
 
 - Do NOT write to `D:/Code/Utinni`. No Utinni contract change expected (pure renderer/startup).
 - Cross-check the root cause with the crew (codex/cursor) if useful. Live re-smoke is maintainer-only.
+
+---
+
+## MITIGATION RESULT (2026-06-23 20:02) — reparent-resize RULED OUT; client dies before first present
+
+Utinni shipped the consumer mitigation (commit 8df6f20): the advertised-client embed reparent +
+its SetWindowPos-resize is now deferred until the client's first present. **Re-smoke result: the
+client STILL fails to render under injection** — TJT (hosted in the injected client process)
+appeared for ~1-2s, then the client process died before any first present (no DX11 overlay-install,
+no DIAG, no dump, no fresh client output; died EARLIER than the 18:35 run that reached char-list).
+
+**This is a sharper finding:** with the reparent (and its resize) deferred, **nothing of Utinni's
+embed resize ran** — yet the client still died before first present. So **the embed-reparent-resize
+is NOT the trigger.** The §1 client dies during its OWN early startup under injection, before it
+presents — intermittently (one earlier run reached char-list; two later runs died early → a startup
+race). Standalone still renders fine; the pre-§1 client rendered fine under the SAME Utinni build.
+
+**Refined hypothesis:** §1's `displayModeChanged`→`Graphics::resize`→`resize_impl`→device-restored
+fan-out fires during the client's **own initial display-mode set at startup** (not from Utinni's
+reparent), and under injection that races with Utinni's overlay-install (`ImGui_ImplDX11_Init` on the
+borrowed device/context) and/or the RENDER-group detours → intermittent early death before first
+present. The embed-resize was a red herring; the regression is in the startup display-mode/resize path.
+
+**This makes the A/B revert (item 1) the critical isolation, and items 3 (startup log + dump handler
+before graphics init) essential** — the client dies before any artifact is written, so we are blind
+without provider-side startup logging. Specifically please confirm: does §1's `displayModeChanged`
+run on the FIRST/initial display-mode set during boot (before the first present)? If so, gate it to
+no-op until after the first successful present (item 2), independent of who triggers the resize.
+
+The Utinni mitigation is harmless + retained (it correctly defers the reparent and will matter once
+startup is fixed); it did not cause this and has now served as the diagnostic that exonerates the
+embed-resize.
