@@ -1,8 +1,18 @@
 # Provider Request — gl11 (DX11) startup crash on the advertised client (likely §1 resize regression)
 
+> **SUPERSEDED / WITHDRAWN (2026-06-23).** This request was built on a STALE dump. The provider's
+> forensic triage (`swg-client-v2/.planning/handoff/2026-06-23-gl11-crash-dump-is-stale-not-s1.md`)
+> proved `release-gl11-crash.dmp` is a **June 2** crash of the **June 2** `gl11_r.dll` (PE `6A1F5583`,
+> PDB age 10) — three weeks older than the §1 build (age 131). The §1 code is not in the crashing
+> binary, so this is NOT a §1 regression. cdb even reported "Debug session time: Tue **Jun 2**
+> 19:01:50" — the consumer (me) misread the date as today. The dump was renamed
+> `release-gl11-crash-2026-06-02-STALE.dmp`. Today's actual "hiccup on start" left NO dump and a clean
+> Utinni init log; a fresh re-smoke on the 16:35 §1 binary is needed (it will symbolize cleanly against
+> the matching staged PDB). Kept for the lesson: **check the dump's date/build before triaging.**
+
 **From:** Utinni (consumer) · **To:** swg-client-v2 (provider)
-**Date:** 2026-06-23 · **Status:** QUEUED handback-request — relay to the provider.
-**Artifact:** `D:\Code\swg-client-v2\stage\release-gl11-crash.dmp` (≈562 MB full dump, crash time 19:01).
+**Date:** 2026-06-23 · **Status:** SUPERSEDED — do NOT relay (stale-dump false alarm).
+**Artifact:** `release-gl11-crash-2026-06-02-STALE.dmp` (June-2 artifact; was misread as fresh).
 
 ---
 
