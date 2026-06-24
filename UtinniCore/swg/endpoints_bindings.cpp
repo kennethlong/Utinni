@@ -118,6 +118,7 @@ using pGetConstCamera = const utinni::Camera*(__cdecl*)();
 using pIsViewFirstPerson = bool(__cdecl*)();
 using pIsHudSceneTypeSpace = bool(__cdecl*)();
 using pIsOver = bool(__cdecl*)();
+using pMainLoopCount = int(__cdecl*)(); // v4 (24): accessor for the private ms_loops counter
 
 extern pInstall install;
 extern pQuit quit;
@@ -131,6 +132,7 @@ extern pGetConstCamera getConstCamera;
 extern pIsViewFirstPerson isViewFirstPerson;
 extern pIsHudSceneTypeSpace isHudSceneTypeSpace;
 extern pIsOver g_runningFlags;
+extern pMainLoopCount g_mainLoopCounter; // v4 (24/4b): &Game::getMainLoopCount accessor
 } // namespace swg::game
 
 // -- graphics (graphics/graphics.cpp:37-83 + D-04 accessors) ----------------
@@ -327,6 +329,10 @@ namespace swg::treefile
 {
 using pSearchTree = swgptr(__thiscall*)(swgptr pThis, int priority, const char* treeFilename);
 extern pSearchTree searchTree;
+// v4 (24/4c): collision fix -- the real search-path registration is a STATIC __cdecl(fileName,
+// priority) (reversed args, no pThis). Advertised-only slot; the SWGEmu path stays on searchTree.
+using pAddSearchTree = void(__cdecl*)(const char* fileName, int priority);
+extern pAddSearchTree addSearchTree;
 } // namespace swg::treefile
 
 // -- report (misc/swg_misc.cpp:29-31) ---------------------------------------
@@ -389,6 +395,10 @@ extern pEnableTextInput enableTextInput;
 extern pWriteToTab writeToAllTabs;
 extern pWriteToTab writeToCurrentTab;
 extern pChatEnterHandler chatEnterHandler;
+// v4 (24/4d): ctor is unaddressable -> provider advertises the sole construction funnel
+// (static factory __cdecl(UIPage&, Game::SceneType, std::string const&)). Advertised-only.
+using pCreateNewWindow = swgptr(__cdecl*)(swgptr uiPage, int sceneType, swgptr stdString);
+extern pCreateNewWindow createNewWindow;
 } // namespace swg::cuiChatWindow
 
 namespace swg::endpoints
@@ -546,6 +556,14 @@ static const Binding s_bindings[] = {
     {"cuiChatWindow::writeToAllTabs", (void**)&swg::cuiChatWindow::writeToAllTabs},
     {"cuiChatWindow::writeToCurrentTab", (void**)&swg::cuiChatWindow::writeToCurrentTab},
     {"cuiChatWindow::chatEnterHandler", (void**)&swg::cuiChatWindow::chatEnterHandler},
+
+    // ===== v4 (Phase 24 MISC/INPUT editor-unlock) additions: 3 new endpoints =====
+    // Bound now so the contract resolves at v4/97; the detours that CONSUME these slots land
+    // per-subsystem behind maintainer live-smokes (the slots resolve but no active hook uses
+    // them yet -> behavior-neutral on the advertised client, which stays RENDER-only).
+    {"game::g_mainLoopCounter", (void**)&swg::game::g_mainLoopCounter},               // 4b ACCESSOR: provider &Game::getMainLoopCount (call-not-read)
+    {"treeFile::searchTree", (void**)&swg::treefile::addSearchTree},                  // 4c: provider &TreeFile::addSearchTree (static __cdecl, reversed args vs SWGEmu searchTree)
+    {"cuiChatWindow::createNewWindow", (void**)&swg::cuiChatWindow::createNewWindow}, // 4d: sole construction funnel (C++ ctor is unaddressable)
 };
 
 // ----------------------------------------------------------------------
@@ -586,8 +604,8 @@ constexpr size_t kIncCount = 0
 
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
 
-static_assert(kIncCount == 94, "contract .inc size drifted from the expected 94 names (v3 / Phase 38)");
-static_assert(kBindingCount == 92, "s_bindings[] must bind 92 of 94 (.inc minus the TWO carve-outs)");
+static_assert(kIncCount == 97, "contract .inc size drifted from the expected 97 names (v4 / Phase 24 MISC-INPUT unlock)");
+static_assert(kBindingCount == 95, "s_bindings[] must bind 95 of 97 (.inc minus the TWO carve-outs)");
 static_assert(kBindingCount == kIncCount - 2,
               "exactly two .inc names are carve-outs: consoleHelper::sendInput (D-02) + "
               "client::wndProc (embed-resize regression; RNDR-04 follow-on)");
@@ -692,6 +710,10 @@ constexpr const char* kBindingNames[] = {
     "cuiChatWindow::writeToAllTabs",
     "cuiChatWindow::writeToCurrentTab",
     "cuiChatWindow::chatEnterHandler",
+    // ===== v4 (Phase 24) additions — lockstep with s_bindings[] above =====
+    "game::g_mainLoopCounter",
+    "treeFile::searchTree",
+    "cuiChatWindow::createNewWindow",
 };
 
 constexpr bool allNamesInInc()

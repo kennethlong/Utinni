@@ -58,6 +58,16 @@ pCtor ctor = (pCtor)0x00F364B0;
 pEnableTextInput enableTextInput = (pEnableTextInput)0x00F38500;
 pWriteToTab writeToAllTabs = (pWriteToTab)0x00F3BFD0;
 pWriteToTab writeToCurrentTab = (pWriteToTab)0x00F3C1F0;
+
+// Phase 24 v4: a C++ ctor address cannot be taken, so cuiChatWindow::ctor is infeasible to
+// advertise. The provider instead advertises cuiChatWindow::createNewWindow -> the sole
+// construction funnel (static factory SwgCuiChatWindow::createNewWindow, __cdecl(UIPage&,
+// Game::SceneType, std::string const&) -- the one `new SwgCuiChatWindow` site). On the
+// advertised client the chat-construction hook detours THIS funnel instead of the ctor;
+// advertised-only (null on SWGEmu, where hkCtor detours the ctor literal above). The hkCtor
+// retarget to this funnel is the smoke-gated chat unlock.
+using pCreateNewWindow = swgptr(__cdecl*)(swgptr uiPage, int sceneType, swgptr stdString);
+pCreateNewWindow createNewWindow = nullptr;
 } // namespace swg::cuiChatWindow
 
 namespace swg::cuiConsoleHelper

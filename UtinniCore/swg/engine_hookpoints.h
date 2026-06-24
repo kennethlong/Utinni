@@ -1,26 +1,24 @@
 // ======================================================================
 //
-// engine_hookpoints.h -- generic engine entry-point advertisement contract.
-// The exe-side game-logic twin of the shipped graphics gl11_r.dll!GetHookPoints
-// (Direct3d11.cpp:856-888).
+// engine_hookpoints.h -- Utinni engine entry-point advertisement
+// contract (handoff 2026-06-20). The exe-side game-logic twin of the
+// shipped graphics gl11_r.dll!GetHookPoints (Direct3d11.cpp:856-888).
 //
-// Defines the name->pointer table structs that ANY injected modding overlay
-// reads via GetProcAddress(hExe, "GetEngineHookPoints") to detour / call /
-// read engine functions and globals by NAME rather than by a hardcoded RVA.
-// The harness is application-agnostic: a client advertises its hookpoints and
-// any modder resolves them by name. Pure read-only contract: each row is
-// { name, addr }, every address taken at compile time by &EngineSymbol so it
-// is correct by construction and survives every rebuild. The client stays
-// mod-agnostic; if no overlay is injected, nothing reads this table and it is
-// inert.
+// Defines the name->pointer table structs an injected modding overlay
+// (Utinni) reads via GetProcAddress(hExe, "GetEngineHookPoints") to detour
+// / call / read engine functions and globals by NAME rather than by a
+// hardcoded SWGEmu RVA. Pure read-only contract: each row is { name, addr },
+// every address taken at compile time by &EngineSymbol so it is correct by
+// construction and survives every rebuild. The client stays Utinni-agnostic;
+// if Utinni is not injected, nothing reads this table and it is inert.
 //
-// This header is SHARED VERBATIM between the provider (client) and consumer
-// (modding overlay) repos (copied at each catalog wave so the two cannot drift
-// -- see ENGINE_HOOKPOINTS_VERSION note). It therefore carries ONLY the structs
-// + version + the X-macro name list (.inc). It MUST NOT carry the provider-side
-// exported GetEngineHookPoints() declaration -- a consumer repo must never import
-// a dll-exported symbol. The export declaration+definition lives ONLY in the
-// provider-side advertisement TU (engine_advertise.cpp).
+// This header is SHARED VERBATIM with D:/Code/Utinni (copied at each catalog
+// wave so the two repos cannot drift -- see ENGINE_HOOKPOINTS_VERSION note).
+// It therefore carries ONLY the structs + version + the X-macro name list
+// (.inc). It MUST NOT carry the provider-side exported GetEngineHookPoints()
+// declaration -- a consumer repo must never import a dll-exported symbol. The
+// export declaration+definition lives ONLY in the SwgClient-only TU
+// engine_advertise.cpp.
 //
 // Keep this header EXE-LOCAL: it must not be added to any shared header the
 // gl0X renderer plugins compile (AGENTS.md shared-header ABI cascade trap).
@@ -52,8 +50,15 @@
 // {enableTextInput,chatEnterHandler}) now advertise the REAL engine entry instead of
 // a call-through forwarder thunk (a detour on a forwarder is silently dead). The
 // consumer's required-set is UNAFFECTED -- only the addresses behind four names moved.
+// Bumped 3 -> 4 in 24-§4 (MISC/INPUT editor-unlock batch): 3 NAME ADDs --
+// game::g_mainLoopCounter (new out-of-line Game::getMainLoopCount accessor for ms_loops),
+// treeFile::searchTree (&TreeFile::addSearchTree -- resolves the open/searchTree collision),
+// cuiChatWindow::createNewWindow (&SwgCuiChatWindow::createNewWindow -- the sole ctor funnel;
+// the requested raw-ctor real-entry is infeasible, you cannot address a ctor in C++). 97 names.
+// Also an ADDRESS re-point under an UNCHANGED name: game::mainLoop now points at the per-frame
+// Game::runGameLoopOnce (was the once-per-process Game::run).
 // ----------------------------------------------------------------------
-#define ENGINE_HOOKPOINTS_VERSION 3
+#define ENGINE_HOOKPOINTS_VERSION 4
 
 // ----------------------------------------------------------------------
 // One row per advertised endpoint: a stable contract name + the borrowed
@@ -68,7 +73,7 @@ struct EngineHookPoint
 // ----------------------------------------------------------------------
 // The advertised table. Returned by GetEngineHookPoints() as a pointer to
 // a process-lifetime static; Utinni only reads it. No NUL-name sentinel --
-// count is sizeof/sizeof of the row array (see utinni_advertise.cpp).
+// count is sizeof/sizeof of the row array (see engine_advertise.cpp).
 // ----------------------------------------------------------------------
 struct EngineHookPoints
 {

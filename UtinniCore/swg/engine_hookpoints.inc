@@ -10,12 +10,12 @@
 // The includer #defines ENGINE_HOOKPOINT before #include-ing this file and
 // #undef's it after, expanding it to (a) the table rows on the provider side,
 // (b) the required-name set + the coverage gate on the consumer side, and
-// (c) the s_requiredNames[] / count self-check in utinni_advertise.cpp.
+// (c) the s_requiredNames[] / count self-check in engine_advertise.cpp.
 //
 // 37-01 spike: the 3 representative rows below prove the full mechanism --
 // a crash-fixer thunk (config), a static fn (game), and a non-virtual member
 // PMF (commandParser). 37-02/37-03 EXTEND this file with the MVP / full
-// catalog. The table BODY in utinni_advertise.cpp stays hand-written (rows
+// catalog. The table BODY in engine_advertise.cpp stays hand-written (rows
 // are heterogeneous: static fn / bit_cast PMF / ctor thunk / accessor) and
 // the coverage self-check bridges this name list to that body.
 //
@@ -26,7 +26,7 @@
 // 37-02 MVP required set (~boot -> render-overlay -> scene-change repro path).
 // Groups: config, client, game, graphics, scene::groundScene(clean rows only),
 // cui::manager, cui::io, consoleHelper, commandParser. Each name here has a
-// source-confirmed, signature-checked row in utinni_advertise.cpp (the table
+// source-confirmed, signature-checked row in engine_advertise.cpp (the table
 // BODY stays hand-written: rows are heterogeneous -- static fn / bit_cast PMF /
 // accessor). The runtime utinni_verifyNoNullNoDup() name-set-equality check
 // bridges this list to that body (EPA-04). Re-copied verbatim into D:/Code/Utinni
@@ -51,7 +51,7 @@
 // -- config (sharedFoundation ConfigFile statics + 38-02 CuiPreferences statics) --
 // setModalChat/getModalChat are the 37-02 CORRECTION: they exist as PUBLIC
 // CuiPreferences statics (NOT config/ConfigFile) -- the row comments in
-// utinni_advertise.cpp carry the class MISMATCH; this list keeps the CONTRACT
+// engine_advertise.cpp carry the class MISMATCH; this list keeps the CONTRACT
 // names.
 ENGINE_HOOKPOINT(config,        loadOverrideConfig)
 ENGINE_HOOKPOINT(config,        loadConfigFileBuffer)
@@ -81,6 +81,7 @@ ENGINE_HOOKPOINT(game,          getConstCamera)
 ENGINE_HOOKPOINT(game,          isViewFirstPerson)
 ENGINE_HOOKPOINT(game,          isHudSceneTypeSpace)
 ENGINE_HOOKPOINT(game,          g_runningFlags)
+ENGINE_HOOKPOINT(game,          g_mainLoopCounter)
 
 // -- graphics (clientGraphics facade, all static; Graphics.h) ---------------
 ENGINE_HOOKPOINT(graphics,      install)
@@ -102,7 +103,7 @@ ENGINE_HOOKPOINT(graphics,      g_renderTargetHeight)
 // -- scene::groundScene (clientGame; GroundScene.h) -- 38-01, EPA-05 ---------
 // GroundScene is MULTIPLE-INHERITANCE (NetworkScene : public Scene, public
 // MessageDispatch::Receiver) -> every PMF inflated, so each row is a __fastcall
-// thunk (public methods + ctor in utinni_advertise.cpp; PRIVATE init/update/
+// thunk (public methods + ctor in engine_advertise.cpp; PRIVATE init/update/
 // handleInputMap* as in-TU GroundScene.cpp forwarders). draw is VIRTUAL (SKIP,
 // vtable-resolved) and g_instance is inline-getter/private (OMIT) -> both kept
 // OUT of this required set (see the .cpp SKIP/OMIT notes).
@@ -118,7 +119,7 @@ ENGINE_HOOKPOINT(groundScene,   handleInputMapEvent)
 // -- cui::chatWindow (swgClientUserInterface; SwgCuiChatWindow.h) -- 38-03, EPA-05 --
 // SwgCuiChatWindow is TRIPLE-INHERITANCE (SwgCuiLockableMediator, UINotification,
 // MessageDispatch::Receiver [SwgCuiChatWindow.h:58-61]) -> every PMF inflated, so
-// each row is a __fastcall thunk in utinni_advertise.cpp (all 4 target PUBLIC
+// each row is a __fastcall thunk in engine_advertise.cpp (all 4 target PUBLIC
 // non-virtual methods -- no friend decl needed). Contract names here are the SPEC
 // names; the in-tree method NAME MISMATCH (acceptTextInput/appendToAllTabs/
 // appendTextToCurrentTab/performEnterKey) is baked into the .cpp row comments.
@@ -129,6 +130,7 @@ ENGINE_HOOKPOINT(cuiChatWindow, enableTextInput)
 ENGINE_HOOKPOINT(cuiChatWindow, writeToAllTabs)
 ENGINE_HOOKPOINT(cuiChatWindow, writeToCurrentTab)
 ENGINE_HOOKPOINT(cuiChatWindow, chatEnterHandler)
+ENGINE_HOOKPOINT(cuiChatWindow, createNewWindow)
 
 // -- cui::manager (clientUserInterface, all static; CuiManager.h) ------------
 ENGINE_HOOKPOINT(cuiManager,    render)
@@ -150,7 +152,7 @@ ENGINE_HOOKPOINT(commandParser, addSubCommand)
 
 // ======================================================================
 // 37-03 full-catalog required set. Extends the 37-02 MVP. Every name here
-// has a source-confirmed, signature-checked row in utinni_advertise.cpp.
+// has a source-confirmed, signature-checked row in engine_advertise.cpp.
 // Symbols that the plan named but that do NOT exist in this tree (or are
 // virtual / inline / multiple-inheritance-inflated) are OMITTED here and
 // documented in the .cpp + 37-03-SUMMARY (graceful degradation, EPA-04:
@@ -211,6 +213,7 @@ ENGINE_HOOKPOINT(memory,        free)
 ENGINE_HOOKPOINT(audio,         setMasterVolume)
 ENGINE_HOOKPOINT(audio,         getMasterVolume)
 ENGINE_HOOKPOINT(treeFile,      open)
+ENGINE_HOOKPOINT(treeFile,      searchTree)
 ENGINE_HOOKPOINT(report,        print)
 
 // -- commandParser ctors (free-function __thiscall thunks) ------------------

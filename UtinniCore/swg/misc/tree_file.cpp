@@ -31,6 +31,15 @@ namespace swg::treefile
 using pSearchTree = swgptr(__thiscall*)(swgptr pThis, int priority, const char* treeFilename);
 
 pSearchTree searchTree = (pSearchTree)0xA992E0;
+
+// Phase 24 v4: the v3 "treeFile::open" row mapped the static file-open by mistake (a name
+// collision with this __thiscall search-path registration). The provider resolved it with a
+// distinct treeFile::searchTree -> &TreeFile::addSearchTree, a STATIC __cdecl(const char*
+// fileName, int priority) -- NO pThis, and the args are REVERSED vs the SWGEmu __thiscall
+// searchTree above. Advertised-only: null on SWGEmu (the __thiscall literal drives the Pre-CU
+// path). The advertised-client hook rewrite to this ABI is the smoke-gated treefile unlock.
+using pAddSearchTree = void(__cdecl*)(const char* fileName, int priority);
+pAddSearchTree addSearchTree = nullptr;
 } // namespace swg::treefile
 
 namespace utinni::treefile

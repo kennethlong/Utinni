@@ -79,6 +79,15 @@ pIsHudSceneTypeSpace isHudSceneTypeSpace = (pIsHudSceneTypeSpace)0x00426170;
 // existing two-bool memory::read expression.
 using pIsOver = bool(__cdecl*)();
 pIsOver g_runningFlags = nullptr;
+
+// Phase 24 v4 / D-04 accessor-style global. The main-loop counter (Game::ms_loops) is a
+// private static with only an INLINE getLoopCount() (no ODR address) -- the read-site below
+// reads the SWGEmu global at 0x1908830 directly. The provider added an out-of-line
+// Game::getMainLoopCount() and advertises game::g_mainLoopCounter -> &Game::getMainLoopCount
+// (call-not-read). The slot starts null and resolves only on the advertised client; the
+// read-site (getMainLoopCount) calls it when non-null, else the 0x1908830 read (D-00).
+using pMainLoopCount = int(__cdecl*)();
+pMainLoopCount g_mainLoopCounter = nullptr;
 } // namespace swg::game
 
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries
@@ -347,6 +356,11 @@ void Game::addCleanupSceneCallback(void (*func)())
 
 int getMainLoopCount()
 {
+    // Phase 24 v4: the provider now advertises game::g_mainLoopCounter -> &Game::getMainLoopCount
+    // (the swg::game::g_mainLoopCounter accessor slot resolves on the advertised client). The
+    // read-site is NOT flipped to it here -- doing so changes advertised-client runtime behavior
+    // and so lands with the smoke-gated Game-subsystem unlock. Until then this reads the SWGEmu
+    // global unconditionally (D-00 / advertised-client path unchanged: still wholesale-skipped).
     return memory::read<int>(0x1908830); // Ptr to the main loop count
 }
 
