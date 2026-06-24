@@ -356,6 +356,36 @@ static LONG WINAPI utinniBreakpointVEH(PEXCEPTION_POINTERS pInfo)
              code, eip, modName, modBase, resolved ? (eip - modBase) : eip,
              pInfo->ContextRecord->Esp, avDetail);
     utinni::log::warning(fmsg);
+
+    // Wild-jump backtrace: when EIP is unmapped/garbage (a corrupted CALL/JMP) it can't be
+    // symbolized, so scan the live stack upward from ESP for values that fall inside
+    // SwgClient_r.exe / UtinniCore.dll code and log them as rva candidates -- the top one is
+    // typically the return address pushed by the faulting call, i.e. the CALLER. SAFE: reading
+    // UPWARD from ESP walks toward the (committed) stack base; bounded to 64 slots.
+    {
+        const DWORD* sp = (const DWORD*)(uintptr_t)pInfo->ContextRecord->Esp;
+        char stk[320] = "VEH stack (mapped return-addr candidates): ";
+        int found = 0;
+        for (int i = 0; i < 64 && found < 8; ++i)
+        {
+            const DWORD val = sp[i];
+            HMODULE m = nullptr;
+            if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                                       GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                                   (LPCSTR)(uintptr_t)val, &m) &&
+                (m == g_swgModule || m == g_utinniModule))
+            {
+                char e[48];
+                snprintf(e, sizeof(e), "%s+0x%X ", (m == g_swgModule ? "swg" : "utinni"),
+                         (DWORD)(val - (DWORD)(uintptr_t)m));
+                if (strlen(stk) + strlen(e) < sizeof(stk) - 1)
+                    strcat_s(stk, sizeof(stk), e);
+                ++found;
+            }
+        }
+        if (found > 0)
+            utinni::log::warning(stk);
+    }
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
