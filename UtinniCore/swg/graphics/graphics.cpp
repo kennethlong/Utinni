@@ -781,12 +781,20 @@ void Graphics::detour()
 {
     swg::graphics::install = (swg::graphics::pInstall)Detour::Create(swg::graphics::install, hkInstall, DETOUR_TYPE_PUSH_RET);
 
+    // DETOUR_LEN_AUTO (not an explicit 5): an explicit length that lands mid-instruction copies
+    // a partial instruction into the trampoline -> executing the trampoline reads garbage and
+    // wild-jumps. On the advertised client these targets are the resolver-overwritten §1
+    // addresses whose recompiled prologues do NOT fit 5 bytes cleanly -- live backtrace caught
+    // runGameLoopOnce -> hkBeginScene -> the corrupt beginScene trampoline (0xC0000005 READ
+    // 0xE9FB47B4). Auto-length finds the instruction-aligned min (>=5) for whatever prologue is
+    // actually there, so it is correct on BOTH SWGEmu and the relocated advertised client. See
+    // the DetourXS explicit-length trap lesson (docs/ai/lessons.md).
     swg::graphics::update = (swg::graphics::pUpdate)Detour::Create(swg::graphics::update, hkUpdate, DETOUR_TYPE_PUSH_RET);
-    swg::graphics::beginScene = (swg::graphics::pBeginScene)Detour::Create(swg::graphics::beginScene, hkBeginScene, DETOUR_TYPE_JMP, 5);
-    swg::graphics::endScene = (swg::graphics::pEndScene)Detour::Create(swg::graphics::endScene, hkEndScene, DETOUR_TYPE_JMP, 5);
+    swg::graphics::beginScene = (swg::graphics::pBeginScene)Detour::Create(swg::graphics::beginScene, hkBeginScene, DETOUR_TYPE_JMP, DETOUR_LEN_AUTO);
+    swg::graphics::endScene = (swg::graphics::pEndScene)Detour::Create(swg::graphics::endScene, hkEndScene, DETOUR_TYPE_JMP, DETOUR_LEN_AUTO);
 
-    swg::graphics::presentWindow = (swg::graphics::pPresentWindow)Detour::Create(swg::graphics::presentWindow, hkPresentWindow, DETOUR_TYPE_JMP, 5);
-    swg::graphics::present = (swg::graphics::pPresent)Detour::Create(swg::graphics::present, hkPresent, DETOUR_TYPE_JMP, 5);
+    swg::graphics::presentWindow = (swg::graphics::pPresentWindow)Detour::Create(swg::graphics::presentWindow, hkPresentWindow, DETOUR_TYPE_JMP, DETOUR_LEN_AUTO);
+    swg::graphics::present = (swg::graphics::pPresent)Detour::Create(swg::graphics::present, hkPresent, DETOUR_TYPE_JMP, DETOUR_LEN_AUTO);
 
     swg::graphics::screenshot = (swg::graphics::pScreenshot)Detour::Create(swg::graphics::screenshot, hkScreenshot, DETOUR_TYPE_PUSH_RET);
 }
