@@ -33,6 +33,12 @@
 #include "graphics.h"
 #include "render_backend.h" // Phase 18 / RNDR-01: stash live device + drive setup(HWND)
 
+// Phase 24 embed-startup mitigation: the first-present latch setter (defined in client.cpp as
+// a .cpp-only export). Forward-declared locally so this TU adds no client.h coupling and no
+// CppSharp-parsed surface. PanelGame reads it via hasClientPresentedExport to gate the
+// advertised-client reparent until the client has presented a full frame.
+extern "C" void __cdecl utinni_markClientPresented();
+
 // C-09: Win32 manual-reset event signaller for UI/game-thread synchronization.
 // The managed FormMain.WndProc waits on this event instead of spinning on IsPresentBlocked().
 // ownsHandle: false on the managed SafeWaitHandle wrapper — native owns the lifetime.
@@ -319,6 +325,10 @@ HRESULT __stdcall hkPresent(LPDIRECT3DDEVICE9 pDevice, const RECT* pSourceRect, 
                  "directX::hkPresent: first fire (block=%d, destHwndOverride=0x%p, src=%s, dst=%s%s)",
                  blockPresentCall ? 1 : 0, (void*)hDestWindowOverride, srcBuf, dstBuf, swapBuf);
         utinni::log::info(msg);
+        // Phase 24 embed-startup mitigation: latch "client has presented a frame" (D3D9).
+        // PanelGame gates the advertised-client reparent on this; SWGEmu is not gated but
+        // latching here keeps the signal correct for an advertised D3D9 client too.
+        utinni_markClientPresented();
     }
 
     HRESULT result = 0;

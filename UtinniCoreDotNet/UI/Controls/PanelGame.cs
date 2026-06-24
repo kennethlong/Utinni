@@ -245,6 +245,16 @@ namespace UtinniCoreDotNet.UI.Controls
             IntPtr swgHwnd = Native.GetSwgHwnd();
             if (swgHwnd == IntPtr.Zero) return;
 
+            // Phase 24 embed-startup mitigation: on the advertised (GetEngineHookPoints) client,
+            // defer the reparent + its SetWindowPos-resize until the client has PRESENTED its
+            // first frame. The reparent's resize delivers an early WM_SIZE that drives the
+            // client's (provider) DX11 resize path before its render state (device/RTs/restored
+            // callbacks) is ready -> startup crash / no render under injection (standalone never
+            // gets an embed resize, so it renders fine). SWGEmu (D3D9) is NOT gated --
+            // IsAdvertisedClient() is false there and its windowed Present self-stretches with no
+            // early-resize hazard -- so its embed behavior is byte-for-byte unchanged.
+            if (Native.IsAdvertisedClient() && !Native.HasClientPresented()) return;
+
             ReparentSwgWindow(swgHwnd, ownerFormCached.Handle);
             reparentPollTimer.Stop();
         }

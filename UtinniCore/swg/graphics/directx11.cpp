@@ -40,6 +40,12 @@
 #include "render_backend.h"
 #include "DetourXS/detourxs.h"
 
+// Phase 24 embed-startup mitigation: the first-present latch setter (defined in client.cpp as
+// a .cpp-only export). Forward-declared locally so this TU adds no client.h coupling and no
+// CppSharp-parsed surface. PanelGame reads it via hasClientPresentedExport to gate the
+// advertised-client reparent until the client has presented a full frame.
+extern "C" void __cdecl utinni_markClientPresented();
+
 namespace directX11
 {
 // --- The advertised contract POD (spec §3.1 / producer Direct3d11.cpp:872-877). ---
@@ -126,6 +132,10 @@ HRESULT __stdcall hkSwapChainPresent(IDXGISwapChain* sc, UINT syncInterval, UINT
     {
         s_firstPresent = false;
         utinni::log::info("directX11::hkSwapChainPresent: first fire (DXGI detour confirmed)");
+        // Phase 24 embed-startup mitigation: latch "client has presented a frame" so
+        // PanelGame may now safely reparent + resize the embed (the §1 resize path runs
+        // post-first-frame, when the device/RTs/restored callbacks are ready).
+        utinni_markClientPresented();
     }
     diagLogRectsIfChanged(); // RNDR-04 embed-resize instrumentation (cheap; logs only on rect change)
 

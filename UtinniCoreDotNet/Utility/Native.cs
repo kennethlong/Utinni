@@ -144,6 +144,22 @@ namespace UtinniCoreDotNet.Utility
             EntryPoint = "getSwgWndProcExport")]
         public static extern IntPtr GetSwgWndProc();
 
+        // Phase 24 embed-startup mitigation. IsAdvertisedClient() reflects whether the
+        // GetEngineHookPoints contract was found (the advertised client); HasClientPresented()
+        // latches on the client's first present. PanelGame defers the advertised-client embed
+        // reparent + its SetWindowPos-resize until the client has presented, so the embed's
+        // early WM_SIZE doesn't drive the client's DX11 resize path before its render state is
+        // ready. CppSharp drops these; hand-rolled P/Invoke (same pattern as GetSwgHwnd).
+        [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+            EntryPoint = "isAdvertisedClientExport")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool IsAdvertisedClient();
+
+        [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+            EntryPoint = "hasClientPresentedExport")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool HasClientPresented();
+
         // Phase 24: gate calls through SWG function pointers that may be UNRESOLVED
         // on the advertised (GetEngineHookPoints) client. On that client a SWG entry
         // point absent from the catalog keeps its hardcoded SWGEmu RVA, which is

@@ -786,3 +786,11 @@ bool resolveFromExe()
     return true;
 }
 } // namespace swg::endpoints
+
+// Phase 24 embed-startup mitigation: C-linkage export so PanelGame.cs can branch on the
+// advertised-client state (the reparent-deferral gate only applies to the advertised client;
+// SWGEmu reparents as before). Returns C++ bool -> Native.cs marshals it as UnmanagedType.I1.
+extern "C" __declspec(dllexport) bool __cdecl isAdvertisedClientExport()
+{
+    return swg::endpoints::isAdvertisedClient();
+}

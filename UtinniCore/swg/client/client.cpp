@@ -57,6 +57,11 @@ bool allowInput = false;
 // post-Phase-B). Read by managed-side PanelGame for SetParent reparenting.
 HWND swgHwnd = nullptr;
 
+// Phase 24 embed-startup mitigation: flipped true on the client's first present (D3D9 or
+// DX11 present-hook first fire). PanelGame defers the advertised-client reparent + resize
+// until this latches. See Client::markPresented / hasClientPresentedExport.
+static bool clientPresented = false;
+
 static std::string logDir = "logs/";
 
 namespace utinni
@@ -309,6 +314,22 @@ void Client::detour()
 extern "C" __declspec(dllexport) HWND __cdecl getSwgHwndExport()
 {
     return swgHwnd;
+}
+
+// Phase 24 embed-startup mitigation: C-linkage exports, kept .cpp-only (NOT in client.h) so
+// they add ZERO CppSharp-parsed surface / no ABI re-bless -- same pattern as getSwgHwndExport.
+// utinni_markClientPresented() is called from the D3D9/DX11 present hooks' first fire (they
+// forward-declare it locally); hasClientPresentedExport() is read by PanelGame.cs. The latch
+// gates the advertised-client reparent so the embed's early WM_SIZE never reaches the client
+// before it has rendered a full frame. Returns C++ bool -> Native.cs marshals it as I1.
+extern "C" __declspec(dllexport) void __cdecl utinni_markClientPresented()
+{
+    clientPresented = true;
+}
+
+extern "C" __declspec(dllexport) bool __cdecl hasClientPresentedExport()
+{
+    return clientPresented;
 }
 
 // Phase 3 R-C (per 03-CONTEXT D-18..D-20 / TD-18): C-linkage export so
