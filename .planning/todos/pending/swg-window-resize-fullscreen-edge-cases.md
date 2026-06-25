@@ -91,6 +91,38 @@ window-management / D3D9-presentation cluster tracked here. Per-transition sympt
 session; maintainer flagged as non-blocking, capture-for-later. Still belongs to the future
 window-management pass alongside the 2026-06-03 and 2026-06-13 observations above.
 
+## Observed live (2026-06-25 — maintainer, injected ADVERTISED D3D11 client; editor loadScene smoke)
+
+First repro on the **advertised DX11 client** (`SwgClient_r.exe` + gl11, Utinni-injected), after v6
+`game::loadScene` + Option A landed the editor into Naboo (renderable, loading screen dismissed).
+
+- **windowed → "fullscreen" on Enter:** pressing **Enter** in-world causes the SWG window to **grow then
+  snap back** (resize up → resize down). No monitor-takeover flicker (so the D3D9-era exclusive-fullscreen
+  pull is NOT what fires here — `s_suppressExclusiveFullscreen` is doing its job). What remains is the
+  **window-level restyle/grow**, snapped back by the WM_WINDOWPOSCHANGING embed clamp + 250ms watchdog —
+  a visible bounce.
+- **Mechanism note (NEW for D3D11):** the D3D9 root (chat-open `enableTextInput(setKeyboardInput=true)` →
+  exclusive D3D9 device mode flip, `chat-open-d3d9-fullscreen.md`) **cannot be the D3D11 resize cause** —
+  gl11 has **no real DXGI fullscreen** (`Direct3d11.cpp:1064` "SetFullscreenState deferred"; swapchain is
+  "stable for session" :905). So on D3D11 the window grow is driven by a *different* path (SWG's own
+  windowed↔fullscreen window management, or a CUI/back-buffer reflow on chat-open), not a device mode
+  switch. **Needs a live instrumented smoke** to identify which SetWindowPos/style-change path grows the
+  window (the existing clamp catches the SIZE but the bounce still shows — clamp is late/bypassed, or it's
+  a WM_STYLECHANGING / ShowWindow path).
+- **Trigger is SWG-native, not Utinni:** chat is NOT unlocked on the advertised client (MISC/INPUT detours
+  skipped), yet Enter still triggers this — so it's SWG's own keymap→enableTextInput, reached via
+  **DirectInput keyboard polling** (WM consumption is known-ineffective, `imgui_impl.cpp:232-241`).
+- **In-world exit:** there is no working in-world menu/escape on the advertised client (input subsystem
+  locked), so the maintainer had to force-quit. **Interim workaround:** the editor Scene panel's
+  **Unload** button (`groundScene.Unload`) exits the scene without needing in-world Enter/Esc.
+- **NOT caused by the loadScene/Option A work** — exposed because the editor can now reach in-world on the
+  advertised client for the first time. Belongs to this window-management cluster.
+- **Candidate fixes to try next (need a live smoke):** (a) suppress SWG's window-level fullscreen restyle
+  for the advertised/editor client at its source (analogous to the DI exclusive-fullscreen suppression);
+  (b) harden the WM_WINDOWPOSCHANGING clamp so the grow never visibly applies (find why it's bypassed —
+  log whether the clamp fires on the Enter restyle); (c) mask Enter at the DirectInput keyboard-poll layer
+  on the advertised client (chat is locked there anyway, so the native side effect is pure harm).
+
 ## Known-adjacent issues (link, don't re-investigate from scratch)
 
 This is the same family as several already-recorded items — start here:
