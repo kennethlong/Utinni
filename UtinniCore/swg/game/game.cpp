@@ -356,11 +356,14 @@ void Game::addCleanupSceneCallback(void (*func)())
 
 int getMainLoopCount()
 {
-    // Phase 24 v4: the provider now advertises game::g_mainLoopCounter -> &Game::getMainLoopCount
-    // (the swg::game::g_mainLoopCounter accessor slot resolves on the advertised client). The
-    // read-site is NOT flipped to it here -- doing so changes advertised-client runtime behavior
-    // and so lands with the smoke-gated Game-subsystem unlock. Until then this reads the SWGEmu
-    // global unconditionally (D-00 / advertised-client path unchanged: still wholesale-skipped).
+    // Phase 24 v4 (Game unlock): prefer the advertised accessor -- the provider advertises
+    // game::g_mainLoopCounter -> &Game::getMainLoopCount (call-not-read), which resolves on the
+    // advertised client where the hardcoded 0x1908830 is unmapped. Fall back to the SWGEmu global
+    // when the slot is null (export-absent / Pre-CU path byte-for-byte unchanged, D-00).
+    if (swg::game::g_mainLoopCounter != nullptr)
+    {
+        return swg::game::g_mainLoopCounter();
+    }
     return memory::read<int>(0x1908830); // Ptr to the main loop count
 }
 
@@ -510,23 +513,31 @@ void __cdecl hkCleanupScene()
 
 void Game::detour()
 {
-    // Phase 24: this subsystem is SWGEmu-addressed. getMainLoopCount() reads a hardcoded
-    // counter (0x1908830) and the mainLoop hook binds game::mainLoop -> the provider's
-    // Game::run (24-02 name mismatch) whose signature differs from this __cdecl(bool,HWND,
-    // int,int) trampoline, so installing it corrupts the stack on the first frame ->
-    // 0xC0000096 privileged-instruction crash in game code. Skip the whole subsystem on the
-    // advertised client until the provider advertises ABI-compatible game entry points.
-    // No-op on SWGEmu (D-00).
-    if (swg::endpoints::isAdvertisedClient())
-        return;
-
-    if (getMainLoopCount() == 0) // Checks the Games main loop count, if 0, we're in the 'suspended' startup entry point loop
+    // Phase 24 v4 (MISC/INPUT unlock -- GAME subsystem, live-smoke-gated): the wholesale
+    // advertised-client skip is DROPPED. The v3-era blockers are resolved by the provider's v4
+    // handback: (4a) game::mainLoop now resolves to the REAL per-frame tick Game::runGameLoopOnce
+    // -- an EXACT __cdecl(bool,HWND,int,int) match to hkMainLoop, so no stack corruption; (4b)
+    // getMainLoopCount() reads the relocated counter via the advertised g_mainLoopCounter accessor
+    // instead of the unmapped 0x1908830. install/setupScene/cleanupScene are advertised statics.
+    // Each Detour::Create is now PER-TARGET installable()-gated: on SWGEmu every literal is mapped
+    // -> the full set installs byte-for-byte unchanged (D-00); on the advertised client each
+    // installs only if its target resolved from the catalog.
+    //
+    // INTERDEPENDENCY (acceptable for this increment): hkInstall builds a Repository from
+    // treefile::getAllFilenames(), which is EMPTY until the treefile subsystem is also unlocked
+    // (its hook never ran to populate the set). So the file-backed editor data is empty on the
+    // advertised client until then -- it DEGRADES (empty repository -> generateHighestId()==0),
+    // it does NOT crash; the scene-lifecycle callbacks this subsystem exists for still fire.
+    if (getMainLoopCount() == 0) // suspended startup entry-point loop
     {
-        // utility::showMessageBox("");
-        swg::game::mainLoop = (swg::game::pMainLoop)Detour::Create(swg::game::mainLoop, hkMainLoop, DETOUR_TYPE_PUSH_RET);
-        swg::game::install = (swg::game::pInstall)Detour::Create(swg::game::install, hkInstall, DETOUR_TYPE_PUSH_RET);
-        swg::game::setupScene = (swg::game::pSetupScene)Detour::Create(swg::game::setupScene, hkSetScene, DETOUR_TYPE_PUSH_RET);
-        swg::game::cleanupScene = (swg::game::pCleanupScene)Detour::Create(swg::game::cleanupScene, hkCleanupScene, DETOUR_TYPE_PUSH_RET);
+        if (swg::endpoints::installable((const void*)swg::game::mainLoop))
+            swg::game::mainLoop = (swg::game::pMainLoop)Detour::Create(swg::game::mainLoop, hkMainLoop, DETOUR_TYPE_PUSH_RET);
+        if (swg::endpoints::installable((const void*)swg::game::install))
+            swg::game::install = (swg::game::pInstall)Detour::Create(swg::game::install, hkInstall, DETOUR_TYPE_PUSH_RET);
+        if (swg::endpoints::installable((const void*)swg::game::setupScene))
+            swg::game::setupScene = (swg::game::pSetupScene)Detour::Create(swg::game::setupScene, hkSetScene, DETOUR_TYPE_PUSH_RET);
+        if (swg::endpoints::installable((const void*)swg::game::cleanupScene))
+            swg::game::cleanupScene = (swg::game::pCleanupScene)Detour::Create(swg::game::cleanupScene, hkCleanupScene, DETOUR_TYPE_PUSH_RET);
     }
 }
 

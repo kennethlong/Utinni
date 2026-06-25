@@ -124,7 +124,7 @@ void createDetours()
     // No-op on SWGEmu Pre-CU (export absent) -- the full hook set installs unchanged (D-00).
     const bool advertised = swg::endpoints::isAdvertisedClient();
     if (advertised)
-        utinni::log::info("createDetours: advertised client -- running RENDER-only (MISC/INPUT subsystems deferred to full-catalog milestone)");
+        utinni::log::info("createDetours: advertised client -- RENDER + GAME subsystem active (other MISC/INPUT subsystems unlocked per-subsystem behind live smokes)");
 
     // 2026-05-19: full detour set restored after bisection (rounds 0-10).
     // The audio-init stall was traced to Client::detour's hkSetupStartInstall
@@ -134,6 +134,9 @@ void createDetours()
     // the bisection; restoring them here.
 
     // --- MISC / UI / lifecycle group ---
+    // Phase 24 v4: still wholesale-skipped on the advertised client -- these subsystems hook
+    // un-advertised / mid-function / NONEXISTENT targets (see 24-PROVIDER-REQUEST-misc-input-
+    // editor-unlock.md) and are unlocked one-at-a-time behind their own live smokes.
     if (!skipMisc && !advertised)
     {
         swg::config::detour();
@@ -147,11 +150,24 @@ void createDetours()
         utinni::cuiRadialMenuManager::detour();
         utinni::cuiLoginScreen::detour();
         // utinni::cuiMediatorFactorySetup::detour();
-        utinni::Game::detour();
         utinni::report::detour();
         utinni::SystemMessageManager::detour();
         utinni::treefile::detour();
         utinni::IoWin::detour();
+    }
+
+    // --- Phase 24 v4: GAME subsystem -- FIRST advertised-client editor-unlock (live-smoke-gated) ---
+    // Lifted OUT of the wholesale-skipped MISC block so it runs on BOTH targets. Game::detour() is
+    // now per-target installable()-gated internally (game.cpp): on SWGEmu every literal is mapped ->
+    // the full game hook set installs byte-for-byte unchanged (D-00); on the advertised client it
+    // installs the advertised game entry points -- mainLoop -> the provider's real per-frame tick
+    // Game::runGameLoopOnce (v4 4a, exact __cdecl(bool,HWND,int,int) match), install, setupScene,
+    // cleanupScene -- and reads the loop counter via the advertised g_mainLoopCounter accessor (4b).
+    // Still honors the [DebugBisect] skipMisc bisect flag. The OTHER MISC subsystems stay skipped
+    // above until each is unlocked + smoked in turn.
+    if (!skipMisc)
+    {
+        utinni::Game::detour();
     }
 
     // --- INPUT / EVENT / MOVEMENT / LOCOMOTION group (prime suspect) ---
@@ -269,11 +285,58 @@ static LONG WINAPI utinniBreakpointVEH(PEXCEPTION_POINTERS pInfo)
                 strcat_s(hexDump, sizeof(hexDump), b);
         }
 
+        // 2026-06-24 (Game-unlock smoke): resolve the int3's MODULE + RVA so a fixed-base
+        // engine assert (e.g. SwgClient_r.exe with no ASLR) is symbolizable against the
+        // provider's PDB / our .map -- the EIP alone can't be matched across modules.
+        const DWORD eip = pInfo->ContextRecord->Eip;
+        HMODULE mod = nullptr;
+        char modName[64] = "<unmapped-EIP>";
+        DWORD modBase = 0;
+        if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                               (LPCSTR)eip, &mod) &&
+            mod != nullptr)
+        {
+            char full[MAX_PATH];
+            if (GetModuleFileNameA(mod, full, sizeof(full)) != 0)
+            {
+                const char* leaf = strrchr(full, '\\');
+                strcpy_s(modName, sizeof(modName), leaf != nullptr ? leaf + 1 : full);
+            }
+            modBase = (DWORD)(uintptr_t)mod;
+        }
+
         snprintf(msg, sizeof(msg),
-                 "VEH int3: EIP=0x%08X bytes(-4..+11)=%s ESP=0x%08X",
-                 pInfo->ContextRecord->Eip, hexDump,
+                 "VEH int3: EIP=0x%08X module=%s base=0x%08X rva=0x%08X bytes(-4..+11)=%s ESP=0x%08X",
+                 eip, modName, modBase, modBase ? (eip - modBase) : eip, hexDump,
                  pInfo->ContextRecord->Esp);
         utinni::log::info(msg);
+
+        // Mapped return-address stack scan (same idiom as the FATAL branch): the top entries
+        // are the caller chain into the int3 -- pinpoints which hook/callback reached it.
+        {
+            const DWORD* sp = (const DWORD*)(uintptr_t)pInfo->ContextRecord->Esp;
+            char stk[320] = "VEH int3 stack (mapped return-addr candidates): ";
+            int found = 0;
+            for (int i = 0; i < 64 && found < 8; ++i)
+            {
+                const DWORD val = sp[i];
+                HMODULE m = nullptr;
+                if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                                           GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                                       (LPCSTR)(uintptr_t)val, &m) &&
+                    (m == g_swgModule || m == g_utinniModule))
+                {
+                    char e[48];
+                    snprintf(e, sizeof(e), "%s+0x%X ", (m == g_swgModule ? "swg" : "utinni"),
+                             (DWORD)(val - (DWORD)(uintptr_t)m));
+                    if (strlen(stk) + strlen(e) < sizeof(stk) - 1)
+                        strcat_s(stk, sizeof(stk), e);
+                    ++found;
+                }
+            }
+            if (found > 0)
+                utinni::log::warning(stk);
+        }
         return EXCEPTION_CONTINUE_SEARCH;
     }
 

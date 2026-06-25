@@ -26,6 +26,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using UtinniCoreDotNet.Utility;
 
 namespace UtinniCoreDotNet.Callbacks
 {
@@ -288,10 +289,7 @@ namespace UtinniCoreDotNet.Callbacks
                 // InvalidOperationException.
                 snapshot = installSubscribers.Values.ToArray();
             }
-            foreach (Action callback in snapshot)
-            {
-                callback();
-            }
+            DispatchSafely("Install", snapshot);
         }
 
         private static void CallSetupSceneCallbacks()
@@ -301,10 +299,7 @@ namespace UtinniCoreDotNet.Callbacks
             {
                 snapshot = setupSceneSubscribers.Values.ToArray();
             }
-            foreach (Action callback in snapshot)
-            {
-                callback();
-            }
+            DispatchSafely("SetupScene", snapshot);
         }
 
         private static void CallCleanupSceneCallbacks()
@@ -314,9 +309,27 @@ namespace UtinniCoreDotNet.Callbacks
             {
                 snapshot = cleanupSceneSubscribers.Values.ToArray();
             }
+            DispatchSafely("CleanupScene", snapshot);
+        }
+
+        // Phase 24 v4: an editor lifecycle callback that throws must NOT propagate into native
+        // and trip the engine's unhandled-exception fatal handler (SetupSharedFoundation
+        // MyUnhandledExceptionFilter -> Fatal -> InternalFatal int3), which takes down the whole
+        // client. Contain each callback: log the full exception and continue to the next one, so a
+        // single editor's failure (e.g. an advertised-client engine-state precondition not met) is
+        // isolated instead of fatal. Surfaced by the Game-subsystem advertised-client unlock smoke.
+        private static void DispatchSafely(string phase, Action[] snapshot)
+        {
             foreach (Action callback in snapshot)
             {
-                callback();
+                try
+                {
+                    callback();
+                }
+                catch (Exception ex)
+                {
+                    Log.InfoSimple($"GameCallbacks.Call{phase}Callbacks: a callback threw and was contained: {ex}");
+                }
             }
         }
     }

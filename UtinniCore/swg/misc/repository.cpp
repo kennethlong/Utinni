@@ -68,17 +68,39 @@ int Repository::getFilenameCount()
 
 std::string Repository::getFilenameAt(int index)
 {
-    return filenames.at(index);
+    // Phase 24 v4: bounds-safe. An empty/partial Repository (e.g. the advertised client before
+    // the treefile subsystem is unlocked -> no filenames harvested) must degrade, not throw a
+    // std::out_of_range across the native<-managed callback boundary (that surfaces as a fatal).
+    if (index < 0 || static_cast<size_t>(index) >= filenames.size())
+    {
+        return std::string();
+    }
+    return filenames[index];
 }
 
 std::vector<std::string> Repository::getDirectoryFilenames(const char* directoryName)
 {
+    // Phase 24 v4: missing-directory safe. find() returning end() then dereferencing ->second
+    // is UB (it bit the advertised client's empty Repository as an int3 in WorldSnapshot init);
+    // return an empty list instead.
     const auto dirInfo = directories.find(directoryName);
+    if (dirInfo == directories.end())
+    {
+        return std::vector<std::string>();
+    }
     return std::vector<std::string>(&filenames[dirInfo->second.startIndex], &filenames[dirInfo->second.startIndex + dirInfo->second.size]);
 }
 
 Repository::DirectoryInfo* Repository::getDirectoryInfo(const char* directoryName)
 {
-    return &directories.find(directoryName)->second;
+    // Phase 24 v4: return nullptr for a missing directory instead of dereferencing end()->second
+    // (the root cause of the advertised-client install-callback crash -- GroundSceneImpl queried
+    // "terrain" on the empty Repository). Managed callers null-check the result.
+    const auto dirInfo = directories.find(directoryName);
+    if (dirInfo == directories.end())
+    {
+        return nullptr;
+    }
+    return &dirInfo->second;
 }
 } // namespace utinni
