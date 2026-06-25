@@ -152,6 +152,30 @@ void enableInternalUi(bool enable)
 }
 
 WNDPROC originalWndProcHandler = nullptr;
+
+// 2026-06-25 (Enter->fullscreen embed fix): the SWG client toggles a WINDOW-LEVEL fullscreen via its
+// own DirectInput->keymap path (not a Win32 message we can intercept as a keypress -- input arrives via
+// DirectInput polling, see the WM_KEYDOWN note below). When embedded that grows the SWG window over the
+// editor; the 250ms watchdog only re-docks it reactively (a visible flicker/toggle). Instead, clamp the
+// SWG window's WM_WINDOWPOSCHANGING to the editor embed rect so it physically cannot grow past the panel.
+// The managed PanelGame.RepositionSwgWindow pushes the current embed rect here (screen-space) right
+// before each SetWindowPos, so the clamp tracks form resize/drag/maximize. Only GROWTH beyond the embed
+// is clamped -- shrink/minimize/move and the managed reposition itself (rect updated first) pass through.
+static int g_embedClampX = 0, g_embedClampY = 0, g_embedClampW = 0, g_embedClampH = 0;
+static bool g_embedClampValid = false;
+
+extern "C" __declspec(dllexport) void __cdecl utinni_setEmbedClampRect(int x, int y, int w, int h)
+{
+    if (w > 0 && h > 0)
+    {
+        g_embedClampX = x;
+        g_embedClampY = y;
+        g_embedClampW = w;
+        g_embedClampH = h;
+        g_embedClampValid = true;
+    }
+}
+
 IMGUI_API LRESULT hkWndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -257,6 +281,37 @@ IMGUI_API LRESULT hkWndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         snprintf(m, sizeof(m), "hkWndProcHandler: WM_KILLFOCUS hwnd=0x%p (gained-focus-to=0x%p)",
                  (void*)hwnd, (void*)wParam);
         utinni::log::info(m);
+        break;
+    }
+    case WM_WINDOWPOSCHANGING:
+    {
+        // Constrain the embedded SWG window to the editor panel: SWG's own fullscreen toggle tries to
+        // grow it to the screen; clamp any growth past the cached embed rect back to it so the panel
+        // can't be covered. Only GROWTH is clamped (cx/cy beyond the embed) -- shrink/minimize and the
+        // managed reposition (which pushes the rect first, so cx==embed) fall through. Rewrites the
+        // caller's WINDOWPOS in place, then forwards to the original WndProc so the (clamped) move applies.
+        if (g_embedClampValid)
+        {
+            WINDOWPOS* wp = (WINDOWPOS*)lParam;
+            if (wp != nullptr && !(wp->flags & SWP_NOSIZE) &&
+                (wp->cx > g_embedClampW || wp->cy > g_embedClampH))
+            {
+                wp->x = g_embedClampX;
+                wp->y = g_embedClampY;
+                wp->cx = g_embedClampW;
+                wp->cy = g_embedClampH;
+                static int s_clampLogCount = 0;
+                if (s_clampLogCount < 8)
+                {
+                    s_clampLogCount++;
+                    char m[128];
+                    snprintf(m, sizeof(m),
+                             "hkWndProcHandler: WM_WINDOWPOSCHANGING clamped SWG to embed (%d,%d %dx%d) -- blocked fullscreen grow",
+                             g_embedClampX, g_embedClampY, g_embedClampW, g_embedClampH);
+                    utinni::log::info(m);
+                }
+            }
+        }
         break;
     }
     }

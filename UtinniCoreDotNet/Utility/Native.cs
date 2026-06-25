@@ -160,6 +160,13 @@ namespace UtinniCoreDotNet.Utility
         [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool HasClientPresented();
 
+        // 2026-06-25 (Enter->fullscreen embed fix): push the current embed rect (screen-space) to the
+        // native WndProc subclass so it clamps SWG's WM_WINDOWPOSCHANGING to the panel -- SWG's own
+        // fullscreen toggle can't grow the window past the embed. Called from RepositionSwgWindow.
+        [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+            EntryPoint = "utinni_setEmbedClampRect")]
+        public static extern void SetEmbedClampRect(int x, int y, int w, int h);
+
         // Phase 24: gate calls through SWG function pointers that may be UNRESOLVED
         // on the advertised (GetEngineHookPoints) client. On that client a SWG entry
         // point absent from the catalog keeps its hardcoded SWGEmu RVA, which is

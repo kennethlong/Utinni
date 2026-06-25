@@ -410,19 +410,37 @@ namespace UtinniCoreDotNet.UI.Controls
             // never near -32000; moving SWG there is the "disappeared" bug.
             if (screenOrigin.X <= -30000 || screenOrigin.Y <= -30000) return;
             Size cs = ClientSize;
+
+            // 2026-06-25 (Enter->fullscreen embed fix): publish the embed rect to the native WndProc
+            // BEFORE the SetWindowPos so its WM_WINDOWPOSCHANGING clamp uses the current bounds (this
+            // reposition's own pos/size won't be clamped -- cx==embed). SWG's later fullscreen-grow
+            // attempts are then clamped to this rect, so the embed can't be covered.
+            Native.SetEmbedClampRect(screenOrigin.X, screenOrigin.Y, cs.Width, cs.Height);
+
             bool ok = Native.SetWindowPos(swgHwnd, IntPtr.Zero,
                 screenOrigin.X, screenOrigin.Y,
                 cs.Width, cs.Height,
                 Native.SWP_FRAMECHANGED | Native.SWP_SHOWWINDOW | Native.SWP_NOACTIVATE);
 
-            // Diag: cap to first 8 calls to avoid log spam during drag.
-            if (s_repositionLogCount < 8)
+            // Diag (2026-06-25): capture the embed bounds + layout context so an intermittent
+            // post-world-entry mis-position (embed covering the controls) is diagnosable from the
+            // log instead of a screenshot. Cap raised to 40 so the world-entry restyle's watchdog
+            // repositions are logged (startup alone exhausted the old cap of 8). Parent==pnlGame is
+            // docked-right; Parent==the form is full-window mode (ToggleUI). A wrong w/h or an origin
+            // at the form's left edge points at PanelGame's bounds being stale when this ran.
+            if (s_repositionLogCount < 40)
             {
                 s_repositionLogCount++;
+                string parentName = Parent != null ? Parent.GetType().Name + "/" + (Parent.Name ?? "?") : "<null>";
+                Form host2 = FindForm();
                 Log.Info("PanelGame.RepositionSwgWindow: SetWindowPos("
                     + "x=" + screenOrigin.X + ",y=" + screenOrigin.Y
                     + ",w=" + cs.Width + ",h=" + cs.Height
-                    + ",HWND_TOP) -> " + (ok ? "OK" : "FAIL"));
+                    + ",HWND_TOP) -> " + (ok ? "OK" : "FAIL")
+                    + " [parent=" + parentName
+                    + " panelBounds=" + Bounds.ToString()
+                    + " formState=" + (host2 != null ? host2.WindowState.ToString() : "?")
+                    + " formClient=" + (host2 != null ? host2.ClientSize.ToString() : "?") + "]");
             }
         }
 

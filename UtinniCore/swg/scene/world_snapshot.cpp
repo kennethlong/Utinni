@@ -31,6 +31,7 @@
 #include "swg/object/client_object.h"
 #include "swg/game/game.h"
 #include "swg/appearance/portal.h"
+#include "swg/endpoints.h"
 #include "utility/string_utility.h"
 
 namespace swg::worldSnapshotReaderWriter
@@ -502,6 +503,21 @@ int getHighestIdFromNode(int currentHighestId, const WorldSnapshotReaderWriter::
 int WorldSnapshot::generateHighestId()
 {
     int newId = 0;
+
+    // Phase 24: the scan below reads each snapshot via WorldSnapshotReaderWriter::get() +
+    // swg::worldSnapshotReaderWriter::openFile -- the OFFLINE reader, whose addresses are hardcoded
+    // SWGEmu RVAs NOT in the advertised catalog (only the runtime worldSnapshot::* is advertised). On
+    // the advertised client those RVAs are garbage -> crash. It never bit before because the Repository
+    // was empty (no "snapshot" dir -> empty loop); now treeFile::enumerateFiles populates it, so the
+    // loop runs and faults. Skip on the advertised client -- the WorldSnapshot editor's new-ID
+    // generation degrades there (no crash) until worldSnapshotReaderWriter is advertised. SWGEmu
+    // unchanged (the RVAs are valid; isAdvertisedClient() is false).
+    if (swg::endpoints::isAdvertisedClient())
+    {
+        highestId = newId;
+        return newId;
+    }
+
     auto snapshotFilenames = Game::getRepository()->getDirectoryFilenames("snapshot");
     for (const auto& filename : snapshotFilenames)
     {
