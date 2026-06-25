@@ -24,6 +24,7 @@
 
 #include "direct_input.h"
 #include "swg/client/client.h"
+#include "swg/endpoints.h"
 #include "swg/graphics/graphics.h"
 
 #include <dinput.h>
@@ -78,6 +79,19 @@ using pDID_SetCooperativeLevel = HRESULT(__stdcall*)(IDirectInputDevice8A*, HWND
 pDirectInput8Create origDirectInput8Create = nullptr;
 pDIO_CreateDevice origCreateDevice = nullptr;
 pDID_SetCooperativeLevel origSetCooperativeLevel = nullptr;
+
+// 2026-06-25 advertised-client Enter-mask: SWG reads the keyboard via BUFFERED
+// GetDeviceData (vtbl[10], DIPROP_BUFFERSIZE set; see clientDirectInput DirectInput.cpp),
+// NOT immediate GetDeviceState. On the advertised editor client chat/input subsystems are
+// locked, so a live in-world Enter has no real use -- it only triggers SWG's native
+// chat-open -> window-level fullscreen restyle (the embed grow+snap-back bounce,
+// swg-window-resize-fullscreen-edge-cases.md). We filter DIK_RETURN/DIK_NUMPADENTER out of
+// the KEYBOARD device's GetDeviceData buffer so SWG never sees the keypress. Keyboard-device
+// + advertised-client gated -> zero effect on SWGEmu connected play. REVISIT when MISC/INPUT
+// unlocks and in-world Enter gains a real use.
+using pDID_GetDeviceData = HRESULT(__stdcall*)(IDirectInputDevice8A*, DWORD, LPDIDEVICEOBJECTDATA, LPDWORD, DWORD);
+pDID_GetDeviceData origGetDeviceData = nullptr;
+IDirectInputDevice8A* s_keyboardDevice = nullptr;
 
 // 2026-06-07 RESID-04 / D-12: runtime toggle for the exclusive-fullscreen
 // suppression. Default ON. When ON, an incoming DISCL_EXCLUSIVE request is
@@ -150,17 +164,46 @@ HRESULT __stdcall hkSetCooperativeLevel(IDirectInputDevice8A* pThis, HWND hwnd, 
     return origSetCooperativeLevel(pThis, hwnd, effectiveFlags);
 }
 
+HRESULT __stdcall hkGetDeviceData(IDirectInputDevice8A* pThis, DWORD cbObjectData,
+                                  LPDIDEVICEOBJECTDATA rgdod, LPDWORD pdwInOut, DWORD dwFlags)
+{
+    HRESULT hr = origGetDeviceData(pThis, cbObjectData, rgdod, pdwInOut, dwFlags);
+
+    // Advertised-client Enter-mask: drop DIK_RETURN/DIK_NUMPADENTER from the keyboard's buffered
+    // events so SWG's native in-world Enter -> chat-open -> fullscreen restyle never fires. Only
+    // the keyboard device, only the advertised editor client, only the array-returning form
+    // (rgdod != null). The count-query form (rgdod == null) and the mouse device pass through.
+    // The dropped events stay flushed from the DI buffer (SWG's reads are non-peek); they are
+    // simply hidden from SWG.
+    if (SUCCEEDED(hr) && pThis == s_keyboardDevice && rgdod != nullptr && pdwInOut != nullptr &&
+        cbObjectData == sizeof(DIDEVICEOBJECTDATA) && swg::endpoints::isAdvertisedClient())
+    {
+        DWORD const n = *pdwInOut;
+        DWORD w = 0;
+        for (DWORD r = 0; r < n; ++r)
+        {
+            if (rgdod[r].dwOfs == DIK_RETURN || rgdod[r].dwOfs == DIK_NUMPADENTER)
+                continue; // hide the Enter press/release from SWG
+            if (w != r)
+                rgdod[w] = rgdod[r];
+            ++w;
+        }
+        *pdwInOut = w;
+    }
+    return hr;
+}
+
 void patchDeviceVtableOnce(IDirectInputDevice8A* device)
 {
     if (device == nullptr)
         return;
     if (origSetCooperativeLevel != nullptr)
-        return; // already patched
+        return; // already patched (keyboard + mouse share the dinput8 device vtable)
 
     void** vtbl = *(void***)device;
-    origSetCooperativeLevel = (pDID_SetCooperativeLevel)vtbl[13];
-
     DWORD oldProtect = 0;
+
+    origSetCooperativeLevel = (pDID_SetCooperativeLevel)vtbl[13];
     if (!VirtualProtect(&vtbl[13], sizeof(void*), PAGE_READWRITE, &oldProtect))
     {
         utinni::log::critical("DI: VirtualProtect(RW) on vtbl[13] FAILED -- shim DISABLED");
@@ -169,8 +212,22 @@ void patchDeviceVtableOnce(IDirectInputDevice8A* device)
     }
     vtbl[13] = (void*)hkSetCooperativeLevel;
     VirtualProtect(&vtbl[13], sizeof(void*), oldProtect, &oldProtect);
-
     utinni::log::info("DI: patched IDirectInputDevice8A::SetCooperativeLevel vtbl[13]");
+
+    // Enter-mask: patch GetDeviceData (vtbl[10]) on the same shared device vtable. Gated to the
+    // keyboard device + advertised client inside the hook, so mouse/SWGEmu are unaffected.
+    origGetDeviceData = (pDID_GetDeviceData)vtbl[10];
+    if (VirtualProtect(&vtbl[10], sizeof(void*), PAGE_READWRITE, &oldProtect))
+    {
+        vtbl[10] = (void*)hkGetDeviceData;
+        VirtualProtect(&vtbl[10], sizeof(void*), oldProtect, &oldProtect);
+        utinni::log::info("DI: patched IDirectInputDevice8A::GetDeviceData vtbl[10] (advertised Enter-mask)");
+    }
+    else
+    {
+        utinni::log::critical("DI: VirtualProtect(RW) on vtbl[10] FAILED -- Enter-mask DISABLED");
+        origGetDeviceData = nullptr;
+    }
 }
 
 HRESULT __stdcall hkCreateDevice(IDirectInput8A* pThis, REFGUID rguid,
@@ -181,7 +238,10 @@ HRESULT __stdcall hkCreateDevice(IDirectInput8A* pThis, REFGUID rguid,
     {
         const char* devType = "?";
         if (IsEqualGUID(rguid, GUID_SysKeyboard))
+        {
             devType = "keyboard";
+            s_keyboardDevice = *lplpDevice; // Enter-mask: gate GetDeviceData filtering to this device
+        }
         else if (IsEqualGUID(rguid, GUID_SysMouse))
             devType = "mouse";
 
