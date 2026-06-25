@@ -133,6 +133,9 @@ extern pIsViewFirstPerson isViewFirstPerson;
 extern pIsHudSceneTypeSpace isHudSceneTypeSpace;
 extern pIsOver g_runningFlags;
 extern pMainLoopCount g_mainLoopCounter; // v4 (24/4b): &Game::getMainLoopCount accessor
+// v6 (24): full SceneCreator string-based scene load (advertised-only; null on SWGEmu).
+using pLoadScene = void(__cdecl*)(const char* terrain, const char* player);
+extern pLoadScene loadScene;
 } // namespace swg::game
 
 // -- graphics (graphics/graphics.cpp:37-83 + D-04 accessors) ----------------
@@ -333,6 +336,9 @@ extern pSearchTree searchTree;
 // priority) (reversed args, no pThis). Advertised-only slot; the SWGEmu path stays on searchTree.
 using pAddSearchTree = void(__cdecl*)(const char* fileName, int priority);
 extern pAddSearchTree addSearchTree;
+// v5 (24): the full TRE/TOC file enumeration the Repository needs (callback per filename).
+using pEnumerateFiles = void(__cdecl*)(void(__cdecl* cb)(const char* fileName, void* ctx), void* ctx);
+extern pEnumerateFiles enumerateFiles;
 } // namespace swg::treefile
 
 // -- report (misc/swg_misc.cpp:29-31) ---------------------------------------
@@ -564,6 +570,12 @@ static const Binding s_bindings[] = {
     {"game::g_mainLoopCounter", (void**)&swg::game::g_mainLoopCounter},               // 4b ACCESSOR: provider &Game::getMainLoopCount (call-not-read)
     {"treeFile::searchTree", (void**)&swg::treefile::addSearchTree},                  // 4c: provider &TreeFile::addSearchTree (static __cdecl, reversed args vs SWGEmu searchTree)
     {"cuiChatWindow::createNewWindow", (void**)&swg::cuiChatWindow::createNewWindow}, // 4d: sole construction funnel (C++ ctor is unaddressable)
+
+    // ===== v5 (Phase 24): TreeFile file enumeration -- populates the Repository on the advertised client =====
+    {"treeFile::enumerateFiles", (void**)&swg::treefile::enumerateFiles}, // provider &TreeFile::enumerateFiles (callback per filename)
+
+    // ===== v6 (Phase 24): full SceneCreator string-based scene load (editor "Load scene") =====
+    {"game::loadScene", (void**)&swg::game::loadScene}, // provider &utinni_gameLoadScene -> Game::setScene(true, terrain, player, nullptr)
 };
 
 // ----------------------------------------------------------------------
@@ -604,8 +616,8 @@ constexpr size_t kIncCount = 0
 
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
 
-static_assert(kIncCount == 97, "contract .inc size drifted from the expected 97 names (v4 / Phase 24 MISC-INPUT unlock)");
-static_assert(kBindingCount == 95, "s_bindings[] must bind 95 of 97 (.inc minus the TWO carve-outs)");
+static_assert(kIncCount == 99, "contract .inc size drifted from the expected 99 names (v6 / Phase 24 game::loadScene)");
+static_assert(kBindingCount == 97, "s_bindings[] must bind 97 of 99 (.inc minus the TWO carve-outs)");
 static_assert(kBindingCount == kIncCount - 2,
               "exactly two .inc names are carve-outs: consoleHelper::sendInput (D-02) + "
               "client::wndProc (embed-resize regression; RNDR-04 follow-on)");
@@ -714,6 +726,10 @@ constexpr const char* kBindingNames[] = {
     "game::g_mainLoopCounter",
     "treeFile::searchTree",
     "cuiChatWindow::createNewWindow",
+    // ===== v5 (Phase 24) addition — lockstep with s_bindings[] above =====
+    "treeFile::enumerateFiles",
+    // ===== v6 (Phase 24) addition — lockstep with s_bindings[] above =====
+    "game::loadScene",
 };
 
 constexpr bool allNamesInInc()
@@ -806,6 +822,39 @@ bool resolveFromExe()
     const EngineHookPoints* table = pGet();
     resolve(table, s_bindings, sizeof(s_bindings) / sizeof(s_bindings[0]));
     return true;
+}
+
+int countResolvableNow()
+{
+    using pGetEngineHookPoints = const EngineHookPoints*(__cdecl*)();
+    HMODULE hExe = GetModuleHandleA(nullptr);
+    auto pGet = reinterpret_cast<pGetEngineHookPoints>(GetProcAddress(hExe, "GetEngineHookPoints"));
+    if (pGet == nullptr)
+    {
+        return -1; // SWGEmu / no export
+    }
+
+    const EngineHookPoints* table = pGet();
+    const size_t count = sizeof(s_bindings) / sizeof(s_bindings[0]);
+    int now = 0;
+    for (size_t i = 0; i < count; ++i)
+    {
+        if (lookupByName(table, s_bindings[i].name) != nullptr)
+        {
+            ++now;
+        }
+    }
+
+    char msg[224];
+    std::snprintf(msg, sizeof(msg),
+                  "endpoints DIAG: re-read post-init -> %d/%zu resolvable NOW (enumerateFiles=%s, "
+                  "cuiManager::setSize=%s, groundScene::update=%s, object::getObjectType=%s)",
+                  now, count, lookupByName(table, "treeFile::enumerateFiles") ? "OK" : "null",
+                  lookupByName(table, "cuiManager::setSize") ? "OK" : "null",
+                  lookupByName(table, "groundScene::update") ? "OK" : "null",
+                  lookupByName(table, "object::getObjectType") ? "OK" : "null");
+    utinni::log::info(msg);
+    return now;
 }
 } // namespace swg::endpoints
 

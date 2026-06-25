@@ -88,6 +88,13 @@ pIsOver g_runningFlags = nullptr;
 // read-site (getMainLoopCount) calls it when non-null, else the 0x1908830 read (D-00).
 using pMainLoopCount = int(__cdecl*)();
 pMainLoopCount g_mainLoopCounter = nullptr;
+
+// v6 (24): full SceneCreator string-based scene load. Provider advertises game::loadScene ->
+// utinni_gameLoadScene -> Game::setScene(true, terrain, player, nullptr) (the whole _setScene
+// (SceneCreator&)/_startScene lifecycle). The slot starts null and resolves only on the
+// advertised client; hkMainLoop drives it instead of building a GroundScene there (D-00).
+using pLoadScene = void(__cdecl*)(const char* terrain, const char* player);
+pLoadScene loadScene = nullptr;
 } // namespace swg::game
 
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries
@@ -381,8 +388,16 @@ void __cdecl hkMainLoop(bool presentToWindow, HWND hwnd, int width, int height)
                      [](void (*func)())
                      { func(); });
 
+    // Phase 24 v4: the editor-mode resize override (force presentToWindow=false + the window-rect
+    // dimensions) is a D3D9/SWGEmu embed mechanism. On the advertised DX11 client the embed sizing
+    // is handled NATIVELY (provider CuiManager reflow + Graphics::beginScene poll-fallback + scene
+    // RT/proj resize, plus the consumer deferred-reparent -- RNDR-04). Before the GAME unlock
+    // hkMainLoop didn't run there and the DX11 resize was correct; once it runs, the override
+    // fights the native path (world clipped on the right/bottom). So on the advertised client pass
+    // the engine's own per-frame args straight through -- hkMainLoop stays transparent to render.
     RECT rect;
-    if (Client::getEditorMode() && GetWindowRect(Client::getHwnd(), &rect))
+    if (Client::getEditorMode() && !swg::endpoints::isAdvertisedClient() &&
+        GetWindowRect(Client::getHwnd(), &rect))
     {
         int newWidth = rect.right - rect.left;
         int newHeight = rect.bottom - rect.top;
@@ -404,11 +419,25 @@ void __cdecl hkMainLoop(bool presentToWindow, HWND hwnd, int width, int height)
     // so we don't spam the log every frame; only fires when loadNewScene flag is set.
     if (loadNewScene && sceneCleaned)
     {
-        utinni::log::info("hkMainLoop: loadNewScene+sceneCleaned -> calling swg::game::setupScene via trampoline");
         loadNewScene = false;
         sceneCleaned = false;
-        swg::game::setupScene(GroundScene::ctor(sceneToLoadTerrainFilename.c_str(), sceneToLoadAvatarObjectFilename.c_str()));
-        utinni::log::info("hkMainLoop: swg::game::setupScene returned");
+        // v6 (24): the advertised client must drive the FULL SceneCreator string-based load via
+        // game::loadScene -- handing the engine a pre-built GroundScene through setupScene
+        // (_setScene(Scene*)) only sets ms_scene and skips the _startScene lifecycle, leaving the
+        // scene half-integrated -> engine throws ~1s later. SWGEmu keeps the GroundScene+setupScene
+        // path (that's where its scene integration lives).
+        if (swg::endpoints::isAdvertisedClient() && swg::game::loadScene != nullptr)
+        {
+            utinni::log::info("hkMainLoop: loadNewScene+sceneCleaned -> calling swg::game::loadScene (advertised string-load)");
+            swg::game::loadScene(sceneToLoadTerrainFilename.c_str(), sceneToLoadAvatarObjectFilename.c_str());
+            utinni::log::info("hkMainLoop: swg::game::loadScene returned");
+        }
+        else
+        {
+            utinni::log::info("hkMainLoop: loadNewScene+sceneCleaned -> calling swg::game::setupScene via trampoline");
+            swg::game::setupScene(GroundScene::ctor(sceneToLoadTerrainFilename.c_str(), sceneToLoadAvatarObjectFilename.c_str()));
+            utinni::log::info("hkMainLoop: swg::game::setupScene returned");
+        }
     }
 
     if (loadNewScene)
@@ -426,6 +455,18 @@ void __cdecl hkInstall(int application)
     utinni::log::info("hkInstall: ENTRY (Game::install) -> calling swg::game::install trampoline");
     swg::game::install(application);
     utinni::log::info("hkInstall: swg::game::install returned; constructing Repository");
+
+    // DIAGNOSTIC (2026-06-24): one-shot re-read of the advertised table HERE (post exe static-init --
+    // the engine is fully up by Game::install). Pure read, writes no slot. If this reports ~96 vs the
+    // 40 resolveFromExe() got at utinni_init, the static-init race theory is confirmed.
+    {
+        static bool s_diagDone = false;
+        if (!s_diagDone)
+        {
+            swg::endpoints::countResolvableNow();
+            s_diagDone = true;
+        }
+    }
 
     repository = Repository();
     utinni::log::info("hkInstall: Repository constructed; WorldSnapshot::generateHighestId()");
@@ -534,7 +575,17 @@ void Game::detour()
             swg::game::mainLoop = (swg::game::pMainLoop)Detour::Create(swg::game::mainLoop, hkMainLoop, DETOUR_TYPE_PUSH_RET);
         if (swg::endpoints::installable((const void*)swg::game::install))
             swg::game::install = (swg::game::pInstall)Detour::Create(swg::game::install, hkInstall, DETOUR_TYPE_PUSH_RET);
-        if (swg::endpoints::installable((const void*)swg::game::setupScene))
+        // Phase 24: on the advertised client game::setupScene resolves to a SMALL provider thunk
+        // (utinni_gameSetupScene over Game::_setScene). Detouring a tiny thunk whose prologue holds a
+        // relative call corrupts the DetourXS trampoline -> hkMainLoop's trampoline call jumps to null
+        // (0xC0000005 EXEC target=0). It is also POINTLESS there: the engine's own scene-set goes
+        // through Game::_setScene directly, NOT this thunk, so the detour could only ever intercept
+        // Utinni's own calls. Leave setupScene UNDETOURED on the advertised client -- hkMainLoop calls
+        // the thunk directly (it sets the pre-built GroundScene). On SWGEmu the target is the real
+        // setupScene function and the detour installs unchanged (D-00). (setSceneCallbacks for editor
+        // scene-change notification on the advertised client are a follow-up -- they need the engine's
+        // real scene-set path, not the thunk.)
+        if (swg::endpoints::installable((const void*)swg::game::setupScene) && !swg::endpoints::isAdvertisedClient())
             swg::game::setupScene = (swg::game::pSetupScene)Detour::Create(swg::game::setupScene, hkSetScene, DETOUR_TYPE_PUSH_RET);
         if (swg::endpoints::installable((const void*)swg::game::cleanupScene))
             swg::game::cleanupScene = (swg::game::pCleanupScene)Detour::Create(swg::game::cleanupScene, hkCleanupScene, DETOUR_TYPE_PUSH_RET);

@@ -88,4 +88,13 @@ bool resolveFromExe();
 // (only bool / const void* named -- no Windows/DX types).
 bool isAdvertisedClient();
 bool installable(const void* target);
+
+// DIAGNOSTIC (2026-06-24): re-read the advertised table at a POST-static-init call site (hkInstall)
+// and count how many bound names have a non-null addr NOW -- a pure read, writes NO slot (a blanket
+// re-resolve would clobber the detour trampolines). If this jumps from the utinni_init count (~40) to
+// ~96, it confirms the table's function-call-initialized rows were null when resolveFromExe() ran at
+// utinni_init (the exe's CRT static init had not yet run -- injected remote thread races the suspended
+// main thread). Logs the count + a spot-check of a few dynamic-row names. Returns the count (-1 on the
+// SWGEmu/no-export path).
+int countResolvableNow();
 } // namespace swg::endpoints
