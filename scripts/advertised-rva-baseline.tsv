@@ -179,10 +179,10 @@ scene\ground_scene.cpp|0x00519830|ctor	CALL	BOUND	grandfathered pre-WS-3 invento
 scene\ground_scene.cpp|0x0051A350|changeCamera	CALL	BOUND	grandfathered pre-WS-3 inventory (CALL)
 scene\ground_scene.cpp|0x0051A4D0|getCurrentCamera	CALL	BOUND	grandfathered pre-WS-3 inventory (CALL)
 scene\ground_scene.cpp|0x0051A4F0|reloadTerrain	CALL	BOUND	grandfathered pre-WS-3 inventory (CALL)
-scene\ground_scene.cpp|0x0051AA40|handleInputMapEvent	CALL	BOUND	grandfathered pre-WS-3 inventory (CALL)
+scene\ground_scene.cpp|0x0051AA40|handleInputMapEvent	CALL	BOUND	WS-4 Terrain probe: advertised but not needed for Terrain -> !isAdvertisedClient()-gated (SWGEmu-only); minimize probe surface
 scene\ground_scene.cpp|0x0051AB20|handleInputMapUpdate	CALL	BOUND	grandfathered pre-WS-3 inventory (CALL)
-scene\ground_scene.cpp|0x0051AF10|update	CALL	BOUND	grandfathered pre-WS-3 inventory (CALL)
-scene\ground_scene.cpp|0x0051B770|draw	CALL		grandfathered pre-WS-3 inventory (CALL)
+scene\ground_scene.cpp|0x0051AF10|update	CALL	BOUND	WS-4 Terrain probe: advertised clean row -- installable()-gated update detour lifted onto advertised (latch precondition; hkUpdateLoop logs fire+pThis)
+scene\ground_scene.cpp|0x0051B770|draw	CALL		WS-4 Terrain probe: UNADVERTISED virtual -> !isAdvertisedClient()-gated OFF on advertised (installable() insufficient for stale literal); SWGEmu-only
 scene\ground_scene.cpp|0x0190885C|	DATA		WS-1: GroundScene::get() guarded on isAdvertisedClient() -> nullptr on advertised (editor degrades to isolated C# null-ref)
 scene\ground_scene.cpp|0x019136E4|	OTHER		grandfathered pre-WS-3 inventory (OTHER)
 scene\render_world.cpp|0x00765C20|clearVisibleCells	CALL		grandfathered pre-WS-3 inventory (CALL)

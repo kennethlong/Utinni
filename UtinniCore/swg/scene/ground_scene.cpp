@@ -360,6 +360,23 @@ void GroundScene::addCameraChangeCallback(void (*func)())
 
 void __fastcall hkUpdateLoop(GroundScene* pThis, DWORD EDX, float time)
 {
+    // WS-4 Terrain PROBE (2026-06-26): confirm the advertised `update` real-entry detour fires per-frame
+    // with a STABLE non-null GroundScene `this` -- the one unproven Option-A assumption (Codex+Cursor review)
+    // before we rely on it to latch the instance for GroundScene::get(). Rate-limited + advertised-only ->
+    // SWGEmu byte-behavior unchanged (D-00). Pure diagnostic: does NOT yet feed GroundScene::get(), so no
+    // blast-radius widening of the shared accessor until this probe passes.
+    if (swg::endpoints::isAdvertisedClient())
+    {
+        static std::atomic<int> s_updateProbeCount{0};
+        const int n = s_updateProbeCount.fetch_add(1, std::memory_order_relaxed);
+        if (n < 5 || n == 300)
+        {
+            char m[160];
+            snprintf(m, sizeof(m), "hkUpdateLoop[probe %d]: advertised update fired pThis=0x%p time=%.4f", n, (void*)pThis, time);
+            utinni::log::info(m);
+        }
+    }
+
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
     // via dispatchSnapshot keeps the per-frame path heap-free.
     dispatchSnapshot(updateLoopCallbacks, updateLoopCallbacksMutex,
@@ -423,23 +440,38 @@ void __fastcall hkHandleInputEvent(GroundScene* pThis, DWORD EDX, IoEvent* ioEve
 
 void GroundScene::detour()
 {
-    // Phase 24 v3: PER-TARGET installable gating. On SWGEmu every RVA is mapped, so all
-    // three install (installable() == true there -> D-00 unchanged). On the advertised
-    // client, `draw` stays at its unmapped SWGEmu RVA -- it is a VIRTUAL the provider does
-    // not advertise (consumer vtable-resolve-for-detour is a deferred follow-up), so it is
-    // skipped; `update` + `handleInputMapEvent` ARE advertised (v3 real-entry) and install.
-    if (swg::endpoints::installable((const void*)swg::groundScene::draw))
+    // WS-4 Terrain PROBE: per-target SPLIT. On SWGEmu all three install + setPreloadSnapshot runs (D-00).
+    // On the advertised client install ONLY `update` (the Option-A latch precondition); everything else is
+    // skipped to keep the probe minimal and avoid the reverted-unlock surface.
+    //
+    // draw is an UNADVERTISED virtual -> gate with !isAdvertisedClient(), NOT installable(): a stale SWGEmu
+    // literal can land on committed+executable relocated code and wrongly pass installable() -> DetourXS
+    // corrupts that code (the CuiStringIds crash class -- flagged HIGH in the Codex+Cursor review).
+    if (!swg::endpoints::isAdvertisedClient())
         swg::groundScene::draw = (swg::groundScene::pDraw)Detour::Create(swg::groundScene::draw, hkDrawLoop, DETOUR_TYPE_PUSH_RET);
+
+    // update is an advertised CLEAN row (v3 real-entry, delta==0) -> installable()-gated, installs on BOTH.
+    // PROBE: this is the ONLY groundScene detour on advertised; hkUpdateLoop logs whether it fires with a
+    // stable pThis. Log the bound address first (confirm the resolver rebound it off the SWGEmu literal).
     if (swg::endpoints::installable((const void*)swg::groundScene::update))
+    {
+        if (swg::endpoints::isAdvertisedClient())
+        {
+            char m[128];
+            snprintf(m, sizeof(m), "groundScene::update: installing advertised detour on bound=0x%p", (void*)swg::groundScene::update);
+            utinni::log::info(m);
+        }
         swg::groundScene::update = (swg::groundScene::pUpdate)Detour::Create(swg::groundScene::update, hkUpdateLoop, DETOUR_TYPE_PUSH_RET);
-    if (swg::endpoints::installable((const void*)swg::groundScene::handleInputMapEvent))
+    }
+
+    // handleInputMapEvent IS advertised, but the Terrain workflow does not need it -> skip on the advertised
+    // client to minimize probe surface (revisit when a freecam/input editor slice needs it). SWGEmu installs (D-00).
+    if (!swg::endpoints::isAdvertisedClient() && swg::endpoints::installable((const void*)swg::groundScene::handleInputMapEvent))
         swg::groundScene::handleInputMapEvent = (swg::groundScene::pHandleInputMapEvent)Detour::Create(swg::groundScene::handleInputMapEvent, hkHandleInputEvent, DETOUR_TYPE_PUSH_RET);
 
-    // setPreloadSnapshot writes a hardcoded SWGEmu DATA global (0x191113C) that is unmapped
-    // on the advertised client -> 0xC0000005 WRITE during createDetours. installable() is an
-    // EXECUTABLE-target check (wrong for a data write), so gate on the dual-path flag directly:
-    // SWGEmu writes the flag; the advertised client has no equivalent global -> skip. (Restores
-    // the protection the old whole-subsystem early-return gave before the per-target refactor.)
+    // setPreloadSnapshot writes a hardcoded SWGEmu DATA global (0x191113C) unmapped on the advertised client
+    // -> 0xC0000005 WRITE during createDetours. installable() is an EXECUTABLE-target check (wrong for a data
+    // write), so gate on the dual-path flag directly: SWGEmu writes the flag; the advertised client skips it.
     if (!swg::endpoints::isAdvertisedClient())
         WorldSnapshot::setPreloadSnapshot(false);
 }

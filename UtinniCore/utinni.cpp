@@ -210,8 +210,19 @@ void createDetours()
         utinni::cuiHud::detour();
         utinni::cuiIo::detour();
         utinni::debugCamera::detour();
-        utinni::GroundScene::detour();
         utinni::MessageQueue::detour(); // Phase G (Issue #11): instrument input-map output
+    }
+
+    // --- WS-4 Terrain PROBE: GroundScene -- lifted out of the advertised-skipped INPUT block ---
+    // Honors skipInput. On SWGEmu all of GroundScene::detour() installs (D-00). On the advertised client its
+    // internal split installs ONLY `update` (skips draw/handleInputMapEvent/setPreloadSnapshot there), so
+    // hkUpdateLoop can log whether the advertised real-entry fires with a stable pThis -- the precondition for
+    // the Option-A instance latch. GroundScene::get() is UNCHANGED here (still nullptr on advertised): the
+    // probe must pass before we widen the shared accessor (Codex+Cursor HIGH: flipping get() re-enables every
+    // Get() consumer, incl. the GroundSceneImpl per-frame Tier-2 Terrain.Get() poll).
+    if (!skipInput)
+    {
+        utinni::GroundScene::detour();
     }
 
     // --- RENDER group ---
