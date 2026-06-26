@@ -37,6 +37,14 @@
 #include "swg/object/object.h"
 #include "swg/ui/imgui_impl.h"
 
+// WS-4: drop the advertised GroundScene reload latch on scene teardown (defined in ground_scene.cpp).
+// Global-scope forward-decl (the hooks live in namespace utinni; declaring it there would create a phantom
+// utinni::swg). Same lightweight forward-decl pattern as direct_input's isEditorSceneLoaded.
+namespace swg::groundScene
+{
+void clearAdvertisedInstance();
+} // namespace swg::groundScene
+
 namespace swg::game
 {
 using pInstall = void(__cdecl*)(int applicationType);
@@ -577,6 +585,10 @@ void __cdecl hkCleanupScene()
     // Enter-mask + scene subscribers stop treating the world as active during cleanup frames. Inert on
     // SWGEmu (never set true there).
     swg::game::g_editorSceneLoaded.store(false, std::memory_order_relaxed);
+
+    // WS-4: drop the GroundScene reload latch before teardown so a reload queued mid-cleanup no-ops rather
+    // than calling reloadTerrain on a freed instance. Inert on SWGEmu (latch never set there).
+    swg::groundScene::clearAdvertisedInstance();
 
     utinni::log::info("hkCleanupScene: ENTRY -> calling swg::game::cleanupScene trampoline");
     swg::game::cleanupScene();

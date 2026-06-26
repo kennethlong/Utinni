@@ -69,6 +69,27 @@ pHandleInputMapEvent handleInputMapEvent = (pHandleInputMapEvent)0x0051AA40;
 pInit init = (pInit)0x00518EB0;
 } // namespace swg::groundScene
 
+// WS-4 Terrain slice: latched live GroundScene instance for the advertised client (which has NO GroundScene
+// singleton in the GetEngineHookPoints catalog -- 0x190885C is an unadvertised SWGEmu global). Set per-frame
+// from hkUpdateLoop (advertised real-entry, probe-validated); cleared in hkCleanupScene before engine
+// teardown. Read ONLY by the dedicated utinni_reloadCurrentTerrain() export below. CRUCIALLY,
+// GroundScene::get() deliberately STAYS nullptr on advertised -- we do NOT widen the shared accessor, so no
+// dormant editor loop (FreeCamImpl/GroundSceneImpl/SnapshotPanel, all gated on `GroundScene.Get() != null`
+// and started by the WS-1 setupScene callbacks) wakes -> zero blast radius (Codex+Cursor HIGH). Game-thread
+// only (hkUpdateLoop / hkMainLoop drain / hkCleanupScene all run there); std::atomic is belt-and-suspenders.
+static std::atomic<utinni::GroundScene*> s_advertisedGroundScene{nullptr};
+
+namespace swg::groundScene
+{
+// Called from game.cpp hkCleanupScene (forward-declared there) to drop the latch before the engine tears the
+// scene down. hkUpdateLoop also re-stores the current instance every frame, so the only stale window is a
+// reload queued during a teardown gap with no intervening update -- narrow + bounded (reload no-ops on null).
+void clearAdvertisedInstance()
+{
+    s_advertisedGroundScene.store(nullptr, std::memory_order_relaxed);
+}
+} // namespace swg::groundScene
+
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries
 // backed by insertion-order std::vector<{handle, fn_ptr}>. Handle 0 reserved as
 // invalid sentinel.
@@ -367,6 +388,10 @@ void __fastcall hkUpdateLoop(GroundScene* pThis, DWORD EDX, float time)
     // blast-radius widening of the shared accessor until this probe passes.
     if (swg::endpoints::isAdvertisedClient())
     {
+        // WS-4: latch the live instance for the reload export. Store BEFORE dispatch so a same-frame consumer
+        // sees the current scene. (Probe log retained -- confirms the latch source keeps firing.)
+        s_advertisedGroundScene.store(pThis, std::memory_order_relaxed);
+
         static std::atomic<int> s_updateProbeCount{0};
         const int n = s_updateProbeCount.fetch_add(1, std::memory_order_relaxed);
         if (n < 5 || n == 300)
@@ -602,3 +627,21 @@ void GroundScene::createAppearanceAtPlayer(const char* filename)
     obj->addToWorld();
 }
 } // namespace utinni
+
+// WS-4 Terrain reload export. `ClientReloadDispatcher` calls this instead of `GroundScene.Get().ReloadTerrain()`
+// so terrain reload works on BOTH targets WITHOUT flipping the shared `GroundScene::get()` accessor (which on
+// the advertised client would wake dormant Tier-2 editor loops -> the blast-radius HIGH from the Codex+Cursor
+// review). SWGEmu: resolves the instance from the real singleton -> functionally identical to the old path
+// (D-00). Advertised: uses the per-frame latched instance (nullptr until the first post-load update / after
+// cleanup -> safe no-op, not an NRE on the unguarded mainLoop drain). `reloadTerrain` itself is an advertised
+// CLEAN row, so the call hits the relocated provider entry on advertised.
+extern "C" __declspec(dllexport) void __cdecl utinni_reloadCurrentTerrain()
+{
+    utinni::GroundScene* gs = swg::endpoints::isAdvertisedClient()
+                                  ? s_advertisedGroundScene.load(std::memory_order_relaxed)
+                                  : utinni::GroundScene::get();
+    if (gs != nullptr)
+    {
+        swg::groundScene::reloadTerrain(gs);
+    }
+}

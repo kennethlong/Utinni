@@ -167,6 +167,14 @@ namespace UtinniCoreDotNet.Utility
             EntryPoint = "utinni_setEmbedClampRect")]
         public static extern void SetEmbedClampRect(int x, int y, int w, int h);
 
+        // WS-4 Terrain reload (2026-06-26): reload the current scene's terrain on BOTH targets without going
+        // through GroundScene.Get().ReloadTerrain(). On the advertised client GroundScene.Get() is nullptr by
+        // design (so dormant Tier-2 editor loops stay asleep); this export reloads via the per-frame latched
+        // instance instead. SWGEmu: functionally identical to the old path. No-op if no scene is loaded.
+        [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+            EntryPoint = "utinni_reloadCurrentTerrain")]
+        public static extern void ReloadCurrentTerrain();
+
         // Phase 24: gate calls through SWG function pointers that may be UNRESOLVED
         // on the advertised (GetEngineHookPoints) client. On that client a SWG entry
         // point absent from the catalog keeps its hardcoded SWGEmu RVA, which is
