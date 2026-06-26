@@ -117,6 +117,27 @@ pMoveObject moveObject = nullptr;
 pGetLoadingPercent getLoadingPercent = nullptr;
 } // namespace swg::worldsnapshot
 
+namespace
+{
+// WS-3 (advertised-client RVA-safety sweep). The offline WorldSnapshotReaderWriter
+// (swg::worldSnapshotReaderWriter::*), its static instance ptr (0x1913E94), the unbound
+// runtime helpers (swg::worldsnapshot::{unload,clearPreloadList,createObject}), and the raw
+// snapshot-state literals (0x191113C preload flag, 0x0059C3F3 nop, the removeNodeFull 0x005A*/
+// 0x19BB7* block) are all hardcoded SWGEmu RVAs that are NOT in the GetEngineHookPoints catalog
+// -> garbage on the advertised DX11 client. Only the runtime worldSnapshot::{load,addObject,
+// removeObject,moveObject,getLoadingPercent,detailLevelChanged} resolve there (the resolver
+// overwrites their literal slots). It never bit before because the Repository was empty; now
+// treeFile::enumerateFiles populates it, so the editor's snapshot paths run and fault (same class
+// as the already-guarded generateHighestId() -> worldSnapshotReaderWriter::openFile crash). Until
+// the offline reader/writer is advertised, every editor entry point that reaches it degrades to a
+// no-op here (no crash). SWGEmu is byte-for-byte unchanged -- isAdvertisedClient() is false there
+// (D-00). Centralized so the sweep is one gate, not scattered isAdvertisedClient() reads.
+inline bool offlineSnapshotUnavailable()
+{
+    return swg::endpoints::isAdvertisedClient();
+}
+} // namespace
+
 namespace utinni
 {
 WorldSnapshotReaderWriter* WorldSnapshotReaderWriter::get()
@@ -126,21 +147,29 @@ WorldSnapshotReaderWriter* WorldSnapshotReaderWriter::get()
 
 void WorldSnapshotReaderWriter::clear()
 {
+    if (offlineSnapshotUnavailable())
+        return;
     swg::worldSnapshotReaderWriter::clear(this);
 }
 
 const char* WorldSnapshotReaderWriter::getObjectTemplateName(int objectTemplateNameIndex)
 {
+    if (offlineSnapshotUnavailable())
+        return nullptr;
     return swg::worldSnapshotReaderWriter::getObjectTemplateName(this, objectTemplateNameIndex);
 }
 
 int WorldSnapshotReaderWriter::getNodeCount()
 {
+    if (offlineSnapshotUnavailable())
+        return 0;
     return swg::worldSnapshotReaderWriter::nodeCount(this);
 }
 
 int WorldSnapshotReaderWriter::getNodeCountTotal()
 {
+    if (offlineSnapshotUnavailable())
+        return 0;
     return swg::worldSnapshotReaderWriter::nodeCountTotal(this);
 }
 
@@ -232,11 +261,15 @@ WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::getNodeByIdWithParen
 
 WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::getNodeByNetworkId(int networkId)
 {
+    if (offlineSnapshotUnavailable())
+        return nullptr;
     return swg::worldSnapshotReaderWriter::getNodeByNetworkId(this, networkId);
 }
 
 WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::getNodeAt(int index)
 {
+    if (offlineSnapshotUnavailable())
+        return nullptr;
     return swg::worldSnapshotReaderWriter::getNodeByIndex(this, index);
 }
 
@@ -247,6 +280,9 @@ WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::getLastNode()
 
 WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::addNode(int nodeId, int parentNodeId, const char* objectFilename, int cellId, const swg::math::Transform& transform, float radius, unsigned int pobCrc)
 {
+    if (offlineSnapshotUnavailable())
+        return nullptr;
+
     // For some reason, the ptr is wrong if parentNodeId is 0 and it's actually 'result - 4' to get the accurate pointer
 
     swgptr node;
@@ -266,6 +302,9 @@ WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::addNode(int nodeId, 
 
 void WorldSnapshotReaderWriter::Node::removeNode()
 {
+    if (offlineSnapshotUnavailable())
+        return;
+
     if (!Game::isSafeToUse())
     {
         return;
@@ -313,6 +352,9 @@ void WorldSnapshotReaderWriter::Node::removeNode()
 
 void WorldSnapshotReaderWriter::Node::removeNodeFull() // WIP - Messy IDA pseudo code
 {
+    if (offlineSnapshotUnavailable())
+        return;
+
     if (!Game::isSafeToUse())
     {
         return;
@@ -371,11 +413,15 @@ int64_t WorldSnapshotReaderWriter::Node::getNodeNetworkId()
 
 swgptr WorldSnapshotReaderWriter::Node::getNodeSpatialSubdivisionHandle()
 {
+    if (offlineSnapshotUnavailable())
+        return 0;
     return swg::worldSnapshotReaderWriter::node::getNodeSpatialSubdivisionHandle(this);
 }
 
 void WorldSnapshotReaderWriter::Node::setNodeSpatialSubdivisionHandle(swgptr handle)
 {
+    if (offlineSnapshotUnavailable())
+        return;
     swg::worldSnapshotReaderWriter::node::setNodeSpatialSubdivisionHandle(this, handle);
 }
 
@@ -423,6 +469,13 @@ void WorldSnapshot::load(const std::string& name)
         return;
     }
 
+    // WS-3: swg::worldsnapshot::load IS advertised, but the nopAddress patch below writes a
+    // hardcoded SWGEmu RVA (0x0059C3F3) -> garbage on the advertised client. .ws snapshot loading
+    // is not yet smoke-verified there, so degrade the whole method to a no-op. Follow-up to enable
+    // it on advertised: skip just the nop and confirm load() works without the .trn-name suppression.
+    if (offlineSnapshotUnavailable())
+        return;
+
     memory::nopAddress(0x0059C3F3, 6); // Removes the grabbing of current .trn name to allow the loading of any .ws
 
     swg::worldsnapshot::load(name.c_str());
@@ -430,6 +483,9 @@ void WorldSnapshot::load(const std::string& name)
 
 void WorldSnapshot::unload()
 {
+    if (offlineSnapshotUnavailable())
+        return;
+
     if (!Game::isSafeToUse())
     {
         return;
@@ -446,6 +502,9 @@ void WorldSnapshot::unload()
 
 void WorldSnapshot::reload()
 {
+    if (offlineSnapshotUnavailable())
+        return;
+
     unload();
 
     load(GroundScene::get()->getName());
@@ -453,11 +512,16 @@ void WorldSnapshot::reload()
 
 void WorldSnapshotReaderWriter::clearPreloadList(swgptr unk1, swgptr unk2, swgptr unk3)
 {
+    if (offlineSnapshotUnavailable())
+        return;
     swg::worldsnapshot::clearPreloadList(unk1, unk2, unk3);
 }
 
 void WorldSnapshotReaderWriter::saveFile(const char* snapshotName)
 {
+    if (offlineSnapshotUnavailable())
+        return;
+
     CreateDirectory((utility::getWorkingDirectory() + "/snapshot/").c_str(), nullptr);
 
     if (constCharUtility::isEmpty(snapshotName))
@@ -472,11 +536,15 @@ void WorldSnapshotReaderWriter::saveFile(const char* snapshotName)
 
 bool WorldSnapshot::getPreloadSnapshot()
 {
+    if (offlineSnapshotUnavailable())
+        return false;
     return memory::read<bool>(0x191113C);
 }
 
 void WorldSnapshot::setPreloadSnapshot(bool preloadSnapshot)
 {
+    if (offlineSnapshotUnavailable())
+        return;
     memory::write<bool>(0x191113C, preloadSnapshot);
 }
 
@@ -536,6 +604,8 @@ int WorldSnapshot::generateHighestId()
 
 Object* createObject(WorldSnapshotReaderWriter::Node* node)
 {
+    if (offlineSnapshotUnavailable())
+        return nullptr;
     DWORD errorCode = 0;
     return (Object*)swg::worldsnapshot::createObject(WorldSnapshotReaderWriter::get(), node, errorCode);
 }
@@ -569,6 +639,9 @@ bool WorldSnapshot::isValidObject(const char* objectFilename)
 
 WorldSnapshotReaderWriter::Node* WorldSnapshot::createAddNode(const char* objectFilename, swg::math::Transform& transform)
 {
+    if (offlineSnapshotUnavailable())
+        return nullptr;
+
     /*if (!isValidObject(objectFilename))
     {
         return nullptr;
@@ -653,6 +726,9 @@ WorldSnapshotReaderWriter::Node* WorldSnapshot::createAddNode(const char* object
 
 WorldSnapshotReaderWriter::Node* WorldSnapshot::createNodeCopy(WorldSnapshotReaderWriter::Node* originalNode, swg::math::Transform& transform)
 {
+    if (offlineSnapshotUnavailable())
+        return nullptr;
+
     const auto reader = WorldSnapshotReaderWriter::get();
 
     highestId++;
@@ -691,6 +767,9 @@ WorldSnapshotReaderWriter::Node* WorldSnapshot::createNodeCopy(WorldSnapshotRead
 
 Object* WorldSnapshot::addNode(WorldSnapshotReaderWriter::Node* node)
 {
+    if (offlineSnapshotUnavailable())
+        return nullptr;
+
     const auto reader = WorldSnapshotReaderWriter::get();
 
     reader->addNode(node->id, node->parentId, node->getObjectTemplateName(), node->cellIndex, node->transform, node->radius, node->pobCRC);
@@ -715,6 +794,9 @@ Object* WorldSnapshot::addNode(WorldSnapshotReaderWriter::Node* node)
 
 void WorldSnapshot::removeNode(WorldSnapshotReaderWriter::Node* node)
 {
+    if (offlineSnapshotUnavailable())
+        return;
+
     node->removeNode();
 
     detailLevelChanged(); // Hack to update the .WS
