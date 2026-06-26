@@ -23,6 +23,7 @@
  **/
 
 #include "swg_misc.h"
+#include "swg/endpoints.h"
 
 namespace swg::report
 {
@@ -49,6 +50,20 @@ void __cdecl hkPrint(const char* msg)
 }
 void detour()
 {
+    // WS-4 (first MISC slice unlocked on the advertised client). report::print is an advertised CLEAN
+    // row (resolved 97/97 by name on advertised), so the resolver overwrites the SWGEmu literal
+    // 0x00A88F90 with the relocated provider address before createDetours() runs. installable()-gate
+    // the detour so it installs on the REAL target only: on SWGEmu byte-for-byte as before (D-00); on
+    // the advertised client on the relocated provider entry. hkPrint is a pure pass-through + log
+    // forward (no scene/player/RVA state, exact __cdecl(const char*) ABI), so it is safe on both. If
+    // report::print were ever left unresolved on advertised, skip rather than risk corrupting relocated
+    // code (installable() is necessary-not-sufficient, but 97/97 resolution makes the address authoritative).
+    if (!swg::endpoints::installable((const void*)swg::report::print))
+    {
+        utinni::log::info("report: detour SKIPPED (print target not installable on this client)");
+        return;
+    }
+
     swg::report::print = (swg::report::pPrint)Detour::Create(swg::report::print, hkPrint, DETOUR_TYPE_PUSH_RET);
 }
 } // namespace utinni::report

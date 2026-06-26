@@ -151,7 +151,6 @@ void createDetours()
         utinni::cuiRadialMenuManager::detour();
         utinni::cuiLoginScreen::detour();
         // utinni::cuiMediatorFactorySetup::detour();
-        utinni::report::detour();
         utinni::SystemMessageManager::detour();
         utinni::treefile::detour();
         utinni::IoWin::detour();
@@ -180,6 +179,18 @@ void createDetours()
     if (!skipMisc)
     {
         utinni::DirectInput::detour();
+    }
+
+    // --- WS-4: first MISC editor-unlock SLICE on the advertised client (smallest safe increment) ---
+    // report::print is an advertised CLEAN row -- lifted OUT of the wholesale-skipped MISC block so it
+    // installs on BOTH targets, with report::detour() internally installable()-gated (swg_misc.cpp). On
+    // SWGEmu this is behavior-identical to the old MISC-block reach (advertised==false -> !skipMisc); on
+    // the advertised client SWG's report/debug messages now forward into utinni.log (pure pass-through,
+    // no scene/player/RVA state). This proves the per-target MISC-lift pattern; subsequent editor slices
+    // (config, CuiManager::render, ...) follow the same shape, each behind its own live smoke.
+    if (!skipMisc)
+    {
+        utinni::report::detour();
     }
 
     // --- INPUT / EVENT / MOVEMENT / LOCOMOTION group (prime suspect) ---

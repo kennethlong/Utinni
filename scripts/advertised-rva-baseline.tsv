@@ -113,7 +113,7 @@ misc\swg_memory.cpp|0x00AC15C0|allocate	CALL	BOUND	grandfathered pre-WS-3 invent
 misc\swg_memory.cpp|0x00AC1640|deallocate	CALL	BOUND	grandfathered pre-WS-3 inventory (CALL)
 misc\swg_memory.cpp|0x012EA770|allocateString	CALL		grandfathered pre-WS-3 inventory (CALL)
 misc\swg_memory.cpp|0x012EA920|deallocateString	CALL		grandfathered pre-WS-3 inventory (CALL)
-misc\swg_misc.cpp|0x00A88F90|print	CALL	BOUND	grandfathered pre-WS-3 inventory (CALL)
+misc\swg_misc.cpp|0x00A88F90|print	CALL	BOUND	WS-4: report::print advertised clean row -- installable()-gated detour lifted onto advertised client (resolver rebinds the literal)
 misc\swg_utility.cpp|0x00A931E0|treeFileOpen	CALL		grandfathered pre-WS-3 inventory (CALL)
 misc\swg_utility.cpp|0x00AA4790|calculateCrc	CALL		grandfathered pre-WS-3 inventory (CALL)
 misc\tree_file.cpp|0x00A992E0|searchTree	CALL	BOUND	grandfathered pre-WS-3 inventory (CALL)
