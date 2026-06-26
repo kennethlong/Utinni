@@ -103,6 +103,13 @@ engine-INITIATED scene changes only and is off the critical path.
   subclass path owns the clamp on advertised.
 
 ### WS-3 — RVA-safety audit infra  ⟶ makes §4 item (3) systematic, not whack-a-mole
+> **✅ COMPLETE — 2026-06-25.** All four deliverables landed + headless-verified (build green, `[endpoints]`
+> 357 assertions / 10 cases pass, clang-format-clean, CI ratchet CHECK passes + fail-on-new-RVA proven).
+> Commits: `9f476cd` (guard sweep) · `aaae8b1` (resolver telemetry + fixture) · `f74b6ca` (CI ratchet +
+> baseline + this scope revision). NOT smoked in isolation by design — the guards get their live validation
+> in the **WS-4 smoke** (smoke checkpoint 2: "no SWGEmu-RVA crash on first object op (WS-3 guards hold)").
+> This unblocks **WS-1** (the reverted `getSpeed`-on-null needed these guards) and **WS-4**.
+
 Build the audit BEFORE unlocking more subsystems. **Scope revised 2026-06-25 after crew review (Codex +
 Cursor, near-identical verdict — briefs in `scratchpad/ws3-resolver-design-brief.md`).** Both reviewers said
 the original "source-tagged resolver with per-call `slotSafeOnAdvertised` guards" optimizes the one crash
@@ -111,24 +118,28 @@ crash A = unbound raw literal (state 3 → static audit + guard sweep), crash B 
 problem → WS-1 sequencing). A 5th state both surfaced — **resolved-but-wrong** (advertised addr present +
 executable but ABI/signature/precondition mismatch, e.g. the `treeFile::detour` hazard) — is NOT catchable
 by source tags at all; only the static-audit skip-lists / provider contract catch it. Revised deliverables:
-- **Source-tagged resolver → reduced to INIT-ONLY TELEMETRY (no runtime safety layer).** Extend the pure
+- **Source-tagged resolver → reduced to INIT-ONLY TELEMETRY (no runtime safety layer). DONE (`aaae8b1`).** Extend the pure
   `resolve(table, bindings, count, Source* out)` to tag each slot `{Unresolved, Advertised, SwgemuRva}`;
   on the advertised path, one-shot LOG every bound name that ended `SwgemuRva` (drift / version skew) after
   `resolveFromExe()`. NO per-call `slotSafeOnAdvertised`, NO inline call-site wrapping, NO release assert
   (log-and-degrade only — a false assert in a live injected client is its own regression). The static-init
   race the diagnostics chased is provider-fixed (96/96 at init), so init-tagging is authoritative; comment
   that a provider race regression would mislabel.
-- **Static audit (CI) — THE authoritative net; must fail hard.** Enumerate every raw `0x[0-9A-Fa-f]{6,}`
+- **Static audit (CI) — THE authoritative net; must fail hard. DONE (`f74b6ca`):** `scripts/audit-advertised-rva-safety.ps1`
+  + committed baseline (`scripts/advertised-rva-baseline.tsv`, 322 sites grandfathered, durable Reasons) +
+  ci.yml gate. Baseline-ratchet (per-literal allowlist infeasible at 322 sites): grandfathers today's
+  inventory, FAILS HARD on any new unbaselined RVA, `-UpdateBaseline` preserves manual Reasons. Enumerate every raw `0x[0-9A-Fa-f]{6,}`
   literal + `memory::(read|write|nop|createJMP)` site under `UtinniCore/swg/**`; classify each
   DETOUR | CALL | DATA | PATCH (pattern-scan + patch sites are a SEPARATE axis — classify explicitly, don't
   fold into one bucket); cross-map DETOUR/CALL to `s_bindings[]`/`.inc`. Any unbound literal must be either
   `isAdvertisedClient()`-guarded or on an explicit allowlist (entry = name + reason + scope, and every
   allowlisted use is logged so it can't become a quiet escape hatch), else CI fails.
-- **`world_snapshot.cpp` guard sweep — DONE.** Centralized `offlineSnapshotUnavailable()` helper (Cursor:
-  "the right shape") + 23 guarded entry points joining the existing `generateHighestId` guard. Built clean,
-  clang-format-clean, SWGEmu byte-for-byte unchanged. Folds into the WS-4 smoke (first object op).
-- **Advertised-mode test fixture:** extend `endpoints_tests.cpp` — assert `resolve(…, Source*)` tags
-  correctly (Advertised for hits, SwgemuRva for non-null-slot misses, Unresolved for null-slot misses) over
+- **`world_snapshot.cpp` guard sweep — DONE (`9f476cd`).** Centralized `offlineSnapshotUnavailable()` helper
+  (Cursor: "the right shape") + 23 guarded entry points joining the existing `generateHighestId` guard. Built
+  clean, clang-format-clean, SWGEmu byte-for-byte unchanged. Folds into the WS-4 smoke (first object op).
+- **Advertised-mode test fixture — DONE (`aaae8b1`, with the telemetry).** `endpoints_tests.cpp` asserts
+  `resolve(…, Source*)` tags correctly (Advertised for hits, SwgemuRva for non-null-slot misses, Unresolved
+  for null-slot misses / malformed rows) + that nullptr `outSources` keeps the original 3-arg behavior, over
   a synthetic table (process-isolated, same pattern as the resolver tests).
 
 ### WS-4 — First MISC slice (smallest safe increment)  ⟶ opens §4 item (3)
@@ -164,14 +175,15 @@ WS-0 (DI lift) ─┬─> WS-2 (embed+Enter smoke)
                 │
 WS-1 (notify shim) ──> (folds into WS-2 smoke)
                 │
-WS-3 (audit infra + world_snapshot guards) ──> WS-4 (first MISC slice + smoke)
+WS-3 ✅ DONE (audit infra + world_snapshot guards) ──> WS-4 (first MISC slice + smoke)  [UNBLOCKED]
 
 WS-5 (provider scene-ready callback) ......... parallel, off critical path
 ```
 
+- **WS-3 ✅ DONE** (`9f476cd`/`aaae8b1`/`f74b6ca`) — WS-1 and WS-4 are now unblocked.
 - **Do WS-0 + WS-1 together** (both small consumer edits in `utinni.cpp` / `game.cpp`), then one WS-2 smoke
   covers both + the embed clamp.
-- **WS-3 before WS-4** — non-negotiable; the audit + `world_snapshot` guards are what make the unlock wave
+- **WS-3 before WS-4** — satisfied; the audit + `world_snapshot` guards are what make the unlock wave
   safe instead of per-crash whack-a-mole.
 - **WS-5 anytime** — draft the provider request now if convenient, but it gates nothing.
 

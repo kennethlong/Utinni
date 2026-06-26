@@ -40,6 +40,21 @@ runbook is [`../../AGENTS.md`](../../AGENTS.md); Claude also keeps fuller per-in
 - **Loose-override shadowing:** `swgemu_live.cfg` priority-27 `searchPaths` (blender-plugin validation
   leftovers) shadow retail data machine-wide — caused the 2026-06-12 phantom-walk. **Re-test the vanilla
   baseline before bisecting injection.** (`memory:project_swg_client_loose_overrides`)
+- **Hardcoded RVAs are poison on the advertised (non-SWGEmu) client; defend by per-subsystem capability
+  guard, NOT by per-call source-tagging.** When the same injected code runs against two targets — SWGEmu
+  (legacy; every engine fn is a hardcoded RVA literal) and the advertised DX11 client (exports
+  `GetEngineHookPoints()`; the resolver overwrites bound slots) — any *unbound* RVA reached on the advertised
+  client is garbage → crash (e.g. `generateHighestId` → the offline `worldSnapshotReaderWriter::openFile`,
+  which only fired once `treeFile::enumerateFiles` populated the Repository). Crash taxonomy: (1) resolved
+  slot = safe; (2) bound-but-missed = still the SWGEmu literal; (3) unbound raw literal = the resolver never
+  touches it; (4) advertised-only null slot; (5) **resolved-but-wrong** — advertised addr present + executable
+  but ABI/precondition mismatch, uncatchable by ANY source tag. The fix that pays is a per-subsystem
+  `isAdvertisedClient()` guard that degrades the editor path to a no-op (centralize it: one
+  `offlineSnapshotUnavailable()`-style helper per domain, not scattered reads). Crew review (2026-06-25)
+  killed a tempting per-call `slotSafeOnAdvertised` runtime guard: it only catches state 2 (never observed
+  in practice) while giving *false* coverage for the states we actually hit (3, and a null-object that is not
+  a slot problem at all). Resolver source-tags are worth keeping ONLY as init-time telemetry (log a
+  bound-but-missed name at resolve, never assert in a live client). (WS-3: `9f476cd`/`aaae8b1`/`f74b6ca`)
 
 ## SWG reverse-engineering gotchas
 
@@ -111,3 +126,12 @@ runbook is [`../../AGENTS.md`](../../AGENTS.md); Claude also keeps fuller per-in
   C1083 (local green). (`memory:project_ci_debug_gitignore_trap`)
 - **De-flake inside CI-covered code, never by touching the injection hot path CI can't validate.** The
   LoaderLockHarness 50 ms-threshold flake was hardened with a best-of-3 min. (`memory:project_loader_lock_harness_ci_flake`)
+- **Ratchet a large brownfield invariant against a committed baseline; don't try to fix it all at once.**
+  With ~320 hardcoded RVA / `memory::` sites already in the tree, a "guard-or-allowlist every literal" CI
+  gate is infeasible (you'd hand-allowlist the whole codebase). Instead the audit auto-generates a classified
+  baseline that grandfathers today's inventory, then CI **fails hard only on NEW unbaselined sites** — every
+  new RVA must be consciously guarded or justified with a Reason. Keep it source-only (no binary, no egress)
+  so it runs next to the clang-format / C++23 gates and not behind the build. Two traps: `-UpdateBaseline`
+  must PRESERVE existing Reasons or a regen silently wipes the annotations the gate exists to enforce; and a
+  PowerShell `.ps1` invoked with `&` *does* set `$LASTEXITCODE` from its `exit N` (verified) — so the CI
+  step's `if ($LASTEXITCODE -ne 0) { throw }` idiom works. (`scripts/audit-advertised-rva-safety.ps1`, `f74b6ca`)
