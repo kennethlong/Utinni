@@ -64,6 +64,14 @@ both validating the crew's "guards + clamp before input/editor-path unlock" sequ
 ## 1. Workstreams (sequenced)
 
 ### WS-0 — Lift `DirectInput::detour()` out of the skipped MISC block  ⟶ PREREQ, consumer-only
+> **✅ COMPLETE — 2026-06-26 (`d168d1d`).** Lifted to `createDetours()` gated on `!skipMisc` only; per-target
+> split inside `DirectInput::detour()` (setupInstall installable()-gated; DirectInput8Create import detour
+> unconditional; suspend/resume no-op on advertised; SetCooperativeLevel rewrite excludes advertised). The
+> Enter-mask ships **DISARMED** — `[Editor] advertisedEnterMask` ini key (default false, read once at init)
+> AND `swg::game::isEditorSceneLoaded()` AND advertised — fixing attempt-#1's unconditional-mask Enter kill on
+> login/character-select. Smoke-validated: advertised client loads into multiple worlds across runs. The
+> actual Enter-mask arming is the still-open WS-2 slice.
+
 Mirror the existing `Game::detour()` lift (`utinni.cpp:168-171`). Add a per-target call so DI hooks install
 on BOTH targets, keeping the Enter-mask's existing in-hook advertised+keyboard gate (so SWGEmu is
 unaffected). This ARMS the Enter-mask on advertised and is the precondition for WS-2.
@@ -79,6 +87,20 @@ unaffected). This ARMS the Enter-mask on advertised and is the precondition for 
   the WS-2 smoke.
 
 ### WS-1 — Consumer-side scene-change notification shim  ⟶ closes §4 item (1) for editor-driven loads
+> **✅ COMPLETE — 2026-06-26 (`ba46f05`).** `setSceneCallbacks` dispatch replicated in `hkMainLoop` after the
+> advertised `loadScene` returns; `hkMainLoop` now **fails closed** on advertised (never the SWGEmu
+> `GroundScene::ctor` fallback). The attempt-#1 `getSpeed`-on-null `0xC0000005` is fixed at the source —
+> `playerObject::{getSpeed,setSpeed,teleport,togglePlayerAppearance}` + `GroundScene::get()` now degrade on
+> advertised (one native guard per unbound SWGEmu RVA, same class as the WS-3 sweep). New
+> `swg::game::g_editorSceneLoaded` atomic (set after load, cleared in `hkCleanupScene`) drives the WS-0
+> Enter-mask gate. Smoke-validated: Naboo + multiple worlds load **in-world** across runs, guards hold.
+> ⚠️ **Known issue (NOT WS-1):** one observed crash was a **transient `nvwgf2um` (NV D3D11 driver) null-deref**
+> in the engine's in-world CUI dynamic-VB render path (`gl11_r!Direct3d11_DynamicVertexBufferData::lock` →
+> `d3d11 Map`, main thread, editor UI thread idle) — **not reproducible** across the maintainer's repeated
+> loads. Render/driver-layer, likely provider-side (`gl11_r`) or NV threaded-optimization; tracked as its own
+> follow-up, orthogonal to the WS-0/WS-1 CPU-side logic. Dump:
+> `swg-client-v2/stage/SwgClient_r.exe-unknown.0-20260626133151.{mdmp,txt}`.
+
 After the advertised `swg::game::loadScene(terrain, avatar)` call returns in `hkMainLoop`
 (`swg/game/game.cpp` ~line 402, the per-target branch added by `e99e27c`), fire the same scene-change
 notification path that `hkSetScene` fires on SWGEmu (drive `GroundSceneImpl.OnSetupSceneCallback` /
@@ -171,15 +193,18 @@ that forced the original skip applies to any short forwarder):
 ## 2. Critical path & ordering
 
 ```
-WS-0 (DI lift) ─┬─> WS-2 (embed+Enter smoke)
-                │
-WS-1 (notify shim) ──> (folds into WS-2 smoke)
-                │
+WS-0 ✅ DONE (DI lift, d168d1d) ─┬─> WS-2 (embed+Enter ARM smoke)  [OPEN]
+                                 │
+WS-1 ✅ DONE (notify shim, ba46f05) ──> (loads in-world, guards hold)
+                                 │
 WS-3 ✅ DONE (audit infra + world_snapshot guards) ──> WS-4 (first MISC slice + smoke)  [UNBLOCKED]
 
 WS-5 (provider scene-ready callback) ......... parallel, off critical path
 ```
 
+- **WS-0/WS-1/WS-3 ✅ DONE.** Remaining: **WS-2** (arm + live-confirm the Enter-mask/embed clamp — set
+  `[Editor] advertisedEnterMask=true` + relaunch) and **WS-4** (first MISC slice). Plus the transient
+  `nvwgf2um` in-world CUI-render crash (WS-1 banner) as an orthogonal render/driver follow-up.
 - **WS-3 ✅ DONE** (`9f476cd`/`aaae8b1`/`f74b6ca`) — WS-1 and WS-4 are now unblocked.
 - **Do WS-0 + WS-1 together** (both small consumer edits in `utinni.cpp` / `game.cpp`), then one WS-2 smoke
   covers both + the embed clamp.
