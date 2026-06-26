@@ -103,21 +103,33 @@ engine-INITIATED scene changes only and is off the critical path.
   subclass path owns the clamp on advertised.
 
 ### WS-3 — RVA-safety audit infra  ⟶ makes §4 item (3) systematic, not whack-a-mole
-Build the audit BEFORE unlocking more subsystems. Deliverables:
-- **Source-tagged resolver:** every `swg::*` slot records `source ∈ {advertised, swgemu_rva, pattern,
-  unavailable}`. On the advertised client, calling a slot whose source is `swgemu_rva`/`unavailable` (and
-  not explicitly allowlisted) logs/asserts BEFORE the call, not after the crash.
-- **Static audit (CI):** enumerate every raw `0x[0-9A-Fa-f]{6,}` literal + `memory::(read|write|nop|
-  createJMP)` site under `UtinniCore/swg/**`; classify each DETOUR | CALL | DATA | PATCH; cross-map
-  DETOUR/CALL to `s_bindings[]`/`.inc`. Any unbound literal must be either `isAdvertisedClient()`-guarded
-  or on an explicit patch-bucket allowlist, else CI fails.
-- **`world_snapshot.cpp` guard sweep:** it is the biggest pre-staged crash field once the Repository is
-  populated — only `generateHighestId` is guarded today; `addNode`/`saveFile`/`setPreloadSnapshot`
-  (`0x191113C`) etc. still hit SWGEmu literals. Guard them on `isAdvertisedClient()` as a batch (this is
-  the prerequisite for ANY terrain/snapshot editor smoke).
-- **Advertised-mode test fixture:** extend `endpoints_tests.cpp` — assert guarded call sites don't
-  dereference SWGEmu literals on the advertised path (process-isolated stub, same pattern as the resolver
-  tests).
+Build the audit BEFORE unlocking more subsystems. **Scope revised 2026-06-25 after crew review (Codex +
+Cursor, near-identical verdict — briefs in `scratchpad/ws3-resolver-design-brief.md`).** Both reviewers said
+the original "source-tagged resolver with per-call `slotSafeOnAdvertised` guards" optimizes the one crash
+class we have NOT hit (state-2 bound-but-missed) while giving false coverage for the classes we DID hit:
+crash A = unbound raw literal (state 3 → static audit + guard sweep), crash B = null OBJECT (not a slot
+problem → WS-1 sequencing). A 5th state both surfaced — **resolved-but-wrong** (advertised addr present +
+executable but ABI/signature/precondition mismatch, e.g. the `treeFile::detour` hazard) — is NOT catchable
+by source tags at all; only the static-audit skip-lists / provider contract catch it. Revised deliverables:
+- **Source-tagged resolver → reduced to INIT-ONLY TELEMETRY (no runtime safety layer).** Extend the pure
+  `resolve(table, bindings, count, Source* out)` to tag each slot `{Unresolved, Advertised, SwgemuRva}`;
+  on the advertised path, one-shot LOG every bound name that ended `SwgemuRva` (drift / version skew) after
+  `resolveFromExe()`. NO per-call `slotSafeOnAdvertised`, NO inline call-site wrapping, NO release assert
+  (log-and-degrade only — a false assert in a live injected client is its own regression). The static-init
+  race the diagnostics chased is provider-fixed (96/96 at init), so init-tagging is authoritative; comment
+  that a provider race regression would mislabel.
+- **Static audit (CI) — THE authoritative net; must fail hard.** Enumerate every raw `0x[0-9A-Fa-f]{6,}`
+  literal + `memory::(read|write|nop|createJMP)` site under `UtinniCore/swg/**`; classify each
+  DETOUR | CALL | DATA | PATCH (pattern-scan + patch sites are a SEPARATE axis — classify explicitly, don't
+  fold into one bucket); cross-map DETOUR/CALL to `s_bindings[]`/`.inc`. Any unbound literal must be either
+  `isAdvertisedClient()`-guarded or on an explicit allowlist (entry = name + reason + scope, and every
+  allowlisted use is logged so it can't become a quiet escape hatch), else CI fails.
+- **`world_snapshot.cpp` guard sweep — DONE.** Centralized `offlineSnapshotUnavailable()` helper (Cursor:
+  "the right shape") + 23 guarded entry points joining the existing `generateHighestId` guard. Built clean,
+  clang-format-clean, SWGEmu byte-for-byte unchanged. Folds into the WS-4 smoke (first object op).
+- **Advertised-mode test fixture:** extend `endpoints_tests.cpp` — assert `resolve(…, Source*)` tags
+  correctly (Advertised for hits, SwgemuRva for non-null-slot misses, Unresolved for null-slot misses) over
+  a synthetic table (process-isolated, same pattern as the resolver tests).
 
 ### WS-4 — First MISC slice (smallest safe increment)  ⟶ opens §4 item (3)
 **After WS-3.** NOT a wholesale MISC drop (already reverted once: `ff7e80e`). Smallest safe slice:

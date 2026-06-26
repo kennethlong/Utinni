@@ -73,6 +73,21 @@ jobs:
           }
           Write-Host "clang-format check passed ($($files.Count) files conform)."
 
+      # WS-3 (advertised-client editor-unlock): SOURCE-ONLY RVA-safety ratchet. Fails fast if a NEW
+      # hardcoded SWGEmu RVA / memory:: site appears under UtinniCore/swg/ that is not in the committed
+      # baseline (scripts/advertised-rva-baseline.tsv). Every new RVA must be EITHER guarded on
+      # swg::endpoints::isAdvertisedClient() (so it cannot fire on the advertised DX11 client, where the
+      # SWGEmu literal is garbage -- the generateHighestId crash class) OR baselined with a Reason. Pure
+      # source analysis: no binary, no egress, deterministic -- so it runs here before the expensive
+      # vcpkg/build steps, like the clang-format + C++23-header gates. See the script header for design.
+      - name: advertised-client RVA-safety audit (WS-3 ratchet)
+        shell: powershell
+        run: |
+          & "$env:GITHUB_WORKSPACE\scripts\audit-advertised-rva-safety.ps1"
+          if ($LASTEXITCODE -ne 0) {
+            throw "advertised-RVA-safety audit failed: a NEW hardcoded RVA / memory site under UtinniCore/swg/ is unbaselined (see above). Guard it on isAdvertisedClient() or add it to scripts/advertised-rva-baseline.tsv with a Reason."
+          }
+
       - name: Cache NuGet packages
         uses: actions/cache@v4
         with:
