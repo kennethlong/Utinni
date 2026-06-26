@@ -145,7 +145,6 @@ void createDetours()
         utinni::Client::detour();
         utinni::clientWorld::detour();
         utinni::CuiChatWindow::detour();
-        utinni::CuiManager::detour();
         // utinni::cuiIntro::detour();
         utinni::cuiMenu::detour();
         utinni::cuiRadialMenuManager::detour();
@@ -191,6 +190,17 @@ void createDetours()
     if (!skipMisc)
     {
         utinni::report::detour();
+    }
+
+    // --- WS-4: second MISC slice -- CuiManager render-split on the advertised client ---
+    // Lifted out of the wholesale-skipped MISC block. CuiManager::detour() is internally SPLIT
+    // (cui_manager.cpp): the advertised-clean `render` row installs on both targets (its isRenderingUi
+    // flag is read only by the D3D9 wireframe path -> inert on the D3D11 advertised client); the
+    // unadvertised `findObjectUnderCursor` literal is isAdvertisedClient()-gated OFF (installable() is
+    // insufficient for a stale literal). Behavior-identical on SWGEmu (advertised==false -> !skipMisc) -- D-00.
+    if (!skipMisc)
+    {
+        utinni::CuiManager::detour();
     }
 
     // --- INPUT / EVENT / MOVEMENT / LOCOMOTION group (prime suspect) ---

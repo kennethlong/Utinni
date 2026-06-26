@@ -183,8 +183,29 @@ Object* __cdecl hkFindObjectUnderCursor(Camera* camera, swg::math::Vector* world
 
 void CuiManager::detour()
 {
-    swg::cuiManager::render = (swg::cuiManager::pRender)Detour::Create(swg::cuiManager::render, hkRender, DETOUR_TYPE_PUSH_RET);
-    swg::cuiManager::findObjectUnderCursor = (swg::cuiManager::pFindObjectUnderCursor)Detour::Create(swg::cuiManager::findObjectUnderCursor, hkFindObjectUnderCursor, DETOUR_TYPE_PUSH_RET);
+    // WS-4 (advertised-client MISC slice): per-detour SPLIT -- the two CuiManager hooks have different
+    // advertised-safety, and the gating idiom differs per case (the reusable pattern for the rest of the
+    // MISC/INPUT unlock).
+    //
+    // render: advertised CLEAN row -> the resolver rebinds the SWGEmu literal 0x00881210 to the relocated
+    // provider entry before createDetours(), so installable() is authoritative. Install on BOTH targets.
+    // hkRender only brackets the engine render with isRenderingUi, which is read ONLY by the D3D9 wireframe
+    // path (directx9.cpp) -> inert on the D3D11 advertised client, so this cannot perturb the working overlay.
+    if (swg::endpoints::installable((const void*)swg::cuiManager::render))
+    {
+        swg::cuiManager::render = (swg::cuiManager::pRender)Detour::Create(swg::cuiManager::render, hkRender, DETOUR_TYPE_PUSH_RET);
+    }
+
+    // findObjectUnderCursor (0x00BD3E20) is NOT in the advertised catalog -> the resolver never rebinds it,
+    // so on the advertised client the literal is a STALE SWGEmu RVA that lands on unrelated relocated code.
+    // installable() is necessary-not-sufficient here (committed+executable WRONGLY passes on the stale addr
+    // -> DetourXS corrupts that code, the CuiStringIds-region crash class), so gate it OFF explicitly on the
+    // advertised client. SWGEmu installs it byte-for-byte (D-00); hasObjectUnderCursor stays false on
+    // advertised (safe default -- the click-through accessor just reports "no object under cursor").
+    if (!swg::endpoints::isAdvertisedClient())
+    {
+        swg::cuiManager::findObjectUnderCursor = (swg::cuiManager::pFindObjectUnderCursor)Detour::Create(swg::cuiManager::findObjectUnderCursor, hkFindObjectUnderCursor, DETOUR_TYPE_PUSH_RET);
+    }
 }
 
 UiManager* UiManager::get()
