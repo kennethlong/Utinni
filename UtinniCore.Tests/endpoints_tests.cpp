@@ -55,6 +55,7 @@
 using swg::endpoints::Binding;
 using swg::endpoints::lookupByName;
 using swg::endpoints::resolve;
+using swg::endpoints::Source;
 
 namespace
 {
@@ -351,6 +352,70 @@ TEST_CASE("endpoints: graphics::install resolves from the table (EPA-03 DX11 kic
 
         REQUIRE(resolved == 0);
         REQUIRE(installSlot == kSentinelB); // untouched -> SWGEmu D3D9 install path intact
+    }
+}
+
+// ----------------------------------------------------------------------
+// WS-3 (init telemetry): resolve(..., Source* out) tags each slot's provenance so
+// resolveFromExe() can one-shot log bound-but-missed names (drift / version skew) at
+// init instead of at the eventual crash. Pure, process-isolated -- the same synthetic
+// table shape as the resolver tests, no injection. This is DIAGNOSTIC ONLY (not a
+// runtime safety layer -- crew review 2026-06-25); the test pins the taxonomy:
+//   Advertised  -- name found in the table (slot overwritten).
+//   SwgemuRva   -- name absent AND the slot still holds a non-null literal (unsafe on advertised).
+//   Unresolved  -- name absent AND the slot was null (inert advertised-only miss), or a malformed row.
+// ----------------------------------------------------------------------
+TEST_CASE("endpoints: resolve tags slot provenance (Advertised / SwgemuRva / Unresolved)", "[endpoints][source]")
+{
+    // Table advertises ONLY name A; B and C are absent (a drift / partial-table scenario).
+    const EngineHookPoint entries[] = {
+        {"config::loadOverrideConfig", kRealA},
+    };
+    EngineHookPoints table = makeTable(ENGINE_HOOKPOINTS_VERSION, entries, 1);
+
+    void* slotA = kSentinelA; // present -> Advertised
+    void* slotB = kSentinelB; // absent, non-null literal -> SwgemuRva (garbage on advertised)
+    void* slotC = nullptr;    // absent, null slot -> Unresolved (inert advertised-only miss)
+    const Binding bindings[] = {
+        {"config::loadOverrideConfig", &slotA},
+        {"graphics::install", &slotB},
+        {"game::loadScene", &slotC},
+    };
+
+    Source sources[3] = {Source::Unresolved, Source::Unresolved, Source::Unresolved};
+    const int resolved = resolve(&table, bindings, 3, sources);
+
+    REQUIRE(resolved == 1);
+    REQUIRE(slotA == kRealA);     // hit -> overwritten
+    REQUIRE(slotB == kSentinelB); // miss -> literal kept (graceful degrade, never nulled)
+    REQUIRE(slotC == nullptr);    // miss -> null slot kept
+
+    REQUIRE(sources[0] == Source::Advertised);
+    REQUIRE(sources[1] == Source::SwgemuRva); // THE drift signal the init log surfaces
+    REQUIRE(sources[2] == Source::Unresolved);
+
+    SECTION("a malformed binding row tags Unresolved, never deref")
+    {
+        void* slot = kSentinelA;
+        const Binding bad[] = {
+            {nullptr, &slot},                        // null name
+            {"config::loadOverrideConfig", nullptr}, // null slot
+        };
+        Source s[2] = {Source::Advertised, Source::Advertised}; // poisoned to prove they get rewritten
+        const int r = resolve(&table, bad, 2, s);
+        REQUIRE(r == 0);
+        REQUIRE(s[0] == Source::Unresolved);
+        REQUIRE(s[1] == Source::Unresolved);
+        REQUIRE(slot == kSentinelA); // untouched
+    }
+
+    SECTION("nullptr outSources keeps the original behavior (no crash, slots still resolve)")
+    {
+        void* s = kSentinelB;
+        const Binding b[] = {{"config::loadOverrideConfig", &s}};
+        // The 3-arg call shape (outSources defaulted to nullptr) must still bind by name.
+        REQUIRE(resolve(&table, b, 1) == 1);
+        REQUIRE(s == kRealA);
     }
 }
 

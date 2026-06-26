@@ -60,6 +60,25 @@ struct Binding
 // Null-safe: a null table, null entries, or zero count returns nullptr.
 const void* lookupByName(const EngineHookPoints* table, const char* name);
 
+// WS-3 (init-only telemetry). Per-slot provenance AFTER resolve, on the advertised path:
+//   Advertised  -- the slot was overwritten with the table's advertised addr (safe to call).
+//   SwgemuRva   -- a MISS on a slot that still holds its (non-null) hardcoded SWGEmu literal:
+//                  drift / version skew -> GARBAGE on the advertised client. Surfaced by the
+//                  one-shot log so a dropped/renamed contract name is caught at init, not at crash.
+//   Unresolved  -- a MISS on a slot that was null to begin with (advertised-only feature the
+//                  provider didn't advertise this session; inert -- the null-guarded read-site degrades).
+// NOTE: this is DIAGNOSTIC ONLY (crew review 2026-06-25). It is NOT a runtime safety layer and does NOT
+// validate ABI/preconditions (the "resolved-but-wrong" 5th state) -- the static audit + per-subsystem
+// isAdvertisedClient() guards own actual call-safety. Tags reflect what the slot holds at resolve time;
+// the provider's lazy-fill GetEngineHookPoints() makes that authoritative at init (the static-init race
+// that once null'd dynamic rows is fixed). A provider race regression would mislabel late-resolving rows.
+enum class Source : unsigned char
+{
+    Unresolved = 0,
+    Advertised,
+    SwgemuRva,
+};
+
 // The PURE resolver (testable; no injection, no DLL access). For each binding whose
 // name is found in the table with a non-null addr, overwrites *slot with that addr
 // and counts it resolved; a missing name (or null addr) leaves the slot -- the RVA
@@ -67,7 +86,14 @@ const void* lookupByName(const EngineHookPoints* table, const char* name);
 // would turn a graceful degrade into a guaranteed null-deref). Returns the resolved
 // count. A null table / null entries / zero count resolves nothing and mutates
 // nothing. A version mismatch logs a soft warning but still resolves by name.
-int resolve(const EngineHookPoints* table, const Binding* bindings, size_t count);
+//
+// When `outSources` is non-null it MUST point at `count` Source cells: each processed
+// binding i writes outSources[i] per the taxonomy above (a malformed row -> Unresolved).
+// The early-return guard paths (null table etc.) do NOT touch outSources -- the caller
+// zero-inits the array (Unresolved) before the call. Passing nullptr keeps the original
+// behavior verbatim (the SWGEmu path never calls resolve at all).
+int resolve(const EngineHookPoints* table, const Binding* bindings, size_t count,
+            Source* outSources = nullptr);
 
 // The thin dual-path shell (EPA-02): GetProcAddress(GetModuleHandleA(NULL),
 // "GetEngineHookPoints"). If absent -> log info, return false, mutate nothing

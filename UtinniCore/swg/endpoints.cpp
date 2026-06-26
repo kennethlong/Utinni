@@ -129,10 +129,12 @@ const void* lookupByName(const EngineHookPoints* table, const char* name)
     return nullptr;
 }
 
-int resolve(const EngineHookPoints* table, const Binding* bindings, size_t count)
+int resolve(const EngineHookPoints* table, const Binding* bindings, size_t count,
+            Source* outSources)
 {
     // T-24-01: null/partial table or empty binding list -> resolve nothing, mutate
     // nothing, no deref. (table->entries / table->count are guarded in lookupByName.)
+    // outSources (if any) is left as the caller zero-init'd it (all Unresolved).
     if (table == nullptr || table->entries == nullptr || table->count == 0 ||
         bindings == nullptr || count == 0)
     {
@@ -153,6 +155,10 @@ int resolve(const EngineHookPoints* table, const Binding* bindings, size_t count
         const Binding& b = bindings[i];
         if (b.name == nullptr || b.slot == nullptr)
         {
+            if (outSources != nullptr)
+            {
+                outSources[i] = Source::Unresolved; // malformed row -> never callable
+            }
             continue; // a malformed binding row -> skip, never deref
         }
 
@@ -163,6 +169,10 @@ int resolve(const EngineHookPoints* table, const Binding* bindings, size_t count
             // points at the advertised function instead of the hardcoded RVA.
             *b.slot = const_cast<void*>(addr);
             ++resolved;
+            if (outSources != nullptr)
+            {
+                outSources[i] = Source::Advertised;
+            }
         }
         else
         {
@@ -171,6 +181,12 @@ int resolve(const EngineHookPoints* table, const Binding* bindings, size_t count
             if (!isIntentionalUnbound(b.name))
             {
                 ++missing;
+            }
+            if (outSources != nullptr)
+            {
+                // WS-3 telemetry: a non-null slot still holds its SWGEmu literal (drift /
+                // skew -> garbage on advertised); a null slot is an inert advertised-only miss.
+                outSources[i] = (*b.slot != nullptr) ? Source::SwgemuRva : Source::Unresolved;
             }
         }
     }

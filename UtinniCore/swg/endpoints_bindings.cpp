@@ -57,6 +57,8 @@
 // resolveFromExe() uses GetModuleHandleA/GetProcAddress -- the only Windows reach.
 #include <Windows.h>
 
+#include <cstdio> // WS-3 drift-log formatting (std::snprintf)
+
 // ----------------------------------------------------------------------
 // extern re-declarations of every consumer pFn literal bound this plan.
 //
@@ -767,6 +769,11 @@ static_assert([]() constexpr
 // subsystems on the advertised client while staying a strict no-op on SWGEmu.
 static bool s_advertisedClient = false;
 
+// WS-3 init telemetry: per-binding provenance filled by resolveFromExe() on the advertised path
+// (lockstep with s_bindings[]). Default Unresolved; consulted ONLY for the one-shot drift log in
+// resolveFromExe() -- NOT a runtime safety gate (crew review 2026-06-25). See Source doc in endpoints.h.
+static Source s_bindingSource[sizeof(s_bindings) / sizeof(s_bindings[0])] = {};
+
 bool isAdvertisedClient()
 {
     return s_advertisedClient;
@@ -820,7 +827,31 @@ bool resolveFromExe()
     s_advertisedClient = true;
 
     const EngineHookPoints* table = pGet();
-    resolve(table, s_bindings, sizeof(s_bindings) / sizeof(s_bindings[0]));
+    const size_t count = sizeof(s_bindings) / sizeof(s_bindings[0]);
+    resolve(table, s_bindings, count, s_bindingSource);
+
+    // WS-3 init telemetry: surface any BOUND name that ended SwgemuRva -- a miss whose slot still
+    // holds its hardcoded SWGEmu literal (drift / version skew) -> garbage on the advertised client.
+    // Diagnostic ONLY: the read-sites still degrade via the per-subsystem isAdvertisedClient() guards;
+    // this just catches a dropped/renamed contract name at init instead of at the eventual crash. The
+    // provider's lazy-fill GetEngineHookPoints() makes init-time tagging authoritative (see endpoints.h).
+    int drift = 0;
+    for (size_t i = 0; i < count; ++i)
+    {
+        if (s_bindingSource[i] == Source::SwgemuRva)
+        {
+            char m[176];
+            std::snprintf(m, sizeof(m),
+                          "endpoints WS-3: bound name '%s' MISSED on advertised -> still SWGEmu RVA (drift/skew)",
+                          s_bindings[i].name);
+            utinni::log::warning(m);
+            ++drift;
+        }
+    }
+    if (drift == 0)
+    {
+        utinni::log::info("endpoints WS-3: every bound name resolved on advertised (no SwgemuRva drift)");
+    }
     return true;
 }
 
