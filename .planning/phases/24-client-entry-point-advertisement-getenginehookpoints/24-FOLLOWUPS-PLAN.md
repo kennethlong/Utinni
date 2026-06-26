@@ -165,6 +165,20 @@ by source tags at all; only the static-audit skip-lists / provider contract catc
   a synthetic table (process-isolated, same pattern as the resolver tests).
 
 ### WS-4 — First MISC slice (smallest safe increment)  ⟶ opens §4 item (3)
+> **✅ FIRST SLICE DONE — 2026-06-26 (`07f3b0d`).** Chose `report::detour` as the proving slice: `report::print`
+> is an advertised CLEAN row (`__cdecl(const char*)`, 97/97) and `hkPrint` is pure pass-through + log forward
+> (no scene/player/render/RVA state) — lowest-risk possible. Lifted out of the `!skipMisc && !advertised`
+> block; `report::detour()` is now `installable()`-gated internally (WS-0 split shape). SWGEmu byte-for-byte
+> (D-00); advertised client now forwards SWG report/debug messages into `utinni.log`. Smoke-validated: FOUR
+> ground scenes loaded in-world, detour installed (no SKIPPED), no regression. Subsequent slices
+> (`config::detour`, `CuiManager::render`, …) follow the same shape, each behind its own live smoke.
+> ⚠️ **Known untested path (NOT a Utinni bug):** loading a **space terrain** (`terrain/space_*.trn`) drives
+> the engine to build the Space HUD (`SwgCuiHudSpace`) → deterministic engine `Fatal` "Unable to find CodeData
+> property `buttonEnterSpace` from [/HudSpace]" (`CuiMediator.cpp:1522`). The stage client's UI assets lack the
+> space-HUD `buttonEnterSpace` element — a **provider space-HUD UI-data gap**, orthogonal to the detour waves.
+> If space-scene editing is ever in scope, that's a provider asset/UI ask. Dump:
+> `stage/SwgClient_r.exe-unknown.0-20260626165551.{mdmp,txt}`.
+
 **After WS-3.** NOT a wholesale MISC drop (already reverted once: `ff7e80e`). Smallest safe slice:
 - The DI lift (WS-0) is already part of this.
 - Un-skip ONLY a minimal bucket of `installable()`-clean MISC detours — candidates: `config::detour`,
