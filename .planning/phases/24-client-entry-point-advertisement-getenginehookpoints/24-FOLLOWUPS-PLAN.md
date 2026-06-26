@@ -224,7 +224,9 @@ WS-1 ✅ DONE (notify shim, ba46f05) ──> (loads in-world, guards hold)
                                  │
 WS-3 ✅ DONE (audit infra + world_snapshot guards) ──> WS-4 (MISC slices, ongoing)
                                                           ├─ report  ✅ 07f3b0d
-                                                          └─ CuiManager render-split ✅ 3c3bd5c
+                                                          ├─ CuiManager render-split ✅ 3c3bd5c
+                                                          └─ Terrain reload (latch+export) ✅ 2647c67/9520d0e
+                                                             (probe 81551e6; scope 24-WS4-TERRAIN-SLICE-SCOPE.md)
 
 WS-5 (provider scene-ready callback) ......... parallel, off critical path
 ```

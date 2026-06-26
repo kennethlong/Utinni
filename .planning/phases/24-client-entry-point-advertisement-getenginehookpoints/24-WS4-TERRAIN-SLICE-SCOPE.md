@@ -1,7 +1,17 @@
 # WS-4 — Terrain Editor Slice on the Advertised Client: SCOPE
 
-**Date:** 2026-06-26 · **Status:** SCOPE (pre-implementation) · **Owner:** consumer (Utinni)
+**Date:** 2026-06-26 · **Status:** ✅ DONE (smoke-validated) · **Owner:** consumer (Utinni)
 **Precondition:** WS-0/WS-1/WS-2/WS-3 done; report + CuiManager render-split slices landed.
+
+> **✅ COMPLETE — 2026-06-26.** Implemented via **Option A (narrowed accessor)** + the probe-first sequence:
+> probe (`81551e6`, validated the advertised `update` real-entry fires with a stable `pThis`), then the latch
+> + `utinni_reloadCurrentTerrain` export (Utinni `2647c67`) + dispatcher routing (UtinniPlugins `9520d0e`).
+> `GroundScene::get()` was kept nullptr on advertised (zero blast radius — no Tier-2 guards needed). Smoke:
+> edit a `.trn` field → Save → terrain visibly reloads/regenerates on `SwgClient_r.exe`, repeated, no crash
+> (previously a silent no-op). **Cosmetic follow-up (non-blocking):** on reload the sky/environment briefly
+> flashes magenta then fades to the correct colors — the environment/shader isn't re-applied instantly during
+> regen. Not a fault. Also: whether a *saved edit* renders still depends on the loose-override searchPath
+> (RESID-03), independent of this slice.
 
 This scopes lighting up the **Terrain editor's live `.trn` reload** on the advertised DX11 client
 (`SwgClient_r.exe`) — the Wave-2 priority editor — following the established WS-4 gating idiom.
