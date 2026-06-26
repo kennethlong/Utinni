@@ -95,9 +95,9 @@ misc\config.cpp|0x01911218|	DATA		grandfathered pre-WS-3 inventory (DATA)
 misc\config.cpp|0x01911240|	DATA		grandfathered pre-WS-3 inventory (DATA)
 misc\crc_string.cpp|0x00AA4050|persistentCrcString_ctor	CALL		grandfathered pre-WS-3 inventory (CALL)
 misc\crc_string.cpp|0x00AA55B0|constCharCrcString_ctor	CALL		grandfathered pre-WS-3 inventory (CALL)
-misc\direct_input.cpp|0x00420880|suspend	CALL		grandfathered pre-WS-3 inventory (CALL)
-misc\direct_input.cpp|0x00420890|resume	CALL		grandfathered pre-WS-3 inventory (CALL)
-misc\direct_input.cpp|0x00421490|setupInstall	CALL		grandfathered pre-WS-3 inventory (CALL)
+misc\direct_input.cpp|0x00420880|suspend	CALL		WS-0: DirectInput::suspend guarded via isAdvertisedClient() -> no-op on advertised
+misc\direct_input.cpp|0x00420890|resume	CALL		WS-0: DirectInput::resume guarded via isAdvertisedClient() -> no-op on advertised
+misc\direct_input.cpp|0x00421490|setupInstall	CALL		WS-0a: setupInstall RVA detour installable()-gated -> SWGEmu-only, skipped on advertised
 misc\io_win.cpp|0x00AA63B0|getMessage	CALL		grandfathered pre-WS-3 inventory (CALL)
 misc\io_win.cpp|0x00AA6480|appendMessageData	CALL		grandfathered pre-WS-3 inventory (CALL)
 misc\io_win.cpp|0x00AA6640|appendMessage	CALL		grandfathered pre-WS-3 inventory (CALL)
@@ -168,8 +168,8 @@ object\object.cpp|0x011A6E50|getClientDataFilename	CALL	BOUND	grandfathered pre-
 object\object.cpp|0x011A8B60|getGameObjectType	CALL		grandfathered pre-WS-3 inventory (CALL)
 object\object.cpp|0x01231910|getTerrainLayerFilename	CALL		grandfathered pre-WS-3 inventory (CALL)
 object\object.cpp|0x01231A30|getInteriorLayoutFilename	CALL		grandfathered pre-WS-3 inventory (CALL)
-object\player_object.cpp|0x0062A8B0|teleportPlayer	CALL		grandfathered pre-WS-3 inventory (CALL)
-object\player_object.cpp|0x0191BFB4|	DATA		grandfathered pre-WS-3 inventory (DATA)
+object\player_object.cpp|0x0062A8B0|teleportPlayer	CALL		WS-1: guarded via playerStateUnavailable() -> teleport no-op on advertised
+object\player_object.cpp|0x0191BFB4|	DATA		WS-1: guarded via playerStateUnavailable() -> getSpeed/setSpeed no-op on advertised
 scene\client_world.cpp|0x00561350|collide	CALL		grandfathered pre-WS-3 inventory (CALL)
 scene\client_world.cpp|0x00562680|internalCollideFindAllObjects	CALL		grandfathered pre-WS-3 inventory (CALL)
 scene\client_world.cpp|0x00562940|internalCollide	CALL		grandfathered pre-WS-3 inventory (CALL)
@@ -183,7 +183,7 @@ scene\ground_scene.cpp|0x0051AA40|handleInputMapEvent	CALL	BOUND	grandfathered p
 scene\ground_scene.cpp|0x0051AB20|handleInputMapUpdate	CALL	BOUND	grandfathered pre-WS-3 inventory (CALL)
 scene\ground_scene.cpp|0x0051AF10|update	CALL	BOUND	grandfathered pre-WS-3 inventory (CALL)
 scene\ground_scene.cpp|0x0051B770|draw	CALL		grandfathered pre-WS-3 inventory (CALL)
-scene\ground_scene.cpp|0x0190885C|	DATA		grandfathered pre-WS-3 inventory (DATA)
+scene\ground_scene.cpp|0x0190885C|	DATA		WS-1: GroundScene::get() guarded on isAdvertisedClient() -> nullptr on advertised (editor degrades to isolated C# null-ref)
 scene\ground_scene.cpp|0x019136E4|	OTHER		grandfathered pre-WS-3 inventory (OTHER)
 scene\render_world.cpp|0x00765C20|clearVisibleCells	CALL		grandfathered pre-WS-3 inventory (CALL)
 scene\render_world.cpp|0x007664F0|addObjectNotifications	CALL		grandfathered pre-WS-3 inventory (CALL)

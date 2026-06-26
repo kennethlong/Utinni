@@ -26,6 +26,7 @@
 #include "game_test_internal.h"
 #include "utinni.h"
 #include "swg/endpoints.h"
+#include <atomic>
 #include <mutex>
 #include <vector>
 #include "swg/client/client.h"
@@ -95,6 +96,20 @@ pMainLoopCount g_mainLoopCounter = nullptr;
 // advertised client; hkMainLoop drives it instead of building a GroundScene there (D-00).
 using pLoadScene = void(__cdecl*)(const char* terrain, const char* player);
 pLoadScene loadScene = nullptr;
+
+// WS-0/WS-1 (advertised-client editor unlock): consumer-maintained "advertised editor scene loaded" flag.
+// The advertised contract exposes NO isInWorld/getScene signal, so this is the closest proxy for "an
+// editor-initiated scene is live": set true after the advertised swg::game::loadScene returns in hkMainLoop,
+// cleared at the TOP of hkCleanupScene (before teardown). It is NOT an engine in-world truth -- do not
+// over-trust it as one. Read by the DI Enter-mask (direct_input.cpp) so in-world Enter is masked only while
+// a scene is loaded, never on login/character-select. std::atomic (relaxed): set/cleared on the game thread,
+// read on the DI-pump thread (same cross-thread pattern as direct_input's s_suppressExclusiveFullscreen). On
+// SWGEmu it is never set true (the advertised loadScene branch is skipped) and nothing reads it -> inert (D-00).
+std::atomic<bool> g_editorSceneLoaded{false};
+bool isEditorSceneLoaded()
+{
+    return g_editorSceneLoaded.load(std::memory_order_relaxed);
+}
 } // namespace swg::game
 
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registries
@@ -426,11 +441,37 @@ void __cdecl hkMainLoop(bool presentToWindow, HWND hwnd, int width, int height)
         // (_setScene(Scene*)) only sets ms_scene and skips the _startScene lifecycle, leaving the
         // scene half-integrated -> engine throws ~1s later. SWGEmu keeps the GroundScene+setupScene
         // path (that's where its scene integration lives).
-        if (swg::endpoints::isAdvertisedClient() && swg::game::loadScene != nullptr)
+        if (swg::endpoints::isAdvertisedClient())
         {
-            utinni::log::info("hkMainLoop: loadNewScene+sceneCleaned -> calling swg::game::loadScene (advertised string-load)");
-            swg::game::loadScene(sceneToLoadTerrainFilename.c_str(), sceneToLoadAvatarObjectFilename.c_str());
-            utinni::log::info("hkMainLoop: swg::game::loadScene returned");
+            // FAIL CLOSED on the advertised client: NEVER fall back to the SWGEmu setupScene(GroundScene::ctor)
+            // path -- BOTH setupScene's thunk and GroundScene::ctor (0x00519830) are unbound SWGEmu RVAs there,
+            // so a fallback would be a guaranteed crash (crew impl review). If game::loadScene didn't resolve,
+            // skip the load and log; do NOT build a GroundScene.
+            if (swg::game::loadScene != nullptr)
+            {
+                utinni::log::info("hkMainLoop: loadNewScene+sceneCleaned -> calling swg::game::loadScene (advertised string-load)");
+                swg::game::loadScene(sceneToLoadTerrainFilename.c_str(), sceneToLoadAvatarObjectFilename.c_str());
+                utinni::log::info("hkMainLoop: swg::game::loadScene returned");
+
+                // WS-0/WS-1: the advertised editor scene is now live. (1) latch the scene-loaded flag (the DI
+                // Enter-mask reads it); (2) drive the consumer-side scene-change notification. On the advertised
+                // client the setupScene/hkSetScene detour is deliberately SKIPPED (tiny-thunk trampoline
+                // corruption), so setSceneCallbacks never fires natively -- replicate hkSetScene's dispatch here
+                // so editor scene-setup subscribers (scene-panel refresh etc.) run. The scene is fully integrated
+                // (loadScene == Game::setScene(true,...), the synchronous SceneCreator lifecycle); loadNewScene/
+                // sceneCleaned were already reset above, so a subscriber that re-requests a load is handled NEXT
+                // frame, not re-entrantly. Subscribers' player/scene reads are advertised-guarded (WS-1,
+                // player_object.cpp + GroundScene::get), so a camera-only load with no player degrades, not crashes.
+                swg::game::g_editorSceneLoaded.store(true, std::memory_order_relaxed);
+                dispatchSnapshot(setSceneCallbacks, setSceneCallbacksMutex,
+                                 [](void (*func)())
+                                 { func(); });
+                utinni::log::info("hkMainLoop: WS-1 setSceneCallbacks fired (advertised scene-change notify)");
+            }
+            else
+            {
+                utinni::log::warning("hkMainLoop: advertised client but game::loadScene unresolved -- skipping load (fail closed, no GroundScene ctor)");
+            }
         }
         else
         {
@@ -532,6 +573,11 @@ void __cdecl hkSetScene(GroundScene* scene)
 
 void __cdecl hkCleanupScene()
 {
+    // WS-0/WS-1: drop the advertised editor-scene-loaded flag BEFORE the teardown trampoline so the DI
+    // Enter-mask + scene subscribers stop treating the world as active during cleanup frames. Inert on
+    // SWGEmu (never set true there).
+    swg::game::g_editorSceneLoaded.store(false, std::memory_order_relaxed);
+
     utinni::log::info("hkCleanupScene: ENTRY -> calling swg::game::cleanupScene trampoline");
     swg::game::cleanupScene();
     utinni::log::info("hkCleanupScene: swg::game::cleanupScene returned; disabling imgui_gizmo");

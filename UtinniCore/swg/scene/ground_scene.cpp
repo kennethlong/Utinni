@@ -159,6 +159,19 @@ namespace utinni
 {
 GroundScene* GroundScene::get() // Static GroundScene Pointer
 {
+    // WS-1 (advertised-client RVA-safety). 0x190885C is the HARDCODED SWGEmu GroundScene-instance global,
+    // NOT in the GetEngineHookPoints catalog -> garbage on the advertised DX11 client. Before WS-1 the editor
+    // panels stayed disabled there (no scene-change notification fired), so nothing called this; WS-1's
+    // UpdateSceneAvailability(true) now ENABLES them, exposing every editor action that does GroundScene.Get().
+    // Return nullptr on the advertised client so those degrade to an isolated C# null-ref (caught per-subscriber
+    // by GameCallbacks) instead of a native 0xC0000005. The engine's own scene/render is unaffected (it does
+    // NOT use this consumer accessor). SWGEmu is unchanged -- isAdvertisedClient() is false there (D-00). The
+    // remaining GroundScene editor-action surface (reloadTerrain/freecam/weather) is a per-editor WS-4 slice.
+    if (swg::endpoints::isAdvertisedClient())
+    {
+        return nullptr;
+    }
+
     return memory::read<GroundScene*>(0x190885C);
 }
 
