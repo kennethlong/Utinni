@@ -1,5 +1,12 @@
 # Phase 24 — Session Handoff (2026-06-25): advertised-client EDITOR UNLOCK, mid-flight
 
+> **⚠️ SUPERSEDED (2026-06-25, later same day).** §1/§2 are DONE: v6 `game::loadScene` is wired,
+> smoke-green, and committed (`e99e27c`, `0e4f2b3`, `505d2da`, `07f39d1`). In-editor scene loading works
+> on the advertised client. **The current resume pointer for the remaining §4 follow-ups is
+> `24-FOLLOWUPS-PLAN.md`** (committed `6ccb6c3`) — crew-reviewed plan + a first WS-0/WS-1 attempt that was
+> smoked, root-caused, and reverted (Enter-mask scope bug + `getSpeed`-on-null-player crash). Read that,
+> not §1, before resuming. The rest of this doc is retained as historical context for how the v6 work landed.
+
 Resume pointer for the advertised-client editor-unlock arc (the follow-on after the v2.1 close-out).
 This session got the **GAME subsystem + scene-list working** on the advertised DX11 client and is one
 consumer-wiring step away from **in-editor scene loading**. Read this top-to-bottom before touching code.
