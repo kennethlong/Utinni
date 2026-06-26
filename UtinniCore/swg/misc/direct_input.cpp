@@ -48,6 +48,14 @@ pSuspend resume = (pSuspend)0x00420890;
 pSetupInstall setupInstall = (pSetupInstall)0x00421490;
 } // namespace swg::directInput
 
+// WS-0: the advertised-client Enter-mask masks in-world Enter ONLY (never login/character-select). It
+// reads the consumer-maintained "advertised editor scene loaded" flag (set after the advertised loadScene,
+// cleared on cleanup -- defined in game.cpp). Forward-declared so we don't pull game.h into this DI TU.
+namespace swg::game
+{
+bool isEditorSceneLoaded();
+} // namespace swg::game
+
 // 2026-05-20 Issue #10 Phase B prereq (per CODEX consult #3):
 // COM-vtable shim around IDirectInputDevice8::SetCooperativeLevel. We need
 // the baseline coop-level flags SWG uses BEFORE the managed side reparents
@@ -112,6 +120,14 @@ IDirectInputDevice8A* s_keyboardDevice = nullptr;
 // can flip it from another thread without tearing relative to the DI pump.
 std::atomic<bool> s_suppressExclusiveFullscreen{true};
 
+// WS-0 (staged Enter-mask kill switch). Crew review 2026-06-25: input filtering at the DI layer is
+// coupled/risky -- land the actual masking AFTER one live smoke validates the scene-loaded edges. So the
+// advertised Enter-mask ships DISARMED: hkGetDeviceData only drops Enter when this is true AND a scene is
+// loaded AND we're the advertised client. Read ONCE from the [Editor] advertisedEnterMask ini key in
+// DirectInput::detour() at init (default false) -- to arm it for the WS-2 smoke, set the key in ut.ini and
+// RELAUNCH (it is not a live toggle). While false, Enter passes through untouched on EVERY target (no change).
+std::atomic<bool> s_enterMaskEnabled{false};
+
 void decodeCoopFlags(DWORD f, char* out, size_t sz)
 {
     snprintf(out, sz, "%s%s%s%s%s(0x%lX)",
@@ -146,8 +162,17 @@ HRESULT __stdcall hkSetCooperativeLevel(IDirectInputDevice8A* pThis, HWND hwnd, 
     // acquisition semantics are otherwise unchanged. NEVER touch the D3D9 device
     // here -- the no-Reset constraint (D-13) lives entirely in the windowed
     // Present self-stretch path; this is a pure DirectInput-level redirect.
+    //
+    // WS-0 (advertised client): the D-12 redirect was a D3D9/SWGEmu embed mechanism. Before WS-0 the DI
+    // detour was NOT installed on the advertised client, so SWG's coop level passed through UNMODIFIED and
+    // the (DX11/RNDR-04) native embed worked. WS-0 installs this hook on the advertised client too (for the
+    // keyboard-device vtable capture), so to preserve that known-good behavior we EXCLUDE the advertised
+    // client from the rewrite here -- the hook stays a pure pass-through + log there. Whether the advertised
+    // embed actually wants NONEXCLUSIVE is a WS-2 smoke question; arming it there is a separate slice (like
+    // the staged Enter-mask). SWGEmu is unchanged (isAdvertisedClient() is false -- D-00).
     DWORD effectiveFlags = dwFlags;
-    if (s_suppressExclusiveFullscreen.load(std::memory_order_relaxed) && (dwFlags & DISCL_EXCLUSIVE))
+    if (s_suppressExclusiveFullscreen.load(std::memory_order_relaxed) && (dwFlags & DISCL_EXCLUSIVE) &&
+        !swg::endpoints::isAdvertisedClient())
     {
         // Clear EXCLUSIVE, set NONEXCLUSIVE; leave FOREGROUND/BACKGROUND/NOWINKEY
         // exactly as SWG requested.
@@ -175,8 +200,14 @@ HRESULT __stdcall hkGetDeviceData(IDirectInputDevice8A* pThis, DWORD cbObjectDat
     // (rgdod != null). The count-query form (rgdod == null) and the mouse device pass through.
     // The dropped events stay flushed from the DI buffer (SWG's reads are non-peek); they are
     // simply hidden from SWG.
+    //
+    // WS-0 gating: mask ONLY while an advertised editor scene is loaded (isEditorSceneLoaded()) AND the
+    // kill switch is armed (s_enterMaskEnabled, default OFF). The scene-loaded gate is what fixes the
+    // reverted bug -- the prior unconditional advertised mask killed Enter on login + character-select.
+    // The kill switch ships disarmed until one smoke validates the scene-loaded edges (crew 2026-06-25).
     if (SUCCEEDED(hr) && pThis == s_keyboardDevice && rgdod != nullptr && pdwInOut != nullptr &&
-        cbObjectData == sizeof(DIDEVICEOBJECTDATA) && swg::endpoints::isAdvertisedClient())
+        cbObjectData == sizeof(DIDEVICEOBJECTDATA) && swg::endpoints::isAdvertisedClient() &&
+        s_enterMaskEnabled.load(std::memory_order_relaxed) && swg::game::isEditorSceneLoaded())
     {
         DWORD const n = *pdwInOut;
         DWORD w = 0;
@@ -292,6 +323,15 @@ namespace utinni
 {
 void DirectInput::suspend()
 {
+    // WS-0 (advertised-client RVA-safety): swg::directInput::suspend/resume are hardcoded SWGEmu RVAs
+    // (0x00420880/0x00420890) NOT in the advertised catalog -> garbage on the advertised DX11 client.
+    // imgui_impl calls these on overlay mouse-capture; with the overlay live there, an unguarded call is a
+    // likely AV (crew impl review). Degrade to a no-op on the advertised client; SWGEmu unchanged (D-00).
+    if (swg::endpoints::isAdvertisedClient())
+    {
+        return;
+    }
+
     // DIAG 2026-05-19 Issue #9: every call. Pair with Client::suspendInput logs.
     utinni::log::info("DirectInput::suspend: unacquiring keyboard/mouse devices");
     swg::directInput::suspend();
@@ -299,6 +339,11 @@ void DirectInput::suspend()
 
 void DirectInput::resume()
 {
+    if (swg::endpoints::isAdvertisedClient())
+    {
+        return; // advertised: 0x00420890 is an unbound SWGEmu RVA (see suspend())
+    }
+
     utinni::log::info("DirectInput::resume: re-acquiring keyboard/mouse devices");
     swg::directInput::resume();
 }
@@ -348,7 +393,27 @@ bool DirectInput::getSuppressExclusiveFullscreen()
 
 void DirectInput::detour()
 {
-    swg::directInput::setupInstall = (swg::directInput::pSetupInstall)Detour::Create((LPVOID)swg::directInput::setupInstall, hkSetupInstall, DETOUR_TYPE_PUSH_RET);
+    // WS-0 (staged Enter-mask kill switch): pick up the [Editor] advertisedEnterMask ini key ONCE (default
+    // false). detour() runs in utinni_init AFTER ini.load(), so getConfig() is populated. Default-off keeps
+    // the Enter-mask disarmed until a smoke validates it; to arm it for WS-2, set the key in ut.ini + relaunch.
+    s_enterMaskEnabled.store(utinni::getConfig().getBool("Editor", "advertisedEnterMask"),
+                             std::memory_order_relaxed);
+
+    // WS-0a: split the detour by target. The setupInstall detour targets a HARDCODED SWGEmu RVA
+    // (0x00421490) that is NOT in the advertised catalog -> garbage on the advertised DX11 client. Gate it
+    // on installable() so it installs ONLY where its target is mapped: on SWGEmu byte-for-byte as before
+    // (D-00); on the advertised client it is SKIPPED. The DirectInput8Create import detour below is a
+    // dinput8.dll IMPORT (present on both exes, no runtime dependency on setupInstall) -> install it
+    // UNCONDITIONALLY so the advertised client gets the keyboard-device vtable capture (the Enter-mask +
+    // the SetCooperativeLevel embed shim).
+    if (swg::endpoints::installable((const void*)swg::directInput::setupInstall))
+    {
+        swg::directInput::setupInstall = (swg::directInput::pSetupInstall)Detour::Create((LPVOID)swg::directInput::setupInstall, hkSetupInstall, DETOUR_TYPE_PUSH_RET);
+    }
+    else
+    {
+        utinni::log::info("DI: setupInstall detour SKIPPED (advertised client -- unbound SWGEmu RVA)");
+    }
 
     // 2026-05-20 Issue #10 Phase B prereq: install DirectInput8Create detour
     // so we can vtable-patch CreateDevice -> SetCooperativeLevel and log the

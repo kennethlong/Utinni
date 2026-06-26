@@ -35,6 +35,7 @@
 #include "swg/graphics/graphics.h"
 #include "swg/misc/config.h"
 #include "swg/endpoints.h"
+#include "swg/misc/direct_input.h"
 #include "swg/misc/io_win.h"
 #include "swg/misc/tree_file.h"
 #include "swg/object/creature_object.h"
@@ -168,6 +169,17 @@ void createDetours()
     if (!skipMisc)
     {
         utinni::Game::detour();
+    }
+
+    // --- WS-0b: DirectInput -- lifted OUT of the advertised-skipped MISC block (it used to run inside
+    // Client::detour()) so it installs on BOTH targets. On SWGEmu this is identical to before (it was
+    // reached via Client::detour() under `!skipMisc && !advertised`; with advertised==false that equals
+    // `!skipMisc`). On the advertised client it now installs the DirectInput8Create import detour (keyboard
+    // vtable capture -> the staged-disarmed Enter-mask + the SetCooperativeLevel embed shim); the SWGEmu
+    // setupInstall RVA detour inside is installable()-gated off there. Honors the skipMisc bisect flag.
+    if (!skipMisc)
+    {
+        utinni::DirectInput::detour();
     }
 
     // --- INPUT / EVENT / MOVEMENT / LOCOMOTION group (prime suspect) ---

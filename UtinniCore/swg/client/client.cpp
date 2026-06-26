@@ -290,7 +290,10 @@ void Client::detour()
     swg::client::clientMain = (swg::client::pMainLoop)Detour::Create((LPVOID)swg::client::clientMain, hkMainLoop, DETOUR_TYPE_PUSH_RET);
     // swg::client::wndProc = (swg::client::pWndProc)Detour::Create((LPVOID)swg::client::wndProc, hkWndProc, DETOUR_TYPE_PUSH_RET);
 
-    DirectInput::detour();
+    // WS-0b: DirectInput::detour() lifted OUT of Client::detour() to createDetours() (utinni.cpp) so it runs
+    // on BOTH targets -- Client::detour() is advertised-skipped, but the DI import detour (Enter-mask vtable
+    // capture + coop-level embed shim) must install on the advertised client too. DirectInput::detour() is
+    // itself per-target split (the SWGEmu setupInstall RVA detour is installable()-gated).
 
     // Move crash log location to logs/
     swg::client::writeCrashLog = (swg::client::pWriteCrashLog)Detour::Create((LPVOID)swg::client::writeCrashLog, hWriteCrashLog, DETOUR_TYPE_PUSH_RET);
