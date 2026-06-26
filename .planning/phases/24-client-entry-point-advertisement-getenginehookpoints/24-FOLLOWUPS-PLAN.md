@@ -115,6 +115,12 @@ engine-INITIATED scene changes only and is off the critical path.
 - Live-smoke-gated (folds into WS-2): load a scene → scene panel refreshes without manual reselect.
 
 ### WS-2 — Embed-clamp + Enter-mask live confirm  ⟶ closes §4 item (2)
+> **✅ COMPLETE — 2026-06-26.** Enter-mask armed (`[Editor] advertisedEnterMask=true`) + maintainer
+> live-confirmed: in-world Enter no longer triggers the fullscreen-restyle-over-editor (the scene-loaded gate
+> fires the mask), Enter still works on login/character-select, no crash. The DI hook installs on the
+> advertised client (`GetDeviceData vtbl[10] (advertised Enter-mask)` patched). Closes §4 item (2). The
+> default ships DISARMED — arming is opt-in via the ini key.
+
 **After WS-0** (else only half the defense stack exists). Maintainer live smoke:
 - Trigger SWG's in-world Enter → confirm Enter-mask now suppresses the fullscreen restyle (was dead code
   pre-WS-0).
@@ -170,8 +176,13 @@ by source tags at all; only the static-audit skip-lists / provider contract catc
 > (no scene/player/render/RVA state) — lowest-risk possible. Lifted out of the `!skipMisc && !advertised`
 > block; `report::detour()` is now `installable()`-gated internally (WS-0 split shape). SWGEmu byte-for-byte
 > (D-00); advertised client now forwards SWG report/debug messages into `utinni.log`. Smoke-validated: FOUR
-> ground scenes loaded in-world, detour installed (no SKIPPED), no regression. Subsequent slices
-> (`config::detour`, `CuiManager::render`, …) follow the same shape, each behind its own live smoke.
+> ground scenes loaded in-world, detour installed (no SKIPPED), no regression.
+> **✅ SECOND SLICE DONE — 2026-06-26 (`3c3bd5c`).** `CuiManager` render-split — the reusable per-detour
+> SPLIT pattern: advertised-clean `render` installs on both (installable()-gated; `isRenderingUi` inert on
+> D3D11 → overlay unaffected); unadvertised `findObjectUnderCursor` (`0x00BD3E20`) gated OFF via
+> `isAdvertisedClient()` (installable() insufficient for a stale literal). Smoke-validated: in-world, overlay
+> renders, no crash; SWGEmu click-through unchanged (D-00). **Gating idiom rule established:** advertised-clean
+> row → `installable()`; unadvertised literal → `isAdvertisedClient()`. Next slices (`config`, …) follow suit.
 > ⚠️ **Known untested path (NOT a Utinni bug):** loading a **space terrain** (`terrain/space_*.trn`) drives
 > the engine to build the Space HUD (`SwgCuiHudSpace`) → deterministic engine `Fatal` "Unable to find CodeData
 > property `buttonEnterSpace` from [/HudSpace]" (`CuiMediator.cpp:1522`). The stage client's UI assets lack the
@@ -207,18 +218,21 @@ that forced the original skip applies to any short forwarder):
 ## 2. Critical path & ordering
 
 ```
-WS-0 ✅ DONE (DI lift, d168d1d) ─┬─> WS-2 (embed+Enter ARM smoke)  [OPEN]
+WS-0 ✅ DONE (DI lift, d168d1d) ─┬─> WS-2 ✅ DONE (Enter-mask armed + confirmed)
                                  │
 WS-1 ✅ DONE (notify shim, ba46f05) ──> (loads in-world, guards hold)
                                  │
-WS-3 ✅ DONE (audit infra + world_snapshot guards) ──> WS-4 (first MISC slice + smoke)  [UNBLOCKED]
+WS-3 ✅ DONE (audit infra + world_snapshot guards) ──> WS-4 (MISC slices, ongoing)
+                                                          ├─ report  ✅ 07f3b0d
+                                                          └─ CuiManager render-split ✅ 3c3bd5c
 
 WS-5 (provider scene-ready callback) ......... parallel, off critical path
 ```
 
-- **WS-0/WS-1/WS-3 ✅ DONE.** Remaining: **WS-2** (arm + live-confirm the Enter-mask/embed clamp — set
-  `[Editor] advertisedEnterMask=true` + relaunch) and **WS-4** (first MISC slice). Plus the transient
-  `nvwgf2um` in-world CUI-render crash (WS-1 banner) as an orthogonal render/driver follow-up.
+- **WS-0/WS-1/WS-2/WS-3 ✅ DONE.** **WS-4 is ongoing** — two slices landed (`report`, `CuiManager` render-split);
+  remaining candidates (`config`, then editor-workflow slices) follow the established gating idiom, each behind
+  its own smoke. Plus the transient `nvwgf2um` in-world CUI-render crash (WS-1 banner) + the space-HUD asset gap
+  (WS-4 banner) as orthogonal follow-ups. **WS-5** remains optional/off-path.
 - **WS-3 ✅ DONE** (`9f476cd`/`aaae8b1`/`f74b6ca`) — WS-1 and WS-4 are now unblocked.
 - **Do WS-0 + WS-1 together** (both small consumer edits in `utinni.cpp` / `game.cpp`), then one WS-2 smoke
   covers both + the embed clamp.
