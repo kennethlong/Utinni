@@ -203,6 +203,14 @@ by source tags at all; only the static-audit skip-lists / provider contract catc
 - Decompose by EDITOR WORKFLOW, not by historical subsystem label (both reviewers).
 
 ### WS-5 — Provider contract for engine-initiated scene-ready  ⟶ PARALLEL / off critical path
+> **Folded into the consolidated provider handoff (2026-06-26): `24-PROVIDER-HANDOFF-outstanding-editor-unlock.md`.**
+> That doc is now the single live ledger of ALL outstanding provider work — it closes out the resolved
+> `24-PROVIDER-REQUEST-*` history and carries forward only: per-editor real-entry rows (bucket-A),
+> the Effects render/retrigger group (bucket-B), virtual vtable rows (bucket-C, consumer-preferred),
+> the mid-function cooperative-toggle joint decisions (bucket-D), this WS-5 scene-ready callback
+> (bucket-E), and the optional crash-log setter (bucket-F). WS-4's remaining editors are provider-gated
+> there. Resume provider coordination from that file.
+
 Only needed for scene changes the engine initiates (not the editor's `loadScene`). Hand the provider a
 request for a **registered-callback** mechanism, NOT another thunk to detour (the trampoline-length problem
 that forced the original skip applies to any short forwarder):
