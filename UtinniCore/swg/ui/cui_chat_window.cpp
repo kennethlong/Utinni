@@ -562,6 +562,14 @@ swgptr __cdecl hkCreateNewWindow(swgptr uiPage, int sceneType, swgptr stdString)
         // and UNVERIFIED on the advertised client, and its sole reader (sendMessage) both null-
         // guards it AND is itself SWGEmu-only (hardcoded nop RVAs) -> leaving it 0 is safe.
         pCuiChatWindow.store(result, std::memory_order_release);
+        char m[160];
+        snprintf(m, sizeof(m), "hkCreateNewWindow: published pCuiChatWindow=0x%p (uiPage=0x%p sceneType=%d) -- advertised-client chat publish",
+                 (void*)result, (void*)uiPage, sceneType);
+        utinni::log::info(m);
+    }
+    else
+    {
+        utinni::log::warning("hkCreateNewWindow: createNewWindow returned NULL -- pCuiChatWindow NOT published");
     }
     return result;
 }
