@@ -1,5 +1,12 @@
 # Phase 24 — Advertised-Client Editor-Unlock: Follow-Up Wave PLAN
 
+> **2026-06-28 STATUS — WS-0..WS-4 DONE; EFFECTS EDITOR LIVE PREVIEW DONE (smoke-passed).** The Effects/
+> ClientEffect editor now previews live in-client: Bucket B `.prt` retrigger (Utinni `1b21255`) + Bucket B-2
+> `.cef` re-play (Utinni `0a56994`, UtinniPlugins `fec1fbe`) — contract `ENGINE_HOOKPOINTS_VERSION 8`, 105
+> names. Maintainer smoke confirmed multiple `.cef` re-play visibly/audibly on the player. Live ledger of the
+> remaining PROVIDER-gated buckets (A next: chat/HUD/world-pick/sysmsg/free-cam; C/D/E/F) =
+> `24-PROVIDER-HANDOFF-outstanding-editor-unlock.md`. WS-5 + the static-particle "Bucket B-3" stay parked.
+
 **Date:** 2026-06-25 · **Status:** PLAN (crew-reviewed: Codex + Cursor) · **Owner:** consumer (Utinni)
 **Precondition:** in-editor scene load works on the advertised DX11 client (v6 `game::loadScene`,
 smoke-green, committed `e99e27c`). This plan knocks out the three open §4 follow-ups from

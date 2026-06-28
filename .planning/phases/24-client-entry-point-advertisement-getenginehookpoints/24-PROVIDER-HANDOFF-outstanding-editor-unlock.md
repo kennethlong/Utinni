@@ -5,7 +5,14 @@ still-open parts of the scattered `24-PROVIDER-REQUEST-*` / `24-PROVIDER-CONSULT
 **Author:** Utinni Phase 24 (advertised-client editor-unlock arc), 2026-06-26.
 **Target repo:** `D:/Code/swg-client-v2` (`SwgClient_r.exe`, the from-source SWG client).
 **Consumer:** Utinni `UtinniCore.dll` (injected 32-bit overlay).
-**Contract baseline:** `engine_hookpoints.{h,inc}` at `ENGINE_HOOKPOINTS_VERSION 6`.
+**Contract baseline:** `engine_hookpoints.{h,inc}` at `ENGINE_HOOKPOINTS_VERSION 8` (Bucket B v7 + B-2 v8 delivered).
+
+> **2026-06-28 UPDATE — Bucket B is DONE (Effects editor live preview WORKS, smoke-passed).** Provider
+> delivered B (v6→v7, 104 names, `db3ca5895`) + B-2 (v7→v8, 105 names, `33c2a7081`); consumer bound +
+> wired both (Utinni `1b21255`/`0a56994`, UtinniPlugins `f50f6ed`/`fec1fbe`). Maintainer live smoke PASSED:
+> multiple `.cef` (medic_heal, lightsaber bladeon/hit, dot_apply_poison, e3_atst_fire/smoketrail) re-play
+> fresh on the player, visibly/audibly. See §2.B (now RESOLVED). **Next priority = Bucket A.** Remaining
+> buckets A/C/D/E/F below are unchanged.
 **Source of truth:** this file in the Utinni repo. Copy into `swg-client-v2/.planning/handoff/` as
 `2026-06-26-utinni-provider-outstanding-editor-unlock.md`. If the two diverge, the Utinni copy governs
 the consumer contract.
@@ -27,12 +34,12 @@ and the MI real-entry re-advertisements (`groundScene::{update,handleInputMapEve
 `cuiChatWindow::{enableTextInput,chatEnterHandler}`). The advertised DX11 client now **boots → login →
 loads worlds in-world from TJT → embed scales → drives the Terrain editor's live `.trn` reload**.
 
-What is LEFT is **incremental, per-editor**, and falls into five clean buckets:
+What is LEFT is **incremental, per-editor**, and falls into four remaining buckets (B is now DONE):
 
 - **A — Per-editor real-entry detour rows** (the bucket-C row set): one `&fn`/MI-thunk per remaining
-  editor workflow (chat, HUD/world-pick, radial menu, login, system-message, input-diag, free-cam).
-- **B — Render/appearance group** for the **Effects editor's live preview** (particle/skeletal/render-
-  world entries + a cooperative particle-retrigger entry).
+  editor workflow (chat, HUD/world-pick, radial menu, login, system-message, input-diag, free-cam). **← NEXT**
+- ~~**B — Render/appearance group** for the **Effects editor's live preview**~~ **✅ DONE 2026-06-28**
+  (v7 retrigger + v8 `.cef` re-play; smoke-passed — see §2.B).
 - **C — Virtual methods** resolvable off the live vtable (consumer-preferred; provider thunk optional).
 - **D — Mid-function cooperative toggles** (JOINT decision: a boolean engine toggle per feature, or
   accept SWGEmu-only).
@@ -104,7 +111,26 @@ lesson). For multiple-inheritance classes use the same `pmfRealEntry()` MI-decod
 > reproduces them. Where a row is virtual/inline/MI-inflated, decode per the coverage-status §2 table
 > (or OMIT and tell the consumer to vtable-resolve — see §2.C).
 
-### 2.B — Render / appearance group  (unblocks the **Effects editor live preview**)
+### 2.B — Render / appearance group  (unblocks the **Effects editor live preview**)  ✅ RESOLVED 2026-06-28
+
+> **DONE — Effects editor live preview WORKS (maintainer smoke PASSED 2026-06-28).** Delivered in two waves,
+> NOT as the render-detour un-gate originally sketched below (the requested ctor/render rows turned out to be
+> un-addressable / virtual — see the HANDBACKs' OMIT ledgers):
+> - **B (v6→v7, 104 names, `db3ca5895`):** advertised `particlePreview::retrigger` → `utinni_retriggerClientEffect`
+>   (restart live `ParticleEffectAppearance` in `m_particleSystems`) + 4 render rows. Consumer `1b21255`.
+>   Live diagnostic proved `m_particleSystems` is EMPTY for static world-snapshot particles (the Naboo fountain)
+>   and transient `.cef` finish before save → restart alone covers only SUSTAINED live `.cef` instances.
+> - **B-2 (v7→v8, 105 names, `33c2a7081`):** advertised `particlePreview::replayClientEffect` →
+>   `bool utinni_replayClientEffect(char const*)` — re-plays a `.cef` FRESH on the player via the public
+>   `ClientEffectManager::playClientEffect`, refreshing templates so the edit shows. Consumer `0a56994`;
+>   `FormClientEffectEditor` Preview wired (UtinniPlugins `fec1fbe`). This is the primitive that works for
+>   `.cef` authoring; smoke confirmed multiple `.cef` re-play visibly/audibly on the player.
+> - **STILL OUT OF SCOPE (deferred, optional "Bucket B-3"):** a scene-wide walk of *static world-snapshot*
+>   `ParticleEffectAppearance` instances (fountains/torches) — those stay on the editor's scene-change reload tier.
+> - **The render-detour gate (utinni.cpp:247-254) was left UNCHANGED** — its particle/skeletal/shaderSorter
+>   targets remain unadvertised; only `postProcessing`(bloom) is now fully resolvable (a separate optional un-gate).
+>
+> Everything below is the ORIGINAL ask (kept for history; the OMIT/SKIP reality is in the two HANDBACKs).
 
 The Effects/ClientEffect editor's *basic edit + save* path is **pure managed I/O and already works on the
 advertised client** (no native dependency). What is dark is the **live "Preview in client" retrigger**.
