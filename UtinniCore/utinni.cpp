@@ -144,7 +144,6 @@ void createDetours()
 
         utinni::Client::detour();
         utinni::clientWorld::detour();
-        utinni::CuiChatWindow::detour();
         // utinni::cuiIntro::detour();
         utinni::cuiMenu::detour();
         utinni::cuiRadialMenuManager::detour();
@@ -201,6 +200,17 @@ void createDetours()
     if (!skipMisc)
     {
         utinni::CuiManager::detour();
+    }
+
+    // --- Bucket A: CHAT editor unlock on the advertised client (first per-editor §2.A slice) ---
+    // Lifted out of the wholesale-skipped MISC block. CuiChatWindow::detour() is internally per-target:
+    // the un-addressable MI ctor + its mid-ctor JMP are isAdvertisedClient()-gated OFF (SWGEmu-only);
+    // on the advertised client the live instance is published through the advertised v4 construction
+    // funnel createNewWindow (hkCreateNewWindow), and the v3 real-entry method hooks (enableTextInput,
+    // chatEnterHandler) install on both. Behavior-identical on SWGEmu (advertised==false -> !skipMisc) -- D-00.
+    if (!skipMisc)
+    {
+        utinni::CuiChatWindow::detour();
     }
 
     // --- INPUT / EVENT / MOVEMENT / LOCOMOTION group (prime suspect) ---

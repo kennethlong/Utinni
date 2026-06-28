@@ -547,17 +547,45 @@ void __fastcall hkChatEnter(swgptr pThis, swgptr EDX)
     swg::cuiChatWindow::chatEnterHandler(pThis);
 }
 
+// Bucket A (v9) advertised-client publish. The MI ctor is un-addressable (OMIT) on the
+// advertised client, so hkCtor never runs there and pCuiChatWindow would stay null -> every
+// method hook reads a null instance (the prior advertised-unlock crash). The provider advertises
+// the SOLE construction funnel cuiChatWindow::createNewWindow (v4); detour IT to publish the live
+// instance the method hooks depend on. __cdecl factory; returns the new SwgCuiChatWindow*.
+swgptr __cdecl hkCreateNewWindow(swgptr uiPage, int sceneType, swgptr stdString)
+{
+    swgptr result = swg::cuiChatWindow::createNewWindow(uiPage, sceneType, stdString);
+    if (result != 0)
+    {
+        // Publish ONLY the chat-window instance (the std::atomic the readers load). Deliberately
+        // do NOT publish pCuiConsoleHelper from result+0xBC here: that offset is RE'd from Pre-CU
+        // and UNVERIFIED on the advertised client, and its sole reader (sendMessage) both null-
+        // guards it AND is itself SWGEmu-only (hardcoded nop RVAs) -> leaving it 0 is safe.
+        pCuiChatWindow.store(result, std::memory_order_release);
+    }
+    return result;
+}
+
 void CuiChatWindow::detour()
 {
-    // Phase 24 v3: PER-TARGET installable gating. ctor is DEFERRED (MI ctor, not advertised),
-    // so it + its mid-ctor JMP patch (a Pre-CU instruction offset) install ONLY on SWGEmu
-    // (installable() true there -> D-00 unchanged); both are skipped on the advertised client
-    // where the ctor RVA + the 0x00F36797 offset are unmapped. enableTextInput +
-    // chatEnterHandler ARE advertised (v3 real-entry) and install on both.
-    if (swg::endpoints::installable((const void*)swg::cuiChatWindow::ctor))
+    // ctor + its mid-ctor JMP are SWGEmu-ONLY. The MI ctor is NOT advertised (un-addressable), so
+    // on the advertised client its RVA (0x00F364B0) + the 0x00F36797 offset are unmapped/relocated;
+    // installable() is NECESSARY-not-sufficient there (a stale RVA can land on committed code -> a
+    // JMP into the wrong instruction stream -> 0xC0000096). Hard-gate OFF on advertised via
+    // isAdvertisedClient(); the advertised path publishes through createNewWindow below instead.
+    if (!swg::endpoints::isAdvertisedClient() && swg::endpoints::installable((const void*)swg::cuiChatWindow::ctor))
     {
         swg::cuiChatWindow::ctor = (swg::cuiChatWindow::pCtor)Detour::Create(swg::cuiChatWindow::ctor, hkCtor, DETOUR_TYPE_PUSH_RET);
         memory::createJMP(0x00F36797, (swgptr)midCtor, 6); // Mid CuiChatWindow::ctor detour (SWGEmu offset)
+    }
+
+    // Advertised client: publish the live instance via the construction funnel (v4). createNewWindow
+    // is null on SWGEmu (where hkCtor handles publish) -> the != nullptr guard skips it there; on the
+    // advertised client the resolver filled it with the real factory addr -> installable() passes.
+    if (swg::cuiChatWindow::createNewWindow != nullptr &&
+        swg::endpoints::installable((const void*)swg::cuiChatWindow::createNewWindow))
+    {
+        swg::cuiChatWindow::createNewWindow = (swg::cuiChatWindow::pCreateNewWindow)Detour::Create((LPVOID)swg::cuiChatWindow::createNewWindow, hkCreateNewWindow, DETOUR_TYPE_PUSH_RET);
     }
 
     // DIAG 2026-05-20 Issue #11 Phase E: enabled for caller-tracing. Was
