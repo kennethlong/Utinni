@@ -145,13 +145,24 @@ void createDetours()
         utinni::Client::detour();
         utinni::clientWorld::detour();
         // utinni::cuiIntro::detour();
-        utinni::cuiMenu::detour();
-        utinni::cuiRadialMenuManager::detour();
         utinni::cuiLoginScreen::detour();
         // utinni::cuiMediatorFactorySetup::detour();
-        utinni::SystemMessageManager::detour();
         utinni::treefile::detour();
         utinni::IoWin::detour();
+    }
+
+    // --- Bucket A: clean advertised-clean editor un-gates (radial menu / system messages / menu cursor) ---
+    // Lifted out of the wholesale-skipped MISC block. Each detour() hooks a SINGLE advertised-clean row
+    // (cuiRadialMenuManager::update / systemMessageManager::receiveMessage / cuiMenu::infoTypesFindDefaultCursor)
+    // and already self-gates on installable() of that primary -> the resolver rebinds the SWGEmu literal to the
+    // relocated provider entry before this runs, so installable() is authoritative on the advertised client and
+    // each installs only when its row resolved. No unadvertised secondary hooks (unlike chat/CuiManager), so no
+    // isAdvertisedClient() carve-out needed. Behavior-identical on SWGEmu (advertised==false -> !skipMisc) -- D-00.
+    if (!skipMisc)
+    {
+        utinni::cuiRadialMenuManager::detour();
+        utinni::SystemMessageManager::detour();
+        utinni::cuiMenu::detour();
     }
 
     // --- Phase 24 v4: GAME subsystem -- FIRST advertised-client editor-unlock (live-smoke-gated) ---
