@@ -257,3 +257,18 @@ ENGINE_HOOKPOINT(particlePreview, retrigger)
 // playClientEffect -- the transient (muzzle/hit/explosion) case restart() above
 // cannot cover. Public APIs only (not a friend); constant &fn (not a dyn[] row).
 ENGINE_HOOKPOINT(particlePreview, replayClientEffect)
+
+// -- Bucket A (v8->v9): per-editor real-entry detour rows (ledger §2.A) -------
+// 6 of 14 requested are advertisable; the other 8 are OMIT (nonexistent / un-
+// addressable ctor) or SKIP (virtual -> consumer vtable-resolves) and are
+// therefore NOT in this required-name set -- they are documented in the Bucket A
+// OMIT/SKIP ledger in engine_advertise.cpp + the handback. Several names below are
+// MISMATCH-mapped to the real engine symbol (the contract name is the consumer's
+// lookup key; the & is the real entry): setTarget->setLookAtTarget,
+// receiveMessage->receiveSystemMessage, appendMessageData->appendMessage(data overload).
+ENGINE_HOOKPOINT(cuiRadialMenuManager, update)              // static &fn (CuiRadialMenuManager::update)
+ENGINE_HOOKPOINT(cuiMenu,              infoTypesFindDefaultCursor) // free fn Cui::MenuInfoTypes::findDefaultCursor
+ENGINE_HOOKPOINT(systemMessageManager, receiveMessage)     // static &fn CuiSystemMessageManager::receiveSystemMessage
+ENGINE_HOOKPOINT(creatureObject,       setTarget)          // pmfRealEntry CreatureObject::setLookAtTarget (MI)
+ENGINE_HOOKPOINT(messageQueue,         appendMessage)      // pmfToVoid MessageQueue::appendMessage(int,float,uint32)
+ENGINE_HOOKPOINT(messageQueue,         appendMessageData)  // pmfToVoid MessageQueue::appendMessage(int,float,Data*,uint32)

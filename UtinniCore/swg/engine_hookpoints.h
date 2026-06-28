@@ -85,8 +85,18 @@
 // FRESH on Game::getPlayer() via the public ClientEffectManager::playClientEffect, the
 // transient muzzle/hit/explosion case the retrigger's restart() cannot cover). Constant
 // &fn, public APIs only (not a friend). 105 names.
+// Bumped 8 -> 9 in Bucket A (per-editor real-entry detour rows, ledger §2.A): 6 NAME ADDs --
+// cuiRadialMenuManager::update + cuiMenu::infoTypesFindDefaultCursor (free fn) +
+// systemMessageManager::receiveMessage (static &fn) + creatureObject::setTarget (pmfRealEntry,
+// MI) + messageQueue::appendMessage + messageQueue::appendMessageData (pmfToVoid). 111 names.
+// The other 8 of the 14 requested §2.A rows are OMITTED (un-addressable ctors cuiChatWindow/
+// cuiLoginScreen -- chat's createNewWindow funnel already covers it; nonexistent
+// cuiManager::findObjectUnderCursor + cuiHud::getTarget) or SKIPPED (virtual: cuiHud::
+// actionPerformAction, cuiHud::update, cuiLoginScreen::activate, debugCamera::alter ->
+// consumer vtable-resolves) -- documented in engine_advertise.cpp + the handback, NOT in
+// this required-name set.
 // ----------------------------------------------------------------------
-#define ENGINE_HOOKPOINTS_VERSION 8
+#define ENGINE_HOOKPOINTS_VERSION 9
 
 // ----------------------------------------------------------------------
 // One row per advertised endpoint: a stable contract name + the borrowed
