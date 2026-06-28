@@ -224,3 +224,31 @@ ENGINE_HOOKPOINT(commandParser, ctor2)
 
 // -- globals (§8 #3) -- accessor-style; raw &g where genuinely accessible ----
 ENGINE_HOOKPOINT(graphics,      g_frameNumber)
+
+// ======================================================================
+// 24-§2.B BUCKET B (Effects editor live preview) -- render/appearance group +
+// particle retrigger. v6 -> v7 (NAME ADDs). Every name source-confirmed in THIS
+// tree this wave; the requested-but-NOT-advertisable rows (virtual render methods,
+// nonexistent methods, the un-addressable ctor, the wildcard sorter row, the raw
+// render globals) are OMITTED/SKIPPED with reasons in engine_advertise.cpp + the
+// HANDBACK -- a skipped virtual is consumer-vtable-resolved, NOT a missing required
+// row (handoff §2.C). Re-copied verbatim into D:/Code/Utinni at wave close.
+// ======================================================================
+
+// -- skeletalAppearance (clientSkeletalAnimation; SkeletalAppearance2.h) ------
+// (render is VIRTUAL -> SKIP/vtable; addShaderPrimitives does NOT exist on the
+//  class -> OMIT. Only the non-virtual LOD read is advertisable.)
+ENGINE_HOOKPOINT(skeletalAppearance, getDisplayLodSkeleton)
+
+// -- renderWorld (clientGraphics, all static; RenderWorld.h) ------------------
+// (renderWorld::render does NOT exist -> OMIT; drawScene offered in the handback.)
+ENGINE_HOOKPOINT(renderWorld,    addObjectNotifications)
+
+// -- bloom (clientGame post-processing, all static; Bloom.h) ------------------
+ENGINE_HOOKPOINT(bloom,          preSceneRender)
+ENGINE_HOOKPOINT(bloom,          postSceneRender)
+
+// -- particlePreview (Utinni cooperative retrigger; ClientEffectManager) ------
+// The Effects-editor live-preview hot-reload entry (handoff §2.B-ii). Friend free
+// function utinni_retriggerClientEffect over the private m_particleSystems.
+ENGINE_HOOKPOINT(particlePreview, retrigger)

@@ -409,6 +409,48 @@ using pCreateNewWindow = swgptr(__cdecl*)(swgptr uiPage, int sceneType, swgptr s
 extern pCreateNewWindow createNewWindow;
 } // namespace swg::cuiChatWindow
 
+// ===== v7 (Phase 24 / 24-§2.B Bucket B -- Effects editor live preview): 5 new endpoints.
+// Typedefs copied VERBATIM from the originating consumer TUs (LNK2001 guard, per the ABI
+// note above). The 4 render rows bind to EXISTING per-subsystem literals (render_world.cpp /
+// post_processing.cpp / skeleton.cpp) and are behavior-neutral this wave -- their consuming
+// detours stay gated (skeletal/shaderSorter target unadvertised RVAs) or are no-ops (renderWorld);
+// only particlePreview::retrigger is actively consumed (utinni::ParticlePreview seam). =====
+
+// -- renderWorld::addObjectNotifications (scene/render_world.cpp:31) --
+namespace swg::renderWorld
+{
+using pAddObjectNotifications = void(__cdecl*)(utinni::Object* obj);
+extern pAddObjectNotifications addObjectNotifications;
+} // namespace swg::renderWorld
+
+// -- bloom::preSceneRender/postSceneRender (graphics/post_processing.cpp:33-34) --
+namespace swg::bloom
+{
+using pPreSceneRender = void(__cdecl*)();
+using pPostSceneRender = void(__cdecl*)();
+extern pPreSceneRender preSceneRender;
+extern pPostSceneRender postSceneRender;
+} // namespace swg::bloom
+
+// -- skeletalAppearance::getDisplayLodSkeleton (appearance/skeleton.cpp:38) --
+// Provider row is a bit_cast PMF of the non-virtual const overload; the consumer literal's
+// __thiscall(swgptr)->swgptr typedef is call-compatible (opaque this + opaque return).
+namespace swg::skeletalAppearance
+{
+using pGetDisplayLodSkeleton = swgptr(__thiscall*)(swgptr pThis);
+extern pGetDisplayLodSkeleton getDisplayLodSkeleton;
+} // namespace swg::skeletalAppearance
+
+// -- particlePreview::retrigger (scene/particle_preview.cpp) -- NEW advertised-only slot.
+// Provider symbol: void utinni_retriggerClientEffect(char const*) (friend free fn over
+// ClientEffectManager::m_particleSystems). Null on SWGEmu (no RVA literal -- accessor-style,
+// D-04 class); the consumer null-checks before calling (the degraded/NotReachable path).
+namespace swg::particlePreview
+{
+using pRetrigger = void(__cdecl*)(const char* logicalName);
+extern pRetrigger retrigger;
+} // namespace swg::particlePreview
+
 namespace swg::endpoints
 {
 // ----------------------------------------------------------------------
@@ -578,6 +620,15 @@ static const Binding s_bindings[] = {
 
     // ===== v6 (Phase 24): full SceneCreator string-based scene load (editor "Load scene") =====
     {"game::loadScene", (void**)&swg::game::loadScene}, // provider &utinni_gameLoadScene -> Game::setScene(true, terrain, player, nullptr)
+
+    // ===== v7 (Phase 24 / 24-§2.B Bucket B -- Effects editor live preview): 5 new endpoints =====
+    // The 4 render rows bind to existing per-subsystem literals (behavior-neutral this wave: their
+    // detours stay gated or are no-ops); particlePreview::retrigger is the live-preview value.
+    {"skeletalAppearance::getDisplayLodSkeleton", (void**)&swg::skeletalAppearance::getDisplayLodSkeleton}, // provider bit_cast PMF (non-virtual const overload)
+    {"renderWorld::addObjectNotifications", (void**)&swg::renderWorld::addObjectNotifications},             // provider static &RenderWorld::addObjectNotifications(Object&)
+    {"bloom::preSceneRender", (void**)&swg::bloom::preSceneRender},                                         // provider static &Bloom::preSceneRender
+    {"bloom::postSceneRender", (void**)&swg::bloom::postSceneRender},                                       // provider static &Bloom::postSceneRender
+    {"particlePreview::retrigger", (void**)&swg::particlePreview::retrigger},                               // provider &utinni_retriggerClientEffect (friend free fn; null on SWGEmu)
 };
 
 // ----------------------------------------------------------------------
@@ -618,8 +669,8 @@ constexpr size_t kIncCount = 0
 
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
 
-static_assert(kIncCount == 99, "contract .inc size drifted from the expected 99 names (v6 / Phase 24 game::loadScene)");
-static_assert(kBindingCount == 97, "s_bindings[] must bind 97 of 99 (.inc minus the TWO carve-outs)");
+static_assert(kIncCount == 104, "contract .inc size drifted from the expected 104 names (v7 / Phase 24 Bucket B: +5 Effects-preview rows)");
+static_assert(kBindingCount == 102, "s_bindings[] must bind 102 of 104 (.inc minus the TWO carve-outs)");
 static_assert(kBindingCount == kIncCount - 2,
               "exactly two .inc names are carve-outs: consoleHelper::sendInput (D-02) + "
               "client::wndProc (embed-resize regression; RNDR-04 follow-on)");
@@ -732,6 +783,12 @@ constexpr const char* kBindingNames[] = {
     "treeFile::enumerateFiles",
     // ===== v6 (Phase 24) addition — lockstep with s_bindings[] above =====
     "game::loadScene",
+    // ===== v7 (Phase 24 / Bucket B) additions — lockstep with s_bindings[] above =====
+    "skeletalAppearance::getDisplayLodSkeleton",
+    "renderWorld::addObjectNotifications",
+    "bloom::preSceneRender",
+    "bloom::postSceneRender",
+    "particlePreview::retrigger",
 };
 
 constexpr bool allNamesInInc()

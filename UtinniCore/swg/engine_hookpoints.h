@@ -67,8 +67,21 @@
 // a pre-built GroundScene half-integrated (next-frame throw); loadScene lets the engine build
 // + integrate from filenames. 99 names. (game::setupScene stays mapped as the low-level
 // set-pre-built-scene primitive -- unchanged.)
+// Bumped 6 -> 7 in 24-§2.B (Bucket B, Effects editor live preview): 5 NAME ADDs --
+// skeletalAppearance::getDisplayLodSkeleton (non-virtual LOD read, bit_cast PMF),
+// renderWorld::addObjectNotifications (static &fn), bloom::preSceneRender +
+// bloom::postSceneRender (static &fn), particlePreview::retrigger (friend free fn
+// utinni_retriggerClientEffect over ClientEffectManager::m_particleSystems -- the
+// cooperative particle hot-reload entry). 104 names. The requested-but-NOT-advertisable
+// rows are OMITTED/SKIPPED (documented in engine_advertise.cpp + the HANDBACK): the
+// VIRTUAL render methods particleEffectAppearance::render + skeletalAppearance::render
+// (consumer vtable-resolves, handoff §2.C), the un-addressable particleEffectAppearance
+// ctor (no &Class::Class, no construction funnel), the NONEXISTENT skeletalAppearance::
+// addShaderPrimitives + renderWorld::render, and the wildcard shaderPrimitiveSorter::*
+// (no concrete method named). Render globals: consumer drives the draw via the already-
+// advertised graphics::* statics (handoff's preferred shape) -- no raw-global rows added.
 // ----------------------------------------------------------------------
-#define ENGINE_HOOKPOINTS_VERSION 6
+#define ENGINE_HOOKPOINTS_VERSION 7
 
 // ----------------------------------------------------------------------
 // One row per advertised endpoint: a stable contract name + the borrowed

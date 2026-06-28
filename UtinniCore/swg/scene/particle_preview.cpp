@@ -30,6 +30,21 @@
 #include <string>
 
 // ----------------------------------------------------------------------------
+// Bucket B (v7) advertised endpoint: the cooperative particle retrigger.
+// Storage cell for particlePreview::retrigger -> the provider's friend free fn
+// utinni_retriggerClientEffect(char const*) over ClientEffectManager::
+// m_particleSystems. NULL on SWGEmu (no RVA literal -- accessor-style, the D-04
+// class). The swg::endpoints resolver overwrites this BY NAME at utinni_init on
+// the advertised client; the consumer seam below null-checks before calling. The
+// extern re-declaration in endpoints_bindings.cpp MUST keep this exact typedef.
+// ----------------------------------------------------------------------------
+namespace swg::particlePreview
+{
+using pRetrigger = void(__cdecl*)(const char* logicalName);
+pRetrigger retrigger = nullptr;
+} // namespace swg::particlePreview
+
+// ----------------------------------------------------------------------------
 // Particle live-in-client preview -- EARLY SPIKE STUB (plan 15-03, D-09).
 //
 // See particle_preview.h and .planning/.../15-PARTICLE-PREVIEW-HOOK.md for the
@@ -62,39 +77,58 @@ namespace utinni
 {
 bool ParticlePreview::isRetriggerAvailable()
 {
-    // No native hook is wired this phase, so the retrigger is never available --
-    // regardless of injection state. The editor uses this to keep
-    // "Preview in client" state-encoded-disabled and to select the honest
-    // tier-(b) reload-candor badge ("Reloads on next scene change or relog.").
-    //
-    // When the real hook lands, this becomes: `return <hook wired> && Game::isSafeToUse();`
-    return false;
+    // Available iff the advertised client resolved particlePreview::retrigger
+    // (utinni_retriggerClientEffect) AND there is a live, usable scene. On SWGEmu the
+    // export is absent -> the slot stays null -> false -> the editor keeps the honest
+    // tier-(b) reload-candor badge ("Reloads on next scene change or relog."). On the
+    // advertised client post-resolve it is true when a scene is safe to touch, so the
+    // editor lights up the live "Preview in client" affordance.
+    return swg::particlePreview::retrigger != nullptr && Game::isSafeToUse();
 }
 
 ParticlePreviewResult ParticlePreview::retriggerLiveEffectInstances(const char* effectName)
 {
-    // Documented no-op stub. Performs no work and allocates nothing -- this keeps
-    // the seam heap-free by construction and installs no per-frame callback, so it
-    // cannot regress SWG's allocator (project_rh_snapshot_no_heap_alloc).
-
-    // Honest status: distinguish "client not injected/safe" from "hook not
-    // implemented" so the editor can show the right disabled-state reason. Neither
-    // branch does any retrigger work this phase.
+    // Honest status: distinguish "client not injected/safe" from "hook not advertised"
+    // so the editor can show the right disabled-state reason.
     if (!Game::isSafeToUse())
     {
         return ParticlePreviewResult::NotInjected;
     }
 
-    // Not a per-frame path: this fires once per save/reload, so building a small
-    // std::string for the log line is safe (no hot-path allocation concern).
-    std::string message =
-        "ParticlePreview::retriggerLiveEffectInstances: live in-client hot-retrigger is not wired "
-        "this phase (15-03 spike: no reachable native hook) -- editor degrades to tier-(b) reload "
-        "candor. effect='";
-    message += (effectName != nullptr) ? effectName : "";
-    message += "'";
-    log::info(message.c_str());
+    // No cooperative provider retrigger advertised (SWGEmu, or a pre-v7 advertised
+    // client) -> degrade honestly to tier-(b); the editor surfaces the reload-candor
+    // badge. Allocation-free, no per-frame callback (project_rh_snapshot_no_heap_alloc).
+    if (swg::particlePreview::retrigger == nullptr)
+    {
+        log::info("ParticlePreview::retriggerLiveEffectInstances: particlePreview::retrigger not "
+                  "advertised -- degrading to tier-(b) reload candor.");
+        return ParticlePreviewResult::NotReachable;
+    }
 
-    return ParticlePreviewResult::NotReachable;
+    // A null/empty logical name has nothing to match -- skip the provider walk rather
+    // than hand its case-insensitive name compare a null (defensive; the managed caller
+    // always passes the just-saved .prt name).
+    if (effectName == nullptr || effectName[0] == '\0')
+    {
+        log::info("ParticlePreview::retriggerLiveEffectInstances: empty effect name -- nothing to retrigger.");
+        return ParticlePreviewResult::NotReachable;
+    }
+
+    // Real cooperative hook: hand the just-saved logical name to the provider's friend
+    // free fn, which walks ClientEffectManager::m_particleSystems and restarts matching
+    // live instances (+ a balanced AppearanceTemplateList::fetch refresh). MUST already
+    // be on the game thread -- the managed caller marshals via GameCallbacks.AddMainLoopCall
+    // (the terrain-reload pattern), fires once per save/reload, never per frame, so this
+    // path allocates nothing (project_rh_snapshot_no_heap_alloc).
+    {
+        // Not a per-frame path: a small std::string for the log line is safe here.
+        std::string message = "ParticlePreview::retriggerLiveEffectInstances: retriggering live instances of '";
+        message += effectName;
+        message += "'";
+        log::info(message.c_str());
+    }
+
+    swg::particlePreview::retrigger(effectName);
+    return ParticlePreviewResult::Retriggered;
 }
 } // namespace utinni
