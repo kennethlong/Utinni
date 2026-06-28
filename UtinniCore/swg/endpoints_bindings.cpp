@@ -449,6 +449,10 @@ namespace swg::particlePreview
 {
 using pRetrigger = void(__cdecl*)(const char* logicalName);
 extern pRetrigger retrigger;
+// v8 (Bucket B-2): live .cef RE-PLAY -> provider bool utinni_replayClientEffect(char const*)
+// over the public ClientEffectManager::playClientEffect. Null on SWGEmu (advertised-only).
+using pReplay = bool(__cdecl*)(const char* clientEffectName);
+extern pReplay replay;
 } // namespace swg::particlePreview
 
 namespace swg::endpoints
@@ -629,6 +633,9 @@ static const Binding s_bindings[] = {
     {"bloom::preSceneRender", (void**)&swg::bloom::preSceneRender},                                         // provider static &Bloom::preSceneRender
     {"bloom::postSceneRender", (void**)&swg::bloom::postSceneRender},                                       // provider static &Bloom::postSceneRender
     {"particlePreview::retrigger", (void**)&swg::particlePreview::retrigger},                               // provider &utinni_retriggerClientEffect (friend free fn; null on SWGEmu)
+
+    // ===== v8 (Phase 24 / 24-§2.B-2 Bucket B-2 -- live .cef RE-PLAY): 1 new endpoint =====
+    {"particlePreview::replayClientEffect", (void**)&swg::particlePreview::replay}, // provider &utinni_replayClientEffect (re-play .cef on the player; null on SWGEmu)
 };
 
 // ----------------------------------------------------------------------
@@ -669,8 +676,8 @@ constexpr size_t kIncCount = 0
 
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
 
-static_assert(kIncCount == 104, "contract .inc size drifted from the expected 104 names (v7 / Phase 24 Bucket B: +5 Effects-preview rows)");
-static_assert(kBindingCount == 102, "s_bindings[] must bind 102 of 104 (.inc minus the TWO carve-outs)");
+static_assert(kIncCount == 105, "contract .inc size drifted from the expected 105 names (v8 / Phase 24 Bucket B-2: +1 .cef replay row)");
+static_assert(kBindingCount == 103, "s_bindings[] must bind 103 of 105 (.inc minus the TWO carve-outs)");
 static_assert(kBindingCount == kIncCount - 2,
               "exactly two .inc names are carve-outs: consoleHelper::sendInput (D-02) + "
               "client::wndProc (embed-resize regression; RNDR-04 follow-on)");
@@ -789,6 +796,8 @@ constexpr const char* kBindingNames[] = {
     "bloom::preSceneRender",
     "bloom::postSceneRender",
     "particlePreview::retrigger",
+    // ===== v8 (Phase 24 / Bucket B-2) addition — lockstep with s_bindings[] above =====
+    "particlePreview::replayClientEffect",
 };
 
 constexpr bool allNamesInInc()

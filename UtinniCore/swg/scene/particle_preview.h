@@ -98,5 +98,21 @@ public:
     //             (e.g. "appearance/pt_smoke.prt"); may be null/empty for the stub.
     // Returns ParticlePreviewResult::NotReachable in this phase (15-03).
     static ParticlePreviewResult retriggerLiveEffectInstances(const char* effectName);
+
+    // Bucket B-2 (v8): live .cef RE-PLAY. True when the advertised provider entry
+    // particlePreview::replayClientEffect (utinni_replayClientEffect) is resolved AND the
+    // client is safe to use. Drives the ClientEffect editor's "Preview in client" affordance.
+    static bool isReplayAvailable();
+
+    // Re-play a client effect FRESH on the local player (the transient-.cef case the
+    // restart-based retrigger above cannot cover -- muzzle/hit/explosion finish before the
+    // editor saves). Provider re-fetches the .cef + referenced templates so the edit is
+    // visible. MUST be called on the game thread (the managed caller marshals via
+    // GameCallbacks.AddMainLoopCall, once per preview).
+    //
+    // clientEffectName: the .cef logical name just saved (e.g. "clienteffect/foo.cef").
+    // Returns true iff the provider played the effect; false if not advertised / unsafe /
+    // null name / the provider's playClientEffect failed (no player, bad name).
+    static bool replayClientEffect(const char* clientEffectName);
 };
 } // namespace utinni

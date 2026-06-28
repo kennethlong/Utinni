@@ -80,8 +80,13 @@
 // addShaderPrimitives + renderWorld::render, and the wildcard shaderPrimitiveSorter::*
 // (no concrete method named). Render globals: consumer drives the draw via the already-
 // advertised graphics::* statics (handoff's preferred shape) -- no raw-global rows added.
+// Bumped 7 -> 8 in Bucket B-2 (live .cef RE-PLAY): 1 NAME ADD --
+// particlePreview::replayClientEffect (free fn utinni_replayClientEffect; re-plays a .cef
+// FRESH on Game::getPlayer() via the public ClientEffectManager::playClientEffect, the
+// transient muzzle/hit/explosion case the retrigger's restart() cannot cover). Constant
+// &fn, public APIs only (not a friend). 105 names.
 // ----------------------------------------------------------------------
-#define ENGINE_HOOKPOINTS_VERSION 7
+#define ENGINE_HOOKPOINTS_VERSION 8
 
 // ----------------------------------------------------------------------
 // One row per advertised endpoint: a stable contract name + the borrowed

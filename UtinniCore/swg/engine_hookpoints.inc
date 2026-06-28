@@ -252,3 +252,8 @@ ENGINE_HOOKPOINT(bloom,          postSceneRender)
 // The Effects-editor live-preview hot-reload entry (handoff §2.B-ii). Friend free
 // function utinni_retriggerClientEffect over the private m_particleSystems.
 ENGINE_HOOKPOINT(particlePreview, retrigger)
+// Bucket B-2 (v7->v8): live .cef RE-PLAY. Free function utinni_replayClientEffect
+// re-plays a .cef FRESH on the local player via the public ClientEffectManager::
+// playClientEffect -- the transient (muzzle/hit/explosion) case restart() above
+// cannot cover. Public APIs only (not a friend); constant &fn (not a dyn[] row).
+ENGINE_HOOKPOINT(particlePreview, replayClientEffect)

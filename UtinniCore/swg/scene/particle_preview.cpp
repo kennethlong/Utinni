@@ -42,6 +42,10 @@ namespace swg::particlePreview
 {
 using pRetrigger = void(__cdecl*)(const char* logicalName);
 pRetrigger retrigger = nullptr;
+// v8 (Bucket B-2): live .cef RE-PLAY -> provider bool utinni_replayClientEffect(char const*).
+// NULL on SWGEmu (advertised-only); the resolver fills it by name on the advertised client.
+using pReplay = bool(__cdecl*)(const char* clientEffectName);
+pReplay replay = nullptr;
 } // namespace swg::particlePreview
 
 // ----------------------------------------------------------------------------
@@ -130,5 +134,47 @@ ParticlePreviewResult ParticlePreview::retriggerLiveEffectInstances(const char* 
 
     swg::particlePreview::retrigger(effectName);
     return ParticlePreviewResult::Retriggered;
+}
+
+bool ParticlePreview::isReplayAvailable()
+{
+    // Available iff the advertised client resolved particlePreview::replayClientEffect
+    // (utinni_replayClientEffect) AND a scene is safe to touch. Null on SWGEmu -> false ->
+    // the .cef editor keeps the honest degraded "next scene change / relog" candor.
+    return swg::particlePreview::replay != nullptr && Game::isSafeToUse();
+}
+
+bool ParticlePreview::replayClientEffect(const char* clientEffectName)
+{
+    if (!Game::isSafeToUse())
+    {
+        return false;
+    }
+    // Not advertised (SWGEmu / pre-v8) -> nothing to play; the editor degrades honestly.
+    if (swg::particlePreview::replay == nullptr)
+    {
+        log::info("ParticlePreview::replayClientEffect: particlePreview::replayClientEffect not advertised "
+                  "-- degrading to tier-(b) reload candor.");
+        return false;
+    }
+    if (clientEffectName == nullptr || clientEffectName[0] == '\0')
+    {
+        log::info("ParticlePreview::replayClientEffect: empty client-effect name -- nothing to play.");
+        return false;
+    }
+
+    // Real cooperative hook: hand the just-saved .cef logical name to the provider, which
+    // re-fetches the .cef + referenced particle/sound templates (so the edit shows) and
+    // re-plays it FRESH on the local player via the public ClientEffectManager::playClientEffect.
+    // MUST already be on the game thread -- the managed caller marshals via
+    // GameCallbacks.AddMainLoopCall, once per preview, so this path allocates nothing per frame.
+    {
+        std::string message = "ParticlePreview::replayClientEffect: replaying client effect '";
+        message += clientEffectName;
+        message += "'";
+        log::info(message.c_str());
+    }
+
+    return swg::particlePreview::replay(clientEffectName);
 }
 } // namespace utinni
