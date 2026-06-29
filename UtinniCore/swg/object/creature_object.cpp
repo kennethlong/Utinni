@@ -27,6 +27,8 @@
 #include "swg/object/object.h"
 #include "swg/misc/network.h"
 
+#include <atomic>
+#include <cstdio>
 #include <mutex>
 #include <vector>
 
@@ -141,6 +143,19 @@ void __fastcall hkSetTarget(swgptr pThis, DWORD EDX, const int64_t& id)
     swg::creatureObject::setTarget(pThis, id);
 
     Object* obj = Network::getObjectById(id);
+
+    // Bucket A-3 smoke diagnostic (BOUNDED -- target changes can be frequent, so first few only):
+    // confirm the advertised network::getObjectById resolver returns a real object (the last blocker
+    // for un-gating target-change on the advertised client). A non-null obj here = the v12 id-resolver
+    // works; a null/garbage obj or a crash = the resolve is wrong (the sysmsg-class remedy: re-verify).
+    static std::atomic<int> s_setTargetLogCount{0};
+    if (s_setTargetLogCount.fetch_add(1, std::memory_order_relaxed) < 10)
+    {
+        char m[112];
+        std::snprintf(m, sizeof(m), "hkSetTarget: id=0x%llx -> network::getObjectById resolved Object*=0x%p",
+                      static_cast<long long>(id), reinterpret_cast<void*>(obj));
+        utinni::log::info(m);
+    }
 
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
     // via dispatchSnapshot keeps the path heap-free.
