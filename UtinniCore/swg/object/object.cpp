@@ -362,4 +362,46 @@ const char* Object::getAppearanceFilename()
 {
     return swg::object::getAppearanceFilename(this);
 }
+
+const char* Object::getObjectTemplateName()
+{
+    // Advertised getObjectTemplateName (D-01). Null on SWGEmu / pre-advertised (slot null) -- distinct
+    // from the SWGEmu getTemplateFilename() literal, which is wrong on the advertised client.
+    if (swg::object::getObjectTemplateName == nullptr)
+    {
+        return nullptr;
+    }
+    return swg::object::getObjectTemplateName(this);
+}
+
+int64_t Object::getNetworkIdValue()
+{
+    // The advertised getNetworkId (D-01) returns a NetworkId& (a pointer to the wrapper); the int64
+    // value is its first member (m_value @ offset 0). Reading the wrapper avoids the fragile raw
+    // `networkId` struct-field offset, which differs on the advertised NGE layout (handoff 2026-06-29).
+    if (swg::object::getNetworkId == nullptr)
+    {
+        return 0;
+    }
+    const swgptr pNetworkId = swg::object::getNetworkId(this);
+    return (pNetworkId != 0) ? *reinterpret_cast<int64_t*>(pNetworkId) : 0;
+}
+
+const char* Object::getSharedAppearanceFilename()
+{
+    // Advertised chain only: getObjectTemplate (D-01 advertised) -> SharedObjectTemplate::
+    // getAppearanceFilename (advertised via the objectTemplate::getAppearanceFilename row). The plain
+    // Object::getAppearanceFilename() above is NOT advertised (SWGEmu RVA) -> avoid it on the
+    // advertised client. Returns the shared template's default appearance path.
+    if (swg::object::getObjectTemplate == nullptr)
+    {
+        return nullptr;
+    }
+    const swgptr pTemplate = swg::object::getObjectTemplate(this);
+    if (pTemplate == 0)
+    {
+        return nullptr;
+    }
+    return reinterpret_cast<SharedObjectTemplate*>(pTemplate)->getAppearanceFilename();
+}
 } // namespace utinni

@@ -135,6 +135,16 @@ public:
 
     const char* getTemplateFilename();
     const char* getAppearanceFilename();
+
+    // Advertised-safe inspector accessors (Bucket A-2 richer selected-object readout). Each calls a
+    // D-01 advertised row (getObjectTemplateName / getNetworkId / getObjectTemplate) that the endpoint
+    // resolver re-points on the advertised NGE client, and is null-checked so it degrades to
+    // nullptr/0 on SWGEmu / pre-advertised (the slot is null). Prefer these over the raw `networkId`
+    // struct field and getTemplateFilename()/getAppearanceFilename(), whose SWGEmu paths are
+    // offset-/RVA-fragile on the advertised client (see the 2026-06-29 editor-unlock handoff).
+    const char* getObjectTemplateName();
+    int64_t getNetworkIdValue();
+    const char* getSharedAppearanceFilename();
 };
 
 struct AutoVariableBase
