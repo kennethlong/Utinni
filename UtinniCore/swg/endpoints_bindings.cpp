@@ -489,6 +489,15 @@ extern pGetInstance g_instance;
 extern pGetTarget getTarget;
 } // namespace swg::cuiHud
 
+// -- network::getObjectById (misc/network.cpp:31; Bucket A-3 v12 -- unblocks the target-change
+//    callback's Object* resolve. Contract network::getObjectById -> consumer idManagerGetObjectById,
+//    name mismatch; provider NetworkIdManager::getObjectById(const NetworkId&) static, exact ABI match) --
+namespace swg::network
+{
+using pIdManagerGetObjectById = utinni::Object*(__cdecl*)(const int64_t& id);
+extern pIdManagerGetObjectById idManagerGetObjectById;
+} // namespace swg::network
+
 // -- creatureObject::setTarget (object/creature_object.cpp:35; provider MISMATCH setLookAtTarget(NetworkId&),
 //    real entry via utinni_creatureSetTargetRealEntry() -- semantic verified at the un-gate smoke) --
 namespace swg::creatureObject
@@ -701,6 +710,9 @@ static const Binding s_bindings[] = {
     // ===== v10 (Phase 24 / Bucket A-2 -- world-pick / HUD-target): 2 new endpoints (getter rows, not detoured) =====
     {"cuiHud::getTarget", (void**)&swg::cuiHud::getTarget},   // __fastcall thunk -> SwgCuiHud::getLastSelectedObject() const (the picked Object*)
     {"cuiHud::g_instance", (void**)&swg::cuiHud::g_instance}, // static SwgCuiHudFactory::findMediatorForCurrentHud() (the live SwgCuiHud*)
+
+    // ===== v12 (Phase 24 / Bucket A-3 -- network id->Object resolver, unblocks target-change): 1 new endpoint =====
+    {"network::getObjectById", (void**)&swg::network::idManagerGetObjectById}, // MISMATCH name: provider NetworkIdManager::getObjectById (static)
 };
 
 // ----------------------------------------------------------------------
@@ -741,8 +753,8 @@ constexpr size_t kIncCount = 0
 
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
 
-static_assert(kIncCount == 112, "contract .inc size drifted from the expected 112 names (v11: Bucket A-2 world-pick +2, minus A-2.1 systemMessageManager::receiveMessage revert -1)");
-static_assert(kBindingCount == 110, "s_bindings[] must bind 110 of 112 (.inc minus the TWO carve-outs)");
+static_assert(kIncCount == 113, "contract .inc size drifted from the expected 113 names (v12 / Bucket A-3: +network::getObjectById)");
+static_assert(kBindingCount == 111, "s_bindings[] must bind 111 of 113 (.inc minus the TWO carve-outs)");
 static_assert(kBindingCount == kIncCount - 2,
               "exactly two .inc names are carve-outs: consoleHelper::sendInput (D-02) + "
               "client::wndProc (embed-resize regression; RNDR-04 follow-on)");
@@ -872,6 +884,8 @@ constexpr const char* kBindingNames[] = {
     // ===== v10 (Phase 24 / Bucket A-2 world-pick) additions — lockstep with s_bindings[] above =====
     "cuiHud::getTarget",
     "cuiHud::g_instance",
+    // ===== v12 (Phase 24 / Bucket A-3 network id-resolver) addition — lockstep with s_bindings[] above =====
+    "network::getObjectById",
 };
 
 constexpr bool allNamesInInc()

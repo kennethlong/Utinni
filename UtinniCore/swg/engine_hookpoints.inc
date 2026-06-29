@@ -283,3 +283,8 @@ ENGINE_HOOKPOINT(messageQueue,         appendMessageData)  // pmfToVoid MessageQ
 // thunk, plus the live-instance accessor (the hud the consumer calls getTarget on).
 ENGINE_HOOKPOINT(cuiHud,              getTarget)            // __fastcall thunk -> SwgCuiHud::getLastSelectedObject (MI; CALLED)
 ENGINE_HOOKPOINT(cuiHud,              g_instance)           // static accessor SwgCuiHudFactory::findMediatorForCurrentHud
+
+// -- Bucket A-3 (v11->v12): network id->Object resolver (unblocks creatureObject::setTarget) ---
+// The consumer's hkSetTarget resolves the new target id->Object* via Network::getObjectById; on the
+// advertised client that hit a stale hardcoded RVA and crashed. Advertise the real static resolver.
+ENGINE_HOOKPOINT(network,            getObjectById)        // static &fn NetworkIdManager::getObjectById(const NetworkId&)

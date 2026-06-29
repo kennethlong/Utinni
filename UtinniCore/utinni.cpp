@@ -232,11 +232,23 @@ void createDetours()
     // --- INPUT / EVENT / MOVEMENT / LOCOMOTION group (prime suspect) ---
     if (!skipInput && !advertised)
     {
-        utinni::creatureObject::detour();
         utinni::cuiHud::detour();
         utinni::cuiIo::detour();
         utinni::debugCamera::detour();
         utinni::MessageQueue::detour(); // Phase G (Issue #11): instrument input-map output
+    }
+
+    // --- Bucket A-3: TARGET-CHANGE callback un-gate on the advertised client ---
+    // Lifted out of the wholesale-skipped INPUT block. creatureObject::detour() hooks the advertised
+    // setTarget row (v9, real entry CreatureObject::setLookAtTarget -- signature-matched, unlike the
+    // reverted sysmsg) and self-gates on installable(setTarget). Its hkSetTarget body resolves the new
+    // target's Object* via Network::getObjectById -> the advertised network::getObjectById row (v12, the
+    // A-3 id-resolver) -- so the resolve is safe on the advertised client now (it was the last blocker;
+    // un-gating before v12 would have hit the stale idManagerGetObjectById RVA, the sysmsg crash class).
+    // Behavior-identical on SWGEmu (advertised==false -> !skipInput) -- D-00.
+    if (!skipInput)
+    {
+        utinni::creatureObject::detour();
     }
 
     // --- WS-4 Terrain PROBE: GroundScene -- lifted out of the advertised-skipped INPUT block ---

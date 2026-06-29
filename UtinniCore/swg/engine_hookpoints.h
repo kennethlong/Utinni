@@ -108,8 +108,13 @@
 // (c0000005 via sendFakeSystemMessage->receiveSystemMessage->hkReceiveMessage on region-enter). The
 // real receiver is the file-local Listener::receiveMessage (no external symbol) -> un-advertisable;
 // OMIT (a wrong & is worse than a missing row). 112 names.
+// Bumped 11 -> 12 in Bucket A-3 (target-change resolver): 1 NAME ADD --
+// network::getObjectById -> static NetworkIdManager::getObjectById(const NetworkId&) [the
+// NetworkId->Object* lookup]. Unblocks the creatureObject::setTarget callback: the consumer's
+// hkSetTarget resolves the new target id->Object* via Network::getObjectById, which on the
+// advertised client hit a stale hardcoded RVA and crashed. constant &fn (true static). 113 names.
 // ----------------------------------------------------------------------
-#define ENGINE_HOOKPOINTS_VERSION 11
+#define ENGINE_HOOKPOINTS_VERSION 12
 
 // ----------------------------------------------------------------------
 // One row per advertised endpoint: a stable contract name + the borrowed
