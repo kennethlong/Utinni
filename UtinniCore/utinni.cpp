@@ -230,25 +230,21 @@ void createDetours()
     }
 
     // --- INPUT / EVENT / MOVEMENT / LOCOMOTION group (prime suspect) ---
+    // creatureObject::setTarget: REVERTED to SWGEmu-only (Bucket A-3 smoke, 2026-06-29). The setTarget
+    // hook + the v12 network::getObjectById resolve are BOTH fine (smoke logged a non-null resolve), but
+    // un-gating it makes hkSetTarget fire during load -> its onTarget dispatch wakes the dormant editor
+    // subscriber WorldSnapshotImpl.OnTarget -> Game.PlayerLookAtTargetObject -> Object::getObjectById ->
+    // the STILL-stale cachedNetworkIdGetObject RVA (0x00B30160) -> c0000005 (OnTarget also walks the
+    // unadvertised WorldSnapshotReaderWriter). The GroundScene blast-radius lesson: target-change can't
+    // un-gate until its WHOLE consumer chain (the WorldSnapshot editor) is advertised-safe, not just the
+    // one id-resolver. Stays SWGEmu-only; the v12 binding remains (inert/harmless on advertised).
     if (!skipInput && !advertised)
     {
+        utinni::creatureObject::detour();
         utinni::cuiHud::detour();
         utinni::cuiIo::detour();
         utinni::debugCamera::detour();
         utinni::MessageQueue::detour(); // Phase G (Issue #11): instrument input-map output
-    }
-
-    // --- Bucket A-3: TARGET-CHANGE callback un-gate on the advertised client ---
-    // Lifted out of the wholesale-skipped INPUT block. creatureObject::detour() hooks the advertised
-    // setTarget row (v9, real entry CreatureObject::setLookAtTarget -- signature-matched, unlike the
-    // reverted sysmsg) and self-gates on installable(setTarget). Its hkSetTarget body resolves the new
-    // target's Object* via Network::getObjectById -> the advertised network::getObjectById row (v12, the
-    // A-3 id-resolver) -- so the resolve is safe on the advertised client now (it was the last blocker;
-    // un-gating before v12 would have hit the stale idManagerGetObjectById RVA, the sysmsg crash class).
-    // Behavior-identical on SWGEmu (advertised==false -> !skipInput) -- D-00.
-    if (!skipInput)
-    {
-        utinni::creatureObject::detour();
     }
 
     // --- WS-4 Terrain PROBE: GroundScene -- lifted out of the advertised-skipped INPUT block ---
