@@ -28,6 +28,8 @@
 
 namespace utinni
 {
+class Object;
+
 class UTINNI_API CuiManager
 {
 public:
@@ -38,6 +40,15 @@ public:
     static void restartMusic();
 
     static void detour();
+};
+
+// Bucket A-2 (v10) world-pick / HUD-target. getSelectedObject() returns the HUD's last world-picked
+// Object* via the advertised cuiHud rows (g_instance -> getTarget). A pure GETTER (no detour) -- safe
+// to call any time. Returns null on SWGEmu / pre-v10 (slots null) or when no hud is live (not in-world).
+class UTINNI_API CuiHud
+{
+public:
+    static Object* getSelectedObject();
 };
 
 class UTINNI_API UiManager

@@ -173,6 +173,24 @@ bool CuiManager::hasObjectUnderCursor()
     return utinni::hasObjectUnderCursor;
 }
 
+Object* CuiHud::getSelectedObject()
+{
+    // Advertised-only world-pick (Bucket A-2): read the live HUD's last-selected object via the
+    // advertised cuiHud rows (g_instance -> the live SwgCuiHud*; getTarget -> its last-selected
+    // Object*). Null on SWGEmu / pre-v10 (slots null) or when no hud is live (not in-world). Pure
+    // getter -- no detour, no per-frame cost; safe to call any time.
+    if (swg::cuiHud::g_instance == nullptr || swg::cuiHud::getTarget == nullptr)
+    {
+        return nullptr;
+    }
+    const swgptr hud = swg::cuiHud::g_instance();
+    if (hud == 0)
+    {
+        return nullptr;
+    }
+    return reinterpret_cast<Object*>(swg::cuiHud::getTarget(hud));
+}
+
 void CuiManager::restartMusic()
 {
     swg::cuiManager::restartMusic(true);
