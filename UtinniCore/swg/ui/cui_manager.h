@@ -39,16 +39,14 @@ public:
     static bool hasObjectUnderCursor();
     static void restartMusic();
 
-    static void detour();
-};
-
-// Bucket A-2 (v10) world-pick / HUD-target. getSelectedObject() returns the HUD's last world-picked
-// Object* via the advertised cuiHud rows (g_instance -> getTarget). A pure GETTER (no detour) -- safe
-// to call any time. Returns null on SWGEmu / pre-v10 (slots null) or when no hud is live (not in-world).
-class UTINNI_API CuiHud
-{
-public:
+    // Bucket A-2 (v10) world-pick / HUD-target. getSelectedObject() returns the HUD's last world-picked
+    // Object* via the advertised cuiHud rows (cuiHud::g_instance -> cuiHud::getTarget). A pure GETTER (no
+    // detour, no callback dispatch) -- safe to call any time. Returns null on SWGEmu / pre-v10 (slots null)
+    // or when no hud is live (not in-world). (Lives on CuiManager, not a new CuiHud class -- the managed
+    // tree already has a `CuiHud` NAMESPACE that a new type would shadow.)
     static Object* getSelectedObject();
+
+    static void detour();
 };
 
 class UTINNI_API UiManager

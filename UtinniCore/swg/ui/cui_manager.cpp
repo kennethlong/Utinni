@@ -173,7 +173,7 @@ bool CuiManager::hasObjectUnderCursor()
     return utinni::hasObjectUnderCursor;
 }
 
-Object* CuiHud::getSelectedObject()
+Object* CuiManager::getSelectedObject()
 {
     // Advertised-only world-pick (Bucket A-2): read the live HUD's last-selected object via the
     // advertised cuiHud rows (g_instance -> the live SwgCuiHud*; getTarget -> its last-selected
