@@ -477,12 +477,17 @@ using pInfoTypesFindDefaultCursor = swgptr(__cdecl*)(utinni::ClientObject* obj);
 extern pInfoTypesFindDefaultCursor infoTypesFindDefaultCursor;
 } // namespace swg::cuiMenu
 
-// -- systemMessageManager::receiveMessage (ui/cui_manager.cpp:70; provider MISMATCH receiveSystemMessage) --
-namespace swg::systemMessageManager
+// -- cuiHud::g_instance + getTarget (ui/cui_manager.cpp; Bucket A-2 v10 world-pick) --
+// (systemMessageManager::receiveMessage was bound in v9 but REMOVED v10->v11/A-2.1: a wrong-& --
+//  the consumer hkReceiveMessage is a 2-arg MessageDispatch::Receiver byte-stream receiver, the
+//  provider advertised a 1-arg static -> world-load crash. OMIT'd provider-side; binding dropped here.)
+namespace swg::cuiHud
 {
-using pReceiveMessage = void(__cdecl*)(swgptr pChatSystemMsg);
-extern pReceiveMessage receiveMessage;
-} // namespace swg::systemMessageManager
+using pGetInstance = swgptr(__cdecl*)();
+using pGetTarget = swgptr(__thiscall*)(swgptr pHud);
+extern pGetInstance g_instance;
+extern pGetTarget getTarget;
+} // namespace swg::cuiHud
 
 // -- creatureObject::setTarget (object/creature_object.cpp:35; provider MISMATCH setLookAtTarget(NetworkId&),
 //    real entry via utinni_creatureSetTargetRealEntry() -- semantic verified at the un-gate smoke) --
@@ -687,12 +692,15 @@ static const Binding s_bindings[] = {
     // Bound now so the contract resolves at v9/111 + WS-3 drift telemetry covers them; the detours
     // that CONSUME these slots stay wholesale-gated `!advertised` in utinni.cpp -> behavior-neutral.
     // Per-editor un-gate lands per-subsystem behind individual maintainer smokes (the v4/v5 idiom).
-    {"cuiRadialMenuManager::update", (void**)&swg::cuiRadialMenuManager::update},                 // static &CuiRadialMenuManager::update
-    {"cuiMenu::infoTypesFindDefaultCursor", (void**)&swg::cuiMenu::infoTypesFindDefaultCursor},   // free fn Cui::MenuInfoTypes::findDefaultCursor
-    {"systemMessageManager::receiveMessage", (void**)&swg::systemMessageManager::receiveMessage}, // MISMATCH: provider CuiSystemMessageManager::receiveSystemMessage
-    {"creatureObject::setTarget", (void**)&swg::creatureObject::setTarget},                       // MISMATCH: provider CreatureObject::setLookAtTarget (MI real entry)
-    {"messageQueue::appendMessage", (void**)&swg::messageQueue::appendMessage},                   // MessageQueue::appendMessage(int,float,uint32)
-    {"messageQueue::appendMessageData", (void**)&swg::messageQueue::appendMessageData},           // MISMATCH: provider appendMessage(int,float,Data*,uint32)
+    {"cuiRadialMenuManager::update", (void**)&swg::cuiRadialMenuManager::update},               // static &CuiRadialMenuManager::update
+    {"cuiMenu::infoTypesFindDefaultCursor", (void**)&swg::cuiMenu::infoTypesFindDefaultCursor}, // free fn Cui::MenuInfoTypes::findDefaultCursor
+    {"creatureObject::setTarget", (void**)&swg::creatureObject::setTarget},                     // MISMATCH: provider CreatureObject::setLookAtTarget (MI real entry)
+    {"messageQueue::appendMessage", (void**)&swg::messageQueue::appendMessage},                 // MessageQueue::appendMessage(int,float,uint32)
+    {"messageQueue::appendMessageData", (void**)&swg::messageQueue::appendMessageData},         // MISMATCH: provider appendMessage(int,float,Data*,uint32)
+
+    // ===== v10 (Phase 24 / Bucket A-2 -- world-pick / HUD-target): 2 new endpoints (getter rows, not detoured) =====
+    {"cuiHud::getTarget", (void**)&swg::cuiHud::getTarget},   // __fastcall thunk -> SwgCuiHud::getLastSelectedObject() const (the picked Object*)
+    {"cuiHud::g_instance", (void**)&swg::cuiHud::g_instance}, // static SwgCuiHudFactory::findMediatorForCurrentHud() (the live SwgCuiHud*)
 };
 
 // ----------------------------------------------------------------------
@@ -733,8 +741,8 @@ constexpr size_t kIncCount = 0
 
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
 
-static_assert(kIncCount == 111, "contract .inc size drifted from the expected 111 names (v9 / Phase 24 Bucket A: +6 per-editor rows)");
-static_assert(kBindingCount == 109, "s_bindings[] must bind 109 of 111 (.inc minus the TWO carve-outs)");
+static_assert(kIncCount == 112, "contract .inc size drifted from the expected 112 names (v11: Bucket A-2 world-pick +2, minus A-2.1 systemMessageManager::receiveMessage revert -1)");
+static_assert(kBindingCount == 110, "s_bindings[] must bind 110 of 112 (.inc minus the TWO carve-outs)");
 static_assert(kBindingCount == kIncCount - 2,
               "exactly two .inc names are carve-outs: consoleHelper::sendInput (D-02) + "
               "client::wndProc (embed-resize regression; RNDR-04 follow-on)");
@@ -858,10 +866,12 @@ constexpr const char* kBindingNames[] = {
     // ===== v9 (Phase 24 / Bucket A) additions — lockstep with s_bindings[] above =====
     "cuiRadialMenuManager::update",
     "cuiMenu::infoTypesFindDefaultCursor",
-    "systemMessageManager::receiveMessage",
     "creatureObject::setTarget",
     "messageQueue::appendMessage",
     "messageQueue::appendMessageData",
+    // ===== v10 (Phase 24 / Bucket A-2 world-pick) additions — lockstep with s_bindings[] above =====
+    "cuiHud::getTarget",
+    "cuiHud::g_instance",
 };
 
 constexpr bool allNamesInInc()

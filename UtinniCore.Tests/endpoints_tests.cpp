@@ -207,7 +207,7 @@ bool isCarveOut(const char* n)
 }
 } // namespace
 
-TEST_CASE("endpoints: full catalog (109 of 111 .inc names) all resolve, carve-outs excluded", "[endpoints][coverage]")
+TEST_CASE("endpoints: full catalog (110 of 112 .inc names) all resolve, carve-outs excluded", "[endpoints][coverage]")
 {
     // Every .inc name, in declaration order, sourced from the canonical X-macro list.
     static const char* const kAllIncNames[] = {
@@ -216,9 +216,9 @@ TEST_CASE("endpoints: full catalog (109 of 111 .inc names) all resolve, carve-ou
 #undef ENGINE_HOOKPOINT
     };
     constexpr size_t kIncCount = sizeof(kAllIncNames) / sizeof(kAllIncNames[0]);
-    REQUIRE(kIncCount == 111); // the contract size (drift gate -- mirrors the provider count, v9 / Bucket A)
+    REQUIRE(kIncCount == 112); // the contract size (drift gate -- mirrors the provider count, v11 / Bucket A-2 world-pick - sysmsg revert)
 
-    // The expected override scope is the .inc MINUS the two carve-outs -> 109.
+    // The expected override scope is the .inc MINUS the two carve-outs -> 110.
     std::vector<const char*> expectedNames;
     for (const char* n : kAllIncNames)
     {
@@ -227,7 +227,7 @@ TEST_CASE("endpoints: full catalog (109 of 111 .inc names) all resolve, carve-ou
             expectedNames.push_back(n);
         }
     }
-    REQUIRE(expectedNames.size() == 109);
+    REQUIRE(expectedNames.size() == 110);
 
     // Synthesize a table advertising EVERY .inc name (incl. the carve-out -- the
     // provider DOES advertise it; the consumer simply does not bind it). Each row
@@ -254,7 +254,7 @@ TEST_CASE("endpoints: full catalog (109 of 111 .inc names) all resolve, carve-ou
 
     const int resolved = resolve(&table, bindings.data(), bindings.size());
 
-    REQUIRE(resolved == 109); // full catalog resolved (D-01, v9 minus 2 carve-outs)
+    REQUIRE(resolved == 110); // full catalog resolved (D-01, v11 minus 2 carve-outs)
     for (void* s : slots)     // every requested name overwrote its slot
     {
         REQUIRE(s != nullptr);

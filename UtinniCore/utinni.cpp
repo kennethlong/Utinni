@@ -147,21 +147,26 @@ void createDetours()
         // utinni::cuiIntro::detour();
         utinni::cuiLoginScreen::detour();
         // utinni::cuiMediatorFactorySetup::detour();
+        // SystemMessageManager: REVERTED to SWGEmu-only (A-2.1) -- the provider removed
+        // systemMessageManager::receiveMessage v10->v11 (it was a wrong-& 1-arg static vs our 2-arg
+        // MessageDispatch::Receiver hkReceiveMessage -> world-load c0000005). So the row is unadvertised
+        // again; keep the detour SWGEmu-gated (the stale RVA must not install on the advertised client).
+        utinni::SystemMessageManager::detour();
         utinni::treefile::detour();
         utinni::IoWin::detour();
     }
 
-    // --- Bucket A: clean advertised-clean editor un-gates (radial menu / system messages / menu cursor) ---
+    // --- Bucket A: clean advertised-clean editor un-gates (radial menu / menu cursor) -- SMOKE-PASSED ---
     // Lifted out of the wholesale-skipped MISC block. Each detour() hooks a SINGLE advertised-clean row
-    // (cuiRadialMenuManager::update / systemMessageManager::receiveMessage / cuiMenu::infoTypesFindDefaultCursor)
-    // and already self-gates on installable() of that primary -> the resolver rebinds the SWGEmu literal to the
-    // relocated provider entry before this runs, so installable() is authoritative on the advertised client and
-    // each installs only when its row resolved. No unadvertised secondary hooks (unlike chat/CuiManager), so no
-    // isAdvertisedClient() carve-out needed. Behavior-identical on SWGEmu (advertised==false -> !skipMisc) -- D-00.
+    // (cuiRadialMenuManager::update / cuiMenu::infoTypesFindDefaultCursor) and already self-gates on
+    // installable() of that primary -> the resolver rebinds the SWGEmu literal to the relocated provider
+    // entry before this runs, so installable() is authoritative on the advertised client. No unadvertised
+    // secondary hooks (unlike chat/CuiManager), so no isAdvertisedClient() carve-out needed. Maintainer smoke
+    // confirmed NPC-click radial + menus work. (systemMessageManager was here briefly but reverted -- see above.)
+    // Behavior-identical on SWGEmu (advertised==false -> !skipMisc) -- D-00.
     if (!skipMisc)
     {
         utinni::cuiRadialMenuManager::detour();
-        utinni::SystemMessageManager::detour();
         utinni::cuiMenu::detour();
     }
 

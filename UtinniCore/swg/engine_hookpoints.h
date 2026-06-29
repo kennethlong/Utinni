@@ -95,8 +95,21 @@
 // actionPerformAction, cuiHud::update, cuiLoginScreen::activate, debugCamera::alter ->
 // consumer vtable-resolves) -- documented in engine_advertise.cpp + the handback, NOT in
 // this required-name set.
+// Bumped 9 -> 10 in Bucket A-2 (world-pick / HUD-target): 2 NAME ADDs --
+// cuiHud::getTarget (was a Bucket A OMIT; now the real entry of SwgCuiHud::
+// getLastSelectedObject() const via a __fastcall MI thunk -- the world-picked object) +
+// cuiHud::g_instance (static SwgCuiHudFactory::findMediatorForCurrentHud -> the LIVE
+// ground/space hud the consumer calls getTarget on, mirroring cuiIo::g_instance). 113 names.
+// Bumped 10 -> 11 in Bucket A-2.1 (crash revert): 1 NAME REMOVE --
+// systemMessageManager::receiveMessage (Bucket A v9) is REVERTED. It was mapped to the static
+// CuiSystemMessageManager::receiveSystemMessage(const ChatSystemMessage&), but the consumer's
+// hkReceiveMessage detour targets the MessageDispatch::Receiver::receiveMessage(emitter,message)
+// byte-stream receiver -- pointing that 2-arg network hook at the 1-arg static CRASHED world-load
+// (c0000005 via sendFakeSystemMessage->receiveSystemMessage->hkReceiveMessage on region-enter). The
+// real receiver is the file-local Listener::receiveMessage (no external symbol) -> un-advertisable;
+// OMIT (a wrong & is worse than a missing row). 112 names.
 // ----------------------------------------------------------------------
-#define ENGINE_HOOKPOINTS_VERSION 9
+#define ENGINE_HOOKPOINTS_VERSION 11
 
 // ----------------------------------------------------------------------
 // One row per advertised endpoint: a stable contract name + the borrowed

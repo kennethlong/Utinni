@@ -75,6 +75,19 @@ pSendMessage sendMessage = (pSendMessage)0x008AC250;
 
 } // namespace swg::systemMessageManager
 
+// Bucket A-2 (v10) world-pick / HUD-target. Advertised-ONLY accessor + getter (null on SWGEmu --
+// there is no SWGEmu RVA; the resolver fills them by name on the advertised client). g_instance ->
+// SwgCuiHudFactory::findMediatorForCurrentHud() (the live SwgCuiHud*, resolves HudGround/HudSpace).
+// getTarget -> the provider's __fastcall thunk over SwgCuiHud::getLastSelectedObject() const (the
+// last world-picked Object*). Opaque swgptr -- a consumer accessor will cast when world-pick is wired.
+namespace swg::cuiHud
+{
+using pGetInstance = swgptr(__cdecl*)();
+using pGetTarget = swgptr(__thiscall*)(swgptr pHud);
+pGetInstance g_instance = nullptr;
+pGetTarget getTarget = nullptr;
+} // namespace swg::cuiHud
+
 // Phase 3 R-A native-side (per 03-CONTEXT D-08/D-09): handle-based registry
 // backed by insertion-order std::vector<{handle, fn_ptr}>.
 // CR-01 (03-REVIEW): per-registry mutex protects Subscribe / Unsubscribe / snapshot.
