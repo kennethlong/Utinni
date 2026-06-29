@@ -145,6 +145,13 @@ public:
     const char* getObjectTemplateName();
     int64_t getNetworkIdValue();
     const char* getSharedAppearanceFilename();
+
+    // Object class Tag (uint32 FOURCC) via the advertised object::getObjectType row (remapped onto
+    // getType, re-pointed on the advertised client). getParentCellName(): nullptr = outdoors / no
+    // containing cell; "" = in a cell but the name isn't safely readable (the CellProperty::name raw
+    // field is offset-fragile on the NGE advertised layout, §5 -- read only on SWGEmu); else the name.
+    unsigned int getObjectType();
+    const char* getParentCellName();
 };
 
 struct AutoVariableBase

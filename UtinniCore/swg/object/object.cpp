@@ -24,6 +24,7 @@
 
 #include "object.h"
 #include "swg/appearance/appearance.h"
+#include "swg/endpoints.h"
 #include "swg/misc/swg_math.h"
 #include "swg/misc/network.h"
 #include "swg/misc/swg_memory.h"
@@ -403,5 +404,31 @@ const char* Object::getSharedAppearanceFilename()
         return nullptr;
     }
     return reinterpret_cast<SharedObjectTemplate*>(pTemplate)->getAppearanceFilename();
+}
+
+unsigned int Object::getObjectType()
+{
+    // Advertised via the object::getObjectType row (MISMATCH-remapped onto swg::object::getType, which
+    // the resolver re-points on the advertised client; SWGEmu keeps the literal). Returns the object's
+    // class Tag (uint32 FOURCC). Never null -- getType always carries a backing address.
+    return swg::object::getType(this);
+}
+
+const char* Object::getParentCellName()
+{
+    // getParentCell() is advertised (re-pointed on the advertised client) -> the CellProperty* is safe.
+    // null = the object is not in a containing cell (outdoors). The cell NAME is a raw struct field
+    // (CellProperty::name @ 0x38) -> offset-fragile on the NGE advertised layout (§5), so read it ONLY
+    // on SWGEmu; on the advertised client return "" (= in a cell, but the name isn't safely readable).
+    CellProperty* cell = getParentCell();
+    if (cell == nullptr)
+    {
+        return nullptr;
+    }
+    if (swg::endpoints::isAdvertisedClient())
+    {
+        return "";
+    }
+    return cell->getName();
 }
 } // namespace utinni
