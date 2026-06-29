@@ -26,7 +26,9 @@
 #include "swg/endpoints.h"
 #include "swg/camera/camera.h"
 #include "swg/misc/swg_string.h"
+#include "utility/log.h"
 
+#include <cstdio>
 #include <mutex>
 #include <vector>
 
@@ -181,14 +183,20 @@ Object* CuiManager::getSelectedObject()
     // getter -- no detour, no per-frame cost; safe to call any time.
     if (swg::cuiHud::g_instance == nullptr || swg::cuiHud::getTarget == nullptr)
     {
+        log::info("CuiManager::getSelectedObject: cuiHud rows not advertised (g_instance/getTarget null) -- pre-v10 / SWGEmu");
         return nullptr;
     }
     const swgptr hud = swg::cuiHud::g_instance();
-    if (hud == 0)
-    {
-        return nullptr;
-    }
-    return reinterpret_cast<Object*>(swg::cuiHud::getTarget(hud));
+    const swgptr obj = (hud != 0) ? swg::cuiHud::getTarget(hud) : 0;
+
+    // Diagnostic: which is empty? hud==0 -> findMediatorForCurrentHud gave no live HUD; hud!=0 &&
+    // obj==0 -> HUD is live but getLastSelectedObject returned null (the NGE blue-selection may live
+    // in a different member than the mapped m_lastSelectedObject -> a provider re-map question).
+    char m[96];
+    std::snprintf(m, sizeof(m), "CuiManager::getSelectedObject: hud=0x%p getLastSelectedObject=0x%p", (void*)hud, (void*)obj);
+    log::info(m);
+
+    return reinterpret_cast<Object*>(obj);
 }
 
 void CuiManager::restartMusic()
