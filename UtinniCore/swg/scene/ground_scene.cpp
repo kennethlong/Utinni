@@ -107,6 +107,14 @@ void clearAdvertisedInstance()
 // CODEX's fix recommendation.
 namespace
 {
+// Free-cam offset probe helper: a value is a plausible userspace, 4-byte-aligned heap pointer. Used to
+// GUARD every level-2 dereference in the probe -- if a struct field offset drifted on NGE, the level-1
+// read returns garbage; this gate makes the probe log "implausible" instead of AV'ing on the deref.
+inline bool looksLikePtr(swgptr p)
+{
+    return p > 0x10000 && p < 0x7FFFFFFF && (p & 0x3) == 0;
+}
+
 template <typename Fn>
 struct CallbackEntry
 {
@@ -398,6 +406,37 @@ void __fastcall hkUpdateLoop(GroundScene* pThis, DWORD EDX, float time)
         {
             char m[160];
             snprintf(m, sizeof(m), "hkUpdateLoop[probe %d]: advertised update fired pThis=0x%p time=%.4f", n, (void*)pThis, time);
+            utinni::log::info(m);
+        }
+
+        // FREE-CAM OFFSET PROBE (2026-06-29): before building free-cam on the advertised NGE client, verify
+        // which of free-cam's RE'd struct field offsets are still valid on NGE vs. need a provider accessor.
+        // The toggle (changeCamera) and the camera fetch (getCurrentCamera) are ALREADY advertised, so the
+        // only unverified reads left are three struct fields: GroundScene::currentView (isFreeCameraActive),
+        // GroundScene::debugPortalCameraInputMap + 0xC (processIoEvent's input MessageQueue), and the live
+        // camera's + 0x248 (hkAlter's movement MessageQueue). Read-only, advertised-only, rate-limited; the
+        // latched pThis is a known-valid GroundScene (WS-4 probe) and every level-2 deref is looksLikePtr-
+        // guarded, so a drifted offset logs "implausible" rather than AV'ing. A field that comes back sane on
+        // NGE needs NO provider accessor; a garbage one sizes the v12->v13 ask. Does NOT change behavior.
+        static std::atomic<int> s_freeCamProbeCount{0};
+        const int fc = s_freeCamProbeCount.fetch_add(1, std::memory_order_relaxed);
+        if (fc < 3 || fc == 600)
+        {
+            const int currentView = pThis->currentView;
+            const swgptr dpcim = pThis->debugPortalCameraInputMap;
+            const swgptr dpcimMq = looksLikePtr(dpcim) ? memory::read<swgptr>(dpcim + 0xC) : 0;
+
+            // camera via the ADVERTISED getCurrentCamera -> no dependency on the GroundScene camera-array offset.
+            const auto cam = swg::groundScene::getCurrentCamera(pThis);
+            const swgptr camMq = looksLikePtr((swgptr)cam) ? memory::read<swgptr>((swgptr)cam + 0x248) : 0;
+
+            char m[256];
+            snprintf(m, sizeof(m),
+                     "freeCamProbe[%d]: currentView=%d(sane=%d) debugPortalCameraInputMap=0x%X(+0xC mq=0x%X sane=%d) "
+                     "getCurrentCamera=0x%p(+0x248 mq=0x%X sane=%d)",
+                     fc, currentView, (currentView >= 0 && currentView <= 16),
+                     (unsigned)dpcim, (unsigned)dpcimMq, looksLikePtr(dpcimMq) ? 1 : 0,
+                     (void*)cam, (unsigned)camMq, looksLikePtr(camMq) ? 1 : 0);
             utinni::log::info(m);
         }
     }
