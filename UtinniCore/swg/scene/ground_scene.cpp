@@ -89,6 +89,40 @@ pGetDebugPortalCameraMessageQueue getDebugPortalCameraMessageQueue = nullptr;
 // only (hkUpdateLoop / hkMainLoop drain / hkCleanupScene all run there); std::atomic is belt-and-suspenders.
 static std::atomic<utinni::GroundScene*> s_advertisedGroundScene{nullptr};
 
+// v13 free-cam (advertised input fix, 4-AI consult 2026-06-30). On the NGE client the engine's
+// DebugPortalCamera::alter already flies the camera natively from its own input map -- the ONLY blocker is
+// that CuiIoWin swallows IOET_KeyDown (m_keyboardInputActive==true -> IOR_Block) before it reaches
+// GroundScene. So free-cam = changeCamera(cm_Free) [selects the debug-portal input map] + RELEASE CuiIoWin
+// keyboard capture so keydowns flow to GroundScene -> the native input map -> CM_walk -> the camera. Both
+// rows are already advertised (cuiIo::g_instance -> CuiManager::getIoWin; cuiIo::setKeyboardInputActive).
+namespace swg::cuiIo
+{
+using pGetIoWin = swgptr(__cdecl*)();
+using pSetKeyboardInputActive = swgptr(__thiscall*)(swgptr pThis, bool value);
+extern pGetIoWin g_instance;
+extern pSetKeyboardInputActive setKeyboardInputActive;
+} // namespace swg::cuiIo
+
+// Tracks whether WE engaged advertised free-cam (drives the toggle direction + the per-frame keyboard
+// re-assert). NOT isFreeCameraActive() -- that reads true from scene-load (the loading screen forces
+// view CI_debugPortal), so it can't distinguish "user engaged free-cam" from "transient load view".
+static std::atomic<bool> s_advFreeCamEngaged{false};
+
+// Release (released=true) or restore (false) CuiIoWin's keyboard capture on the advertised client. Released
+// => setKeyboardInputActive(ioWin, false) so IOET_KeyDown passes (IOR_Pass) down to GroundScene's input map.
+static void setAdvFreeCamKeyboardReleased(bool released)
+{
+    if (swg::cuiIo::g_instance == nullptr || swg::cuiIo::setKeyboardInputActive == nullptr)
+    {
+        return;
+    }
+    const swgptr ioWin = swg::cuiIo::g_instance();
+    if (ioWin != 0)
+    {
+        swg::cuiIo::setKeyboardInputActive(ioWin, !released);
+    }
+}
+
 namespace swg::groundScene
 {
 // Called from game.cpp hkCleanupScene (forward-declared there) to drop the latch before the engine tears the
@@ -97,6 +131,12 @@ namespace swg::groundScene
 void clearAdvertisedInstance()
 {
     s_advertisedGroundScene.store(nullptr, std::memory_order_relaxed);
+    // Scene teardown: drop free-cam engagement (the next scene starts un-engaged) + restore keyboard capture
+    // so we don't leave the UI keyboard released across a scene change.
+    if (s_advFreeCamEngaged.exchange(false, std::memory_order_acq_rel))
+    {
+        setAdvFreeCamKeyboardReleased(false);
+    }
 }
 } // namespace swg::groundScene
 
@@ -410,6 +450,15 @@ void __fastcall hkUpdateLoop(GroundScene* pThis, DWORD EDX, float time)
             snprintf(m, sizeof(m), "hkUpdateLoop[probe %d]: advertised update fired pThis=0x%p time=%.4f", n, (void*)pThis, time);
             utinni::log::info(m);
         }
+
+        // Free-cam keyboard re-assert (4-AI consult): CuiManager re-derives m_keyboardInputActive from a
+        // mediator refcount, so a one-shot setKeyboardInputActive(false) gets clobbered when any mediator's
+        // keyboard count changes. While WE have free-cam engaged, re-assert the release every frame so
+        // IOET_KeyDown keeps flowing to the debug-portal input map. Cheap; runs only while engaged.
+        if (s_advFreeCamEngaged.load(std::memory_order_acquire))
+        {
+            setAdvFreeCamKeyboardReleased(true);
+        }
     }
 
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
@@ -430,9 +479,13 @@ void __fastcall hkHandleInputEvent(GroundScene* pThis, DWORD EDX, IoEvent* ioEve
     // command/action. If Enter shows up here, GroundScene's input map is
     // getting the event but routing it to chatWindow instead of to
     // game-mode 'startChat'. If Enter doesn't show up, it's already been
-    // siphoned off before this point. Filter out t_Update (4) and other
-    // noisy continuous events; log everything else, capped at 40 entries.
-    if (ioEvent != nullptr && ioEvent->type != IoEvent::t_Update)
+    // siphoned off before this point. Filter out the noisy per-frame/continuous events so the 40-entry cap
+    // captures the interesting ones (KeyDown=7 / KeyUp=8 / MouseButton=15/16): skip Prepare(3), Update(4),
+    // MouseMove(14), SetSystemMouseCursorPosition(17). This is how the free-cam smoke confirms whether
+    // IOET_KeyDown actually reaches GroundScene after the CuiIoWin keyboard-capture release.
+    const bool noisyContinuous = ioEvent != nullptr &&
+                                 (ioEvent->type == 3 || ioEvent->type == IoEvent::t_Update || ioEvent->type == 14 || ioEvent->type == 17);
+    if (ioEvent != nullptr && !noisyContinuous)
     {
         // WR-01 (03-REVIEW): the diag counter is read+modified from any
         // thread that reaches GroundScene::handleInputMapEvent (typically
@@ -527,7 +580,31 @@ Camera* GroundScene::getCurrentCamera()
 
 void GroundScene::toggleFreeCamera()
 {
-    if (isFreeCameraActive())
+    if (swg::endpoints::isAdvertisedClient())
+    {
+        // ADVERTISED (NGE): toggle on OUR engaged flag, not isFreeCameraActive() (which reads true from
+        // scene-load). The engine's native DebugPortalCamera::alter does the flying; we only switch the view
+        // (selects the debug-portal input map) and release/restore CuiIoWin keyboard capture so IOET_KeyDown
+        // reaches that input map. No alter detour -- native alter handles movement (our hkAlter would double-move).
+        if (s_advFreeCamEngaged.load(std::memory_order_acquire))
+        {
+            swg::groundScene::changeCamera(this, Camera::Modes::cm_FreeChase, 0);
+            setAdvFreeCamKeyboardReleased(false); // restore UI keyboard capture
+            s_advFreeCamEngaged.store(false, std::memory_order_release);
+            utinni::log::info("freecam[advertised]: OFF -- changeCamera(cm_FreeChase) + restored keyboard capture");
+        }
+        else
+        {
+            swg::groundScene::changeCamera(this, Camera::Modes::cm_Free, 0);
+            setAdvFreeCamKeyboardReleased(true); // release UI keyboard capture -> keydown reaches GroundScene
+            s_advFreeCamEngaged.store(true, std::memory_order_release);
+            char m[160];
+            snprintf(m, sizeof(m), "freecam[advertised]: ON -- changeCamera(cm_Free) view=%d + released keyboard capture (ioWin=0x%p)",
+                     (swg::cuiIo::g_instance != nullptr) ? 1 : 0, (void*)(swg::cuiIo::g_instance ? swg::cuiIo::g_instance() : 0));
+            utinni::log::info(m);
+        }
+    }
+    else if (isFreeCameraActive())
     {
         swg::groundScene::changeCamera(this, Camera::Modes::cm_FreeChase, 0);
     }
@@ -535,36 +612,24 @@ void GroundScene::toggleFreeCamera()
     {
         swg::groundScene::changeCamera(this, Camera::Modes::cm_Free, 0);
 
-        // v13 (free-cam): changeCamera(cm_Free) just made the DebugPortalCamera the current camera. On the
-        // advertised client, lazily vtable-resolve its alter (Object slot 4) and install the movement detour
-        // now -- it couldn't install at startup (no camera + the SWGEmu RVA is unmapped). One-shot, no-op on
-        // SWGEmu (alter detoured at startup there) and on repeat toggles.
-        if (swg::endpoints::isAdvertisedClient())
+        // Empirical slot-4 self-check (SWGEmu only -- the advertised path no longer installs hkAlter; native
+        // DebugPortalCamera::alter flies the camera there). On SWGEmu the alter override sits at the known RVA,
+        // so vtbl::slot(debugCamera, kObjectAlter) MUST equal it -- a mismatch means kObjectAlter is wrong.
+        static std::atomic<bool> s_alterSlotChecked{false};
+        if (!s_alterSlotChecked.exchange(true))
         {
-            debugCamera::ensureAdvertisedAlterDetour(getCurrentCamera());
-        }
-        else
-        {
-            // Empirical slot-4 self-check (pre-smoke review / vtbl_resolve.h discipline): on SWGEmu the alter
-            // override sits at the known RVA 0x006DA1B0, so vtbl::slot(debugCamera, kObjectAlter) MUST equal it.
-            // A mismatch means kObjectAlter is the wrong index -> the advertised vtable-resolve would detour the
-            // wrong function. Catch it here (where the answer is known) instead of by a crash on the NGE client.
-            static std::atomic<bool> s_alterSlotChecked{false};
-            if (!s_alterSlotChecked.exchange(true))
+            const void* slot = swg::vtbl::slot(getCurrentCamera(), swg::vtbl::kObjectAlter);
+            const void* knownSwgemuAlter = reinterpret_cast<const void*>(0x006DA1B0);
+            char m[160];
+            if (slot != knownSwgemuAlter)
             {
-                const void* slot = swg::vtbl::slot(getCurrentCamera(), swg::vtbl::kObjectAlter);
-                const void* knownSwgemuAlter = reinterpret_cast<const void*>(0x006DA1B0);
-                char m[160];
-                if (slot != knownSwgemuAlter)
-                {
-                    snprintf(m, sizeof(m), "WARNING freecam: SWGEmu alter slot %d=0x%p != the known alter RVA -- kObjectAlter index is WRONG", swg::vtbl::kObjectAlter, slot);
-                }
-                else
-                {
-                    snprintf(m, sizeof(m), "freecam: SWGEmu alter slot-%d self-check PASSED (matches the known alter RVA)", swg::vtbl::kObjectAlter);
-                }
-                utinni::log::info(m);
+                snprintf(m, sizeof(m), "WARNING freecam: SWGEmu alter slot %d=0x%p != the known alter RVA -- kObjectAlter index is WRONG", swg::vtbl::kObjectAlter, slot);
             }
+            else
+            {
+                snprintf(m, sizeof(m), "freecam: SWGEmu alter slot-%d self-check PASSED (matches the known alter RVA)", swg::vtbl::kObjectAlter);
+            }
+            utinni::log::info(m);
         }
     }
 

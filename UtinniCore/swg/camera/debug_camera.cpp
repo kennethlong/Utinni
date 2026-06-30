@@ -101,6 +101,15 @@ void enableDragPlayer(bool value)
 
 void processIoEvent(GroundScene* groundScene, IoEvent* ioEvent)
 {
+    // ADVERTISED (NGE): do NOTHING here. The 4-AI consult (2026-06-30) confirmed the engine routes IOET_KeyDown
+    // to its own debug-portal input map (CM_walk/...) and DebugPortalCamera::alter flies the camera natively
+    // once CuiIoWin keyboard capture is released (GroundScene::toggleFreeCamera does that). Our SWGEmu cmd_*
+    // injection here would be ignored by native alter (different message IDs) AND double-counted by hkAlter.
+    if (swg::endpoints::isAdvertisedClient())
+    {
+        return;
+    }
+
     // groundScene is now passed in from hkHandleInputEvent (the live `this`) instead of GroundScene::get(),
     // which returns nullptr on the advertised client by design. On advertised, source the input MessageQueue
     // via the advertised accessor (replaces the debugPortalCameraInputMap+0xC struct-offset read); on SWGEmu
