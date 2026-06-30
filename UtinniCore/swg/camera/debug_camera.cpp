@@ -110,10 +110,22 @@ void processIoEvent(GroundScene* groundScene, IoEvent* ioEvent)
         return;
     }
 
-    MessageQueue* messageQueue =
-        (swg::groundScene::getDebugPortalCameraMessageQueue != nullptr)
-            ? swg::groundScene::getDebugPortalCameraMessageQueue(groundScene)
-            : memory::read<MessageQueue*>((swgptr)groundScene->debugPortalCameraInputMap + 0xC);
+    MessageQueue* messageQueue;
+    if (swg::groundScene::getDebugPortalCameraMessageQueue != nullptr)
+    {
+        messageQueue = swg::groundScene::getDebugPortalCameraMessageQueue(groundScene);
+    }
+    else if (swg::endpoints::isAdvertisedClient())
+    {
+        // FAIL-CLOSED (4-AI pre-smoke review): the accessor is null on advertised ONLY if its v13 row failed
+        // to resolve -- do NOT fall back to the debugPortalCameraInputMap+0xC SWGEmu offset on an NGE layout
+        // (the exact AV this change exists to avoid). Bail; the init resolver log flags the missed row.
+        return;
+    }
+    else
+    {
+        messageQueue = memory::read<MessageQueue*>((swgptr)groundScene->debugPortalCameraInputMap + 0xC); // SWGEmu
+    }
     if (messageQueue == nullptr)
     {
         return;
@@ -234,10 +246,19 @@ float __fastcall hkAlter(GameCamera* pThis, swgptr EDX, float time)
     // v13 (free-cam): source the movement MessageQueue via the advertised accessor (replaces the camera+0x248
     // struct-offset read). null on SWGEmu -> the offset read (D-00). getCount/getMessage below go through the
     // utinni::MessageQueue wrappers, whose swg pointers are also re-pointed on advertised (v13 bound rows).
-    MessageQueue* messageQueue =
-        (swg::gameCamera::getMessageQueue != nullptr)
-            ? swg::gameCamera::getMessageQueue(pThis)
-            : memory::read<MessageQueue*>((swgptr)pThis + 0x248);
+    MessageQueue* messageQueue;
+    if (swg::gameCamera::getMessageQueue != nullptr)
+    {
+        messageQueue = swg::gameCamera::getMessageQueue(pThis);
+    }
+    else if (swg::endpoints::isAdvertisedClient())
+    {
+        return 0; // FAIL-CLOSED: never read the camera+0x248 SWGEmu offset on the advertised client
+    }
+    else
+    {
+        messageQueue = memory::read<MessageQueue*>((swgptr)pThis + 0x248); // SWGEmu
+    }
     if (messageQueue == nullptr)
     {
         return 0;
@@ -327,7 +348,10 @@ float __fastcall hkAlter(GameCamera* pThis, swgptr EDX, float time)
     // (D-00). For a free-flying (unparented) camera o2p == o2w, so this is behavior-identical there.
     swg::math::Transform* cameraTransform =
         swg::endpoints::isAdvertisedClient() ? pThis->getTransform_o2w() : &pThis->objectToParent;
-    pThis->move(cameraTransform->rotate_l2p(direction));
+    if (cameraTransform != nullptr) // null guard (pre-smoke review): getTransform_o2w should be live, but bail safe
+    {
+        pThis->move(cameraTransform->rotate_l2p(direction));
+    }
 
     if (Game::isSafeToUse() && dragPlayer && (direction.X != 0 || direction.Y != 0 || direction.Z != 0))
     {
@@ -338,13 +362,21 @@ float __fastcall hkAlter(GameCamera* pThis, swgptr EDX, float time)
     return result;
 }
 
+// The alter override sits at Object virtual slot 4 (provider-confirmed; cross-validated by the SWGEmu
+// runtime self-check in GroundScene::toggleFreeCamera, which asserts slot 4 == the known RVA).
+static_assert(swg::vtbl::kObjectAlter == 4, "alter must be Object virtual slot 4 (DebugPortalCamera override)");
+
 void ensureAdvertisedAlterDetour(Camera* currentCamera)
 {
     // One-shot: vtable-resolve DebugPortalCamera::alter (Object slot 4) off the live camera and detour it.
     // The patch is on the function code, not the instance, so it persists across scene changes / re-toggles.
     // Called from GroundScene::toggleFreeCamera on the advertised client once changeCamera(cm_Free) has made
     // the DebugPortalCamera current (it can't install at startup -- no camera exists + the SWGEmu RVA is
-    // unmapped). Game-thread only; the atomic guard is belt-and-suspenders.
+    // unmapped). Game-thread only.
+    //
+    // Pre-smoke review hardening: validate the resolved entry is committed-executable (installable) and that
+    // Detour::Create actually returns a trampoline BEFORE claiming s_installed -- so a failed/partial install
+    // RETRIES on the next toggle instead of leaving swg::debugCamera::alter null (which hkAlter would call).
     static std::atomic<bool> s_installed{false};
     if (currentCamera == nullptr || s_installed.load(std::memory_order_acquire))
     {
@@ -352,24 +384,28 @@ void ensureAdvertisedAlterDetour(Camera* currentCamera)
     }
 
     const void* alterEntry = swg::vtbl::slot(currentCamera, swg::vtbl::kObjectAlter);
-    if (alterEntry == nullptr)
+    if (alterEntry == nullptr || !swg::endpoints::installable(alterEntry))
     {
-        return; // no live vtable yet -> retry on the next toggle
-    }
-
-    bool expected = false;
-    if (!s_installed.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
-    {
+        // no live vtable yet, or the resolved slot isn't committed-executable code -> log + retry next toggle.
+        char m[160];
+        std::snprintf(m, sizeof(m), "debugCamera: alter slot4=0x%p not installable yet -> deferring (retry next toggle)", alterEntry);
+        log::info(m);
         return;
     }
 
-    char m[128];
-    std::snprintf(m, sizeof(m), "debugCamera: advertised alter vtable-resolve slot4=0x%p -> installing detour", alterEntry);
-    log::info(m);
+    void* trampoline = Detour::Create((LPVOID)alterEntry, hkAlter, DETOUR_TYPE_PUSH_RET);
+    if (trampoline == nullptr)
+    {
+        log::info("debugCamera: alter Detour::Create returned null -> NOT installed (retry next toggle)");
+        return; // do NOT claim s_installed -> retry
+    }
 
-    // Detour::Create returns the trampoline (the original DebugPortalCamera::alter); hkAlter calls the
-    // original through swg::debugCamera::alter, so store the trampoline there.
-    swg::debugCamera::alter = (swg::debugCamera::pAlter)Detour::Create((LPVOID)alterEntry, hkAlter, DETOUR_TYPE_PUSH_RET);
+    swg::debugCamera::alter = (swg::debugCamera::pAlter)trampoline; // hkAlter calls the original through this
+    s_installed.store(true, std::memory_order_release);
+
+    char m[128];
+    std::snprintf(m, sizeof(m), "debugCamera: advertised alter vtable-resolve slot4=0x%p -> detour installed", alterEntry);
+    log::info(m);
 }
 
 void detour()

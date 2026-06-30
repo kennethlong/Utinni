@@ -35,6 +35,7 @@
 #include "utility/string_utility.h"
 #include "swg/appearance/portal.h"
 #include "swg/camera/debug_camera.h"
+#include "swg/vtbl_resolve.h" // free-cam: SWGEmu alter-slot self-check (.cpp-only include -> not CppSharp-parsed)
 
 #include <atomic>
 #include <cstdio>
@@ -464,10 +465,11 @@ void __fastcall hkHandleInputEvent(GroundScene* pThis, DWORD EDX, IoEvent* ioEve
         }
     }
 
-    if (pThis->isFreeCameraActive())
+    if (ioEvent != nullptr && pThis->isFreeCameraActive())
     {
         // v13 (free-cam): pass the live `this` -- processIoEvent no longer calls GroundScene::get() (nullptr
-        // on the advertised client). pThis is the valid GroundScene on both targets.
+        // on the advertised client). pThis is the valid GroundScene on both targets. ioEvent null-guarded
+        // (pre-smoke review) since processIoEvent dereferences ioEvent->type and this path is now live on advertised.
         debugCamera::processIoEvent(pThis, ioEvent);
     }
 
@@ -541,6 +543,29 @@ void GroundScene::toggleFreeCamera()
         {
             debugCamera::ensureAdvertisedAlterDetour(getCurrentCamera());
         }
+        else
+        {
+            // Empirical slot-4 self-check (pre-smoke review / vtbl_resolve.h discipline): on SWGEmu the alter
+            // override sits at the known RVA 0x006DA1B0, so vtbl::slot(debugCamera, kObjectAlter) MUST equal it.
+            // A mismatch means kObjectAlter is the wrong index -> the advertised vtable-resolve would detour the
+            // wrong function. Catch it here (where the answer is known) instead of by a crash on the NGE client.
+            static std::atomic<bool> s_alterSlotChecked{false};
+            if (!s_alterSlotChecked.exchange(true))
+            {
+                const void* slot = swg::vtbl::slot(getCurrentCamera(), swg::vtbl::kObjectAlter);
+                const void* knownSwgemuAlter = reinterpret_cast<const void*>(0x006DA1B0);
+                char m[160];
+                if (slot != knownSwgemuAlter)
+                {
+                    snprintf(m, sizeof(m), "WARNING freecam: SWGEmu alter slot %d=0x%p != the known alter RVA -- kObjectAlter index is WRONG", swg::vtbl::kObjectAlter, slot);
+                }
+                else
+                {
+                    snprintf(m, sizeof(m), "freecam: SWGEmu alter slot-%d self-check PASSED (matches the known alter RVA)", swg::vtbl::kObjectAlter);
+                }
+                utinni::log::info(m);
+            }
+        }
     }
 
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
@@ -563,6 +588,12 @@ bool GroundScene::isFreeCameraActive() const
     if (swg::groundScene::isFreeCameraActive != nullptr)
     {
         return swg::groundScene::isFreeCameraActive(const_cast<GroundScene*>(this));
+    }
+    // FAIL-CLOSED (pre-smoke review): a null accessor on the advertised client means the row failed to resolve
+    // -> do NOT read currentView at the SWGEmu struct offset (garbage bool would drive the per-input MQ paths).
+    if (swg::endpoints::isAdvertisedClient())
+    {
+        return false;
     }
     return currentView == Camera::Modes::cm_Free;
 }
