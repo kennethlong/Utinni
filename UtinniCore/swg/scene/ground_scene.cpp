@@ -89,39 +89,14 @@ pGetDebugPortalCameraMessageQueue getDebugPortalCameraMessageQueue = nullptr;
 // only (hkUpdateLoop / hkMainLoop drain / hkCleanupScene all run there); std::atomic is belt-and-suspenders.
 static std::atomic<utinni::GroundScene*> s_advertisedGroundScene{nullptr};
 
-// v13 free-cam (advertised input fix, 4-AI consult 2026-06-30). On the NGE client the engine's
-// DebugPortalCamera::alter already flies the camera natively from its own input map -- the ONLY blocker is
-// that CuiIoWin swallows IOET_KeyDown (m_keyboardInputActive==true -> IOR_Block) before it reaches
-// GroundScene. So free-cam = changeCamera(cm_Free) [selects the debug-portal input map] + RELEASE CuiIoWin
-// keyboard capture so keydowns flow to GroundScene -> the native input map -> CM_walk -> the camera. Both
-// rows are already advertised (cuiIo::g_instance -> CuiManager::getIoWin; cuiIo::setKeyboardInputActive).
-namespace swg::cuiIo
-{
-using pGetIoWin = swgptr(__cdecl*)();
-using pSetKeyboardInputActive = swgptr(__thiscall*)(swgptr pThis, bool value);
-extern pGetIoWin g_instance;
-extern pSetKeyboardInputActive setKeyboardInputActive;
-} // namespace swg::cuiIo
-
-// Tracks whether WE engaged advertised free-cam (drives the toggle direction + the per-frame keyboard
-// re-assert). NOT isFreeCameraActive() -- that reads true from scene-load (the loading screen forces
-// view CI_debugPortal), so it can't distinguish "user engaged free-cam" from "transient load view".
+// v13 free-cam (advertised). On the NGE client the engine's DebugPortalCamera flies natively from its own
+// input map (groundinputmap_debugportalcamera.iff): right-mouse -> CM_mouseWalk (forward) + mouse-look work
+// out of the box once changeCamera(cm_Free) selects the debug-portal view. We do NOT touch CuiIoWin keyboard
+// capture: globally releasing it killed the UI's keyboard (chat/Enter) and the input map doesn't bind WASD
+// anyway, so the release bought nothing. WASD movement (feed CM_walk/down/left/right to the camera queue from
+// a non-UI-disruptive input read) is a follow-up. Tracks OUR engaged state (NOT isFreeCameraActive(), which
+// reads true from scene-load -- the loading screen forces view CI_debugPortal) to drive the toggle direction.
 static std::atomic<bool> s_advFreeCamEngaged{false};
-
-// Release (released=true) or restore (false) CuiIoWin's keyboard capture on the advertised client. Released
-// => setKeyboardInputActive(ioWin, false) so IOET_KeyDown passes (IOR_Pass) down to GroundScene's input map.
-static void setAdvFreeCamKeyboardReleased(bool released)
-{
-    if (swg::cuiIo::g_instance == nullptr || swg::cuiIo::setKeyboardInputActive == nullptr)
-    {
-        return;
-    }
-    const swgptr ioWin = swg::cuiIo::g_instance();
-    if (ioWin != 0)
-    {
-        swg::cuiIo::setKeyboardInputActive(ioWin, !released);
-    }
-}
 
 namespace swg::groundScene
 {
@@ -131,12 +106,8 @@ namespace swg::groundScene
 void clearAdvertisedInstance()
 {
     s_advertisedGroundScene.store(nullptr, std::memory_order_relaxed);
-    // Scene teardown: drop free-cam engagement (the next scene starts un-engaged) + restore keyboard capture
-    // so we don't leave the UI keyboard released across a scene change.
-    if (s_advFreeCamEngaged.exchange(false, std::memory_order_acq_rel))
-    {
-        setAdvFreeCamKeyboardReleased(false);
-    }
+    // Scene teardown: drop free-cam engagement so the next scene starts un-engaged.
+    s_advFreeCamEngaged.store(false, std::memory_order_release);
 }
 } // namespace swg::groundScene
 
@@ -450,15 +421,6 @@ void __fastcall hkUpdateLoop(GroundScene* pThis, DWORD EDX, float time)
             snprintf(m, sizeof(m), "hkUpdateLoop[probe %d]: advertised update fired pThis=0x%p time=%.4f", n, (void*)pThis, time);
             utinni::log::info(m);
         }
-
-        // Free-cam keyboard re-assert (4-AI consult): CuiManager re-derives m_keyboardInputActive from a
-        // mediator refcount, so a one-shot setKeyboardInputActive(false) gets clobbered when any mediator's
-        // keyboard count changes. While WE have free-cam engaged, re-assert the release every frame so
-        // IOET_KeyDown keeps flowing to the debug-portal input map. Cheap; runs only while engaged.
-        if (s_advFreeCamEngaged.load(std::memory_order_acquire))
-        {
-            setAdvFreeCamKeyboardReleased(true);
-        }
     }
 
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
@@ -589,19 +551,14 @@ void GroundScene::toggleFreeCamera()
         if (s_advFreeCamEngaged.load(std::memory_order_acquire))
         {
             swg::groundScene::changeCamera(this, Camera::Modes::cm_FreeChase, 0);
-            setAdvFreeCamKeyboardReleased(false); // restore UI keyboard capture
             s_advFreeCamEngaged.store(false, std::memory_order_release);
-            utinni::log::info("freecam[advertised]: OFF -- changeCamera(cm_FreeChase) + restored keyboard capture");
+            utinni::log::info("freecam[advertised]: OFF -- changeCamera(cm_FreeChase)");
         }
         else
         {
             swg::groundScene::changeCamera(this, Camera::Modes::cm_Free, 0);
-            setAdvFreeCamKeyboardReleased(true); // release UI keyboard capture -> keydown reaches GroundScene
             s_advFreeCamEngaged.store(true, std::memory_order_release);
-            char m[160];
-            snprintf(m, sizeof(m), "freecam[advertised]: ON -- changeCamera(cm_Free) view=%d + released keyboard capture (ioWin=0x%p)",
-                     (swg::cuiIo::g_instance != nullptr) ? 1 : 0, (void*)(swg::cuiIo::g_instance ? swg::cuiIo::g_instance() : 0));
-            utinni::log::info(m);
+            utinni::log::info("freecam[advertised]: ON -- changeCamera(cm_Free) (mouse-fly: right-mouse=forward + look)");
         }
     }
     else if (isFreeCameraActive())
