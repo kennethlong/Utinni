@@ -26,6 +26,12 @@
 #include "utinni.h"
 #include "swg/misc/io_win.h"
 
+namespace utinni
+{
+class GroundScene; // v13 (free-cam): processIoEvent now takes the live GroundScene (no GroundScene::get())
+class Camera;      // v13 (free-cam): ensureAdvertisedAlterDetour resolves alter off the live camera
+} // namespace utinni
+
 namespace utinni::debugCamera
 {
 enum Commands
@@ -47,7 +53,12 @@ UTINNI_API extern void setFastSpeedMulti(float value);
 UTINNI_API extern void setMouseWheelSpeed(float value);
 UTINNI_API extern void enableDragPlayer(bool value);
 
-void processIoEvent(IoEvent* ioEvent);
+void processIoEvent(GroundScene* groundScene, IoEvent* ioEvent);
+
+// v13 (free-cam): the alter detour can't install at startup on the advertised client (no camera exists +
+// the SWGEmu RVA is unmapped). Call this once free-cam is toggled on (DebugPortalCamera is now current) to
+// vtable-resolve its alter (Object slot 4) and install the detour. One-shot; no-op on repeat / null camera.
+void ensureAdvertisedAlterDetour(Camera* currentCamera);
 
 void detour();
 void patch();

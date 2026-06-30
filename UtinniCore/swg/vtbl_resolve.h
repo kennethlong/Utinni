@@ -65,6 +65,7 @@ inline constexpr int kCuiIoProcessEvent = 1;
 // Object virtuals.
 inline constexpr int kObjectAddToWorld = 2;
 inline constexpr int kObjectRemoveFromWorld = 3;
+inline constexpr int kObjectAlter = 4; // v13 (free-cam): DebugPortalCamera::alter override (provider-confirmed slot 4)
 inline constexpr int kObjectSetParentCell = 13;
 
 // Read vtable slot `index` off a live polymorphic instance. The instance's first

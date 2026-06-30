@@ -116,14 +116,6 @@ void clearAdvertisedInstance()
 // CODEX's fix recommendation.
 namespace
 {
-// Free-cam offset probe helper: a value is a plausible userspace, 4-byte-aligned heap pointer. Used to
-// GUARD every level-2 dereference in the probe -- if a struct field offset drifted on NGE, the level-1
-// read returns garbage; this gate makes the probe log "implausible" instead of AV'ing on the deref.
-inline bool looksLikePtr(swgptr p)
-{
-    return p > 0x10000 && p < 0x7FFFFFFF && (p & 0x3) == 0;
-}
-
 template <typename Fn>
 struct CallbackEntry
 {
@@ -417,37 +409,6 @@ void __fastcall hkUpdateLoop(GroundScene* pThis, DWORD EDX, float time)
             snprintf(m, sizeof(m), "hkUpdateLoop[probe %d]: advertised update fired pThis=0x%p time=%.4f", n, (void*)pThis, time);
             utinni::log::info(m);
         }
-
-        // FREE-CAM OFFSET PROBE (2026-06-29): before building free-cam on the advertised NGE client, verify
-        // which of free-cam's RE'd struct field offsets are still valid on NGE vs. need a provider accessor.
-        // The toggle (changeCamera) and the camera fetch (getCurrentCamera) are ALREADY advertised, so the
-        // only unverified reads left are three struct fields: GroundScene::currentView (isFreeCameraActive),
-        // GroundScene::debugPortalCameraInputMap + 0xC (processIoEvent's input MessageQueue), and the live
-        // camera's + 0x248 (hkAlter's movement MessageQueue). Read-only, advertised-only, rate-limited; the
-        // latched pThis is a known-valid GroundScene (WS-4 probe) and every level-2 deref is looksLikePtr-
-        // guarded, so a drifted offset logs "implausible" rather than AV'ing. A field that comes back sane on
-        // NGE needs NO provider accessor; a garbage one sizes the v12->v13 ask. Does NOT change behavior.
-        static std::atomic<int> s_freeCamProbeCount{0};
-        const int fc = s_freeCamProbeCount.fetch_add(1, std::memory_order_relaxed);
-        if (fc < 3 || fc == 600)
-        {
-            const int currentView = pThis->currentView;
-            const swgptr dpcim = pThis->debugPortalCameraInputMap;
-            const swgptr dpcimMq = looksLikePtr(dpcim) ? memory::read<swgptr>(dpcim + 0xC) : 0;
-
-            // camera via the ADVERTISED getCurrentCamera -> no dependency on the GroundScene camera-array offset.
-            const auto cam = swg::groundScene::getCurrentCamera(pThis);
-            const swgptr camMq = looksLikePtr((swgptr)cam) ? memory::read<swgptr>((swgptr)cam + 0x248) : 0;
-
-            char m[256];
-            snprintf(m, sizeof(m),
-                     "freeCamProbe[%d]: currentView=%d(sane=%d) debugPortalCameraInputMap=0x%X(+0xC mq=0x%X sane=%d) "
-                     "getCurrentCamera=0x%p(+0x248 mq=0x%X sane=%d)",
-                     fc, currentView, (currentView >= 0 && currentView <= 16),
-                     (unsigned)dpcim, (unsigned)dpcimMq, looksLikePtr(dpcimMq) ? 1 : 0,
-                     (void*)cam, (unsigned)camMq, looksLikePtr(camMq) ? 1 : 0);
-            utinni::log::info(m);
-        }
     }
 
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
@@ -505,7 +466,9 @@ void __fastcall hkHandleInputEvent(GroundScene* pThis, DWORD EDX, IoEvent* ioEve
 
     if (pThis->isFreeCameraActive())
     {
-        debugCamera::processIoEvent(ioEvent);
+        // v13 (free-cam): pass the live `this` -- processIoEvent no longer calls GroundScene::get() (nullptr
+        // on the advertised client). pThis is the valid GroundScene on both targets.
+        debugCamera::processIoEvent(pThis, ioEvent);
     }
 
     swg::groundScene::handleInputMapEvent(pThis, ioEvent);
@@ -537,9 +500,10 @@ void GroundScene::detour()
         swg::groundScene::update = (swg::groundScene::pUpdate)Detour::Create(swg::groundScene::update, hkUpdateLoop, DETOUR_TYPE_PUSH_RET);
     }
 
-    // handleInputMapEvent IS advertised, but the Terrain workflow does not need it -> skip on the advertised
-    // client to minimize probe surface (revisit when a freecam/input editor slice needs it). SWGEmu installs (D-00).
-    if (!swg::endpoints::isAdvertisedClient() && swg::endpoints::installable((const void*)swg::groundScene::handleInputMapEvent))
+    // handleInputMapEvent is an advertised real-entry row -> installable()-gated, installs on BOTH (v13
+    // free-cam un-skip). On advertised it routes WASD into the free-cam input path (hkHandleInputEvent ->
+    // processIoEvent with the live pThis). Inert until free-cam is toggled (the isFreeCameraActive() gate).
+    if (swg::endpoints::installable((const void*)swg::groundScene::handleInputMapEvent))
         swg::groundScene::handleInputMapEvent = (swg::groundScene::pHandleInputMapEvent)Detour::Create(swg::groundScene::handleInputMapEvent, hkHandleInputEvent, DETOUR_TYPE_PUSH_RET);
 
     // setPreloadSnapshot writes a hardcoded SWGEmu DATA global (0x191113C) unmapped on the advertised client
@@ -568,6 +532,15 @@ void GroundScene::toggleFreeCamera()
     else
     {
         swg::groundScene::changeCamera(this, Camera::Modes::cm_Free, 0);
+
+        // v13 (free-cam): changeCamera(cm_Free) just made the DebugPortalCamera the current camera. On the
+        // advertised client, lazily vtable-resolve its alter (Object slot 4) and install the movement detour
+        // now -- it couldn't install at startup (no camera + the SWGEmu RVA is unmapped). One-shot, no-op on
+        // SWGEmu (alter detoured at startup there) and on repeat toggles.
+        if (swg::endpoints::isAdvertisedClient())
+        {
+            debugCamera::ensureAdvertisedAlterDetour(getCurrentCamera());
+        }
     }
 
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
@@ -585,6 +558,12 @@ void GroundScene::changeCameraMode(int cameraMode)
 
 bool GroundScene::isFreeCameraActive() const
 {
+    // v13 (free-cam): on the advertised client use the advertised accessor (provider getCurrentView() ==
+    // CI_debugPortal) instead of the currentView struct-field read. null on SWGEmu -> the field read (D-00).
+    if (swg::groundScene::isFreeCameraActive != nullptr)
+    {
+        return swg::groundScene::isFreeCameraActive(const_cast<GroundScene*>(this));
+    }
     return currentView == Camera::Modes::cm_Free;
 }
 
