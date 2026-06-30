@@ -26,6 +26,11 @@
 #include "swg/game/game.h"
 #include "swg/scene/ground_scene.h"
 
+namespace utinni
+{
+class MessageQueue; // v13 (free-cam): for the gameCamera::getMessageQueue accessor typedef below
+}
+
 namespace swg::camera
 {
 using pGetViewportInt = void(__thiscall*)(utinni::Camera* pThis, int& viewPortX0, int& viewPortY0, int& viewPortX1, int& viewPortY1);
@@ -68,6 +73,12 @@ namespace swg::gameCamera
 using pAlter = float(__thiscall*)(utinni::GameCamera* pThis, float time);
 
 pAlter alter = (pAlter)0x00788740;
+
+// v13 (free-cam): advertised-ONLY accessor for the camera's movement MessageQueue (the field hkAlter
+// read at +0x248). null on SWGEmu; the resolver fills it by name on the advertised client. Provider
+// reaches it layout-independently via Object::getController()->getMessageQueue().
+using pGetMessageQueue = utinni::MessageQueue*(__thiscall*)(utinni::GameCamera * pThis);
+pGetMessageQueue getMessageQueue = nullptr;
 } // namespace swg::gameCamera
 
 namespace utinni

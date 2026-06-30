@@ -242,6 +242,7 @@ using pMove = void(__thiscall*)(utinni::Object* pThis, const swg::math::Vector& 
 using pGetObjectTemplate = swgptr(__thiscall*)(utinni::Object* pThis);
 using pGetObjectTemplateName = const char*(__thiscall*)(utinni::Object * pThis);
 using pGetNetworkId = swgptr(__thiscall*)(utinni::Object* pThis);
+using pIsActive = bool(__thiscall*)(utinni::Object* pThis); // v13 (free-cam): hkAlter guard
 
 extern pGetType getType;
 extern pGetParentCell getParentCell;
@@ -255,6 +256,7 @@ extern pMove move;
 extern pGetObjectTemplate getObjectTemplate;
 extern pGetObjectTemplateName getObjectTemplateName;
 extern pGetNetworkId getNetworkId;
+extern pIsActive isActive;
 } // namespace swg::object
 
 // -- objectTemplate (object/object.cpp:55-70) -------------------------------
@@ -310,6 +312,13 @@ extern pSetFarPlane setFarPlane;
 extern pSetHorizontalFieldOfView setHorizontalFieldOfView;
 extern pReverseProjectInViewportSpaceInt reverseProjectInViewportSpaceInt;
 } // namespace swg::camera
+
+// -- gameCamera (camera/camera.cpp:66-; v13 free-cam: movement MQ accessor) ----
+namespace swg::gameCamera
+{
+using pGetMessageQueue = utinni::MessageQueue*(__thiscall*)(utinni::GameCamera * pThis);
+extern pGetMessageQueue getMessageQueue;
+} // namespace swg::gameCamera
 
 // -- memory (misc/swg_memory.cpp:29-39; memory::free -> swg::memory::deallocate) --
 namespace swg::memory
@@ -385,6 +394,8 @@ using pUpdate = void(__thiscall*)(utinni::GroundScene* pThis, float time);
 using pHandleInputMapUpdate = void(__thiscall*)(utinni::GroundScene* pThis);
 using pHandleInputMapEvent = void(__thiscall*)(utinni::GroundScene* pThis, utinni::IoEvent* ioEvent);
 using pInit = void(__thiscall*)(utinni::GroundScene* pThis, const char* terrain, utinni::Object* playerObj, float time);
+using pIsFreeCameraActive = bool(__thiscall*)(utinni::GroundScene* pThis);                                 // v13 (free-cam)
+using pGetDebugPortalCameraMessageQueue = utinni::MessageQueue*(__thiscall*)(utinni::GroundScene * pThis); // v13 (free-cam)
 extern pCtor ctor;
 extern pReloadTerrain reloadTerrain;
 extern pChangeCamera changeCamera;
@@ -393,6 +404,8 @@ extern pUpdate update;
 extern pHandleInputMapUpdate handleInputMapUpdate;
 extern pHandleInputMapEvent handleInputMapEvent;
 extern pInit init;
+extern pIsFreeCameraActive isFreeCameraActive;                             // v13 (free-cam)
+extern pGetDebugPortalCameraMessageQueue getDebugPortalCameraMessageQueue; // v13 (free-cam)
 } // namespace swg::groundScene
 
 // -- cuiChatWindow (ui/cui_chat_window.cpp:40-55) -- 38-03 MI thunks/real-entry --
@@ -511,8 +524,12 @@ namespace swg::messageQueue
 {
 using pAppendMessage = void(__thiscall*)(utinni::MessageQueue* pThis, int msg, float value, uint32_t* flags);
 using pAppendMessageData = void(__thiscall*)(utinni::MessageQueue* pThis, int msg, float value, swgptr data, uint32_t* flags);
+using pGetCount = int(__thiscall*)(utinni::MessageQueue* pThis);                                                        // v13 (free-cam): MISMATCH -> getNumberOfMessages
+using pGetMessage = void(__thiscall*)(utinni::MessageQueue* pThis, int index, int* msg, float* value, uint32_t* flags); // v13 (free-cam): 4-arg overload
 extern pAppendMessage appendMessage;
 extern pAppendMessageData appendMessageData;
+extern pGetCount getCount;
+extern pGetMessage getMessage;
 } // namespace swg::messageQueue
 
 namespace swg::endpoints
@@ -713,6 +730,17 @@ static const Binding s_bindings[] = {
 
     // ===== v12 (Phase 24 / Bucket A-3 -- network id->Object resolver, unblocks target-change): 1 new endpoint =====
     {"network::getObjectById", (void**)&swg::network::idManagerGetObjectById}, // MISMATCH name: provider NetworkIdManager::getObjectById (static)
+
+    // ===== v13 (Phase 24 / free-cam editor unlock -- accessors replacing fragile NGE struct offsets): 6 new endpoints =====
+    // CALLED accessors (NOT detoured). Binding now resolves them at v13/117 -- behavior-neutral: the slots
+    // fill on the advertised client but the free-cam path stays gated until the consumer wiring waves
+    // (processIoEvent latch-route, alter vtable-resolve, handleInputMapEvent un-skip, FreeCamImpl).
+    {"groundScene::isFreeCameraActive", (void**)&swg::groundScene::isFreeCameraActive},                             // __fastcall thunk getCurrentView()==CI_debugPortal (null on SWGEmu)
+    {"groundScene::getDebugPortalCameraMessageQueue", (void**)&swg::groundScene::getDebugPortalCameraMessageQueue}, // friend forwarder -> input MQ (replaces debugPortalCameraInputMap+0xC)
+    {"gameCamera::getMessageQueue", (void**)&swg::gameCamera::getMessageQueue},                                     // __fastcall thunk getController()->getMessageQueue() (replaces camera+0x248; aliases the input MQ)
+    {"messageQueue::getCount", (void**)&swg::messageQueue::getCount},                                               // MISMATCH: provider MessageQueue::getNumberOfMessages
+    {"messageQueue::getMessage", (void**)&swg::messageQueue::getMessage},                                           // 4-arg overload getMessage(int,int*,float*,uint32*)
+    {"object::isActive", (void**)&swg::object::isActive},                                                           // external-linkage shim (non-virtual but inline -> no PMF on the provider side)
 };
 
 // ----------------------------------------------------------------------
@@ -753,8 +781,8 @@ constexpr size_t kIncCount = 0
 
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
 
-static_assert(kIncCount == 113, "contract .inc size drifted from the expected 113 names (v12 / Bucket A-3: +network::getObjectById)");
-static_assert(kBindingCount == 111, "s_bindings[] must bind 111 of 113 (.inc minus the TWO carve-outs)");
+static_assert(kIncCount == 119, "contract .inc size drifted from the expected 119 names (v13 / free-cam: +6 accessor rows)");
+static_assert(kBindingCount == 117, "s_bindings[] must bind 117 of 119 (.inc minus the TWO carve-outs)");
 static_assert(kBindingCount == kIncCount - 2,
               "exactly two .inc names are carve-outs: consoleHelper::sendInput (D-02) + "
               "client::wndProc (embed-resize regression; RNDR-04 follow-on)");
@@ -886,6 +914,13 @@ constexpr const char* kBindingNames[] = {
     "cuiHud::g_instance",
     // ===== v12 (Phase 24 / Bucket A-3 network id-resolver) addition — lockstep with s_bindings[] above =====
     "network::getObjectById",
+    // ===== v13 (Phase 24 / free-cam accessors) additions — lockstep with s_bindings[] above =====
+    "groundScene::isFreeCameraActive",
+    "groundScene::getDebugPortalCameraMessageQueue",
+    "gameCamera::getMessageQueue",
+    "messageQueue::getCount",
+    "messageQueue::getMessage",
+    "object::isActive",
 };
 
 constexpr bool allNamesInInc()

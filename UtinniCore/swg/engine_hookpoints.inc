@@ -288,3 +288,17 @@ ENGINE_HOOKPOINT(cuiHud,              g_instance)           // static accessor S
 // The consumer's hkSetTarget resolves the new target id->Object* via Network::getObjectById; on the
 // advertised client that hit a stale hardcoded RVA and crashed. Advertise the real static resolver.
 ENGINE_HOOKPOINT(network,            getObjectById)        // static &fn NetworkIdManager::getObjectById(const NetworkId&)
+
+// -- FREE-CAM editor unlock (v12->v13): accessor functions that encapsulate fragile NGE
+// struct byte-offsets (the consumer will not hardcode offsets that drift vs our layout --
+// same encapsulate-the-offset principle as particlePreview::retrigger + config::setModalChat).
+// All 6 are CALLED accessors (the consumer INVOKES them; none detoured) -> plain &thunk/&fn or
+// pmfToVoid. The consumer's "free camera" is OUR DebugPortalCamera: consumer cm_Free == 5 ==
+// our GroundScene::CI_debugPortal (consumer cm_FreeChase == 2 == our CI_freeChase). See the
+// row comments in engine_advertise.cpp for the exact real-entry mapping + each MISMATCH.
+ENGINE_HOOKPOINT(groundScene,        isFreeCameraActive)               // __fastcall thunk: getCurrentView()==CI_debugPortal (==cm_Free)
+ENGINE_HOOKPOINT(groundScene,        getDebugPortalCameraMessageQueue) // friend forwarder: m_debugPortalCameraInputMap->getMessageQueue()
+ENGINE_HOOKPOINT(gameCamera,         getMessageQueue)                  // __fastcall thunk: getController()->getMessageQueue() (aliases the debugPortal MQ when free-cam active)
+ENGINE_HOOKPOINT(messageQueue,       getCount)                         // MISMATCH: real entry MessageQueue::getNumberOfMessages (pmfToVoid)
+ENGINE_HOOKPOINT(messageQueue,       getMessage)                       // 4-arg overload getMessage(int,int*,float*,uint32*) const (pmfToVoid, static_cast disambig)
+ENGINE_HOOKPOINT(object,             isActive)                         // external-linkage shim (Object::isActive is NON-virtual but INLINE -> no PMF address)

@@ -113,8 +113,18 @@
 // NetworkId->Object* lookup]. Unblocks the creatureObject::setTarget callback: the consumer's
 // hkSetTarget resolves the new target id->Object* via Network::getObjectById, which on the
 // advertised client hit a stale hardcoded RVA and crashed. constant &fn (true static). 113 names.
+// Bumped 12 -> 13 in the FREE-CAM editor-unlock wave (2026-06-29): 6 NAME ADDs, all CALLED
+// accessors that encapsulate fragile NGE struct byte-offsets (the particlePreview::retrigger /
+// config::setModalChat shim pattern) so the consumer stops hardcoding offsets that drift:
+//   groundScene::isFreeCameraActive               -- bool, currentView == CI_debugPortal (==5==consumer cm_Free)
+//   groundScene::getDebugPortalCameraMessageQueue -- the MQ at m_debugPortalCameraInputMap (was read at InputMap+0xC)
+//   gameCamera::getMessageQueue                   -- the camera's movement MQ via getController()->getMessageQueue() (was GameCamera+0x248)
+//   messageQueue::getCount                        -- MISMATCH: real entry MessageQueue::getNumberOfMessages
+//   messageQueue::getMessage                      -- the 4-arg (int,int*,float*,uint32*) overload (read side; appendMessage already advertised)
+//   object::isActive                              -- bool; NON-virtual but INLINE -> external-linkage shim (no ODR address)
+// All constant &thunk / &fn or pmfToVoid rows (no detours). 119 names.
 // ----------------------------------------------------------------------
-#define ENGINE_HOOKPOINTS_VERSION 12
+#define ENGINE_HOOKPOINTS_VERSION 13
 
 // ----------------------------------------------------------------------
 // One row per advertised endpoint: a stable contract name + the borrowed

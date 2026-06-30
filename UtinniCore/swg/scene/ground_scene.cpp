@@ -56,6 +56,12 @@ using pHandleInputMapEvent = void(__thiscall*)(utinni::GroundScene* pThis, utinn
 
 using pInit = void(__thiscall*)(utinni::GroundScene* pThis, const char* terrain, utinni::Object* playerObj, float time);
 
+// v13 (free-cam): advertised-ONLY accessors replacing fragile NGE struct offsets. null on SWGEmu (the
+// consumer keeps its currentView read + debugPortalCameraInputMap+0xC path there); the resolver fills
+// these by name on the advertised client. getDebugPortalCameraMessageQueue returns the input MQ.
+using pIsFreeCameraActive = bool(__thiscall*)(utinni::GroundScene* pThis);
+using pGetDebugPortalCameraMessageQueue = utinni::MessageQueue*(__thiscall*)(utinni::GroundScene * pThis);
+
 pCtor ctor = (pCtor)0x00519830; // Offline scene ctor
 pReloadTerrain reloadTerrain = (pReloadTerrain)0x0051A4F0;
 pChangeCamera changeCamera = (pChangeCamera)0x0051A350;
@@ -67,6 +73,9 @@ pHandleInputMapUpdate handleInputMapUpdate = (pHandleInputMapUpdate)0x0051AB20;
 pHandleInputMapEvent handleInputMapEvent = (pHandleInputMapEvent)0x0051AA40;
 
 pInit init = (pInit)0x00518EB0;
+
+pIsFreeCameraActive isFreeCameraActive = nullptr;
+pGetDebugPortalCameraMessageQueue getDebugPortalCameraMessageQueue = nullptr;
 } // namespace swg::groundScene
 
 // WS-4 Terrain slice: latched live GroundScene instance for the advertised client (which has NO GroundScene
