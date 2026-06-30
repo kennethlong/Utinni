@@ -175,6 +175,18 @@ namespace UtinniCoreDotNet.Utility
             EntryPoint = "utinni_reloadCurrentTerrain")]
         public static extern void ReloadCurrentTerrain();
 
+        // v13 free-cam (Wave 4): toggle / query free-cam on BOTH targets without GroundScene.Get()
+        // (nullptr on the advertised client by design). Same latch pattern as ReloadCurrentTerrain;
+        // no-op / false if no scene is loaded. toggleFreeCamera lazily installs the advertised alter detour.
+        [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+            EntryPoint = "utinni_toggleFreeCamera")]
+        public static extern void ToggleFreeCamera();
+
+        [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+            EntryPoint = "utinni_isFreeCameraActive")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool IsFreeCameraActive();
+
         // Phase 24: gate calls through SWG function pointers that may be UNRESOLVED
         // on the advertised (GetEngineHookPoints) client. On that client a SWG entry
         // point absent from the catalog keeps its hardcoded SWGEmu RVA, which is

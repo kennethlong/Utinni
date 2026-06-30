@@ -703,3 +703,28 @@ extern "C" __declspec(dllexport) void __cdecl utinni_reloadCurrentTerrain()
         swg::groundScene::reloadTerrain(gs);
     }
 }
+
+// v13 free-cam exports (Wave 4). The managed FreeCamImpl drives free-cam through these instead of
+// GroundScene.Get().{ToggleFreeCamera,IsFreeCameraActive} -- GroundScene.Get() is nullptr on the advertised
+// client by design (so dormant Tier-2 editor loops stay asleep). Same latch pattern as the terrain reload:
+// SWGEmu resolves the real singleton (D-00 identical), advertised uses the per-frame latched instance (null
+// no-op / false until a scene is loaded). toggleFreeCamera also lazily installs the advertised alter detour.
+// Game-thread only (the managed side marshals via AddUpdateLoopCall, which fires in hkUpdateLoop).
+extern "C" __declspec(dllexport) void __cdecl utinni_toggleFreeCamera()
+{
+    utinni::GroundScene* gs = swg::endpoints::isAdvertisedClient()
+                                  ? s_advertisedGroundScene.load(std::memory_order_relaxed)
+                                  : utinni::GroundScene::get();
+    if (gs != nullptr)
+    {
+        gs->toggleFreeCamera();
+    }
+}
+
+extern "C" __declspec(dllexport) bool __cdecl utinni_isFreeCameraActive()
+{
+    utinni::GroundScene* gs = swg::endpoints::isAdvertisedClient()
+                                  ? s_advertisedGroundScene.load(std::memory_order_relaxed)
+                                  : utinni::GroundScene::get();
+    return (gs != nullptr) && gs->isFreeCameraActive();
+}
