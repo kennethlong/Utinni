@@ -636,9 +636,17 @@ void GroundScene::toggleFreeCamera()
     // R-H snapshot dispatch per D-12. CR-01: lock-around-snapshot. Stack-snapshot
     // via dispatchSnapshot keeps the path heap-free (toggleFreeCamera is not
     // per-frame, but uses the same pattern for consistency).
-    dispatchSnapshot(cameraChangeCallbacks, cameraChangeCallbacksMutex,
-                     [](void (*func)())
-                     { func(); });
+    //
+    // SWGEmu ONLY: the camera-change callback fires the managed FreeCamImpl.OnCameraChangeCallback (panel
+    // availability UI). On the advertised client this dispatch crashed (cdb: a dangling managed-delegate
+    // thunk in the CLR JIT region -- this path is reached for the first time there, via our own toggle).
+    // The camera flies without it (the panel toggle is force-enabled separately); skip it on advertised.
+    if (!swg::endpoints::isAdvertisedClient())
+    {
+        dispatchSnapshot(cameraChangeCallbacks, cameraChangeCallbacksMutex,
+                         [](void (*func)())
+                         { func(); });
+    }
 }
 
 void GroundScene::changeCameraMode(int cameraMode)
