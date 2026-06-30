@@ -371,58 +371,16 @@ float __fastcall hkAlter(GameCamera* pThis, swgptr EDX, float time)
     return result;
 }
 
-// The alter override sits at Object virtual slot 4 (provider-confirmed; cross-validated by the SWGEmu
-// runtime self-check in GroundScene::toggleFreeCamera, which asserts slot 4 == the known RVA).
+// kObjectAlter is used by the SWGEmu alter-slot self-check in GroundScene::toggleFreeCamera (asserts the
+// live camera's vtable slot 4 == the known alter RVA). Pin the index here too (provider-confirmed slot 4).
 static_assert(swg::vtbl::kObjectAlter == 4, "alter must be Object virtual slot 4 (DebugPortalCamera override)");
-
-void ensureAdvertisedAlterDetour(Camera* currentCamera)
-{
-    // One-shot: vtable-resolve DebugPortalCamera::alter (Object slot 4) off the live camera and detour it.
-    // The patch is on the function code, not the instance, so it persists across scene changes / re-toggles.
-    // Called from GroundScene::toggleFreeCamera on the advertised client once changeCamera(cm_Free) has made
-    // the DebugPortalCamera current (it can't install at startup -- no camera exists + the SWGEmu RVA is
-    // unmapped). Game-thread only.
-    //
-    // Pre-smoke review hardening: validate the resolved entry is committed-executable (installable) and that
-    // Detour::Create actually returns a trampoline BEFORE claiming s_installed -- so a failed/partial install
-    // RETRIES on the next toggle instead of leaving swg::debugCamera::alter null (which hkAlter would call).
-    static std::atomic<bool> s_installed{false};
-    if (currentCamera == nullptr || s_installed.load(std::memory_order_acquire))
-    {
-        return;
-    }
-
-    const void* alterEntry = swg::vtbl::slot(currentCamera, swg::vtbl::kObjectAlter);
-    if (alterEntry == nullptr || !swg::endpoints::installable(alterEntry))
-    {
-        // no live vtable yet, or the resolved slot isn't committed-executable code -> log + retry next toggle.
-        char m[160];
-        std::snprintf(m, sizeof(m), "debugCamera: alter slot4=0x%p not installable yet -> deferring (retry next toggle)", alterEntry);
-        log::info(m);
-        return;
-    }
-
-    void* trampoline = Detour::Create((LPVOID)alterEntry, hkAlter, DETOUR_TYPE_PUSH_RET);
-    if (trampoline == nullptr)
-    {
-        log::info("debugCamera: alter Detour::Create returned null -> NOT installed (retry next toggle)");
-        return; // do NOT claim s_installed -> retry
-    }
-
-    swg::debugCamera::alter = (swg::debugCamera::pAlter)trampoline; // hkAlter calls the original through this
-    s_installed.store(true, std::memory_order_release);
-
-    char m[128];
-    std::snprintf(m, sizeof(m), "debugCamera: advertised alter vtable-resolve slot4=0x%p -> detour installed", alterEntry);
-    log::info(m);
-}
 
 void detour()
 {
-    // Phase 24: skip on the advertised client when the primary target is unresolved. The SWGEmu RVA
-    // (0x006DA1B0) is mapped+installable on SWGEmu -> alter detours here at startup (D-00). On the advertised
-    // client the RVA is unmapped -> installable() is false -> skip; the detour installs lazily on first
-    // free-cam toggle via ensureAdvertisedAlterDetour() (vtable-resolved, needs a live camera).
+    // SWGEmu only in practice: alter (0x006DA1B0) is mapped + installable on SWGEmu, so it detours here at
+    // startup (the custom hkAlter movement is the SWGEmu free-cam path, D-00). On the advertised client the
+    // RVA is unmapped -> installable() is false -> skipped, and we do NOT install hkAlter there: the engine's
+    // native DebugPortalCamera::alter flies the camera (mouse-driven; see GroundScene::toggleFreeCamera).
     if (!swg::endpoints::installable((const void*)swg::debugCamera::alter))
         return;
 
