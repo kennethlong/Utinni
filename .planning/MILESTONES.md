@@ -36,8 +36,11 @@ with the client-advertised entry-point contract (24) retiring hardcoded RVAs on 
    the Phase 18/19 DX11 live-smokes (D-08/D-22). The advertised DX11 client boots → login → loads worlds →
    embed-scales; SWGEmu byte-for-byte unchanged (D-00). (Phase 24, EPA-01..04)
 
-**Verification:** milestone audit not yet run (`/gsd:audit-milestone` optional follow-on). All 22
-requirements code-complete; each feature phase maintainer-live-smoke-verified at its close.
+**Verification:** [`v2.1-MILESTONE-AUDIT.md`](v2.1-MILESTONE-AUDIT.md) — **PASS (tech-debt)**: 22/22
+requirements delivered (16 formally verified, 6 delivered-via-SUMMARY+live-smoke in the two phases lacking
+a VERIFICATION.md), 5/5 cross-phase flows wired end-to-end, ABI/MEF-compose gate demonstrably functioning,
+Nyquist 5 compliant / 3 partial. No unsatisfied requirements. Open items are documentation-hygiene +
+accepted format/scope debt (see the audit §5 reconciliations).
 
 **Active follow-on (out of v2.1 scope):** the advertised-client **editor-unlock arc** — grew the
 contract from RENDER-only (~77/230) to **v13 / 119 names** and delivered five live editor features on the
