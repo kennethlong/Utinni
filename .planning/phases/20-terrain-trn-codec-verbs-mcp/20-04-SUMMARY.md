@@ -33,6 +33,7 @@ decisions:
   - "DEC-C3 CLOSED on the ratified SWGEmu==Infinity pin; BREC (0002/0003) is the one genuine divergence"
   - "AFCN stays ASSUMED v0000 (absent from every sampled planet, raw-falls-back cleanly) — non-blocking, not fabricated"
   - "Real-asset roundtrip SKIPPED (synthetic matrix + BREC + committed MCP fixtures cover both lineages byte-exactly); no real asset committed"
+requirements-completed: [PROD-W2-TRN-04]   # added 2026-06-30 (v2.1 audit hygiene; TRN-04 MCP half; covered by 20-VERIFICATION 4/4)
 metrics:
   duration: "~40m (continuation: verify matrix + DEC-C3 closure + finalize)"
   completed: "2026-06-16"

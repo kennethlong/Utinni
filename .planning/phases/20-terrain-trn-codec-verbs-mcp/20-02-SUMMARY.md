@@ -36,6 +36,7 @@ decisions:
   - "D-01..D-04 honored: Tier-1 typed set only; unknown version -> whole-chunk raw; DEAD recognized-and-skipped; six palettes read-only positional"
   - "TgenDecoder lands in the Task-1 commit (not Task-2) because TerrainDocument forward-references it and the csproj is explicit-include — a buildable per-task commit requires it present"
   - "Active-flag read parity (#10): TerrainLayer.Active is read from the IHDR layer-item-header int32 when present; absent IHDR -> Active defaults true (the C++ LayerItem default), matching the synthesizer's minimal layers"
+requirements-completed: [PROD-W2-TRN-01, PROD-W2-TRN-02]   # added 2026-06-30 (v2.1 audit hygiene; covered by 20-VERIFICATION 4/4)
 metrics:
   duration: "~11m wall (2026-06-16 13:04 -> 13:15 UTC)"
   completed: "2026-06-16"

@@ -1,15 +1,20 @@
 ---
 phase: 24
 slug: client-entry-point-advertisement-getenginehookpoints
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-21
+validated: 2026-06-30
 ---
 
 # Phase 24 — Validation Strategy
 
 > Per-phase validation contract for feedback sampling during execution.
+
+> **Retroactive reconciliation (2026-06-30, v2.1 milestone audit):** left at `draft` after the phase
+> closed. The `[endpoints]` Catch2 lane shipped CI-green; live-smoke Checkpoints 1+3 PASSED 2026-06-22
+> and the DX11 Checkpoint 2 CLOSED 2026-06-23. Flipped to `complete` / `nyquist_compliant: true`.
 
 ---
 

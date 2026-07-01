@@ -27,6 +27,7 @@ key-files:
 decisions:
   - "Spike confirms empirically: vendored clang 11 and latest released clang 19 both < the clang-20 the v145 STL requires → no released CppSharp parses v145 → harden-the-redirect (acceptance re-set)."
   - "The 14.29 parser-include redirect is documented as the SUPPORTED config, not a workaround; retiring it is gated on a future clang-20-bearing CppSharp release."
+requirements-completed: [CPPS-01, CPPS-02]   # added 2026-06-30 (v2.1 audit hygiene; covered by 17-VERIFICATION)
 metrics:
   duration: ~3 min
   completed: 2026-06-15

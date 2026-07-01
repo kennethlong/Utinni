@@ -44,6 +44,7 @@ decisions:
   - "Active-flag location (#10): --field active writes the int32 @ offset 0 of the IHDR DATA leaf under LAYR — bypasses TgenFieldLayouts (IHDR has no descriptor) and writes directly to the SAME leaf the decoder reads Active from; resolved by asserting the leaf's container parent is an IHDR FORM"
   - "--leaf addresses the DATA leaf directly (the editable payload); ResolveFieldContext walks leaf.Parent (version FORM) -> grandparent (tag FORM) for typed nodes"
   - "TrnFieldEncoder lands in the Task-1 commit; apply-save-trn (Task 3) re-locates the descriptor span itself (for the exact-span verify) AND delegates the encode to TrnFieldEncoder — one source of offsets"
+requirements-completed: [PROD-W2-TRN-03, PROD-W2-TRN-04]   # added 2026-06-30 (v2.1 audit hygiene; TRN-04 verb half; covered by 20-VERIFICATION 4/4)
 metrics:
   duration: "~35m wall (2026-06-16 ~13:03 -> 13:38 UTC)"
   completed: "2026-06-16"

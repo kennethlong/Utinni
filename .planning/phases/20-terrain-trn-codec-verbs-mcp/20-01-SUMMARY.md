@@ -28,6 +28,7 @@ key-files:
 decisions:
   - "Maintainer directive: validate against SWGEmu + SWG Infinity, NOT Restoration → relabel RestorationEra → InfinityEra"
   - "Real client assets stay OUT of the committed corpus (D-14); observation recorded here + in a non-committed scratch note"
+requirements-completed: []   # Wave-0 scaffold (fixtures/era-versions/skip-stubs); no requirement completed. Field added 2026-06-30 (v2.1 audit hygiene)
 metrics:
   duration: "~5h15m wall (Tasks 1-2 prior commit 07:46 → Task 3 + finalize ~13:00 UTC)"
   completed: "2026-06-16"

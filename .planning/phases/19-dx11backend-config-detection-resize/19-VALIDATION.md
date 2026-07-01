@@ -1,10 +1,11 @@
 ---
 phase: 19
 slug: dx11backend-config-detection-resize
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-15
+validated: 2026-06-30
 ---
 
 # Phase 19 — Validation Strategy
@@ -12,6 +13,10 @@ created: 2026-06-15
 > Per-phase validation contract for feedback sampling during execution.
 > Derived from 19-RESEARCH.md "Validation Architecture". The four automated layers
 > below realize CONTEXT.md D-21; the live-smoke (D-22) is the manual-only final gate.
+
+> **Retroactive reconciliation (2026-06-30, v2.1 milestone audit):** left at `draft` after the phase
+> closed. The four automated layers shipped CI-green; the D-22 DX11 live-smoke was CLOSED 2026-06-23
+> (advertised DX11 client boots → renders → embed-scales). Flipped to `complete` / `nyquist_compliant: true`.
 
 ---
 

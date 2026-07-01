@@ -37,10 +37,10 @@ with the client-advertised entry-point contract (24) retiring hardcoded RVAs on 
    embed-scales; SWGEmu byte-for-byte unchanged (D-00). (Phase 24, EPA-01..04)
 
 **Verification:** [`v2.1-MILESTONE-AUDIT.md`](v2.1-MILESTONE-AUDIT.md) — **PASS (tech-debt)**: 22/22
-requirements delivered (16 formally verified, 6 delivered-via-SUMMARY+live-smoke in the two phases lacking
-a VERIFICATION.md), 5/5 cross-phase flows wired end-to-end, ABI/MEF-compose gate demonstrably functioning,
-Nyquist 5 compliant / 3 partial. No unsatisfied requirements. Open items are documentation-hygiene +
-accepted format/scope debt (see the audit §5 reconciliations).
+requirements delivered + VERIFIED (retro-VERIFICATION generated 2026-06-30 for Phases 22 & 24), 5/5
+cross-phase flows wired end-to-end, ABI/MEF-compose gate demonstrably functioning, Nyquist 8/8 compliant.
+No unsatisfied requirements. The §5 doc-hygiene items were applied (see the audit §7); remaining items are
+accepted format/scope debt.
 
 **Active follow-on (out of v2.1 scope):** the advertised-client **editor-unlock arc** — grew the
 contract from RENDER-only (~77/230) to **v13 / 119 names** and delivered five live editor features on the

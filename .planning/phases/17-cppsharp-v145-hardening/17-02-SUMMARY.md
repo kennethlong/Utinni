@@ -28,6 +28,7 @@ decisions:
   - "D-04 asymmetric severity honored: C++23-header scan HARD-FAILS (throw); clang-20 pin tripwire WARN-loud (::warning::, never throws)."
   - "D-03 honored: clang-20 tripwire asserts a COMMITTED inline pin (CppSharp v1.2 / clang 19), no live network probe / NuGet / GitHub-API egress."
   - "Scan scoped to #include lines under UtinniCore/ only, excluding external/, Generated, and build-output dirs (grep-gate hygiene, RESEARCH Pitfall 4); denylist lives under tools/ so it does not self-trip."
+requirements-completed: [CPPS-03]   # added 2026-06-30 (v2.1 audit hygiene; covered by 17-VERIFICATION)
 metrics:
   duration: ~18 min
   completed: 2026-06-15

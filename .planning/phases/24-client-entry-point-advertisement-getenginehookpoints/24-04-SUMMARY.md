@@ -48,7 +48,7 @@ key-decisions:
   - "ADVERTISED-CLIENT = RENDER-ONLY (live-smoke decision, 2026-06-22): only ~77 of ~230 hook points are advertised, and the unadvertised remainder are hardcoded SWGEmu RVAs / ABI-mismatched symbols that corrupt the relocated SwgClient_r.exe. createDetours()/createPatches() skip the MISC+INPUT groups on the advertised client (isAdvertisedClient()); the overlay path is self-contained in RENDER (graphics::install -> kickoff). Full advertised-client hook coverage (the ~198/230 future set) requires the PROVIDER (swg-client-v2) to advertise more entry points + per-function ABI adapters -- a follow-on MILESTONE, explicitly out of Phase-24 scope (EPA-01 'full retirement is NOT achievable this phase')."
   - "DX11 live acceptance (Checkpoint 2 / EPA-03) DEFERRED by maintainer override: the DX11 swapchain/device acquisition null-derefs on the advertised client (the DX11 hook points are not advertised). Closing the Phase-18 D-08 / Phase-19 D-22 DX11 live-smokes moves to the follow-on milestone."
 
-requirements-completed: [EPA-01, EPA-02, EPA-04]  # live-proven 2026-06-22 (Checkpoints 1+3 PASS). EPA-03 headless done (24-03); its DX11 *live* acceptance is DEFERRED (Checkpoint 2 waived by maintainer — DX11 provider hooks not ready).
+requirements-completed: [EPA-01, EPA-02, EPA-03, EPA-04]  # live-proven 2026-06-22 (Checkpoints 1+3 PASS). EPA-03 headless done (24-03); its DX11 *live* acceptance was DEFERRED 2026-06-22 then RESOLVED 2026-06-23 (Checkpoint 2 CLOSED — see the UPDATE banner + Checkpoint 2 note below). EPA-03 added 2026-06-30 (v2.1 audit).
 
 # Metrics
 duration: ~5min
@@ -56,6 +56,16 @@ completed: 2026-06-22
 ---
 
 # Phase 24 Plan 04: Maintainer Live-Smoke Acceptance Summary
+
+> **UPDATE (2026-06-30, v2.1 milestone audit) — DX11 Checkpoint 2 RESOLVED 2026-06-23.** This SUMMARY
+> records the state at Phase-24 formal close (2026-06-22), when the DX11 overlay was deferred. The
+> advertised DX11 client was subsequently made **fully functional under injection on 2026-06-23** (boots →
+> login → loads worlds → embed-scales), closing Checkpoint 2 and the Phase-18 D-08 / Phase-19 D-22 DX11
+> live-smokes. The crash chain was cleared across `d2040ca` (stale-RVA RENDER-detour skip), `46b189b`
+> (beginScene DETOUR_LEN_AUTO), `8df6f20` (defer reparent until first present) + `0a5c072` (RESOLVED) plus
+> the provider embed-resize fix — all at/before the `v2.1` tag `194481c`. So EPA-03 / RNDR-02/03/04 DX11
+> *live* acceptance is **closed as of the tagged milestone**; the "deferred to follow-on" text below is
+> superseded (the genuine follow-on is the broader ~198/230 hook coverage, not the DX11 render/embed).
 
 **The automation gate (full solution build + native Catch2 suite + dumpbin export precheck) for the
 Phase-24 maintainer live-smoke. The dumpbin precheck PASSES (`GetEngineHookPoints` confirmed on
@@ -202,6 +212,14 @@ not advertised). This is provider-side / DX11-backend work, NOT a resolver issue
 (24-03); its DX11 *live* acceptance (closing the deferred Phase-18 D-08 / Phase-19 D-22 DX11 live-smokes)
 moves to a follow-on milestone once the provider advertises D3D11 hook points. The overlay render path
 itself is live-proven via the D3D9 backend on the advertised client.
+
+> **RESOLVED 2026-06-23 (post-close):** the DX11 null-deref (`0xC0000005 WRITE target=0x00000034`) was the
+> first of a crash chain that was fully cleared the next day — the advertised DX11 client now boots →
+> renders login → loads worlds (Mos Eisley) → embed-scales on startup + maximize. Fixes: overlay-install
+> ordering, `setPreloadSnapshot` data-global gate, `wndProc` ASLR, `CuiStringIds` stale-RVA RENDER-detour
+> skip (`d2040ca`), `beginScene` DetourXS explicit-length trampoline trap (`46b189b`), deferred-reparent-
+> until-first-present (`8df6f20`), + the provider embed-resize (CuiManager reflow + beginScene poll-fallback
+> + scene RT/proj resize). Checkpoint 2 / EPA-03 DX11 / D-08 / D-22 are **CLOSED** as of the `v2.1` tag.
 
 **How to verify (verbatim from the plan):**
 1. With UtinniCore injected into `SwgClient_r.exe` (rasterMajor=11 / D3D11 client), confirm the ImGui overlay is VISIBLE and renders.

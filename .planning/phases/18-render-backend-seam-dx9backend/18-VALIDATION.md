@@ -1,15 +1,20 @@
 ---
 phase: 18
 slug: render-backend-seam-dx9backend
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-15
+validated: 2026-06-30
 ---
 
 # Phase 18 — Validation Strategy
 
 > Per-phase validation contract for feedback sampling during execution.
+
+> **Retroactive reconciliation (2026-06-30, v2.1 milestone audit):** left at `draft` after the phase
+> closed. Phase 18 shipped CI-green with the D-08 D3D9 live-smoke PASSED (2026-06-15); flipped to
+> `complete` / `nyquist_compliant: true`.
 
 ---
 

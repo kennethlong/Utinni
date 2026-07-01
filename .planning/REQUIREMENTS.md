@@ -1,6 +1,6 @@
 # Requirements — Utinni v2.1 "Wave-2 Editors + Foundation Hardening"
 
-**Milestone:** v2.1 (Phases 17–23) · **Defined:** 2026-06-14 · **Source:** `.planning/research/SUMMARY.md`
+**Milestone:** v2.1 (Phases 17–24) · **Defined:** 2026-06-14 · **Source:** `.planning/research/SUMMARY.md`
 (HIGH confidence) + 2026-06-14 scoping decisions.
 
 **Goal:** Ship the Terrain `.trn` editor (Wave-2 #1) + a ClientEffect editor on a hardened
@@ -8,7 +8,8 @@ rendering/toolchain base, so the live-preview editors survive SWG Source's D3D9�
 user-definable IFF chunk-templates quick win. Foundation-before-features: the CppSharp/v145 hardening and
 the D3D11 render-path land first.
 
-REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 categories → 7 phases.
+REQ-IDs continue the project's `CATEGORY-NN` scheme. 22 requirements across 6 categories → 8 phases.
+(EPA-01..04 / Phase 24 were added after the initial 18/17–23 authoring; the counts below reflect the full v2.1 scope.)
 
 ---
 
@@ -49,7 +50,7 @@ REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 ca
 > from-source D3D11 client (`swg-client-v2/SwgClient_r.exe`), whose memory layout no hardcoded RVA matches.
 > x86-only; x64 (999.7's other half) stays deferred.
 
-- [ ] **EPA-01**: The SWG-Source client (`SwgClient_r.exe`) advertises its engine entry points to UtinniCore
+- [x] **EPA-01** *(delivered RENDER-only; full ~198/230 hook coverage is a post-v2.1 follow-on)*: The SWG-Source client (`SwgClient_r.exe`) advertises its engine entry points to UtinniCore
   via a versioned, well-known export (`GetEngineHookPoints`) sourced at compile time by symbol (`&fn`) in the
   **executable** module — covering the ~198 entry points UtinniCore currently hardcodes. (The renderer DLL's
   `gl11_r.dll!GetHookPoints` can only see graphics symbols; this is its exe-side companion for game logic.)
@@ -136,7 +137,7 @@ REQ-IDs continue the project's `CATEGORY-NN` scheme. 18 requirements across 5 ca
 
 ## Traceability
 
-Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no orphans, no duplicates.
+Each requirement maps to exactly one phase (Phases 17–24). 22/22 mapped — no orphans, no duplicates.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
@@ -145,12 +146,12 @@ Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no
 | CPPS-03 | Phase 17 — CppSharp / v145 Hardening | Complete |
 | CPPS-04 | Phase 17 — CppSharp / v145 Hardening | Complete |
 | RNDR-01 | Phase 18 — Render-Backend Seam + Dx9Backend | Complete (CI-green; final acceptance pending the D-08 maintainer live-smoke — 18-02 Task 3) |
-| RNDR-02 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete (CI-green; live D3D11 acceptance deferred to Phase 24 — RVA crash on `SwgClient_r.exe` blocks inject until entry-point advertisement) |
-| RNDR-03 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete (CI-green; live D3D11 acceptance deferred to Phase 24) |
-| RNDR-04 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete (CI-green; live D3D11 acceptance deferred to Phase 24) |
+| RNDR-02 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete (CI-green; live D3D11 acceptance CLOSED 2026-06-23 via Phase 24 — advertised DX11 client boots → login → world) |
+| RNDR-03 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete (CI-green; live D3D11 detection/one-per-session confirmed 2026-06-23) |
+| RNDR-04 | Phase 19 — Dx11Backend + Config Detection + Resize | Complete (CI-green; live D3D11 embed-resize CLOSED 2026-06-23) |
 | EPA-01 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Complete (live-proven 2026-06-22: `SwgClient_r.exe` injects + reaches login, no crash; advertised client runs RENDER-only — full ~198/230 hook coverage is a follow-on milestone) |
 | EPA-02 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Complete |
-| EPA-03 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Complete (headless 24-03; DX11 *live* acceptance — and the Phase-19 RNDR-02/03/04 / D-22 live-smokes — DEFERRED to the follow-on milestone: maintainer waived DX11 here, the DX11 swapchain acquisition isn't wired on the advertised client yet) |
+| EPA-03 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Complete (headless 24-03; DX11 *live* acceptance — and the Phase-19 RNDR-02/03/04 / D-22 / Phase-18 D-08 live-smokes — CLOSED 2026-06-23: the advertised DX11 client boots → renders → loads worlds → embed-scales. Recorded deferred in 24-04-SUMMARY, which predates the 06-23 fix) |
 | EPA-04 | Phase 24 — Client Entry-Point Advertisement (`GetEngineHookPoints`) | Complete |
 | PROD-W2-TRN-01 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Complete |
 | PROD-W2-TRN-02 | Phase 20 — Terrain `.trn` Codec + Verbs + MCP | Complete |
@@ -163,4 +164,4 @@ Each requirement maps to exactly one phase (Phases 17–23). 18/18 mapped — no
 | PROD-IFFT-02 | Phase 23 — User-Definable IFF Chunk Templates | Complete |
 | PROD-IFFT-03 | Phase 23 — User-Definable IFF Chunk Templates | Complete |
 
-**Coverage:** 18/18 v2.1 requirements mapped ✓ · no orphans · no duplicates.
+**Coverage:** 22/22 v2.1 requirements mapped ✓ · no orphans · no duplicates.
