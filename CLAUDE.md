@@ -25,8 +25,14 @@ Two external reviewers run headless on this machine for second opinions on plans
 - **Codex** (ChatGPT-authed): `codex exec --skip-git-repo-check -` — pipe the prompt on stdin. Invoke
   directly for a second opinion; or draft a paste-prompt as fallback.
 - **Cursor** (`cursor-agent`, NOT `cursor`): at `C:\Users\kenne\AppData\Local\cursor-agent\`; invoke via
-  PowerShell `& cursor-agent.cmd -p --mode ask --trust`. Note the GSD `/gsd:review` workflow assumes a
-  `cursor agent` subcommand that is wrong on Windows — use `cursor-agent.cmd`.
+  PowerShell `& cursor-agent.cmd -p --mode ask --trust`. Add `--model sonnet-5` for the Sonnet-5 reviewer
+  (confirm the exact model name via `cursor-agent --list-models`). Note the GSD `/gsd:review` workflow
+  assumes a `cursor agent` subcommand that is wrong on Windows — use `cursor-agent.cmd`.
+
+Plus the **in-harness crew** (Agent tool, model override): spawn a Claude reviewer for a fast second
+opinion without leaving the session. **The Sonnet tier = `claude-sonnet-5`** (Sonnet 5); use Opus for the
+heaviest reviews. This is the same Sonnet the GSD model catalog resolves the `sonnet` tier to
+(`~/.claude/get-shit-done/bin/shared/model-catalog.json`, `runtimeTierDefaults.claude.sonnet`).
 
 Use these for adversarial review of foundation-phase plans and any change where being wrong is expensive
 (injection, detours, binding regen, byte-exact codecs).
