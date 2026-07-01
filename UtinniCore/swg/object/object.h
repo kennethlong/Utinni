@@ -145,6 +145,8 @@ public:
     const char* getObjectTemplateName();
     int64_t getNetworkIdValue();
     const char* getSharedAppearanceFilename();
+    const char* getSharedPortalLayoutFilename();
+    const char* getSharedClientDataFilename();
 
     // Object class Tag (uint32 FOURCC) via the advertised object::getObjectType row (remapped onto
     // getType, re-pointed on the advertised client). getParentCellName(): nullptr = outdoors / no

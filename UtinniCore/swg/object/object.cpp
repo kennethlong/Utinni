@@ -406,6 +406,43 @@ const char* Object::getSharedAppearanceFilename()
     return reinterpret_cast<SharedObjectTemplate*>(pTemplate)->getAppearanceFilename();
 }
 
+const char* Object::getSharedPortalLayoutFilename()
+{
+    // Advertised chain only (same shape as getSharedAppearanceFilename): getObjectTemplate (D-01
+    // advertised) -> SharedObjectTemplate::getPortalLayoutFilename (advertised via the
+    // objectTemplate::getPortalLayoutFilename row). The portal-layout (.pob) path is the building's
+    // interior cell layout -> non-empty for POB/building objects, empty otherwise. Null-degrades off
+    // the advertised client (slot null).
+    if (swg::object::getObjectTemplate == nullptr)
+    {
+        return nullptr;
+    }
+    const swgptr pTemplate = swg::object::getObjectTemplate(this);
+    if (pTemplate == 0)
+    {
+        return nullptr;
+    }
+    return reinterpret_cast<SharedObjectTemplate*>(pTemplate)->getPortalLayoutFilename();
+}
+
+const char* Object::getSharedClientDataFilename()
+{
+    // Advertised chain only: getObjectTemplate (D-01 advertised) -> SharedObjectTemplate::
+    // getClientDataFilename (advertised via the objectTemplate::getClientDataFile row). The
+    // client-data (.cdf) path carries client-only object behavior/visuals. Null-degrades off the
+    // advertised client (slot null).
+    if (swg::object::getObjectTemplate == nullptr)
+    {
+        return nullptr;
+    }
+    const swgptr pTemplate = swg::object::getObjectTemplate(this);
+    if (pTemplate == 0)
+    {
+        return nullptr;
+    }
+    return reinterpret_cast<SharedObjectTemplate*>(pTemplate)->getClientDataFilename();
+}
+
 unsigned int Object::getObjectType()
 {
     // Advertised via the object::getObjectType row (MISMATCH-remapped onto swg::object::getType, which
