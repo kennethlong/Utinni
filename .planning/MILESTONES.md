@@ -5,6 +5,48 @@ Historical record of shipped versions. Newest first. Full per-milestone detail i
 
 ---
 
+## v2.1 — "Wave-2 Editors + Foundation Hardening" — ✅ SHIPPED 2026-06-23
+
+**Phases:** 17–24 · **Plans:** 35 · **Requirements:** 22/22 satisfied
+**Window:** 2026-06-15 → 2026-06-23 · **Tag:** _pending_ (`v2.1` not yet cut)
+
+Shipped the Terrain `.trn` and ClientEffect editors on a hardened rendering/toolchain base so the
+live-preview editors survive SWG Source's D3D9→D3D11 flip — foundation (17–19) before features (20–23),
+with the client-advertised entry-point contract (24) retiring hardcoded RVAs on the from-source client.
+
+**Key accomplishments:**
+
+1. **Hardened the CppSharp/v145 binding toolchain** — documented the VS2019-14.29 parser redirect as the
+   supported config, added CI tripwires (C++23-header hard-fail, clang-20 warn-pin), and a per-block-hash
+   ABI diff + frozen-DLL MEF-compose gate so a binding regen can never silently break a pre-built plugin.
+   (Phase 17, CPPS-01..04)
+2. **Carved the `IRenderBackend` seam + Dx9Backend** — single-sourced the ~1000-line API-neutral overlay
+   logic, D3D9 path behaviorally unchanged (no-Reset/Present-stretch contract preserved). (Phase 18, RNDR-01)
+3. **Added the Dx11Backend** — DXGI `Present`/`ResizeBuffers` hooks, one-backend-per-session `gl%02d_r.dll`
+   detection, per-frame RTV rebind + DXGI resize. (Phase 19, RNDR-02/03/04)
+4. **Shipped the Terrain `.trn` editor** — version-dispatched typed codec with raw-fallback + navigable
+   layer tree, byte-exact scalar-leaf edit/save, verbs-first + MCP, across both SWGEmu and Restoration
+   lineages, plus the TJT SubPanel with honest save-then-reload candor. (Phases 20–21, PROD-W2-TRN-01..05)
+5. **Shipped the ClientEffect editor** (`.iff` command list, verbs + MCP + SubPanel) and **user-definable
+   IFF chunk templates** — schema-driven byte-exact decode/encode of any modder-described chunk,
+   manageable from the IFF Editor UI. (Phases 22–23, PROD-W2-CFX-01/02, PROD-IFFT-01..03)
+6. **Landed client entry-point advertisement (`GetEngineHookPoints`)** — the from-source SWG-Source client
+   advertises its own engine entry points; UtinniCore consumes them dual-path (advertised on the DX11
+   client, hardcoded-RVA on SWGEmu, auto-detected), retiring hardcoded RVAs on that client and unblocking
+   the Phase 18/19 DX11 live-smokes (D-08/D-22). The advertised DX11 client boots → login → loads worlds →
+   embed-scales; SWGEmu byte-for-byte unchanged (D-00). (Phase 24, EPA-01..04)
+
+**Verification:** milestone audit not yet run (`/gsd:audit-milestone` optional follow-on). All 22
+requirements code-complete; each feature phase maintainer-live-smoke-verified at its close.
+
+**Active follow-on (out of v2.1 scope):** the advertised-client **editor-unlock arc** — grew the
+contract from RENDER-only (~77/230) to **v13 / 119 names** and delivered five live editor features on the
+DX11 client (Effects live-preview, Chat, Radial/menus, World-pick inspector, Free-cam mouse-fly). Full
+ledger in the Phase 24 session handoffs + `project_phase24_editor_unlock_inflight` memory. The x64 half of
+Backlog 999.7 and full ~198/230 hook coverage remain deferred.
+
+---
+
 ## v2.0 — "AI-Assisted SWG Tools" — ✅ SHIPPED 2026-06-14
 
 **Phases:** 12–16 · **Plans:** 39 · **Requirements:** 16/16 satisfied

@@ -8,7 +8,7 @@ one stable tool, and (as of v2.0) makes the whole asset pipeline AI-drivable.
 
 - ✅ **v1.0 MVP — "Demo + CI green"** — Phases 1–11 (shipped 2026-06-01, `v1.0.0`)
 - ✅ **v2.0 — "AI-Assisted SWG Tools"** — Phases 12–16 (shipped 2026-06-14, `v2.0`)
-- 📋 **v2.1 — "Wave-2 Editors + Foundation Hardening"** — Phases 17–24 (planning, started 2026-06-14)
+- ✅ **v2.1 — "Wave-2 Editors + Foundation Hardening"** — Phases 17–24 (shipped 2026-06-23)
 
 Full per-milestone phase detail + requirements are archived under `.planning/milestones/`.
 
@@ -52,7 +52,7 @@ Full detail: [`milestones/v2.0-ROADMAP.md`](milestones/v2.0-ROADMAP.md) · audit
 
 </details>
 
-### 📋 v2.1 — "Wave-2 Editors + Foundation Hardening" (Phases 17–24) — PLANNING
+### ✅ v2.1 — "Wave-2 Editors + Foundation Hardening" (Phases 17–24) — SHIPPED 2026-06-23
 
 Ship the Terrain `.trn` editor (Wave-2 #1) + a ClientEffect editor on a hardened rendering/toolchain
 base, so the live-preview editors survive SWG Source's D3D9→D3D11 flip — plus the user-definable IFF
@@ -205,7 +205,7 @@ Plans:
 - [x] 24-03-PLAN.md — EPA-03 DX11 kickoff decouple (D-05 Approach A: resolve `graphics::install`) + `directX::detour()` D3D11-safety gate
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 24-04-PLAN.md — Maintainer live-smoke acceptance (3 blocking checkpoints: no crash / DX11 renders / SWGEmu unchanged; closes D-08 + D-22)
+- [x] 24-04-PLAN.md — Maintainer live-smoke acceptance (3 blocking checkpoints: no crash / DX11 renders / SWGEmu unchanged; closes D-08 + D-22) — Checkpoints 1+3 PASS 2026-06-22; Checkpoint 2 (DX11 overlay) PASS 2026-06-23 (advertised DX11 client boots → login → world → embed-scale, RNDR-02/03/04 accepted)
 **Design notes / open questions** (resolve in discuss/plan):
   - **Contract shape**: a single versioned struct of ~198 named pointers (explicit, greppable, but large + brittle) vs. a name→pointer table / `GetEngineEntryPoint(name)` lookup (data-driven, version-tolerant — a missing name degrades gracefully, self-documenting). Leaning table; settle in the spike.
   - **Single source of truth**: a generated header shared by both repos so the field/name list cannot drift between swg-client-v2's export and UtinniCore's consumer.
@@ -241,10 +241,10 @@ Plans:
 | 21. Terrain TJT SubPanel | v2.1 | 7/7 | Complete    | 2026-06-17 |
 | 22. ClientEffect Editor | v2.1 | 4/4 | Complete    | 2026-06-20 |
 | 23. IFF Chunk Templates | v2.1 | 8/8 | Complete    | 2026-06-21 |
-| 24. Client Entry-Point Advertisement | v2.1 | 3/4 | In Progress|  |
+| 24. Client Entry-Point Advertisement | v2.1 | 4/4 | Complete    | 2026-06-23 |
 
-**Shipped: 2 milestones, 16 phases (+02.1), 94 plans, 31 requirements (15 v1 + 16 v2.0).**
-**In progress: v2.1 — 8 phases (17–24), 22 requirements, ~14% complete (3/8 phases code-complete).**
+**Shipped: 3 milestones, 24 phases (+02.1), 129 plans, 53 requirements (15 v1 + 16 v2.0 + 22 v2.1).**
+**Active follow-on (out of v2.1 scope): advertised-client editor-unlock arc — see the Phase 24 session handoffs.**
 
 ## Backlog
 
