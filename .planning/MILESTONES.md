@@ -8,7 +8,7 @@ Historical record of shipped versions. Newest first. Full per-milestone detail i
 ## v2.1 — "Wave-2 Editors + Foundation Hardening" — ✅ SHIPPED 2026-06-23
 
 **Phases:** 17–24 · **Plans:** 35 · **Requirements:** 22/22 satisfied
-**Window:** 2026-06-15 → 2026-06-23 · **Tag:** _pending_ (`v2.1` not yet cut)
+**Window:** 2026-06-15 → 2026-06-23 · **Tag:** `v2.1` (at `194481c`, the milestone-close commit before the post-v2.1 editor-unlock follow-on)
 
 Shipped the Terrain `.trn` and ClientEffect editors on a hardened rendering/toolchain base so the
 live-preview editors survive SWG Source's D3D9→D3D11 flip — foundation (17–19) before features (20–23),

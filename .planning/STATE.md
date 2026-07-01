@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A modder downloads Utinni, installs once, and from a single application can see, edit, and live-preview every asset the SWG client loads — replacing the fragmented 15-year-old editor zoo with one stable, plugin-driven tool.
-**Current focus:** v2.1 SHIPPED 2026-06-23 (Phases 17–24; all 22 reqs). Active: the Phase-24 advertised-client editor-unlock follow-on (out of v2.1 scope — see the Phase 24 session handoffs). Next milestone not yet cut. Pending bookkeeping: git tag `v2.1` (not yet created); optional milestone audit not yet run.
+**Current focus:** v2.1 SHIPPED 2026-06-23 (Phases 17–24; all 22 reqs). Active: the Phase-24 advertised-client editor-unlock follow-on (out of v2.1 scope — see the Phase 24 session handoffs). Next milestone not yet cut. Git tag `v2.1` created at the close commit `194481c` (2026-06-30).
 
 ## Current Position
 
