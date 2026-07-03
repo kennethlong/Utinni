@@ -502,6 +502,15 @@ extern pGetInstance g_instance;
 extern pGetTarget getTarget;
 } // namespace swg::cuiHud
 
+// -- systemMessageManager::sendMessage (ui/cui_manager.cpp:76; v14 -- the SEND/inject half; the
+//    RECEIVE half stays OMIT per the A-2.1 note above. Provider &CuiSystemMessageManager::
+//    sendFakeSystemMessage(const Unicode::String&, bool), byte-exact ABI match, CALLED not detoured) --
+namespace swg::systemMessageManager
+{
+using pSendMessage = void(__cdecl*)(const swg::WString& message, bool chatOnly);
+extern pSendMessage sendMessage;
+} // namespace swg::systemMessageManager
+
 // -- network::getObjectById (misc/network.cpp:31; Bucket A-3 v12 -- unblocks the target-change
 //    callback's Object* resolve. Contract network::getObjectById -> consumer idManagerGetObjectById,
 //    name mismatch; provider NetworkIdManager::getObjectById(const NetworkId&) static, exact ABI match) --
@@ -741,6 +750,10 @@ static const Binding s_bindings[] = {
     {"messageQueue::getCount", (void**)&swg::messageQueue::getCount},                                               // MISMATCH: provider MessageQueue::getNumberOfMessages
     {"messageQueue::getMessage", (void**)&swg::messageQueue::getMessage},                                           // 4-arg overload getMessage(int,int*,float*,uint32*)
     {"object::isActive", (void**)&swg::object::isActive},                                                           // external-linkage shim (non-virtual but inline -> no PMF on the provider side)
+
+    // -- v14 (Phase 24 / sysmsg SEND): the INJECT half only -- resolver re-points the SWGEmu literal
+    //    (0x008AC250) at CuiSystemMessageManager::sendFakeSystemMessage on the advertised client.
+    {"systemMessageManager::sendMessage", (void**)&swg::systemMessageManager::sendMessage}, // CALLED (inject), not detoured; receive half stays OMIT
 };
 
 // ----------------------------------------------------------------------
@@ -781,8 +794,8 @@ constexpr size_t kIncCount = 0
 
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
 
-static_assert(kIncCount == 119, "contract .inc size drifted from the expected 119 names (v13 / free-cam: +6 accessor rows)");
-static_assert(kBindingCount == 117, "s_bindings[] must bind 117 of 119 (.inc minus the TWO carve-outs)");
+static_assert(kIncCount == 120, "contract .inc size drifted from the expected 120 names (v14 / sysmsg SEND: +1 row)");
+static_assert(kBindingCount == 118, "s_bindings[] must bind 118 of 120 (.inc minus the TWO carve-outs)");
 static_assert(kBindingCount == kIncCount - 2,
               "exactly two .inc names are carve-outs: consoleHelper::sendInput (D-02) + "
               "client::wndProc (embed-resize regression; RNDR-04 follow-on)");
@@ -921,6 +934,8 @@ constexpr const char* kBindingNames[] = {
     "messageQueue::getCount",
     "messageQueue::getMessage",
     "object::isActive",
+    // ===== v14 (Phase 24 / sysmsg SEND) addition — lockstep with s_bindings[] above =====
+    "systemMessageManager::sendMessage",
 };
 
 constexpr bool allNamesInInc()
