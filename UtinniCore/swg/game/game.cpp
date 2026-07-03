@@ -713,6 +713,16 @@ Object* Game::getPlayerCreatureObject() // ToDo return CreatureObject*
 
 swgptr Game::getPlayerLookAtTargetObjectNetworkId()
 {
+    // WorldSnapshot chain / target-change un-gate (2026-07-03): the +1432 lookAt-target slot is a
+    // RAW CreatureObject byte-offset from the 2002 SWGEmu layout -- SS5-fragile on the advertised NGE
+    // client (wrong field there). Degrade to 0 -> getPlayerLookAtTargetObject() returns null ->
+    // WorldSnapshotImpl.OnTarget takes its safe no-target branch. An advertised lookAt-target
+    // accessor row is the follow-on that lights this up for real (Goal A+).
+    if (swg::endpoints::isAdvertisedClient())
+    {
+        return 0;
+    }
+
     const Object* playerObj = getPlayerCreatureObject();
 
     if (!playerObj)

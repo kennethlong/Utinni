@@ -229,18 +229,23 @@ void createDetours()
         utinni::CuiChatWindow::detour();
     }
 
-    // --- INPUT / EVENT / MOVEMENT / LOCOMOTION group (prime suspect) ---
-    // creatureObject::setTarget: REVERTED to SWGEmu-only (Bucket A-3 smoke, 2026-06-29). The setTarget
-    // hook + the v12 network::getObjectById resolve are BOTH fine (smoke logged a non-null resolve), but
-    // un-gating it makes hkSetTarget fire during load -> its onTarget dispatch wakes the dormant editor
-    // subscriber WorldSnapshotImpl.OnTarget -> Game.PlayerLookAtTargetObject -> Object::getObjectById ->
-    // the STILL-stale cachedNetworkIdGetObject RVA (0x00B30160) -> c0000005 (OnTarget also walks the
-    // unadvertised WorldSnapshotReaderWriter). The GroundScene blast-radius lesson: target-change can't
-    // un-gate until its WHOLE consumer chain (the WorldSnapshot editor) is advertised-safe, not just the
-    // one id-resolver. Stays SWGEmu-only; the v12 binding remains (inert/harmless on advertised).
-    if (!skipInput && !advertised)
+    // --- creatureObject::setTarget: UN-GATED on advertised (2026-07-03, WorldSnapshot-chain wave 1;
+    // reverses the 2026-06-29 Bucket A-3 revert). The 06-29 crash was NOT the hook -- hkSetTarget + the
+    // v12 network::getObjectById resolve were smoke-proven -- it was the onTarget dispatch waking
+    // WorldSnapshotImpl.OnTarget, whose re-reads hit two unadvertised natives. BOTH now degrade on
+    // advertised: getPlayerLookAtTargetObjectNetworkId returns 0 (the +1432 raw offset is 2002-layout)
+    // and Network::getCachedObjectById returns null (stale 0x00B30160 literal) -> OnTarget takes its
+    // existing safe no-target branch, and the WorldSnapshotReaderWriter walk stays unreachable (node
+    // lookups require a non-null target). detour() self-gates via installable() (setTarget is the v9
+    // advertised setLookAtTarget real entry). Gating-idiom lift shape (mirrors CuiManager/CuiChatWindow).
+    if (!skipInput)
     {
         utinni::creatureObject::detour();
+    }
+
+    // --- INPUT / EVENT / MOVEMENT / LOCOMOTION group (prime suspect) ---
+    if (!skipInput && !advertised)
+    {
         utinni::cuiHud::detour();
         utinni::cuiIo::detour();
         utinni::debugCamera::detour();

@@ -23,6 +23,7 @@
  **/
 
 #include "network.h"
+#include "swg/endpoints.h"
 #include "swg/object/object.h"
 
 namespace swg::network
@@ -72,6 +73,14 @@ Object* Network::getObjectById(const int64_t& id)
 
 Object* Network::getCachedObjectById(swgptr pCachedNetworkId)
 {
+    // WorldSnapshot chain / target-change un-gate (2026-07-03): cachedNetworkIdGetObject is an
+    // UNADVERTISED SWGEmu literal (0x00B30160) -- on the advertised client it lands on relocated
+    // code (this was the 06-29 Bucket A-3 crash frame). Degrade to null; advertised callers that
+    // need an id->Object resolve use the v12 network::getObjectById row (Network::getObjectById).
+    if (swg::endpoints::isAdvertisedClient())
+    {
+        return nullptr;
+    }
     return swg::network::cachedNetworkIdGetObject(pCachedNetworkId);
 }
 
