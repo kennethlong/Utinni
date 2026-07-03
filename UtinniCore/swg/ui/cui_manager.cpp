@@ -72,8 +72,12 @@ namespace swg::systemMessageManager
 using pReceiveMessage = void(__cdecl*)(swgptr pChatSystemMsg);
 using pSendMessage = void(__cdecl*)(const swg::WString& message, bool chatOnly);
 
+// v14: the SEND slot's SWGEmu literal, kept as a named constant so the utinni::sendMessage
+// wrapper's version-skew guard can exact-compare against it (see the guard note there).
+constexpr swgptr kSendMessageSwgemuRva = 0x008AC250;
+
 pReceiveMessage receiveMessage = (pReceiveMessage)0x008ABEB0;
-pSendMessage sendMessage = (pSendMessage)0x008AC250;
+pSendMessage sendMessage = (pSendMessage)kSendMessageSwgemuRva;
 
 } // namespace swg::systemMessageManager
 
@@ -295,6 +299,20 @@ void SystemMessageManager::addReceiveMessageCallback(void (*func)(const char* ms
 
 void SystemMessageManager::sendMessage(const char* message, bool chatOnly)
 {
+    // v14 SEND-row version-skew guard: on the advertised client the resolver overwrites the slot
+    // by name; if this session's exe predates v14 the name MISSES and the slot still holds the
+    // SWGEmu literal -> calling it lands on relocated code (the CuiStringIds 0xC0000096 crash
+    // class). Exact-literal compare, NOT installable(): a stale RVA on the advertised exe is
+    // still executable .text and would wrongly pass (necessary-not-sufficient). The SWGEmu path
+    // (isAdvertisedClient()==false) calls straight through, byte-unchanged (D-00).
+    if (swg::endpoints::isAdvertisedClient() &&
+        swg::systemMessageManager::sendMessage ==
+            (swg::systemMessageManager::pSendMessage)swg::systemMessageManager::kSendMessageSwgemuRva)
+    {
+        log::info("SystemMessageManager::sendMessage skipped -- sendMessage row not resolved on this "
+                  "advertised exe (pre-v14 version skew); message dropped");
+        return;
+    }
     swg::systemMessageManager::sendMessage(swg::WString(message), chatOnly);
 }
 
