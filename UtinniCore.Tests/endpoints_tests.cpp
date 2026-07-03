@@ -216,7 +216,7 @@ TEST_CASE("endpoints: full catalog (118 of 120 .inc names) all resolve, carve-ou
 #undef ENGINE_HOOKPOINT
     };
     constexpr size_t kIncCount = sizeof(kAllIncNames) / sizeof(kAllIncNames[0]);
-    REQUIRE(kIncCount == 120); // the contract size (drift gate -- mirrors the provider count, v14 / sysmsg SEND: +1 row)
+    REQUIRE(kIncCount == 120); // the contract size (drift gate -- mirrors the provider count, v15 / sysmsg SEND rev-2: name-replace)
 
     // The expected override scope is the .inc MINUS the two carve-outs -> 118.
     std::vector<const char*> expectedNames;
@@ -254,7 +254,7 @@ TEST_CASE("endpoints: full catalog (118 of 120 .inc names) all resolve, carve-ou
 
     const int resolved = resolve(&table, bindings.data(), bindings.size());
 
-    REQUIRE(resolved == 118); // full catalog resolved (D-01, v14 minus 2 carve-outs)
+    REQUIRE(resolved == 118); // full catalog resolved (D-01, v15 minus 2 carve-outs)
     for (void* s : slots)     // every requested name overwrote its slot
     {
         REQUIRE(s != nullptr);

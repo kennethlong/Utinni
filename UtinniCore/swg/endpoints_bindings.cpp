@@ -502,13 +502,16 @@ extern pGetInstance g_instance;
 extern pGetTarget getTarget;
 } // namespace swg::cuiHud
 
-// -- systemMessageManager::sendMessage (ui/cui_manager.cpp:76; v14 -- the SEND/inject half; the
-//    RECEIVE half stays OMIT per the A-2.1 note above. Provider &CuiSystemMessageManager::
-//    sendFakeSystemMessage(const Unicode::String&, bool), byte-exact ABI match, CALLED not detoured) --
+// -- systemMessageManager::sendMessageUtf8 (ui/cui_manager.cpp; v15 rev-2 -- the SEND/inject half;
+//    the RECEIVE half stays OMIT per the A-2.1 note above. Provider extern "C"
+//    utinni_sendFakeSystemMessage(const char* utf8Msg, bool chatBoxOnly) shim: the v14 direct
+//    const Unicode::String& row CRASHED (WString models the 2002 layout, not v145 basic_string) --
+//    primitives/pointers only across the boundary; the widen happens provider-side. Slot starts
+//    null (advertised-only); the wrapper null-checks) --
 namespace swg::systemMessageManager
 {
-using pSendMessage = void(__cdecl*)(const swg::WString& message, bool chatOnly);
-extern pSendMessage sendMessage;
+using pSendMessageUtf8 = void(__cdecl*)(const char* utf8Msg, bool chatBoxOnly);
+extern pSendMessageUtf8 sendMessageUtf8;
 } // namespace swg::systemMessageManager
 
 // -- network::getObjectById (misc/network.cpp:31; Bucket A-3 v12 -- unblocks the target-change
@@ -751,9 +754,10 @@ static const Binding s_bindings[] = {
     {"messageQueue::getMessage", (void**)&swg::messageQueue::getMessage},                                           // 4-arg overload getMessage(int,int*,float*,uint32*)
     {"object::isActive", (void**)&swg::object::isActive},                                                           // external-linkage shim (non-virtual but inline -> no PMF on the provider side)
 
-    // -- v14 (Phase 24 / sysmsg SEND): the INJECT half only -- resolver re-points the SWGEmu literal
-    //    (0x008AC250) at CuiSystemMessageManager::sendFakeSystemMessage on the advertised client.
-    {"systemMessageManager::sendMessage", (void**)&swg::systemMessageManager::sendMessage}, // CALLED (inject), not detoured; receive half stays OMIT
+    // -- v15 (Phase 24 / sysmsg SEND rev-2): the INJECT half only, via the provider's extern "C"
+    //    utf8 shim (the v14 direct Unicode::String& row crashed -- string-layout ABI; name-REPLACED).
+    //    Slot starts null (advertised-only); the SWGEmu WString literal stays a separate, unbound path.
+    {"systemMessageManager::sendMessageUtf8", (void**)&swg::systemMessageManager::sendMessageUtf8}, // CALLED (inject); receive half stays OMIT
 };
 
 // ----------------------------------------------------------------------
@@ -794,7 +798,7 @@ constexpr size_t kIncCount = 0
 
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
 
-static_assert(kIncCount == 120, "contract .inc size drifted from the expected 120 names (v14 / sysmsg SEND: +1 row)");
+static_assert(kIncCount == 120, "contract .inc size drifted from the expected 120 names (v15 / sysmsg SEND rev-2: name-replace)");
 static_assert(kBindingCount == 118, "s_bindings[] must bind 118 of 120 (.inc minus the TWO carve-outs)");
 static_assert(kBindingCount == kIncCount - 2,
               "exactly two .inc names are carve-outs: consoleHelper::sendInput (D-02) + "
@@ -934,8 +938,8 @@ constexpr const char* kBindingNames[] = {
     "messageQueue::getCount",
     "messageQueue::getMessage",
     "object::isActive",
-    // ===== v14 (Phase 24 / sysmsg SEND) addition — lockstep with s_bindings[] above =====
-    "systemMessageManager::sendMessage",
+    // ===== v15 (Phase 24 / sysmsg SEND rev-2, name-replaced the v14 row) — lockstep with s_bindings[] above =====
+    "systemMessageManager::sendMessageUtf8",
 };
 
 constexpr bool allNamesInInc()

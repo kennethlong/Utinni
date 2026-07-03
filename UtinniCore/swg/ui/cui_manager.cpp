@@ -71,9 +71,14 @@ namespace swg::systemMessageManager
 {
 using pReceiveMessage = void(__cdecl*)(swgptr pChatSystemMsg);
 using pSendMessage = void(__cdecl*)(const swg::WString& message, bool chatOnly);
+// v15: provider extern "C" utf8 shim (rev-2) -- primitives/pointers only across the advertised
+// boundary; the Unicode::String widen happens provider-side. Null on SWGEmu / pre-v15 (the
+// standard advertised-only slot pattern; the wrapper null-checks).
+using pSendMessageUtf8 = void(__cdecl*)(const char* utf8Msg, bool chatBoxOnly);
 
 pReceiveMessage receiveMessage = (pReceiveMessage)0x008ABEB0;
-pSendMessage sendMessage = (pSendMessage)0x008AC250;
+pSendMessage sendMessage = (pSendMessage)0x008AC250; // SWGEmu-only (WString layout models the 2002 exe)
+pSendMessageUtf8 sendMessageUtf8 = nullptr;
 
 } // namespace swg::systemMessageManager
 
@@ -295,19 +300,21 @@ void SystemMessageManager::addReceiveMessageCallback(void (*func)(const char* ms
 
 void SystemMessageManager::sendMessage(const char* message, bool chatOnly)
 {
-    // ADVERTISED-BLOCKED pending the v15 narrow shim (2026-07-03 smoke crash, WRITE-AV
-    // rva 0xDBA770). The v14 row IS resolved and correctly targeted, but the parameter is a
-    // C++ string object: swg::WString models the SWGEmu-era 3-pointer (begin/end/allocEnd)
-    // layout, while the from-source v145 Unicode::String is a modern MSVC basic_string
-    // (SSO buf @0, size @16, capacity @20) -- the engine reads a garbage size past our
-    // 12-byte object and writes wild. Signature-level "ABI match" is NOT layout-level match
-    // for class-type params; only primitives/pointers cross the advertised boundary safely.
-    // Fix = a provider extern "C" utf8 shim (the utinni_replayClientEffect precedent) --
-    // see 24-PROVIDER-REQUEST-sysmsg-send.md rev-2. SWGEmu path unchanged (D-00).
+    // Split send path (v15 rev-2 / the 2026-07-03 WRITE-AV lesson): C++ string objects do NOT
+    // cross the advertised boundary -- swg::WString models the 2002 SWGEmu 3-pointer layout,
+    // the v145 Unicode::String is a modern SSO basic_string. On the advertised client route
+    // through the provider's extern "C" utf8 shim (primitives/pointers only; the widen happens
+    // provider-side); null = pre-v15 exe -> log + drop (standard advertised-only slot pattern).
+    // On SWGEmu keep the WString literal path, byte-unchanged (D-00).
     if (swg::endpoints::isAdvertisedClient())
     {
-        log::info("SystemMessageManager::sendMessage blocked on the advertised client -- WString/"
-                  "Unicode::String layout mismatch (awaiting the v15 utf8 shim); message dropped");
+        if (swg::systemMessageManager::sendMessageUtf8 == nullptr)
+        {
+            log::info("SystemMessageManager::sendMessage dropped -- sendMessageUtf8 shim not "
+                      "advertised (pre-v15 exe)");
+            return;
+        }
+        swg::systemMessageManager::sendMessageUtf8(message, chatOnly);
         return;
     }
     swg::systemMessageManager::sendMessage(swg::WString(message), chatOnly);

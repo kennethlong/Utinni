@@ -130,8 +130,23 @@
 // void(__cdecl*)(const Unicode::String&, bool). SEND ONLY -- the RECEIVE half stays OMIT (the reverted Bucket
 // A-2.1 receiveMessage that AV'd world-load; the real inbound receiver is a file-local anonymous
 // MessageDispatch::Receiver Listener, un-advertisable -- receiveSystemMessage next to the static is NOT it). 120 names.
+// Bumped 14 -> 15 in sysmsg-SEND rev-2 (2026-07-03): 1 NAME REPLACE -- systemMessageManager::sendMessage
+// REMOVED, systemMessageManager::sendMessageUtf8 ADDED -> extern "C" void __cdecl
+// utinni_sendFakeSystemMessage(const char* utf8Msg, bool chatBoxOnly), a provider-side utf8 shim that widens
+// and calls sendFakeSystemMessage. The v14 row CRASHED live smoke (WRITE-AV): "byte-exact ABI match" was true
+// of the signature only -- the const Unicode::String& PARAMETER crossed the boundary as a C++ object, and the
+// consumer's swg::WString models the 2002 SWGEmu 3-pointer layout while ours is a v145 SSO basic_string ->
+// the engine read _Mysize past the consumer's 12-byte object. ABI RULE adopted by both repos: only primitives
+// and pointers cross the advertised boundary on CALLED endpoints; class-type params (strings above all) need
+// an extern "C" shim (the utinni_replayClientEffect precedent). Name-REPLACE, not re-point, so version-skewed
+// pairings miss by name and degrade instead of mis-calling. Companion rev-2 AUDIT flagged the other CALLED
+// rows with class-type params/returns as ABI-UNSAFE TO CALL until shimmed (row comments in
+// engine_advertise.cpp): cuiChatWindow::writeToAllTabs + writeToCurrentTab and consoleHelper::sendInput
+// (const Unicode::String& params), worldSnapshot::addObject (CrcString const& + std::string const&),
+// objectTemplate::get{AppearanceFilename,PortalLayoutFilename,ClientDataFile} (return our std::string by
+// const&). DETOURED rows are unaffected (they read args our own code constructed). Still 120 names.
 // ----------------------------------------------------------------------
-#define ENGINE_HOOKPOINTS_VERSION 14
+#define ENGINE_HOOKPOINTS_VERSION 15
 
 // ----------------------------------------------------------------------
 // One row per advertised endpoint: a stable contract name + the borrowed

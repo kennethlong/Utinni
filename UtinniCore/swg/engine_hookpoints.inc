@@ -303,10 +303,14 @@ ENGINE_HOOKPOINT(messageQueue,       getCount)                         // MISMAT
 ENGINE_HOOKPOINT(messageQueue,       getMessage)                       // 4-arg overload getMessage(int,int*,float*,uint32*) const (pmfToVoid, static_cast disambig)
 ENGINE_HOOKPOINT(object,             isActive)                         // external-linkage shim (Object::isActive is NON-virtual but INLINE -> no PMF address)
 
-// -- systemMessageManager SEND (v13->v14): the INJECT half of the sysmsg pair (2026-07-02 provider request) --
-// 1 NAME ADD -- systemMessageManager::sendMessage -> &CuiSystemMessageManager::sendFakeSystemMessage (all-static
-// class; plain constant &fn, no MI/virtual/thunk). CALLED endpoint (consumer injects a sysmsg into the chat/system
-// feed), byte-exact ABI match to the consumer typedef void(__cdecl*)(const Unicode::String&, bool). This is the SEND
-// half ONLY -- the RECEIVE half stays OMIT (the reverted Bucket A-2.1 receiveMessage that AV'd world-load; the
-// real inbound receiver is a file-local anonymous MessageDispatch::Receiver Listener, un-advertisable).
-ENGINE_HOOKPOINT(systemMessageManager, sendMessage)
+// -- systemMessageManager SEND (v15): the INJECT half of the sysmsg pair (2026-07-02 request, rev-2 2026-07-03) --
+// rev-2 NAME REPLACE (v14->v15): sendMessage -> sendMessageUtf8. The v14 direct-&fn row passed const
+// Unicode::String& across the advertised boundary and CRASHED live smoke (consumer WString models the 2002
+// SWGEmu 3-pointer string layout; ours is a v145 SSO basic_string -> garbage size read -> WRITE-AV). Now an
+// extern "C" utf8 shim: void __cdecl utinni_sendFakeSystemMessage(const char* utf8Msg, bool chatBoxOnly) widens
+// on the PROVIDER side and calls sendFakeSystemMessage. ABI RULE (both repos): only primitives and pointers
+// cross the boundary on CALLED endpoints; class-type params need an extern "C" shim (the
+// utinni_replayClientEffect precedent). Name-REPLACE (not re-point) so version-skewed pairings miss by name
+// and degrade instead of mis-calling across a changed ABI. SEND half ONLY -- RECEIVE stays OMIT (the reverted
+// Bucket A-2.1 receiveMessage; the real inbound receiver is a file-local Listener, un-advertisable).
+ENGINE_HOOKPOINT(systemMessageManager, sendMessageUtf8)
