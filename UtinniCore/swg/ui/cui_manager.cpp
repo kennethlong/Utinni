@@ -72,12 +72,8 @@ namespace swg::systemMessageManager
 using pReceiveMessage = void(__cdecl*)(swgptr pChatSystemMsg);
 using pSendMessage = void(__cdecl*)(const swg::WString& message, bool chatOnly);
 
-// v14: the SEND slot's SWGEmu literal, kept as a named constant so the utinni::sendMessage
-// wrapper's version-skew guard can exact-compare against it (see the guard note there).
-constexpr swgptr kSendMessageSwgemuRva = 0x008AC250;
-
 pReceiveMessage receiveMessage = (pReceiveMessage)0x008ABEB0;
-pSendMessage sendMessage = (pSendMessage)kSendMessageSwgemuRva;
+pSendMessage sendMessage = (pSendMessage)0x008AC250;
 
 } // namespace swg::systemMessageManager
 
@@ -299,18 +295,19 @@ void SystemMessageManager::addReceiveMessageCallback(void (*func)(const char* ms
 
 void SystemMessageManager::sendMessage(const char* message, bool chatOnly)
 {
-    // v14 SEND-row version-skew guard: on the advertised client the resolver overwrites the slot
-    // by name; if this session's exe predates v14 the name MISSES and the slot still holds the
-    // SWGEmu literal -> calling it lands on relocated code (the CuiStringIds 0xC0000096 crash
-    // class). Exact-literal compare, NOT installable(): a stale RVA on the advertised exe is
-    // still executable .text and would wrongly pass (necessary-not-sufficient). The SWGEmu path
-    // (isAdvertisedClient()==false) calls straight through, byte-unchanged (D-00).
-    if (swg::endpoints::isAdvertisedClient() &&
-        swg::systemMessageManager::sendMessage ==
-            (swg::systemMessageManager::pSendMessage)swg::systemMessageManager::kSendMessageSwgemuRva)
+    // ADVERTISED-BLOCKED pending the v15 narrow shim (2026-07-03 smoke crash, WRITE-AV
+    // rva 0xDBA770). The v14 row IS resolved and correctly targeted, but the parameter is a
+    // C++ string object: swg::WString models the SWGEmu-era 3-pointer (begin/end/allocEnd)
+    // layout, while the from-source v145 Unicode::String is a modern MSVC basic_string
+    // (SSO buf @0, size @16, capacity @20) -- the engine reads a garbage size past our
+    // 12-byte object and writes wild. Signature-level "ABI match" is NOT layout-level match
+    // for class-type params; only primitives/pointers cross the advertised boundary safely.
+    // Fix = a provider extern "C" utf8 shim (the utinni_replayClientEffect precedent) --
+    // see 24-PROVIDER-REQUEST-sysmsg-send.md rev-2. SWGEmu path unchanged (D-00).
+    if (swg::endpoints::isAdvertisedClient())
     {
-        log::info("SystemMessageManager::sendMessage skipped -- sendMessage row not resolved on this "
-                  "advertised exe (pre-v14 version skew); message dropped");
+        log::info("SystemMessageManager::sendMessage blocked on the advertised client -- WString/"
+                  "Unicode::String layout mismatch (awaiting the v15 utf8 shim); message dropped");
         return;
     }
     swg::systemMessageManager::sendMessage(swg::WString(message), chatOnly);

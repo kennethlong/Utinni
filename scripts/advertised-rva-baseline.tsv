@@ -312,7 +312,7 @@ ui\cui_manager.cpp|0x00881560|restartMusic	CALL	BOUND	grandfathered pre-WS-3 inv
 ui\cui_manager.cpp|0x00881940|togglePointer	CALL	BOUND	grandfathered pre-WS-3 inventory (CALL)
 ui\cui_manager.cpp|0x00882410|setSize	CALL	BOUND	grandfathered pre-WS-3 inventory (CALL)
 ui\cui_manager.cpp|0x008ABEB0|receiveMessage	CALL		grandfathered pre-WS-3 inventory (CALL)
-ui\cui_manager.cpp|0x008AC250|kSendMessageSwgemuRva	OTHER		v14 SEND-row skew-guard constant: the literal exists ONLY to exact-compare the slot (detect an unresolved pre-v14 advertised exe and drop the call); never dereferenced on advertised
+ui\cui_manager.cpp|0x008AC250|sendMessage	CALL	BOUND	SWGEmu-only send path; the utinni:: wrapper hard-blocks on isAdvertisedClient() (WString/Unicode::String layout mismatch, 2026-07-03) until the v15 utf8 shim
 ui\cui_manager.cpp|0x00BD3E20|findObjectUnderCursor	CALL		WS-4: unadvertised literal -- isAdvertisedClient()-gated OFF on advertised (installable() insufficient for stale RVA); SWGEmu-only
 ui\cui_manager.cpp|0x010E8410|drawCursor	CALL		grandfathered pre-WS-3 inventory (CALL)
 ui\cui_manager.cpp|0x01996E98|	DATA		grandfathered pre-WS-3 inventory (DATA)

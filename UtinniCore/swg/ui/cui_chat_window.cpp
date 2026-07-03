@@ -208,6 +208,19 @@ void CuiChatWindow::enableTextInput(bool value) // Accepts color codes by prefix
 
 void CuiChatWindow::writeToAllTabs(const char* str)
 {
+    // ADVERTISED-BLOCKED: same class-type-param layout trap as SystemMessageManager::sendMessage
+    // (2026-07-03) -- these rows take a const WString& whose SWGEmu-era 3-pointer layout does NOT
+    // match the v145 Unicode::String (modern basic_string) behind the advertised addr, and
+    // pCuiChatWindow IS published on the advertised client (hkCreateNewWindow) so the null-check
+    // would not save us. No consumer calls these on advertised today; blocked so none can.
+    // Un-block only behind a provider utf8 shim (see the sysmsg-send rev-2 request).
+    if (swg::endpoints::isAdvertisedClient())
+    {
+        log::info("CuiChatWindow::writeToAllTabs blocked on the advertised client -- WString layout "
+                  "mismatch (see SystemMessageManager::sendMessage note)");
+        return;
+    }
+
     // WR-06: atomic load (published with release in hkCtor).
     const swgptr p = pCuiChatWindow.load(std::memory_order_relaxed);
     if (p == 0)
@@ -220,6 +233,14 @@ void CuiChatWindow::writeToAllTabs(const char* str)
 
 void CuiChatWindow::writeToCurrentTab(const char* str) // Accepts color codes by prefixing them with \\, ie "\\#888888 test"
 {
+    // ADVERTISED-BLOCKED: see writeToAllTabs above.
+    if (swg::endpoints::isAdvertisedClient())
+    {
+        log::info("CuiChatWindow::writeToCurrentTab blocked on the advertised client -- WString layout "
+                  "mismatch (see SystemMessageManager::sendMessage note)");
+        return;
+    }
+
     // WR-06: atomic load.
     const swgptr p = pCuiChatWindow.load(std::memory_order_relaxed);
     if (p == 0)
