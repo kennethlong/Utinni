@@ -6,6 +6,14 @@ discovery → v15 shim → **smoke-PASSED**, and (3) opened the **WorldSnapshot 
 (target-change un-gated, **SMOKE PENDING** — the immediate resume point). Everything committed + pushed
 on both repos; both working trees clean. Read top-to-bottom.
 
+> **ADDENDUM 2026-07-03 (later session): §5 IS RESOLVED — wave-1 live smoke PASSED** (maintainer,
+> advertised NGE client): target-change works, guards hold, no crash. Target-change is LIVE on the
+> advertised client. Follow-ups from that pass: inspector readout box got a vertical scrollbar
+> (UtinniPlugins `78eb392`, the 11-line readout overflowed). CI checked: green since 07-01 — the
+> 06-26→06-29 red streak was the CPPS-04 ABI gate lagging the editor-unlock surface churn, fixed by
+> the `e0e14b0` rebless; only log noise remains (cache-restore tar warnings, Node-20 deprecation).
+> **Resume at §6 (the next-move ladder): Goal A+ / Goal B / v2.2 pivot.**
+
 **Live pointers:**
 - **This doc** — session recap + the resume point (§5) + next-move ladder (§6).
 - **Running arc ledger:** `project_phase24_editor_unlock_inflight` memory (has the full detail).
