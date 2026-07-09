@@ -175,6 +175,15 @@ int WorldSnapshotReaderWriter::getNodeCountTotal()
 
 WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::getNodeById(int id)
 {
+    // Goal A+ prerequisite (2026-07-09): the raw nodeList/children walks below run on `this` ==
+    // the hardcoded 0x1913E94 SWGEmu singleton -- garbage on the advertised client. They were
+    // unreachable there only because the player's lookAt target resolved null (wave 1); the v16
+    // lookAt-target accessor removes that property, so every Node*-producing function in this
+    // file gates FIRST, before any member touch (audit-enforced: the world_snapshot guard check
+    // in scripts/audit-advertised-rva-safety.ps1 fails CI on an ungated Node*-returning body).
+    if (offlineSnapshotUnavailable())
+        return nullptr;
+
     Node* result = nullptr;
     for (int i = 0; i < nodeList->size(); ++i)
     {
@@ -190,6 +199,11 @@ WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::getNodeById(int id)
 
 WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::getNodeById(int id, Object* parentObject)
 {
+    // Gate at the dispatcher too: parentObject arrives as a raw 2002-layout field read from
+    // managed callers -- on the advertised client it must not be dereferenced downstream.
+    if (offlineSnapshotUnavailable())
+        return nullptr;
+
     if (parentObject == nullptr)
     {
         return getNodeById(id);
@@ -202,6 +216,9 @@ WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::getNodeById(int id, 
 
 WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::findChildNode(Node* parentNode, int id)
 {
+    if (offlineSnapshotUnavailable())
+        return nullptr;
+
     Node* result = nullptr;
 
     for (int i = 0; i < parentNode->children->size(); ++i)
@@ -237,6 +254,9 @@ WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::findChildNode(Node* 
 
 WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::getNodeByIdWithParent(Object* parentObject, int id)
 {
+    if (offlineSnapshotUnavailable())
+        return nullptr;
+
     Object* topParent = parentObject;
 
     while (true)
@@ -275,6 +295,8 @@ WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::getNodeAt(int index)
 
 WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::getLastNode()
 {
+    if (offlineSnapshotUnavailable())
+        return nullptr;
     return nodeList->back();
 }
 
@@ -432,11 +454,16 @@ const char* WorldSnapshotReaderWriter::Node::getObjectTemplateName() const
 
 int WorldSnapshotReaderWriter::Node::getChildCount() const
 {
+    if (offlineSnapshotUnavailable())
+        return 0;
     return children->size();
 }
 
 WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::Node::getChildById(int id)
 {
+    if (offlineSnapshotUnavailable())
+        return nullptr;
+
     Node* result = nullptr;
 
     for (int i = 0; i < children->size(); ++i)
@@ -454,11 +481,15 @@ WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::Node::getChildById(i
 
 WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::Node::getChildAt(int index)
 {
+    if (offlineSnapshotUnavailable())
+        return nullptr;
     return children->at(index);
 }
 
 WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::Node::getLastChild()
 {
+    if (offlineSnapshotUnavailable())
+        return nullptr;
     return children->back();
 }
 

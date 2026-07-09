@@ -19,6 +19,9 @@ WHAT IT DOES
   3. Cross-maps each CALL symbol against the resolver's s_bindings[] (endpoints_bindings.cpp):
      BOUND   = the slot is overwritten by the resolver on the advertised client (safe there);
      UNBOUND = a raw literal the resolver never touches (garbage on advertised unless guarded).
+  3b. GUARD INVARIANT (Goal A+): every Node*-producing function body in scene/world_snapshot.cpp
+     must open with the offlineSnapshotUnavailable() gate (the reader/writer singleton is a raw
+     SWGEmu RVA; see the section-2b comment). Fails CHECK/Report mode on an ungated body.
   4. RATCHET: compares the live site set against a committed BASELINE (the allowlist). The baseline
      grandfathers the ~320 pre-WS-3 literals (each row carries a Reason). CI FAILS if a NEW site
      appears that is not in the baseline -- forcing every new RVA to be consciously reviewed:
@@ -147,6 +150,42 @@ foreach ($f in $files) {
 }
 
 $liveKeys = $sites.Keys | Sort-Object
+
+# --- 2b. world_snapshot Node*-guard invariant (Goal A+ prerequisite, 2026-07-09) --------------
+# The offline WorldSnapshotReaderWriter singleton is a hardcoded SWGEmu RVA (0x1913E94), so every
+# raw nodeList/children walk in world_snapshot.cpp is garbage on the advertised client. Those
+# walks were unreachable there only while the player's lookAt target resolved null (wave 1); the
+# v16 lookAt-target accessor removes that property. Invariant: every Node*-producing function
+# BODY in world_snapshot.cpp opens with the offlineSnapshotUnavailable() gate, before any member
+# touch. Auto-catches future Node*-returning additions to the file.
+$wsFile = Join-Path $SwgRootFull 'scene\world_snapshot.cpp'
+$guardViolations = @()
+if (Test-Path $wsFile) {
+    $wsCode = Get-CodeLines -Path $wsFile
+    for ($li = 0; $li -lt $wsCode.Count; $li++) {
+        if ($wsCode[$li] -notmatch '^WorldSnapshotReaderWriter::Node\*\s+\S+\(') { continue }
+        $defLine = $li + 1  # 1-based for the report
+        # scan forward for the opening brace, then the first non-empty code line of the body
+        $j = $li
+        while ($j -lt $wsCode.Count -and $wsCode[$j] -notmatch '\{') { $j++ }
+        $j++
+        while ($j -lt $wsCode.Count -and $wsCode[$j].Trim() -eq '') { $j++ }
+        if ($j -ge $wsCode.Count -or $wsCode[$j] -notmatch 'if\s*\(\s*offlineSnapshotUnavailable\s*\(\s*\)\s*\)') {
+            $guardViolations += ('{0}: {1}' -f $defLine, $wsCode[$li].Trim())
+        }
+    }
+} else {
+    $guardViolations += 'scene\world_snapshot.cpp not found (invariant target missing)'
+}
+
+if ($guardViolations.Count -gt 0 -and -not $UpdateBaseline) {
+    Write-Host ''
+    Write-Host ("FAIL: {0} Node*-producing function(s) in world_snapshot.cpp do NOT open with the" -f $guardViolations.Count)
+    Write-Host '      offlineSnapshotUnavailable() gate (raw 0x1913E94 walk reachable on advertised):'
+    foreach ($v in $guardViolations) { Write-Host "    - $v" }
+    Write-Host '  Fix: make `if (offlineSnapshotUnavailable()) return nullptr;` the first statement of the body.'
+    exit 1
+}
 
 # --- 3. report mode --------------------------------------------------------------------------
 if ($Report) {
