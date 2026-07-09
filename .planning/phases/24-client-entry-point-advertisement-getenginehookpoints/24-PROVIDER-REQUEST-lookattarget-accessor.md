@@ -91,17 +91,20 @@ target resolves null") is exactly the property this request removes.
    through the `swgptr`-returning `getPlayerLookAtTargetObjectNetworkId()` (`swgptr` is 32-bit;
    NGE ids carry high bits). That function keeps its advertised-returns-0 degrade (its return is a
    *pointer into the creature* — meaningless on advertised). SWGEmu path byte-unchanged (D-00).
-3. **Blast-radius guards (NEW — they do not exist yet).** Every raw 2002-layout walk that becomes
-   reachable gets an `offlineSnapshotUnavailable()` gate as the **first statement of the body**,
-   before any `nodeList`/`parentObject` touch: `WorldSnapshotReaderWriter::getNodeById(int)`
-   (raw `nodeList` walk off the hardcoded `0x1913E94` singleton — garbage base on advertised;
-   `world_snapshot.cpp:176`), `getNodeById(int, Object*)` (`:191`, gate at the dispatcher before
-   the `parentObject` deref chain), `getNodeByIdWithParent` (`:238`), and `getLastNode()` (`:278`).
-   **Invariant this establishes:** every `Node*`-producing entry point is then gated
-   (`getNodeAt`/`getNodeByNetworkId`/`addNode`/load-path already are), so `Node` methods
-   (`getChild*`, child-list walks) stay unreachable on advertised — no `Node*` can exist there. A
-   Catch2 `[endpoints]`-suite case asserts the gated functions short-circuit null under a forced
-   advertised flag.
+3. **Blast-radius guards — LANDED (Utinni `750d213`, ahead of this request being actioned).**
+   Every raw 2002-layout walk that becomes reachable now opens with an
+   `offlineSnapshotUnavailable()` gate as the **first statement of the body**, before any
+   `nodeList`/`parentObject` touch: `WorldSnapshotReaderWriter::getNodeById(int)` (raw `nodeList`
+   walk off the hardcoded `0x1913E94` singleton — garbage base on advertised),
+   `getNodeById(int, Object*)` (gate at the dispatcher before the `parentObject` deref chain),
+   `findChildNode`, `getNodeByIdWithParent`, `getLastNode()`, plus the `Node` child-walkers
+   (`getChildById`/`getChildAt`/`getLastChild`/`getChildCount`) for defense in depth.
+   **Invariant established:** every `Node*`-producing entry point is gated
+   (`getNodeAt`/`getNodeByNetworkId`/`addNode`/load-path already were), so no `Node*` can exist on
+   advertised. **Harness:** a CI source-audit check
+   (`scripts/audit-advertised-rva-safety.ps1` §2b) fails the build on any `Node*`-returning body
+   in `world_snapshot.cpp` that does not open with the gate — negative-tested against the
+   pre-guard tree (8/8 flagged); it auto-catches future additions.
 4. **Managed call-site audit (done, review-verified).** The only `onTarget` subscriber is
    `WorldSnapshotImpl.OnTarget` (the inspector deliberately polls pure getters —
    `MiscPanel.cs:42,283`); native/plugin subscribers already receive a resolved non-null `Object*`
