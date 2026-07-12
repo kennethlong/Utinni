@@ -33,6 +33,7 @@
 #include "swg/misc/config.h"
 #include "swg/scene/ground_scene.h"
 #include "swg/scene/world_snapshot.h"
+#include "swg/misc/network.h"
 #include "swg/object/client_object.h"
 #include "swg/object/object.h"
 #include "swg/ui/imgui_impl.h"
@@ -104,6 +105,16 @@ pMainLoopCount g_mainLoopCounter = nullptr;
 // advertised client; hkMainLoop drives it instead of building a GroundScene there (D-00).
 using pLoadScene = void(__cdecl*)(const char* terrain, const char* player);
 pLoadScene loadScene = nullptr;
+
+// v16 (24 / Goal A+): player lookAt-target id READ. Provider advertises
+// game::getPlayerLookAtTargetId -> extern "C" utinni_getPlayerLookAtTargetId: the player
+// CreatureObject's lookAt/selection-target NetworkId VALUE (full 64 bits; 0 = no player /
+// no target). Primitive-only shim per the sysmsg rev-2 ABI rule (getLookAtTarget() is inline
+// + returns const CachedNetworkId& -- a Watcher-bearing type the consumer does not model).
+// The slot starts null and resolves only on the advertised client; the read-site is
+// Game::getPlayerLookAtTargetObject()'s advertised branch (D-00: SWGEmu path untouched).
+using pGetPlayerLookAtTargetId = int64_t(__cdecl*)();
+pGetPlayerLookAtTargetId getPlayerLookAtTargetId = nullptr;
 
 // WS-0/WS-1 (advertised-client editor unlock): consumer-maintained "advertised editor scene loaded" flag.
 // The advertised contract exposes NO isInWorld/getScene signal, so this is the closest proxy for "an
@@ -715,9 +726,10 @@ swgptr Game::getPlayerLookAtTargetObjectNetworkId()
 {
     // WorldSnapshot chain / target-change un-gate (2026-07-03): the +1432 lookAt-target slot is a
     // RAW CreatureObject byte-offset from the 2002 SWGEmu layout -- SS5-fragile on the advertised NGE
-    // client (wrong field there). Degrade to 0 -> getPlayerLookAtTargetObject() returns null ->
-    // WorldSnapshotImpl.OnTarget takes its safe no-target branch. An advertised lookAt-target
-    // accessor row is the follow-on that lights this up for real (Goal A+).
+    // client (wrong field there). Degrade to 0 -- this SWGEmu-shaped return is a *pointer into the
+    // creature* (fed to Object::getObjectById), meaningless on advertised, so the v16 accessor does
+    // NOT light this function up: the advertised read lives in getPlayerLookAtTargetObject()'s own
+    // branch (int64 id -> Network::getObjectById), never round-tripped through this swgptr.
     if (swg::endpoints::isAdvertisedClient())
     {
         return 0;
@@ -735,6 +747,37 @@ swgptr Game::getPlayerLookAtTargetObjectNetworkId()
 
 Object* Game::getPlayerLookAtTargetObject()
 {
+    // v16 (24 / Goal A+) advertised branch: read the id via the advertised shim and resolve it
+    // through the v12 network::getObjectById row -- NOT Object::getObjectById, whose
+    // Network::getCachedObjectById path is nulled on advertised (wave 1), so routing the id
+    // through it would return null forever. The id stays in an int64_t local end-to-end
+    // (NGE NetworkIds carry cluster-id high bits; swgptr is 32-bit and would truncate).
+    // A null resolve with a non-zero id is a normal staleness outcome (target unloaded /
+    // out of range), not an error.
+    if (swg::endpoints::isAdvertisedClient())
+    {
+        if (swg::game::getPlayerLookAtTargetId == nullptr)
+        {
+            // Distinct from the no-target case: the row itself is missing (provider < v16).
+            static std::atomic<bool> s_loggedUnadvertised{false};
+            if (!s_loggedUnadvertised.exchange(true, std::memory_order_relaxed))
+            {
+                utinni::log::warning("getPlayerLookAtTargetObject: game::getPlayerLookAtTargetId "
+                                     "not advertised (provider < v16) -- returning null");
+            }
+            return nullptr;
+        }
+
+        const int64_t lookAtId = swg::game::getPlayerLookAtTargetId();
+
+        if (lookAtId == 0)
+        {
+            return nullptr;
+        }
+
+        return Network::getObjectById(lookAtId);
+    }
+
     const swgptr lookAtId = getPlayerLookAtTargetObjectNetworkId();
 
     if (lookAtId == 0)

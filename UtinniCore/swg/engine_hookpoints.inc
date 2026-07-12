@@ -314,3 +314,16 @@ ENGINE_HOOKPOINT(object,             isActive)                         // extern
 // and degrade instead of mis-calling across a changed ABI. SEND half ONLY -- RECEIVE stays OMIT (the reverted
 // Bucket A-2.1 receiveMessage; the real inbound receiver is a file-local Listener, un-advertisable).
 ENGINE_HOOKPOINT(systemMessageManager, sendMessageUtf8)
+
+// -- game lookAt-target READ (v15->v16, 2026-07-09 request): the read twin of
+// creatureObject::setTarget (same m_lookAtTarget slot; NOT the NGE intended/combat
+// target -- that would be a separate request, never a re-point of this row).
+// extern "C" __int64 __cdecl shim (utinni_getPlayerLookAtTargetId, defined in
+// CreatureObject.cpp): returns the PLAYER's lookAt-target NetworkId VALUE (full
+// 64 bits, cluster-id bits included); 0 = no player / no target. Primitive-only
+// boundary (the sysmsg rev-2 ABI RULE) -- CreatureObject::getLookAtTarget() is
+// INLINE and returns const CachedNetworkId& (embeds a Watcher<Object> the
+// consumer does not model), so a member row is advertisable neither by address
+// nor by ABI. Unblocks Game::getPlayerLookAtTargetObject() on the advertised
+// client via the v12 network::getObjectById resolve (consumer §2.2 reroute).
+ENGINE_HOOKPOINT(game, getPlayerLookAtTargetId)

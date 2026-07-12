@@ -140,6 +140,9 @@ extern pMainLoopCount g_mainLoopCounter; // v4 (24/4b): &Game::getMainLoopCount 
 // v6 (24): full SceneCreator string-based scene load (advertised-only; null on SWGEmu).
 using pLoadScene = void(__cdecl*)(const char* terrain, const char* player);
 extern pLoadScene loadScene;
+// v16 (24 / Goal A+): player lookAt-target id READ shim (advertised-only; null on SWGEmu).
+using pGetPlayerLookAtTargetId = int64_t(__cdecl*)();
+extern pGetPlayerLookAtTargetId getPlayerLookAtTargetId;
 } // namespace swg::game
 
 // -- graphics (graphics/graphics.cpp:37-83 + D-04 accessors) ----------------
@@ -758,6 +761,14 @@ static const Binding s_bindings[] = {
     //    utf8 shim (the v14 direct Unicode::String& row crashed -- string-layout ABI; name-REPLACED).
     //    Slot starts null (advertised-only); the SWGEmu WString literal stays a separate, unbound path.
     {"systemMessageManager::sendMessageUtf8", (void**)&swg::systemMessageManager::sendMessageUtf8}, // CALLED (inject); receive half stays OMIT
+
+    // ===== v16 (Phase 24 / Goal A+ -- player lookAt-target id READ): 1 new endpoint =====
+    // Provider extern "C" utinni_getPlayerLookAtTargetId: the player's lookAt/selection-target
+    // NetworkId VALUE (full int64; 0 = no player/no target) -- the READ twin of the v9
+    // creatureObject::setTarget row (same m_lookAtTarget slot; NOT NGE intended/combat target).
+    // Primitive-only shim per the sysmsg rev-2 ABI rule. Consumer resolves the id via the v12
+    // network::getObjectById row in Game::getPlayerLookAtTargetObject()'s advertised branch.
+    {"game::getPlayerLookAtTargetId", (void**)&swg::game::getPlayerLookAtTargetId}, // CALLED, game-thread, on-demand
 };
 
 // ----------------------------------------------------------------------
@@ -798,8 +809,8 @@ constexpr size_t kIncCount = 0
 
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
 
-static_assert(kIncCount == 120, "contract .inc size drifted from the expected 120 names (v15 / sysmsg SEND rev-2: name-replace)");
-static_assert(kBindingCount == 118, "s_bindings[] must bind 118 of 120 (.inc minus the TWO carve-outs)");
+static_assert(kIncCount == 121, "contract .inc size drifted from the expected 121 names (v16 / Goal A+ lookAt-target id: name-add)");
+static_assert(kBindingCount == 119, "s_bindings[] must bind 119 of 121 (.inc minus the TWO carve-outs)");
 static_assert(kBindingCount == kIncCount - 2,
               "exactly two .inc names are carve-outs: consoleHelper::sendInput (D-02) + "
               "client::wndProc (embed-resize regression; RNDR-04 follow-on)");
@@ -940,6 +951,8 @@ constexpr const char* kBindingNames[] = {
     "object::isActive",
     // ===== v15 (Phase 24 / sysmsg SEND rev-2, name-replaced the v14 row) — lockstep with s_bindings[] above =====
     "systemMessageManager::sendMessageUtf8",
+    // ===== v16 (Phase 24 / Goal A+ lookAt-target id READ) addition — lockstep with s_bindings[] above =====
+    "game::getPlayerLookAtTargetId",
 };
 
 constexpr bool allNamesInInc()

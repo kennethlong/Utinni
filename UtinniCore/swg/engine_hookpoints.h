@@ -145,8 +145,19 @@
 // (const Unicode::String& params), worldSnapshot::addObject (CrcString const& + std::string const&),
 // objectTemplate::get{AppearanceFilename,PortalLayoutFilename,ClientDataFile} (return our std::string by
 // const&). DETOURED rows are unaffected (they read args our own code constructed). Still 120 names.
+// Bumped 15 -> 16 in the lookAtTarget-accessor request (2026-07-09): 1 NAME ADD --
+// game::getPlayerLookAtTargetId -> extern "C" __int64 __cdecl utinni_getPlayerLookAtTargetId(void)
+// (defined in CreatureObject.cpp), the READ twin of creatureObject::setTarget: returns the PLAYER's
+// lookAt/selection-target NetworkId VALUE (full 64 bits, cluster-id bits included; 0 = no player /
+// no target -- NetworkId::cms_invalid is NetworkId(0)). Strictly the lookAt target (m_lookAtTarget),
+// NOT the NGE intended/combat target (getIntendedTarget -- a future separate request, never a
+// re-point). Shim per the rev-2 ABI RULE: CreatureObject::getLookAtTarget() is INLINE (no ODR
+// address) and returns const CachedNetworkId& (embeds a mutable Watcher<Object> the consumer does
+// not model) -- the shim collapses it to a primitive in EDX:EAX. Unblocks the consumer's
+// Game::getPlayerLookAtTargetObject() reroute through the v12 network::getObjectById row ->
+// target-aware editor affordances on the advertised client. 121 names.
 // ----------------------------------------------------------------------
-#define ENGINE_HOOKPOINTS_VERSION 15
+#define ENGINE_HOOKPOINTS_VERSION 16
 
 // ----------------------------------------------------------------------
 // One row per advertised endpoint: a stable contract name + the borrowed
