@@ -87,3 +87,31 @@ before handback. SWGEmu byte-unchanged (D-00).
 **Ask:** implement Wave 1 per §1/§2 and hand back (HANDBACK doc + commit sha). On receipt we run the
 consumer bind wave (slots + `world_snapshot.cpp` reroute on advertised + managed int64-id cleanup) and
 gate on headless + maintainer live smoke before requesting Wave 2.
+
+---
+
+## 5. rev-3.1 addendum — your revised ANSWERS acknowledged; Wave-1 freeze UNAFFECTED
+
+Your post-review revision of the ANSWERS (same file, re-delivered ~10:43 after this request went out
+at ~10:33; 3 BLOCKER / 3 MAJOR / 2 MINOR folded) crossed this request mid-flight. We diffed both
+versions: **nothing in the revision touches §1/§2 above — the Wave-1 row table, contracts, and
+`UtinniWsNodeInfo` (with `childCount`) stay frozen exactly as written.** Proceed on §1/§2 as-is.
+
+The §3 consumer ledger updates to your revised Wave-2/3 semantics (recorded here so the ledger has
+one current home; all ACCEPTED, still no pushback):
+
+- `wsRemoveNode` returns are now tri-state: `1` ok · `0` miss · distinct **"occupied"** code
+  (non-client-cached object inside the containment subtree — the guard that keeps a building delete
+  from cascade-deleting the player standing in it). Editor UX will surface "step/teleport out of the
+  building first" on that code; no silent relocation in v1 — agreed.
+- `wsAddNodeAt` spawn semantics per your redesign: data re-add + (top-level) sphere handle + diff-
+  sentinel dirty, (child under a live spawned parent) immediate spawn, (parent not spawned) data-only.
+  The **one-batch subtree replay contract stands** and remains ours to honor. Fail-closed set now also
+  includes a LIVE object holding the id (`NetworkIdManager`).
+- Allocator additionally checks `NetworkIdManager` — no consumer change (our install-scan floor still
+  arrives via `wsConfigureIdAllocator`).
+- Save error codes now also include **destination-shadowed** (post-write `TreeFile::getPathName`
+  verification) and **buildout-set integrity** (non-negative id in the retained set — the v2
+  positive-objid hole). Editor will message each distinctly.
+- `wsUnloadSnapshot` resetting the sticky `ms_sceneName` (and the pending lists needing no purge) are
+  provider-internal — noted, no consumer action.
