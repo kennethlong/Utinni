@@ -207,7 +207,7 @@ bool isCarveOut(const char* n)
 }
 } // namespace
 
-TEST_CASE("endpoints: full catalog (119 of 121 .inc names) all resolve, carve-outs excluded", "[endpoints][coverage]")
+TEST_CASE("endpoints: full catalog (126 of 128 .inc names) all resolve, carve-outs excluded", "[endpoints][coverage]")
 {
     // Every .inc name, in declaration order, sourced from the canonical X-macro list.
     static const char* const kAllIncNames[] = {
@@ -216,9 +216,9 @@ TEST_CASE("endpoints: full catalog (119 of 121 .inc names) all resolve, carve-ou
 #undef ENGINE_HOOKPOINT
     };
     constexpr size_t kIncCount = sizeof(kAllIncNames) / sizeof(kAllIncNames[0]);
-    REQUIRE(kIncCount == 121); // the contract size (drift gate -- mirrors the provider count, v16 / Goal A+ lookAt-target id: name-add)
+    REQUIRE(kIncCount == 128); // the contract size (drift gate -- mirrors the provider count, v17 / Goal B Wave 1 snapshot READ: 7 name-adds)
 
-    // The expected override scope is the .inc MINUS the two carve-outs -> 119.
+    // The expected override scope is the .inc MINUS the two carve-outs -> 126.
     std::vector<const char*> expectedNames;
     for (const char* n : kAllIncNames)
     {
@@ -227,7 +227,7 @@ TEST_CASE("endpoints: full catalog (119 of 121 .inc names) all resolve, carve-ou
             expectedNames.push_back(n);
         }
     }
-    REQUIRE(expectedNames.size() == 119);
+    REQUIRE(expectedNames.size() == 126);
 
     // Synthesize a table advertising EVERY .inc name (incl. the carve-out -- the
     // provider DOES advertise it; the consumer simply does not bind it). Each row
@@ -254,7 +254,7 @@ TEST_CASE("endpoints: full catalog (119 of 121 .inc names) all resolve, carve-ou
 
     const int resolved = resolve(&table, bindings.data(), bindings.size());
 
-    REQUIRE(resolved == 119); // full catalog resolved (D-01, v16 minus 2 carve-outs)
+    REQUIRE(resolved == 126); // full catalog resolved (D-01, v17 minus 2 carve-outs)
     for (void* s : slots)     // every requested name overwrote its slot
     {
         REQUIRE(s != nullptr);

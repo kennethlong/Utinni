@@ -96,6 +96,42 @@ public:
 
 namespace utinni
 {
+// Goal B Wave 1 (contract v17): the id-keyed READ view of the CURRENT scene's live
+// snapshot on the advertised client. Enumeration is authored-only (tombstoned and
+// buildout-provenance rows never appear) and counts are therefore SMALLER than the
+// SWGEmu-side raw Node walks — that is the provenance contract working, not data loss.
+// All reads are game-thread-only (marshal managed callers via the main-loop pattern);
+// every id-keyed call answers miss-safe (false/0/empty) for an unknown id. On SWGEmu
+// the slots never resolve and every call degrades the same miss-safe way — the editor
+// keeps its raw WorldSnapshotReaderWriter path there.
+struct UTINNI_API WorldSnapshotNodeInfo
+{
+    int64_t containedById = 0; // 0 = top-level
+    int cellIndex = 0;
+    unsigned int portalLayoutCrc = 0;
+    float radius = 0.0f;
+    int childCount = 0;             // enumerable (non-tombstone) direct children
+    swg::math::Transform transform; // parent-relative, row-major 3x4, position = column 3
+};
+
+class UTINNI_API WorldSnapshotLive
+{
+public:
+    static bool isAvailable(); // all 7 read rows resolved (advertised client only)
+
+    // Bumps on the engine's snapshot load/unload/clear ONLY. One scene change may bump
+    // it more than once — invalidate caches on !=, never on +1. Pure counter read:
+    // safe to poll while a snapshot load is still in flight.
+    static int getGeneration();
+
+    static int getTopNodeCount();
+    static int64_t getTopNodeIdAt(int index);
+    static int getChildCount(int64_t id);
+    static int64_t getChildIdAt(int64_t id, int index);
+    static bool getNodeInfo(int64_t id, WorldSnapshotNodeInfo& out);
+    static std::string getNodeTemplateName(int64_t id);
+};
+
 class UTINNI_API WorldSnapshot
 {
 public:

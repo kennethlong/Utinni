@@ -297,6 +297,26 @@ extern pDetailLevelChanged detailLevelChanged;
 extern pRemoveObject removeObject;
 extern pMoveObject moveObject;
 extern pGetLoadingPercent getLoadingPercent;
+
+// v17 (Goal B Wave 1): the 7 id-keyed READ shims (rev-3 frozen row table). extern "C"
+// __cdecl provider symbols (utinni_ws*); primitives + the size-first UtinniWsNodeInfo
+// POD only cross the boundary (the sysmsg rev-2 ABI rule). Slots start null -- no
+// SWGEmu RVA exists; the consumer's WorldSnapshotLive facade null-checks every call.
+using pWsGetNodeCount = int(__cdecl*)();
+using pWsGetTopNodeIdAt = int64_t(__cdecl*)(int index);
+using pWsGetChildCount = int(__cdecl*)(int64_t id);
+using pWsGetChildIdAt = int64_t(__cdecl*)(int64_t id, int index);
+using pWsGetNodeInfo = int(__cdecl*)(int64_t id, UtinniWsNodeInfo* out);
+using pWsGetNodeTemplateName = int(__cdecl*)(int64_t id, char* buf, int cap);
+using pWsGetGeneration = int(__cdecl*)();
+
+extern pWsGetNodeCount wsGetNodeCount;
+extern pWsGetTopNodeIdAt wsGetTopNodeIdAt;
+extern pWsGetChildCount wsGetChildCount;
+extern pWsGetChildIdAt wsGetChildIdAt;
+extern pWsGetNodeInfo wsGetNodeInfo;
+extern pWsGetNodeTemplateName wsGetNodeTemplateName;
+extern pWsGetGeneration wsGetGeneration;
 } // namespace swg::worldsnapshot
 
 // -- camera (camera/camera.cpp:33-54; reverseProjectInViewportSpace ->
@@ -769,6 +789,19 @@ static const Binding s_bindings[] = {
     // Primitive-only shim per the sysmsg rev-2 ABI rule. Consumer resolves the id via the v12
     // network::getObjectById row in Game::getPlayerLookAtTargetObject()'s advertised branch.
     {"game::getPlayerLookAtTargetId", (void**)&swg::game::getPlayerLookAtTargetId}, // CALLED, game-thread, on-demand
+
+    // ===== v17 (Phase 24 / Goal B Wave 1 -- snapshot-editor id-keyed READ): 7 new endpoints =====
+    // rev-3 frozen row table (24-PROVIDER-REQUEST-goalB-wave1-rows.md). All CALLED accessors
+    // (never detoured), game-thread-only, miss-safe on unknown ids. Enumeration is live +
+    // AUTHORED-ONLY (tombstones and buildout-provenance rows never appear -- counts are smaller
+    // than SWGEmu raw walks by contract). Consumed via the utinni::WorldSnapshotLive facade.
+    {"worldSnapshot::wsGetNodeCount", (void**)&swg::worldsnapshot::wsGetNodeCount},
+    {"worldSnapshot::wsGetTopNodeIdAt", (void**)&swg::worldsnapshot::wsGetTopNodeIdAt},
+    {"worldSnapshot::wsGetChildCount", (void**)&swg::worldsnapshot::wsGetChildCount},
+    {"worldSnapshot::wsGetChildIdAt", (void**)&swg::worldsnapshot::wsGetChildIdAt},
+    {"worldSnapshot::wsGetNodeInfo", (void**)&swg::worldsnapshot::wsGetNodeInfo},                 // size-first UtinniWsNodeInfo POD-out
+    {"worldSnapshot::wsGetNodeTemplateName", (void**)&swg::worldsnapshot::wsGetNodeTemplateName}, // returns needed length INCLUDING NUL
+    {"worldSnapshot::wsGetGeneration", (void**)&swg::worldsnapshot::wsGetGeneration},             // pure counter (no parse force); compare !=, never +1
 };
 
 // ----------------------------------------------------------------------
@@ -809,8 +842,8 @@ constexpr size_t kIncCount = 0
 
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
 
-static_assert(kIncCount == 121, "contract .inc size drifted from the expected 121 names (v16 / Goal A+ lookAt-target id: name-add)");
-static_assert(kBindingCount == 119, "s_bindings[] must bind 119 of 121 (.inc minus the TWO carve-outs)");
+static_assert(kIncCount == 128, "contract .inc size drifted from the expected 128 names (v17 / Goal B Wave 1 snapshot READ: 7 name-adds)");
+static_assert(kBindingCount == 126, "s_bindings[] must bind 126 of 128 (.inc minus the TWO carve-outs)");
 static_assert(kBindingCount == kIncCount - 2,
               "exactly two .inc names are carve-outs: consoleHelper::sendInput (D-02) + "
               "client::wndProc (embed-resize regression; RNDR-04 follow-on)");
@@ -953,6 +986,14 @@ constexpr const char* kBindingNames[] = {
     "systemMessageManager::sendMessageUtf8",
     // ===== v16 (Phase 24 / Goal A+ lookAt-target id READ) addition — lockstep with s_bindings[] above =====
     "game::getPlayerLookAtTargetId",
+    // ===== v17 (Phase 24 / Goal B Wave 1 snapshot READ) additions — lockstep with s_bindings[] above =====
+    "worldSnapshot::wsGetNodeCount",
+    "worldSnapshot::wsGetTopNodeIdAt",
+    "worldSnapshot::wsGetChildCount",
+    "worldSnapshot::wsGetChildIdAt",
+    "worldSnapshot::wsGetNodeInfo",
+    "worldSnapshot::wsGetNodeTemplateName",
+    "worldSnapshot::wsGetGeneration",
 };
 
 constexpr bool allNamesInInc()

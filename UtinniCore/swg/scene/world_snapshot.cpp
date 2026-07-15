@@ -23,6 +23,7 @@
  **/
 
 #include "world_snapshot.h"
+#include <cstring>
 #include <filesystem>
 #include "ground_scene.h"
 #include "swg/appearance/appearance.h"
@@ -115,6 +116,28 @@ using pGetLoadingPercent = int(__cdecl*)();
 pRemoveObject removeObject = nullptr;
 pMoveObject moveObject = nullptr;
 pGetLoadingPercent getLoadingPercent = nullptr;
+
+// v17 (Goal B Wave 1): id-keyed READ shims over the provider's live snapshot reader
+// (rev-3 frozen row table, 24-PROVIDER-REQUEST-goalB-wave1-rows.md). No SWGEmu RVA
+// exists for any of these (the SWGEmu editor path stays on the raw Node* walks below),
+// so every slot starts null and resolves only on the advertised client. All are
+// game-thread-only; the node reads force-finish a pending incremental parse
+// provider-side; wsGetGeneration is a pure counter read (pollable during loading).
+using pWsGetNodeCount = int(__cdecl*)();
+using pWsGetTopNodeIdAt = int64_t(__cdecl*)(int index);
+using pWsGetChildCount = int(__cdecl*)(int64_t id);
+using pWsGetChildIdAt = int64_t(__cdecl*)(int64_t id, int index);
+using pWsGetNodeInfo = int(__cdecl*)(int64_t id, UtinniWsNodeInfo* out);
+using pWsGetNodeTemplateName = int(__cdecl*)(int64_t id, char* buf, int cap);
+using pWsGetGeneration = int(__cdecl*)();
+
+pWsGetNodeCount wsGetNodeCount = nullptr;
+pWsGetTopNodeIdAt wsGetTopNodeIdAt = nullptr;
+pWsGetChildCount wsGetChildCount = nullptr;
+pWsGetChildIdAt wsGetChildIdAt = nullptr;
+pWsGetNodeInfo wsGetNodeInfo = nullptr;
+pWsGetNodeTemplateName wsGetNodeTemplateName = nullptr;
+pWsGetGeneration wsGetGeneration = nullptr;
 } // namespace swg::worldsnapshot
 
 namespace
@@ -831,5 +854,88 @@ void WorldSnapshot::removeNode(WorldSnapshotReaderWriter::Node* node)
     node->removeNode();
 
     detailLevelChanged(); // Hack to update the .WS
+}
+
+// ---------------------------------------------------------------------------
+// WorldSnapshotLive (Goal B Wave 1 / v17): thin null-checked veneer over the
+// swg::worldsnapshot::wsGet* slots. Slots are null on SWGEmu (no RVA exists),
+// so every call degrades miss-safe there without touching isAdvertisedClient().
+// ---------------------------------------------------------------------------
+
+bool WorldSnapshotLive::isAvailable()
+{
+    using namespace swg::worldsnapshot;
+    return wsGetNodeCount != nullptr && wsGetTopNodeIdAt != nullptr && wsGetChildCount != nullptr &&
+           wsGetChildIdAt != nullptr && wsGetNodeInfo != nullptr && wsGetNodeTemplateName != nullptr &&
+           wsGetGeneration != nullptr;
+}
+
+int WorldSnapshotLive::getGeneration()
+{
+    return swg::worldsnapshot::wsGetGeneration != nullptr ? swg::worldsnapshot::wsGetGeneration() : 0;
+}
+
+int WorldSnapshotLive::getTopNodeCount()
+{
+    return swg::worldsnapshot::wsGetNodeCount != nullptr ? swg::worldsnapshot::wsGetNodeCount() : 0;
+}
+
+int64_t WorldSnapshotLive::getTopNodeIdAt(int index)
+{
+    return swg::worldsnapshot::wsGetTopNodeIdAt != nullptr ? swg::worldsnapshot::wsGetTopNodeIdAt(index) : 0;
+}
+
+int WorldSnapshotLive::getChildCount(int64_t id)
+{
+    return swg::worldsnapshot::wsGetChildCount != nullptr ? swg::worldsnapshot::wsGetChildCount(id) : 0;
+}
+
+int64_t WorldSnapshotLive::getChildIdAt(int64_t id, int index)
+{
+    return swg::worldsnapshot::wsGetChildIdAt != nullptr ? swg::worldsnapshot::wsGetChildIdAt(id, index) : 0;
+}
+
+bool WorldSnapshotLive::getNodeInfo(int64_t id, WorldSnapshotNodeInfo& out)
+{
+    if (swg::worldsnapshot::wsGetNodeInfo == nullptr)
+    {
+        return false;
+    }
+
+    UtinniWsNodeInfo info = {};
+    info.size = sizeof(UtinniWsNodeInfo); // size-first protocol: caller fills size BEFORE the call
+    if (swg::worldsnapshot::wsGetNodeInfo(id, &info) == 0)
+    {
+        return false;
+    }
+
+    out.containedById = info.containedById;
+    out.cellIndex = info.cellIndex;
+    out.portalLayoutCrc = info.portalLayoutCrc;
+    out.radius = info.radius;
+    out.childCount = info.childCount;
+    static_assert(sizeof(out.transform.matrix) == sizeof(info.transform),
+                  "swg::math::Transform must stay the 12-float row-major 3x4 the v17 contract carries");
+    memcpy(out.transform.matrix, info.transform, sizeof(info.transform));
+    return true;
+}
+
+std::string WorldSnapshotLive::getNodeTemplateName(int64_t id)
+{
+    if (swg::worldsnapshot::wsGetNodeTemplateName == nullptr)
+    {
+        return {};
+    }
+
+    // Contract: returns needed length INCLUDING the NUL; 0 = miss. Null buf = pure size query.
+    const int needed = swg::worldsnapshot::wsGetNodeTemplateName(id, nullptr, 0);
+    if (needed <= 1)
+    {
+        return {};
+    }
+
+    std::string name(static_cast<size_t>(needed) - 1, '\0');
+    swg::worldsnapshot::wsGetNodeTemplateName(id, name.data(), needed);
+    return name;
 }
 } // namespace utinni

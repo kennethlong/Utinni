@@ -327,3 +327,25 @@ ENGINE_HOOKPOINT(systemMessageManager, sendMessageUtf8)
 // nor by ABI. Unblocks Game::getPlayerLookAtTargetObject() on the advertised
 // client via the v12 network::getObjectById resolve (consumer §2.2 reroute).
 ENGINE_HOOKPOINT(game, getPlayerLookAtTargetId)
+
+// -- worldSnapshot editor READ wave (v16->v17, Goal B Wave 1; rev-3 freeze
+// 2026-07-15): id-keyed read/browse of the CURRENT scene's live snapshot for
+// the Utinni snapshot editor. All 7 are extern "C" __cdecl shims DEFINED IN
+// clientGame WorldSnapshot.cpp -- the ms_reader file-local-singleton TU (the
+// sysmsg/lookAtTarget shim pattern at TU scale); the utinni_ws* export names
+// are the rev-3 frozen identities. Shared contracts (pinned): enumeration is
+// live, AUTHORED-ONLY -- tombstones (ANSWERS 5.1b) AND buildout-provenance
+// rows (ANSWERS 5.1a, the retained ms_buildoutObjects filter) are never
+// enumerated and answer miss on id-keyed reads; node reads force-finish the
+// CONSULT-60 incremental parse (finishLoadNow discipline); indices are
+// transient (consumer snapshots ids, never holds an index across a possible
+// load/unload); wsGetNodeInfo fills the FROZEN 80-byte UtinniWsNodeInfo
+// (engine_hookpoints.h) under the size-first protocol; wsGetGeneration bumps
+// on load/unload ONLY and is a PURE counter read (no parse force).
+ENGINE_HOOKPOINT(worldSnapshot, wsGetNodeCount)        // int (void) -- top-level authored non-tombstone count; 0 = empty/no snapshot
+ENGINE_HOOKPOINT(worldSnapshot, wsGetTopNodeIdAt)      // __int64 (int index) -- id of the index-th enumerable top-level node; 0 = out-of-range
+ENGINE_HOOKPOINT(worldSnapshot, wsGetChildCount)       // int (__int64 id) -- enumerable direct-child count; 0 = miss/tombstone/leaf
+ENGINE_HOOKPOINT(worldSnapshot, wsGetChildIdAt)        // __int64 (__int64 id, int index) -- id of the index-th enumerable child; 0 = miss/out-of-range
+ENGINE_HOOKPOINT(worldSnapshot, wsGetNodeInfo)         // int (__int64 id, UtinniWsNodeInfo* out) -- POD-out, size-first; 1 ok, 0 miss/tombstone
+ENGINE_HOOKPOINT(worldSnapshot, wsGetNodeTemplateName) // int (__int64 id, char* buf, int cap) -- copy-out; returns needed length INCLUDING the NUL; 0 = miss
+ENGINE_HOOKPOINT(worldSnapshot, wsGetGeneration)       // int (void) -- bumps on load/unload ONLY (consumer cache/undo invalidation)

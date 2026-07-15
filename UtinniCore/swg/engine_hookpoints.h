@@ -156,8 +156,22 @@
 // not model) -- the shim collapses it to a primitive in EDX:EAX. Unblocks the consumer's
 // Game::getPlayerLookAtTargetObject() reroute through the v12 network::getObjectById row ->
 // target-aware editor affordances on the advertised client. 121 names.
+// Bumped 16 -> 17 in Goal B Wave 1 (snapshot-editor READ wave, rev-3 freeze
+// 2026-07-15): 7 NAME ADDs -- worldSnapshot::{wsGetNodeCount, wsGetTopNodeIdAt,
+// wsGetChildCount, wsGetChildIdAt, wsGetNodeInfo, wsGetNodeTemplateName,
+// wsGetGeneration}, all extern "C" __cdecl shims DEFINED in clientGame
+// WorldSnapshot.cpp (the ms_reader file-local-singleton TU; the utinni_ws*
+// symbol names are the rev-3 frozen export names). Id-keyed read/browse of the
+// CURRENT scene's live snapshot for the Utinni snapshot editor: enumeration is
+// live, AUTHORED-ONLY (tombstones + buildout-provenance rows are never
+// enumerated -- the retained ms_buildoutObjects filter, ANSWERS 5.1a/b); node
+// reads force-finish the CONSULT-60 incremental parse (the finishLoadNow
+// mutator discipline); wsGetGeneration is a PURE counter read (no parse force
+// -- pollable during loading without re-synchronizing the load). Introduces
+// the shared POD UtinniWsNodeInfo (below, rev-3 FROZEN: 80 bytes, size-first
+// protocol, childCount included). 128 names.
 // ----------------------------------------------------------------------
-#define ENGINE_HOOKPOINTS_VERSION 16
+#define ENGINE_HOOKPOINTS_VERSION 17
 
 // ----------------------------------------------------------------------
 // One row per advertised endpoint: a stable contract name + the borrowed
@@ -180,5 +194,33 @@ struct EngineHookPoints
 	unsigned int                 count;     // number of rows in entries[]
 	const EngineHookPoint * entries;  // static array of `count` rows
 };
+
+// ----------------------------------------------------------------------
+// UtinniWsNodeInfo -- the worldSnapshot::wsGetNodeInfo POD-out struct
+// (Goal B Wave 1, v17; FROZEN by the 2026-07-15 rev-3 request §2 -- any
+// layout change is a NEW version wave, never an in-place edit).
+//
+// Size-first protocol: the CALLER sets `size = sizeof(UtinniWsNodeInfo)`
+// (its compiled-against size) BEFORE the call; the provider writes
+// min(callerSize, providerSize) bytes and never assumes growth, so the
+// struct may gain trailing fields in later versions without breaking a
+// version-skewed pairing. Fixed-width members only (no bool/enum/size_t).
+// Provider real == float and Transform == row-major 3x4 with position in
+// column 3 are verified provider-side (ANSWERS 5.4).
+// ----------------------------------------------------------------------
+struct UtinniWsNodeInfo
+{
+	unsigned int size;            // offset  0 -- caller fills FIRST (size-first protocol)
+	unsigned int flags;           // offset  4 -- bit0 = deleted (reads 0 in practice: tombstones
+	                              //              answer miss); bit1 = buildout (RESERVED, always 0
+	                              //              in v1, against the ANSWERS 5.1a enumeration extension)
+	__int64      containedById;   // offset  8 -- 0 = top-level
+	int          cellIndex;       // offset 16
+	unsigned int portalLayoutCrc; // offset 20
+	float        radius;          // offset 24
+	float        transform[12];   // offset 28 -- row-major 3x4, position = column 3
+	int          childCount;      // offset 76 -- rev-3 addition: enumerable (non-tombstone)
+	                              //              direct-child count (same value as wsGetChildCount)
+};                                // sizeof == 80 (x86 MSVC: __int64 8-aligned at offset 8)
 
 #endif // INCLUDED_engine_hookpoints_H
