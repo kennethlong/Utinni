@@ -133,8 +133,11 @@ namespace UtinniCoreDotNet.UI.Forms
 
         private void btnSave_Click(object sender, System.EventArgs e)
         {
+            // NOTE: OKCancel buttons return OK/Cancel -- NOT Yes/No. The prior check compared against
+            // DialogResult.Yes, which OKCancel can never return, so Save() was silently never called
+            // and every hotkey rebind reverted on reload (found in the Wave-2 smoke, 2026-07-18).
             DialogResult confirmResult = MessageBox.Show("Are you sure you want to Save?", "Confirm Save", MessageBoxButtons.OKCancel);
-            if (confirmResult == DialogResult.Yes)
+            if (confirmResult == DialogResult.OK)
             {
                 mainHotkeyManager.Save();
 
