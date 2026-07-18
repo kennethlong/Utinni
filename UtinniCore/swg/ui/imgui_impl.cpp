@@ -45,6 +45,7 @@
 #include "swg/game/game.h"
 #include "swg/scene/ground_scene.h"
 #include "swg/client/client.h"
+#include "swg/endpoints.h" // Wave-2 §5.6: gizmo draw() advertised-client guard
 
 #include "swg/graphics/graphics.h"
 #include "swg/misc/direct_input.h"
@@ -1130,6 +1131,18 @@ void editTransform(const float* cameraView, float* cameraProjection, float* matr
 
 void draw()
 {
+    // Goal B Wave-2 §5.6 probe result (2026-07-18, cdb-confirmed): this body is NGE-unsafe on the
+    // advertised client. It reads camera->projectionMatrix as a RAW STRUCT-OFFSET field (Camera's
+    // NGE layout differs from SWGEmu), then feeds that garbage into Matrix4x4/ImGuizmo -- the live
+    // crash was an execute-of-heap-data via a bad function pointer sourced from the mis-offset read
+    // (ecx=10.0f, __thiscall through garbage; fault in a mapped buffer, called from hkMainLoop). The
+    // live gizmo needs provider-advertised camera accessors (projection + o2w) before it can render
+    // here; until then it stays DARK on advertised. SWGEmu unchanged (isAdvertisedClient()==false).
+    if (swg::endpoints::isAdvertisedClient())
+    {
+        return;
+    }
+
     if (GroundScene::get() == nullptr || object == nullptr || !enabled)
     {
         return;

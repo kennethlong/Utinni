@@ -427,16 +427,12 @@ void __fastcall hkUpdateLoop(GroundScene* pThis, DWORD EDX, float time)
         // setSceneCallbacks natively). Once-latched in game.cpp; re-armed by hkCleanupScene.
         swg::game::notifyAdvertisedSceneTick();
 
-        // Wave-2 gizmo unlock: GroundScene::draw is an UNADVERTISED virtual, so hkDrawLoop never
-        // installs here and the preDrawLoop queue (the gizmo Enable/Disable marshal path, imgui
-        // gizmo state) would never dispatch -- the gizmo silently never appeared on the advertised
-        // client. Dispatch it from the update tick instead: same game thread, same per-frame
-        // cadence; the gizmo render itself happens in the overlay pass regardless of which hook
-        // flipped its state. SWGEmu untouched (hkDrawLoop keeps dispatching there; this branch is
-        // advertised-only, so the queue drains exactly once per frame on both targets).
-        dispatchSnapshot(preDrawLoopCallbacks, preDrawLoopCallbacksMutex,
-                         [pThis](void (*func)(GroundScene*))
-                         { func(pThis); });
+        // NOTE: the preDrawLoop queue is deliberately NOT dispatched here. Its only consumer is
+        // the snapshot gizmo enable/disable marshal, and the gizmo render body (imgui_impl::draw)
+        // is NGE-unsafe on the advertised client (§5.6 probe: raw camera->projectionMatrix offset
+        // read -> execute-of-heap-data crash, cdb-confirmed 2026-07-18) and is now guarded dark
+        // there. Draining the queue would only re-arm that dead path. When the gizmo gets provider
+        // camera accessors, re-introduce a guarded dispatch alongside un-guarding draw().
 
         static std::atomic<int> s_updateProbeCount{0};
         const int n = s_updateProbeCount.fetch_add(1, std::memory_order_relaxed);
