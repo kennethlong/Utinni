@@ -346,6 +346,18 @@ void Object::setObjectToWorldDirty(bool isDirty)
 
 void Object::positionAndRotationChanged(bool dueToParentChange, swg::math::Vector& oldPosition)
 {
+    // §5.6 write-notify: object::positionAndRotationChanged is a hardcoded SWGEmu RVA (0x00B22A50)
+    // and is NOT an advertised row -> garbage on the NGE client. The gizmo drag / bulk-move write
+    // path calls it after setTransform_o2w (advertised, safe); enabling the gizmo on advertised
+    // (Wave 3) made this reachable and it crashed the drag (cdb-confirmed 2026-07-18). Skip on
+    // advertised: setTransform_o2w already moved the object visually; the notify only propagates
+    // spatial bookkeeping (sphere-tree/portal/collision), acceptable to defer for the editor
+    // preview. Provider row requested to restore the full write. SWGEmu unchanged (D-00).
+    if (swg::endpoints::isAdvertisedClient())
+    {
+        return;
+    }
+
     swg::object::positionAndRotationChanged(this, dueToParentChange, oldPosition);
 }
 
