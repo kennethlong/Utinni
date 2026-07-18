@@ -157,6 +157,18 @@ pWsAddNodeAt wsAddNodeAt = nullptr;
 pWsRemoveNode wsRemoveNode = nullptr;
 pWsSetNodeRadius wsSetNodeRadius = nullptr;
 pWsConfigureIdAllocator wsConfigureIdAllocator = nullptr;
+
+// v19 (Goal B Wave 3): PERSISTENCE shims. Save writes the CURRENT scene's authored .ws to the
+// top loose SearchPath root (typed result enum, see WorldSnapshotLive::SaveResult); unload resets
+// the sticky ms_sceneName so reload isn't empty. No SWGEmu RVA -> null until the advertised
+// resolver fills them; the consumer facade null-checks.
+using pWsSaveSnapshot = int(__cdecl*)();
+using pWsGetSavePath = int(__cdecl*)(char* buf, int cap);
+using pWsUnloadSnapshot = void(__cdecl*)();
+
+pWsSaveSnapshot wsSaveSnapshot = nullptr;
+pWsGetSavePath wsGetSavePath = nullptr;
+pWsUnloadSnapshot wsUnloadSnapshot = nullptr;
 } // namespace swg::worldsnapshot
 
 namespace
@@ -182,6 +194,9 @@ inline bool offlineSnapshotUnavailable()
 
 namespace utinni
 {
+// Wave 3 (v19): defined in ground_scene.cpp -- terrain-derived current scene name for the reload leg.
+std::string getCurrentSceneNameFromTerrain();
+
 WorldSnapshotReaderWriter* WorldSnapshotReaderWriter::get()
 {
     return (WorldSnapshotReaderWriter*)0x1913E94;
@@ -1020,5 +1035,68 @@ bool WorldSnapshotLive::configureIdAllocator(int64_t floorId, int64_t ceilingId)
 {
     return swg::worldsnapshot::wsConfigureIdAllocator != nullptr &&
            swg::worldsnapshot::wsConfigureIdAllocator(floorId, ceilingId) != 0;
+}
+
+// ── Wave 3 (v19) persistence veneer. ──
+
+bool WorldSnapshotLive::isPersistenceAvailable()
+{
+    using namespace swg::worldsnapshot;
+    return wsSaveSnapshot != nullptr && wsGetSavePath != nullptr && wsUnloadSnapshot != nullptr;
+}
+
+WorldSnapshotLive::SaveResult WorldSnapshotLive::saveSnapshot()
+{
+    if (swg::worldsnapshot::wsSaveSnapshot == nullptr)
+    {
+        return SaveResult::RowUnavailable;
+    }
+    return static_cast<SaveResult>(swg::worldsnapshot::wsSaveSnapshot());
+}
+
+std::string WorldSnapshotLive::getSavePath()
+{
+    if (swg::worldsnapshot::wsGetSavePath == nullptr)
+    {
+        return {};
+    }
+
+    // Contract: returns needed length INCLUDING the NUL; 0 = no loose SearchPath. Null buf = size query.
+    const int needed = swg::worldsnapshot::wsGetSavePath(nullptr, 0);
+    if (needed <= 1)
+    {
+        return {};
+    }
+
+    std::string path(static_cast<size_t>(needed) - 1, '\0');
+    swg::worldsnapshot::wsGetSavePath(path.data(), needed);
+    return path;
+}
+
+void WorldSnapshotLive::unloadSnapshot()
+{
+    if (swg::worldsnapshot::wsUnloadSnapshot != nullptr)
+    {
+        swg::worldsnapshot::wsUnloadSnapshot();
+    }
+}
+
+void WorldSnapshotLive::reloadSnapshot()
+{
+    // Reload = wsUnloadSnapshot (resets the sticky ms_sceneName) + advertised load(currentScene).
+    // The scene name comes from the loaded terrain (advertised-safe), NOT the nulled GroundScene::get().
+    if (swg::worldsnapshot::wsUnloadSnapshot == nullptr || swg::worldsnapshot::load == nullptr)
+    {
+        return;
+    }
+
+    const std::string sceneName = getCurrentSceneNameFromTerrain();
+    if (sceneName.empty())
+    {
+        return;
+    }
+
+    swg::worldsnapshot::wsUnloadSnapshot();
+    swg::worldsnapshot::load(sceneName.c_str());
 }
 } // namespace utinni

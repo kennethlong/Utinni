@@ -190,8 +190,26 @@
 // teardown: 1 removed / 0 miss / -1 OCCUPIED (a non-client-cached object
 // -- e.g. the player -- inside the containment subtree; Container's dtor
 // cascade-deletes contents, so delete is refused, never silent). 133 names.
+// Bumped 18 -> 19 in Goal B Wave 3 (persistence + riders, frozen 2026-07-18;
+// Wave-2 mutation smoke PASSED): 7 NAME ADDs. Persistence (the disk half):
+// worldSnapshot::{wsSaveSnapshot, wsGetSavePath, wsUnloadSnapshot} --
+// authored-only save (tombstone-skip recursive + retained buildout-set
+// filter; the above-ceiling AUTHORED collection-item nodes of the
+// TOC-resolved .ws copies SERIALIZE by design -- they are real world
+// content, see the idmint-CLOSED handoff), absolute destination in the
+// winning loose SearchPath, negative-cache invalidation, post-write shadow
+// verification, typed result enum (0 ok / 1 no-snapshot / 2 no-loose-path /
+// 3 shadowed / 4 id-overflow / 5 buildout-integrity / 6 write-fail);
+// wsUnloadSnapshot also resets the sticky ms_sceneName so reload works.
+// Rider 4B: cuiPreferences::{setAllowTargetAnything, getAllowTargetAnything}
+// -- the NGE world-pick/target gate (SwgCuiHud + CuiRadialMenuManager),
+// plain statics, replaces the consumer's corrupting SWGEmu RVA patch.
+// Rider 4C: camera::{getProjectionMatrix, getTransformO2W} -- copy-out
+// matrix accessors for the gizmo (GlMatrix4x4 verbatim / row-major 3x4
+// position-col-3), replaces raw struct-offset camera reads that crash on
+// the NGE layout. 140 names.
 // ----------------------------------------------------------------------
-#define ENGINE_HOOKPOINTS_VERSION 18
+#define ENGINE_HOOKPOINTS_VERSION 19
 
 // ----------------------------------------------------------------------
 // One row per advertised endpoint: a stable contract name + the borrowed

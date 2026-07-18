@@ -37,8 +37,20 @@
 #include "swg/graphics/backend_select.h"
 
 #include <cstdio>
+#include <cstring>
 #include <mutex>
 #include <vector>
+
+// v19 (Goal B Wave 3 / rider 4C): advertised live-camera matrix accessors (defined in camera.cpp).
+// Local extern decls -- kept out of camera.h so the fn-ptr typedefs stay out of the CppSharp parse
+// (the endpoints_bindings.cpp pattern). Null on SWGEmu; the gizmo draw() branches on that.
+namespace swg::camera
+{
+using pGetProjectionMatrix = int(__cdecl*)(float* out16);
+using pGetTransformO2W = int(__cdecl*)(float* out12);
+extern pGetProjectionMatrix getProjectionMatrix;
+extern pGetTransformO2W getTransformO2W;
+} // namespace swg::camera
 
 #include "utility/log.h"
 #include "swg/ui/cui_chat_window.h"
@@ -1131,28 +1143,51 @@ void editTransform(const float* cameraView, float* cameraProjection, float* matr
 
 void draw()
 {
-    // Goal B Wave-2 §5.6 probe result (2026-07-18, cdb-confirmed): this body is NGE-unsafe on the
-    // advertised client. It reads camera->projectionMatrix as a RAW STRUCT-OFFSET field (Camera's
-    // NGE layout differs from SWGEmu), then feeds that garbage into Matrix4x4/ImGuizmo -- the live
-    // crash was an execute-of-heap-data via a bad function pointer sourced from the mis-offset read
-    // (ecx=10.0f, __thiscall through garbage; fault in a mapped buffer, called from hkMainLoop). The
-    // live gizmo needs provider-advertised camera accessors (projection + o2w) before it can render
-    // here; until then it stays DARK on advertised. SWGEmu unchanged (isAdvertisedClient()==false).
+    if (object == nullptr || !enabled)
+    {
+        return;
+    }
+
+    // Camera matrices: on the advertised client the SWGEmu path (GroundScene::get()->getCurrentCamera()
+    // + camera->projectionMatrix RAW struct-offset read) is NGE-unsafe -- the Wave-2 §5.6 probe crashed
+    // executing heap data from the mis-offset projection field (cdb-confirmed). v19 riders replace those
+    // two reads with advertised accessors (camera::getTransformO2W / getProjectionMatrix, both off
+    // Game::getConstCamera). The OBJECT transform stays object->getTransform_o2w() (advertised row).
+    Transform cameraO2W;
+    Matrix4x4 projection;
     if (swg::endpoints::isAdvertisedClient())
     {
-        return;
-    }
+        if (swg::camera::getTransformO2W == nullptr || swg::camera::getProjectionMatrix == nullptr)
+        {
+            return; // rows unresolved -> gizmo stays dark rather than reading raw NGE layout
+        }
 
-    if (GroundScene::get() == nullptr || object == nullptr || !enabled)
+        float o2w12[12];
+        float proj16[16];
+        if (swg::camera::getTransformO2W(o2w12) == 0 || swg::camera::getProjectionMatrix(proj16) == 0)
+        {
+            return; // no current camera this frame
+        }
+
+        static_assert(sizeof(cameraO2W.matrix) == sizeof(o2w12), "camera o2w must be the 12-float 3x4 contract");
+        memcpy(cameraO2W.matrix, o2w12, sizeof(o2w12));
+        static_assert(sizeof(projection.matrix) == sizeof(proj16), "projection must be the 16-float 4x4 contract");
+        memcpy(projection.matrix, proj16, sizeof(proj16));
+    }
+    else
     {
-        return;
+        if (GroundScene::get() == nullptr)
+        {
+            return;
+        }
+        Camera* camera = GroundScene::get()->getCurrentCamera();
+        cameraO2W = Transform(*camera->getTransform_o2w());
+        projection = camera->projectionMatrix;
     }
-
-    Camera* camera = GroundScene::get()->getCurrentCamera();
 
     // Set up the matrices for the gizmo
     Transform w2c;
-    w2c.invert(*camera->getTransform_o2w());
+    w2c.invert(cameraO2W);
     const Matrix4x4 view = Matrix4x4(w2c);
     const Matrix4x4 objectMatrix = Matrix4x4(*object->getTransform_o2w());
 
@@ -1161,7 +1196,7 @@ void draw()
     float* objMatrix = &Matrix4x4().matrix[0][0];
 
     Matrix4x4::transpose(&view.matrix[0][0], viewMatrix);
-    Matrix4x4::transpose(&camera->projectionMatrix.matrix[0][0], projMatrix);
+    Matrix4x4::transpose(&projection.matrix[0][0], projMatrix);
     Matrix4x4::transpose(&objectMatrix.matrix[0][0], objMatrix);
 
     // Enable and draw the gizmo

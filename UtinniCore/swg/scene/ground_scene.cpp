@@ -251,6 +251,28 @@ std::string GroundScene::getName()
     return terrainPath.substr(i, length);
 }
 
+// Wave 3 (v19): the current scene name derived from the loaded terrain (GroundScene::getName's
+// logic without needing a GroundScene instance -- getName touches only Terrain::get(), which is
+// advertised-safe via the terrain-editor path, NOT the nulled GroundScene::get()). Used by the
+// WorldSnapshotLive reload leg (unload + advertised load(sceneName)). Empty if no scene.
+std::string getCurrentSceneNameFromTerrain()
+{
+    const std::string terrainPath = Terrain::get()->getFilename();
+    if (terrainPath.empty())
+    {
+        return "";
+    }
+
+    const int i = terrainPath.find_first_of('/') + 1;
+    const int length = static_cast<int>(terrainPath.size()) - i - 5;
+    if (length < 0)
+    {
+        return "";
+    }
+
+    return terrainPath.substr(i, length);
+}
+
 // Phase 3 R-A: handle-based Subscribe/Unsubscribe per D-08/D-09. Add* retained
 // per D-10 as wrappers (return value discarded).
 int GroundScene::subscribePreDrawLoopCallback(void (*func)(GroundScene* pThis))
@@ -427,12 +449,15 @@ void __fastcall hkUpdateLoop(GroundScene* pThis, DWORD EDX, float time)
         // setSceneCallbacks natively). Once-latched in game.cpp; re-armed by hkCleanupScene.
         swg::game::notifyAdvertisedSceneTick();
 
-        // NOTE: the preDrawLoop queue is deliberately NOT dispatched here. Its only consumer is
-        // the snapshot gizmo enable/disable marshal, and the gizmo render body (imgui_impl::draw)
-        // is NGE-unsafe on the advertised client (§5.6 probe: raw camera->projectionMatrix offset
-        // read -> execute-of-heap-data crash, cdb-confirmed 2026-07-18) and is now guarded dark
-        // there. Draining the queue would only re-arm that dead path. When the gizmo gets provider
-        // camera accessors, re-introduce a guarded dispatch alongside un-guarding draw().
+        // Wave-3 gizmo unlock: GroundScene::draw is an UNADVERTISED virtual so hkDrawLoop never
+        // installs here -- dispatch the preDrawLoop queue (the gizmo enable/disable marshal) from
+        // the update tick instead. Safe as of v19: imgui_impl::draw() now reads the camera via the
+        // advertised camera::getTransformO2W/getProjectionMatrix rows (rider 4C) instead of the raw
+        // NGE-unsafe projectionMatrix offset that crashed the §5.6 probe. Same game thread, same
+        // per-frame cadence; postDraw stays undispatched on advertised (no consumer, no blast radius).
+        dispatchSnapshot(preDrawLoopCallbacks, preDrawLoopCallbacksMutex,
+                         [pThis](void (*func)(GroundScene*))
+                         { func(pThis); });
 
         static std::atomic<int> s_updateProbeCount{0};
         const int n = s_updateProbeCount.fetch_add(1, std::memory_order_relaxed);

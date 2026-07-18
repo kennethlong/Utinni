@@ -368,3 +368,23 @@ ENGINE_HOOKPOINT(worldSnapshot, wsAddNodeAt)           // int (__int64 explicitI
 ENGINE_HOOKPOINT(worldSnapshot, wsRemoveNode)          // int (__int64 id) -- occupancy-guarded full subtree teardown + despawn; 1 removed / 0 miss / -1 occupied
 ENGINE_HOOKPOINT(worldSnapshot, wsSetNodeRadius)       // int (__int64 id, float radius) -- 1 ok, 0 miss/tombstone; re-seats the sphere-tree extent
 ENGINE_HOOKPOINT(worldSnapshot, wsConfigureIdAllocator) // int (__int64 floor, __int64 ceiling) -- one-time optional band config (0 = keep default per param); 1 accepted, 0 rejected (visible)
+
+// -- worldSnapshot editor PERSISTENCE wave + riders (v18->v19, Goal B Wave 3;
+// frozen 2026-07-18): the disk half + the 4B/4C rider rows. Save = authored-only
+// (tombstone-skip recursive + the retained buildout-set filter), absolute
+// destination in the winning loose SearchPath, searchPath negative-cache
+// invalidation for the written name, post-write shadow verification via
+// TreeFile::getPathName. Typed save-result enum (FROZEN, append-only): 0 ok /
+// 1 no-snapshot / 2 no-loose-search-path / 3 destination-shadowed /
+// 4 id-int32-overflow / 5 buildout-set-integrity / 6 write-failure.
+ENGINE_HOOKPOINT(worldSnapshot, wsSaveSnapshot)         // int (void) -- save the CURRENT scene's authored .ws; typed result enum above
+ENGINE_HOOKPOINT(worldSnapshot, wsGetSavePath)          // int (char* buf, int cap) -- save ROOT copy-out; needed length INCLUDING NUL; 0 = no loose SearchPath
+ENGINE_HOOKPOINT(worldSnapshot, wsUnloadSnapshot)       // void (void) -- unload + sticky ms_sceneName reset (reload = this + advertised load); bumps generation
+// 4B: the NGE world-pick/target gate (SwgCuiHud + CuiRadialMenuManager read it) --
+// the engine's allowTargetAnything, NOT the consumer's SWGEmu patch working title.
+ENGINE_HOOKPOINT(cuiPreferences, setAllowTargetAnything) // static void (bool) -- plain &fn [CuiPreferences.cpp:1051]
+ENGINE_HOOKPOINT(cuiPreferences, getAllowTargetAnything) // static bool (void) -- plain &fn [CuiPreferences.cpp:1733]
+// 4C: gizmo camera matrices -- copy-out shims (primitives-only ABI RULE; replaces
+// the consumer's raw struct-offset camera reads that crash on the NGE layout).
+ENGINE_HOOKPOINT(camera, getProjectionMatrix)           // int (float* out16) -- GlMatrix4x4 verbatim (row-major 4x4); 1 ok / 0 no camera
+ENGINE_HOOKPOINT(camera, getTransformO2W)               // int (float* out12) -- row-major 3x4, position column 3 (the UtinniWsNodeInfo convention); 1 ok / 0 no camera

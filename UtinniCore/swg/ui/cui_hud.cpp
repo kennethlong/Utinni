@@ -46,6 +46,18 @@ pGetTarget getTarget = (pGetTarget)0x00BD3E20;
 
 } // namespace swg::cuiHud
 
+// v19 (Goal B Wave 3 / rider 4B): the NGE targeting filter -- CuiPreferences::{set,get}AllowTargetAnything
+// (the engine gate the SWGEmu byte-patch 0x00BD3FA3 was hunting; two public out-of-line statics read by
+// the hud world-pick + radial menu). Advertised-only accessor slots (null on SWGEmu -> the editor's own
+// guarded patch path stays there). Persisted user preference -> the consumer restores it on editor close.
+namespace swg::cuiPreferences
+{
+using pSetAllowTargetAnything = void(__cdecl*)(bool value);
+using pGetAllowTargetAnything = bool(__cdecl*)();
+pSetAllowTargetAnything setAllowTargetAnything = nullptr;
+pGetAllowTargetAnything getAllowTargetAnything = nullptr;
+} // namespace swg::cuiPreferences
+
 // DIAG 2026-05-20 Issue #12 Phase A: SwgCuiGameMenu is the SWG system-menu
 // mediator class (resolved by hunting for the class-name string
 // "SwgCuiGameMenu" at VA 0x018BFD68, finding its sole push imm32
@@ -284,14 +296,21 @@ const swg::math::Vector& getCursorWorldPosition()
 
 void patchAllowTargetEverything(bool value)
 {
-    // Wave-2 smoke live bug (2026-07-18): BOTH branches blind-write at hardcoded SWGEmu RVAs --
-    // on the advertised client 0x00BD3FA3 is arbitrary relocated NGE code, and toggling the
-    // checkbox stamped a JMP into it (broke the in-game menus in the live session; the untoggle
-    // branch would have blind-written "original" bytes at the same wrong address). Degrade to a
-    // logged no-op until the targeting filter is advertised (candidate provider row).
+    // Wave 3 (v19 / rider 4B): on the advertised client route to the engine's own
+    // CuiPreferences::setAllowTargetAnything (the gate the SWGEmu byte-patch at 0x00BD3FA3 was
+    // hunting; two advertised statics). The blind byte-patch corrupted relocated NGE CUI code and
+    // broke the in-game menus in the Wave-2 smoke -- never write it here. Null-guarded: if the row
+    // didn't resolve, stay a no-op (never fall through to the SWGEmu write on advertised).
     if (swg::endpoints::isAdvertisedClient())
     {
-        utinni::log::warning("cuiHud::patchAllowTargetEverything: SWGEmu-only byte patch (0x00BD3FA3) -- no-op on the advertised client (needs a provider row)");
+        if (swg::cuiPreferences::setAllowTargetAnything != nullptr)
+        {
+            swg::cuiPreferences::setAllowTargetAnything(value);
+        }
+        else
+        {
+            utinni::log::warning("cuiHud::patchAllowTargetEverything: setAllowTargetAnything row unresolved -- no-op on advertised");
+        }
         return;
     }
 

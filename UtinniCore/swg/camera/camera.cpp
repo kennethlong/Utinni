@@ -57,6 +57,15 @@ pSetHorizontalFieldOfView setHorizontalFieldOfView = (pSetHorizontalFieldOfView)
 
 pReverseProjectInViewportSpaceInt reverseProjectInViewportSpaceInt = (pReverseProjectInViewportSpaceInt)0x007682B0;
 pReverseProjectInViewportSpaceFloat reverseProjectInViewportSpaceFloat = (pReverseProjectInViewportSpaceFloat)0x00768390;
+
+// v19 (Goal B Wave 3 / rider 4C): advertised live-camera matrix accessors for the gizmo. Both read
+// Game::getConstCamera() provider-side; primitives-only copy-out (projection = row-major float[4][4],
+// o2w = row-major float[3][4] position-col-3, the UtinniWsNodeInfo convention). No SWGEmu RVA -> null
+// there; the gizmo keeps its raw camera->projectionMatrix path on SWGEmu (D-00).
+using pGetProjectionMatrix = int(__cdecl*)(float* out16);
+using pGetTransformO2W = int(__cdecl*)(float* out12);
+pGetProjectionMatrix getProjectionMatrix = nullptr;
+pGetTransformO2W getTransformO2W = nullptr;
 } // namespace swg::camera
 
 namespace swg::renderWorldCamera

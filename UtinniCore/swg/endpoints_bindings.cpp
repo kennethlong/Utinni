@@ -332,7 +332,24 @@ extern pWsAddNodeAt wsAddNodeAt;
 extern pWsRemoveNode wsRemoveNode;
 extern pWsSetNodeRadius wsSetNodeRadius;
 extern pWsConfigureIdAllocator wsConfigureIdAllocator;
+
+// v19 (Goal B Wave 3): the 3 PERSISTENCE shims (save typed-result / save-root copy-out / unload).
+using pWsSaveSnapshot = int(__cdecl*)();
+using pWsGetSavePath = int(__cdecl*)(char* buf, int cap);
+using pWsUnloadSnapshot = void(__cdecl*)();
+extern pWsSaveSnapshot wsSaveSnapshot;
+extern pWsGetSavePath wsGetSavePath;
+extern pWsUnloadSnapshot wsUnloadSnapshot;
 } // namespace swg::worldsnapshot
+
+// v19 (Goal B Wave 3 / rider 4B): NGE targeting filter (cui_hud.cpp). Advertised-only.
+namespace swg::cuiPreferences
+{
+using pSetAllowTargetAnything = void(__cdecl*)(bool value);
+using pGetAllowTargetAnything = bool(__cdecl*)();
+extern pSetAllowTargetAnything setAllowTargetAnything;
+extern pGetAllowTargetAnything getAllowTargetAnything;
+} // namespace swg::cuiPreferences
 
 // -- camera (camera/camera.cpp:33-54; reverseProjectInViewportSpace ->
 //    consumer reverseProjectInViewportSpaceInt, name mismatch) ---------------
@@ -349,6 +366,11 @@ extern pSetNearPlane setNearPlane;
 extern pSetFarPlane setFarPlane;
 extern pSetHorizontalFieldOfView setHorizontalFieldOfView;
 extern pReverseProjectInViewportSpaceInt reverseProjectInViewportSpaceInt;
+// v19 (Goal B Wave 3 / rider 4C): live-camera matrix accessors for the gizmo. Advertised-only.
+using pGetProjectionMatrix = int(__cdecl*)(float* out16);
+using pGetTransformO2W = int(__cdecl*)(float* out12);
+extern pGetProjectionMatrix getProjectionMatrix;
+extern pGetTransformO2W getTransformO2W;
 } // namespace swg::camera
 
 // -- gameCamera (camera/camera.cpp:66-; v13 free-cam: movement MQ accessor) ----
@@ -827,6 +849,18 @@ static const Binding s_bindings[] = {
     {"worldSnapshot::wsRemoveNode", (void**)&swg::worldsnapshot::wsRemoveNode},                     // TRI-STATE: 1 removed / 0 miss / -1 occupied
     {"worldSnapshot::wsSetNodeRadius", (void**)&swg::worldsnapshot::wsSetNodeRadius},               // re-seats the sphere-tree extent
     {"worldSnapshot::wsConfigureIdAllocator", (void**)&swg::worldsnapshot::wsConfigureIdAllocator}, // install-scan floor / ceiling band
+
+    // ===== v19 (Phase 24 / Goal B Wave 3 -- persistence + riders): 7 new endpoints =====
+    // CALLED (never detoured), game-thread-only. Persistence writes the current scene's authored .ws;
+    // targeting + camera riders unlock in-world static selection + the live gizmo. Consumed via the
+    // WorldSnapshotLive persistence methods, cuiHud targeting, and imgui_impl gizmo matrices.
+    {"worldSnapshot::wsSaveSnapshot", (void**)&swg::worldsnapshot::wsSaveSnapshot},                   // typed result enum (0 ok; 1..6 errors)
+    {"worldSnapshot::wsGetSavePath", (void**)&swg::worldsnapshot::wsGetSavePath},                     // save-root copy-out; 0 = no loose SearchPath
+    {"worldSnapshot::wsUnloadSnapshot", (void**)&swg::worldsnapshot::wsUnloadSnapshot},               // unload + ms_sceneName reset (reload prerequisite)
+    {"cuiPreferences::setAllowTargetAnything", (void**)&swg::cuiPreferences::setAllowTargetAnything}, // NGE targeting filter (rider 4B)
+    {"cuiPreferences::getAllowTargetAnything", (void**)&swg::cuiPreferences::getAllowTargetAnything}, // restore-on-close read
+    {"camera::getProjectionMatrix", (void**)&swg::camera::getProjectionMatrix},                       // gizmo projection (rider 4C; row-major float[4][4])
+    {"camera::getTransformO2W", (void**)&swg::camera::getTransformO2W},                               // gizmo camera o2w (row-major float[3][4])
 };
 
 // ----------------------------------------------------------------------
@@ -867,8 +901,8 @@ constexpr size_t kIncCount = 0
 
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
 
-static_assert(kIncCount == 133, "contract .inc size drifted from the expected 133 names (v18 / Goal B Wave 2 snapshot mutation: 5 name-adds)");
-static_assert(kBindingCount == 131, "s_bindings[] must bind 131 of 133 (.inc minus the TWO carve-outs)");
+static_assert(kIncCount == 140, "contract .inc size drifted from the expected 140 names (v19 / Goal B Wave 3 persistence + riders: 7 name-adds)");
+static_assert(kBindingCount == 138, "s_bindings[] must bind 138 of 140 (.inc minus the TWO carve-outs)");
 static_assert(kBindingCount == kIncCount - 2,
               "exactly two .inc names are carve-outs: consoleHelper::sendInput (D-02) + "
               "client::wndProc (embed-resize regression; RNDR-04 follow-on)");
@@ -1025,6 +1059,14 @@ constexpr const char* kBindingNames[] = {
     "worldSnapshot::wsRemoveNode",
     "worldSnapshot::wsSetNodeRadius",
     "worldSnapshot::wsConfigureIdAllocator",
+    // ===== v19 (Phase 24 / Goal B Wave 3) additions — lockstep with s_bindings[] above =====
+    "worldSnapshot::wsSaveSnapshot",
+    "worldSnapshot::wsGetSavePath",
+    "worldSnapshot::wsUnloadSnapshot",
+    "cuiPreferences::setAllowTargetAnything",
+    "cuiPreferences::getAllowTargetAnything",
+    "camera::getProjectionMatrix",
+    "camera::getTransformO2W",
 };
 
 constexpr bool allNamesInInc()

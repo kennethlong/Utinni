@@ -157,6 +157,28 @@ public:
     // One-time-by-discipline allocator band (install-scan floor lands here; 0 = keep
     // default for either param). Returns false on an invalid band (nothing changed).
     static bool configureIdAllocator(int64_t floorId, int64_t ceilingId);
+
+    // ── Wave 3 (contract v19): PERSISTENCE. Save writes the current scene's authored .ws to the
+    //    top loose SearchPath root; unload + advertised load = reload. ──
+    static bool isPersistenceAvailable(); // save/getSavePath/unload rows all resolved
+
+    // Typed save result — mirrors the provider's frozen enum (append-only).
+    enum class SaveResult
+    {
+        Ok = 0,
+        NoSnapshotLoaded = 1,
+        NoLooseSearchPath = 2,
+        DestinationShadowed = 3,
+        IdInt32Overflow = 4,
+        BuildoutSetIntegrity = 5,
+        WriteFailure = 6,
+        RowUnavailable = 100, // consumer sentinel: shim not resolved (SWGEmu / pre-v19)
+    };
+
+    static SaveResult saveSnapshot();
+    static std::string getSavePath(); // resolved save root; empty = no loose SearchPath / unavailable
+    static void unloadSnapshot();     // unload + ms_sceneName reset (reload prerequisite)
+    static void reloadSnapshot();     // unloadSnapshot() + advertised load(currentScene) -- full reload
 };
 
 class UTINNI_API WorldSnapshot
