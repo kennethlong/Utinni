@@ -23,6 +23,7 @@
  **/
 
 #include "world_snapshot.h"
+#include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include "ground_scene.h"
@@ -974,7 +975,20 @@ int64_t WorldSnapshotLive::addObject(const char* sharedTemplateFilename, const s
     }
     // swg::math::Transform::matrix is the contract's row-major 3x4 float[12] (pinned by the
     // static_assert in getNodeInfo above).
-    return swg::worldsnapshot::wsAddObject(sharedTemplateFilename, &transform.matrix[0][0], containedById);
+    const int64_t newId = swg::worldsnapshot::wsAddObject(sharedTemplateFilename, &transform.matrix[0][0], containedById);
+
+    // Bounded Wave-2 smoke diagnostic: the provider shim fails closed WITHOUT logging, so
+    // surface exactly what crossed the boundary (template string, position column, container)
+    // and what came back. On-demand editor action -> no spam risk.
+    char diag[320];
+    std::snprintf(diag, sizeof(diag),
+                  "WorldSnapshotLive::addObject('%.180s', pos=(%.1f, %.1f, %.1f), container=%lld) -> id=%lld",
+                  sharedTemplateFilename,
+                  transform.matrix[0][3], transform.matrix[1][3], transform.matrix[2][3],
+                  static_cast<long long>(containedById), static_cast<long long>(newId));
+    utinni::log::info(diag);
+
+    return newId;
 }
 
 bool WorldSnapshotLive::addNodeAt(int64_t explicitId, int64_t containedById, const char* templateFilename, int cellIndex, const swg::math::Transform& transform, float radius, unsigned int portalLayoutCrc)
