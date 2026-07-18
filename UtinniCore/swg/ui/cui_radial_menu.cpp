@@ -40,7 +40,13 @@ namespace utinni
 {
 void __cdecl hkUpdate()
 {
-    if (imgui_gizmo::isEnabled())
+    // cuiRadialMenuManager::clear is a hardcoded SWGEmu RVA (0x0096C550) -- NOT an advertised row,
+    // so on the advertised client it stays garbage. It was unreachable there until the Wave-3 gizmo
+    // unlock made isEnabled() true on advertised (cui_radial_menu latent bug, cdb-confirmed
+    // 2026-07-18: enabling the gizmo called clear() -> jump to the stale RVA -> crash). Skip it on
+    // advertised -- the radial-menu clear-on-gizmo is a nicety, not load-bearing; degrade to
+    // not-cleared rather than crash. (A provider `clear` row would restore the behavior; follow-up.)
+    if (imgui_gizmo::isEnabled() && !swg::endpoints::isAdvertisedClient())
     {
         swg::cuiRadialMenuManager::clear();
     }
