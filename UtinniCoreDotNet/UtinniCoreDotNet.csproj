@@ -267,6 +267,7 @@
     <Compile Include="Callbacks\ImGuiCallbacks.cs" />
     <Compile Include="Callbacks\ObjectCallbacks.cs" />
     <Compile Include="Commands\WorldSnapshotCommands.cs" />
+    <Compile Include="Commands\LiveWorldSnapshotCommands.cs" />
     <Compile Include="Commands\WorldSnapshotBulkComposer.cs" />
     <Compile Include="Commands\WorldSnapshotCommandGuard.cs" />
     <Compile Include="UI\Forms\FormMain.cs">
