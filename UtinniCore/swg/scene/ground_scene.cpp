@@ -43,6 +43,15 @@
 #include <mutex>
 #include <vector>
 
+// Wave-2 scene-arm (defined in game.cpp): once-per-scene setSceneCallbacks dispatch for the
+// advertised client, driven from hkUpdateLoop's first tick below (setupScene is un-detourable
+// there, so a normal login otherwise never fires scene-active). Cross-TU forward declaration,
+// same pattern as game.cpp's declaration of clearAdvertisedInstance().
+namespace swg::game
+{
+void notifyAdvertisedSceneTick();
+}
+
 namespace swg::groundScene
 {
 using pCtor = utinni::GroundScene*(__thiscall*)(void* pThis, const char* terrainFilename, const char* avatarObjectFilename, swgptr customPlayer); // Offline scene ctor
@@ -412,6 +421,11 @@ void __fastcall hkUpdateLoop(GroundScene* pThis, DWORD EDX, float time)
         // WS-4: latch the live instance for the reload export. Store BEFORE dispatch so a same-frame consumer
         // sees the current scene. (Probe log retained -- confirms the latch source keeps firing.)
         s_advertisedGroundScene.store(pThis, std::memory_order_relaxed);
+
+        // Wave-2 scene-arm: the first update tick after boot/cleanup IS scene-start on the
+        // advertised client (setupScene is un-detourable there, so a normal login never fires
+        // setSceneCallbacks natively). Once-latched in game.cpp; re-armed by hkCleanupScene.
+        swg::game::notifyAdvertisedSceneTick();
 
         static std::atomic<int> s_updateProbeCount{0};
         const int n = s_updateProbeCount.fetch_add(1, std::memory_order_relaxed);

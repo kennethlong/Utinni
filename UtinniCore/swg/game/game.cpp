@@ -210,6 +210,34 @@ static int s_nextSetSceneId = 1;
 static int s_nextCleanUpSceneId = 1;
 static utinni::Repository repository;
 
+// Goal B Wave-2 smoke fix: on the advertised client setupScene is un-detourable (tiny-thunk
+// trampoline corruption), so a NORMAL (non-editor) login never fired setSceneCallbacks — every
+// scene-gated panel stayed dead unless the scene arrived through the editor loadScene path
+// (which dispatches manually, WS-1). Bit twice on the 07-18 smokes (placements arming, then the
+// whole Snapshot panel on a server login). The per-frame GroundScene latch (ground_scene.cpp
+// hkUpdateLoop) is the universal scene-alive signal there: its first tick after boot/cleanup
+// dispatches the callbacks exactly once via notifyAdvertisedSceneTick() below; hkCleanupScene
+// re-arms. The WS-1 editor path routes through the same once-latch, so whichever fires first
+// wins and there is never a double dispatch. Inert on SWGEmu (hkSetScene keeps dispatching
+// natively; the tick entry point is advertised-only at its call site).
+static std::atomic<bool> s_advertisedSceneCallbacksFired{false};
+
+namespace swg::game
+{
+void notifyAdvertisedSceneTick()
+{
+    if (s_advertisedSceneCallbacksFired.exchange(true, std::memory_order_relaxed))
+    {
+        return;
+    }
+
+    dispatchSnapshot(setSceneCallbacks, setSceneCallbacksMutex,
+                     [](void (*func)())
+                     { func(); });
+    utinni::log::info("game: setSceneCallbacks fired (advertised scene-arm latch)");
+}
+} // namespace swg::game
+
 namespace utinni
 {
 
@@ -482,9 +510,9 @@ void __cdecl hkMainLoop(bool presentToWindow, HWND hwnd, int width, int height)
                 // frame, not re-entrantly. Subscribers' player/scene reads are advertised-guarded (WS-1,
                 // player_object.cpp + GroundScene::get), so a camera-only load with no player degrades, not crashes.
                 swg::game::g_editorSceneLoaded.store(true, std::memory_order_relaxed);
-                dispatchSnapshot(setSceneCallbacks, setSceneCallbacksMutex,
-                                 [](void (*func)())
-                                 { func(); });
+                // Wave-2 scene-arm: route through the once-latch so the update-loop tick (the
+                // normal-login arm) and this editor-load arm can never double-dispatch.
+                swg::game::notifyAdvertisedSceneTick();
                 utinni::log::info("hkMainLoop: WS-1 setSceneCallbacks fired (advertised scene-change notify)");
             }
             else
@@ -596,6 +624,10 @@ void __cdecl hkCleanupScene()
     // Enter-mask + scene subscribers stop treating the world as active during cleanup frames. Inert on
     // SWGEmu (never set true there).
     swg::game::g_editorSceneLoaded.store(false, std::memory_order_relaxed);
+
+    // Wave-2 scene-arm: re-arm the once-latch so the NEXT scene's first update tick (or editor
+    // load) re-dispatches setSceneCallbacks. Inert on SWGEmu (the latch never fires there).
+    s_advertisedSceneCallbacksFired.store(false, std::memory_order_relaxed);
 
     // WS-4: drop the GroundScene reload latch before teardown so a reload queued mid-cleanup no-ops rather
     // than calling reloadTerrain on a freed instance. Inert on SWGEmu (latch never set there).
