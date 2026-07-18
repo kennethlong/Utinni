@@ -284,6 +284,17 @@ const swg::math::Vector& getCursorWorldPosition()
 
 void patchAllowTargetEverything(bool value)
 {
+    // Wave-2 smoke live bug (2026-07-18): BOTH branches blind-write at hardcoded SWGEmu RVAs --
+    // on the advertised client 0x00BD3FA3 is arbitrary relocated NGE code, and toggling the
+    // checkbox stamped a JMP into it (broke the in-game menus in the live session; the untoggle
+    // branch would have blind-written "original" bytes at the same wrong address). Degrade to a
+    // logged no-op until the targeting filter is advertised (candidate provider row).
+    if (swg::endpoints::isAdvertisedClient())
+    {
+        utinni::log::warning("cuiHud::patchAllowTargetEverything: SWGEmu-only byte patch (0x00BD3FA3) -- no-op on the advertised client (needs a provider row)");
+        return;
+    }
+
     if (value)
     {
         memory::createJMP(0x00BD3FA3, 0x00BD403D, 5);

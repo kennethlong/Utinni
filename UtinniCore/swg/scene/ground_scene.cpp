@@ -427,6 +427,17 @@ void __fastcall hkUpdateLoop(GroundScene* pThis, DWORD EDX, float time)
         // setSceneCallbacks natively). Once-latched in game.cpp; re-armed by hkCleanupScene.
         swg::game::notifyAdvertisedSceneTick();
 
+        // Wave-2 gizmo unlock: GroundScene::draw is an UNADVERTISED virtual, so hkDrawLoop never
+        // installs here and the preDrawLoop queue (the gizmo Enable/Disable marshal path, imgui
+        // gizmo state) would never dispatch -- the gizmo silently never appeared on the advertised
+        // client. Dispatch it from the update tick instead: same game thread, same per-frame
+        // cadence; the gizmo render itself happens in the overlay pass regardless of which hook
+        // flipped its state. SWGEmu untouched (hkDrawLoop keeps dispatching there; this branch is
+        // advertised-only, so the queue drains exactly once per frame on both targets).
+        dispatchSnapshot(preDrawLoopCallbacks, preDrawLoopCallbacksMutex,
+                         [pThis](void (*func)(GroundScene*))
+                         { func(pThis); });
+
         static std::atomic<int> s_updateProbeCount{0};
         const int n = s_updateProbeCount.fetch_add(1, std::memory_order_relaxed);
         if (n < 5 || n == 300)
