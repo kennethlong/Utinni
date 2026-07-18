@@ -317,6 +317,21 @@ extern pWsGetChildIdAt wsGetChildIdAt;
 extern pWsGetNodeInfo wsGetNodeInfo;
 extern pWsGetNodeTemplateName wsGetNodeTemplateName;
 extern pWsGetGeneration wsGetGeneration;
+
+// v18 (Goal B Wave 2): the 5 LIVE-ONLY mutation shims (frozen 2026-07-18 row table).
+// wsRemoveNode is tri-state (1 removed / 0 miss / -1 occupied). Typedefs copied
+// verbatim from world_snapshot.cpp (LNK2001 guard).
+using pWsAddObject = int64_t(__cdecl*)(const char* sharedTemplateFilename, const float* transform12, int64_t containedById);
+using pWsAddNodeAt = int(__cdecl*)(int64_t explicitId, int64_t containedById, const char* templateFilename, int cellIndex, const float* transform12, float radius, unsigned int portalLayoutCrc);
+using pWsRemoveNode = int(__cdecl*)(int64_t id);
+using pWsSetNodeRadius = int(__cdecl*)(int64_t id, float radius);
+using pWsConfigureIdAllocator = int(__cdecl*)(int64_t floor, int64_t ceiling);
+
+extern pWsAddObject wsAddObject;
+extern pWsAddNodeAt wsAddNodeAt;
+extern pWsRemoveNode wsRemoveNode;
+extern pWsSetNodeRadius wsSetNodeRadius;
+extern pWsConfigureIdAllocator wsConfigureIdAllocator;
 } // namespace swg::worldsnapshot
 
 // -- camera (camera/camera.cpp:33-54; reverseProjectInViewportSpace ->
@@ -802,6 +817,16 @@ static const Binding s_bindings[] = {
     {"worldSnapshot::wsGetNodeInfo", (void**)&swg::worldsnapshot::wsGetNodeInfo},                 // size-first UtinniWsNodeInfo POD-out
     {"worldSnapshot::wsGetNodeTemplateName", (void**)&swg::worldsnapshot::wsGetNodeTemplateName}, // returns needed length INCLUDING NUL
     {"worldSnapshot::wsGetGeneration", (void**)&swg::worldsnapshot::wsGetGeneration},             // pure counter (no parse force); compare !=, never +1
+
+    // ===== v18 (Phase 24 / Goal B Wave 2 -- snapshot-editor LIVE-ONLY mutation): 5 new endpoints =====
+    // Frozen 2026-07-18 row table. CALLED (never detoured), game-thread-only, every op fail-closed
+    // with full pre-validation BEFORE any reader mutation. Nothing persists (Wave 3). Consumed via
+    // the utinni::WorldSnapshotLive mutation veneer.
+    {"worldSnapshot::wsAddObject", (void**)&swg::worldsnapshot::wsAddObject},                       // provider mints id (+POB cells); returns new top id, 0 fail-closed
+    {"worldSnapshot::wsAddNodeAt", (void**)&swg::worldsnapshot::wsAddNodeAt},                       // undo-replay data re-add at EXPLICIT id; one-batch subtree contract
+    {"worldSnapshot::wsRemoveNode", (void**)&swg::worldsnapshot::wsRemoveNode},                     // TRI-STATE: 1 removed / 0 miss / -1 occupied
+    {"worldSnapshot::wsSetNodeRadius", (void**)&swg::worldsnapshot::wsSetNodeRadius},               // re-seats the sphere-tree extent
+    {"worldSnapshot::wsConfigureIdAllocator", (void**)&swg::worldsnapshot::wsConfigureIdAllocator}, // install-scan floor / ceiling band
 };
 
 // ----------------------------------------------------------------------
@@ -842,8 +867,8 @@ constexpr size_t kIncCount = 0
 
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
 
-static_assert(kIncCount == 128, "contract .inc size drifted from the expected 128 names (v17 / Goal B Wave 1 snapshot READ: 7 name-adds)");
-static_assert(kBindingCount == 126, "s_bindings[] must bind 126 of 128 (.inc minus the TWO carve-outs)");
+static_assert(kIncCount == 133, "contract .inc size drifted from the expected 133 names (v18 / Goal B Wave 2 snapshot mutation: 5 name-adds)");
+static_assert(kBindingCount == 131, "s_bindings[] must bind 131 of 133 (.inc minus the TWO carve-outs)");
 static_assert(kBindingCount == kIncCount - 2,
               "exactly two .inc names are carve-outs: consoleHelper::sendInput (D-02) + "
               "client::wndProc (embed-resize regression; RNDR-04 follow-on)");
@@ -994,6 +1019,12 @@ constexpr const char* kBindingNames[] = {
     "worldSnapshot::wsGetNodeInfo",
     "worldSnapshot::wsGetNodeTemplateName",
     "worldSnapshot::wsGetGeneration",
+    // ===== v18 (Phase 24 / Goal B Wave 2 snapshot mutation) additions — lockstep with s_bindings[] above =====
+    "worldSnapshot::wsAddObject",
+    "worldSnapshot::wsAddNodeAt",
+    "worldSnapshot::wsRemoveNode",
+    "worldSnapshot::wsSetNodeRadius",
+    "worldSnapshot::wsConfigureIdAllocator",
 };
 
 constexpr bool allNamesInInc()

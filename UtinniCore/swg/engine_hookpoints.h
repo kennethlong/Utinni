@@ -170,8 +170,28 @@
 // -- pollable during loading without re-synchronizing the load). Introduces
 // the shared POD UtinniWsNodeInfo (below, rev-3 FROZEN: 80 bytes, size-first
 // protocol, childCount included). 128 names.
+// Bumped 17 -> 18 in Goal B Wave 2 (snapshot-editor LIVE-ONLY mutation wave,
+// frozen 2026-07-18; Wave-1 live smoke PASSED): 5 NAME ADDs --
+// worldSnapshot::{wsAddObject, wsAddNodeAt, wsRemoveNode, wsSetNodeRadius,
+// wsConfigureIdAllocator}, extern "C" __cdecl shims in WorldSnapshot.cpp.
+// Explicitly NON-PERSISTENT (nothing touches disk; persistence = Wave 3).
+// Headline semantics (the accepted ANSWERS 5.2/5.3/5.5 + Wave-2 deltas):
+// wsAddObject pre-validates EVERYTHING before minting (origin guards,
+// template resolvable, contiguous id range free vs reader + buildout set +
+// NetworkIdManager + band, live container) -- a failed add never mutates;
+// mints id..id+cellCount with atomic POB cell expansion and routes through
+// the FULL streamed-create bookkeeping (sphere handle + in-world mark +
+// loaded-list), spawning immediately. wsAddNodeAt is the undo-replay
+// primitive: data re-add at the EXPLICIT id; top-level gets a sphere handle
+// + dirties the update-diff sentinels (stationary-player starvation fix);
+// a child under a spawned in-world parent spawns immediately (no engine
+// path ever would); fail-closed on id-present/live-object/band/buildout/
+// missing-container. wsRemoveNode is the 7-step occupancy-guarded subtree
+// teardown: 1 removed / 0 miss / -1 OCCUPIED (a non-client-cached object
+// -- e.g. the player -- inside the containment subtree; Container's dtor
+// cascade-deletes contents, so delete is refused, never silent). 133 names.
 // ----------------------------------------------------------------------
-#define ENGINE_HOOKPOINTS_VERSION 17
+#define ENGINE_HOOKPOINTS_VERSION 18
 
 // ----------------------------------------------------------------------
 // One row per advertised endpoint: a stable contract name + the borrowed

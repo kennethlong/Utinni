@@ -138,6 +138,24 @@ pWsGetChildIdAt wsGetChildIdAt = nullptr;
 pWsGetNodeInfo wsGetNodeInfo = nullptr;
 pWsGetNodeTemplateName wsGetNodeTemplateName = nullptr;
 pWsGetGeneration wsGetGeneration = nullptr;
+
+// v18 (Goal B Wave 2): LIVE-ONLY mutation shims (frozen 2026-07-18 Wave-2 row table).
+// Same slot discipline as Wave 1: no SWGEmu RVA exists, null until the advertised
+// resolver fills them, game-thread-only, nothing touches disk (persistence = Wave 3).
+// wsRemoveNode is TRI-STATE: 1 removed / 0 miss / -1 occupied (a non-client-cached
+// object inside the containment subtree -- the guard that keeps a building delete
+// from cascade-deleting the player standing in it).
+using pWsAddObject = int64_t(__cdecl*)(const char* sharedTemplateFilename, const float* transform12, int64_t containedById);
+using pWsAddNodeAt = int(__cdecl*)(int64_t explicitId, int64_t containedById, const char* templateFilename, int cellIndex, const float* transform12, float radius, unsigned int portalLayoutCrc);
+using pWsRemoveNode = int(__cdecl*)(int64_t id);
+using pWsSetNodeRadius = int(__cdecl*)(int64_t id, float radius);
+using pWsConfigureIdAllocator = int(__cdecl*)(int64_t floor, int64_t ceiling);
+
+pWsAddObject wsAddObject = nullptr;
+pWsAddNodeAt wsAddNodeAt = nullptr;
+pWsRemoveNode wsRemoveNode = nullptr;
+pWsSetNodeRadius wsSetNodeRadius = nullptr;
+pWsConfigureIdAllocator wsConfigureIdAllocator = nullptr;
 } // namespace swg::worldsnapshot
 
 namespace
@@ -937,5 +955,56 @@ std::string WorldSnapshotLive::getNodeTemplateName(int64_t id)
     std::string name(static_cast<size_t>(needed) - 1, '\0');
     swg::worldsnapshot::wsGetNodeTemplateName(id, name.data(), needed);
     return name;
+}
+
+// ── Wave 2 (v18) mutation veneer — same null-checked slot discipline as the reads. ──
+
+bool WorldSnapshotLive::isMutationAvailable()
+{
+    using namespace swg::worldsnapshot;
+    return wsAddObject != nullptr && wsAddNodeAt != nullptr && wsRemoveNode != nullptr &&
+           wsSetNodeRadius != nullptr && wsConfigureIdAllocator != nullptr;
+}
+
+int64_t WorldSnapshotLive::addObject(const char* sharedTemplateFilename, const swg::math::Transform& transform, int64_t containedById)
+{
+    if (swg::worldsnapshot::wsAddObject == nullptr || sharedTemplateFilename == nullptr)
+    {
+        return 0;
+    }
+    // swg::math::Transform::matrix is the contract's row-major 3x4 float[12] (pinned by the
+    // static_assert in getNodeInfo above).
+    return swg::worldsnapshot::wsAddObject(sharedTemplateFilename, &transform.matrix[0][0], containedById);
+}
+
+bool WorldSnapshotLive::addNodeAt(int64_t explicitId, int64_t containedById, const char* templateFilename, int cellIndex, const swg::math::Transform& transform, float radius, unsigned int portalLayoutCrc)
+{
+    if (swg::worldsnapshot::wsAddNodeAt == nullptr || templateFilename == nullptr)
+    {
+        return false;
+    }
+    return swg::worldsnapshot::wsAddNodeAt(explicitId, containedById, templateFilename, cellIndex,
+                                           &transform.matrix[0][0], radius, portalLayoutCrc) != 0;
+}
+
+int WorldSnapshotLive::removeNode(int64_t id)
+{
+    if (swg::worldsnapshot::wsRemoveNode == nullptr)
+    {
+        return 0; // slot missing reads as miss — never as removed or occupied
+    }
+    return swg::worldsnapshot::wsRemoveNode(id);
+}
+
+bool WorldSnapshotLive::setNodeRadius(int64_t id, float radius)
+{
+    return swg::worldsnapshot::wsSetNodeRadius != nullptr &&
+           swg::worldsnapshot::wsSetNodeRadius(id, radius) != 0;
+}
+
+bool WorldSnapshotLive::configureIdAllocator(int64_t floorId, int64_t ceilingId)
+{
+    return swg::worldsnapshot::wsConfigureIdAllocator != nullptr &&
+           swg::worldsnapshot::wsConfigureIdAllocator(floorId, ceilingId) != 0;
 }
 } // namespace utinni

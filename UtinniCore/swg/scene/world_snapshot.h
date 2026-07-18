@@ -130,6 +130,33 @@ public:
     static int64_t getChildIdAt(int64_t id, int index);
     static bool getNodeInfo(int64_t id, WorldSnapshotNodeInfo& out);
     static std::string getNodeTemplateName(int64_t id);
+
+    // ── Wave 2 (contract v18): LIVE-ONLY mutation — nothing persists until Wave 3. ──
+    static bool isMutationAvailable(); // all 5 mutation rows resolved (advertised only)
+
+    // Interactive add: provider mints the id (+ atomic POB cell expansion), pre-validates
+    // everything BEFORE mutating (origin guards, template, container live+in-world when
+    // containedById != 0, full id range free), spawns immediately via the streamed-create
+    // path. Default radius 512 (provider flag #1) — call setNodeRadius after to tune.
+    // POB into a container is refused. Returns the new top id; 0 = fail-closed.
+    static int64_t addObject(const char* sharedTemplateFilename, const swg::math::Transform& transform, int64_t containedById);
+
+    // Undo-replay primitive: pure data re-add at the EXPLICIT id (top-level dirties the
+    // streaming diff; a child under a live spawned parent spawns immediately). HARD
+    // CONTRACT: replay a recorded subtree — top node AND all children — in ONE game-thread
+    // batch, before the next update tick. Returns 1 ok, 0 fail-closed (nothing added).
+    static bool addNodeAt(int64_t explicitId, int64_t containedById, const char* templateFilename, int cellIndex, const swg::math::Transform& transform, float radius, unsigned int portalLayoutCrc);
+
+    // Full teardown (despawn + subtree tombstone). TRI-STATE: 1 removed · 0 miss ·
+    // -1 OCCUPIED (non-client-cached object inside the containment subtree — surface
+    // "step out of the building first"; nothing was touched).
+    static int removeNode(int64_t id);
+
+    static bool setNodeRadius(int64_t id, float radius);
+
+    // One-time-by-discipline allocator band (install-scan floor lands here; 0 = keep
+    // default for either param). Returns false on an invalid band (nothing changed).
+    static bool configureIdAllocator(int64_t floorId, int64_t ceilingId);
 };
 
 class UTINNI_API WorldSnapshot

@@ -349,3 +349,22 @@ ENGINE_HOOKPOINT(worldSnapshot, wsGetChildIdAt)        // __int64 (__int64 id, i
 ENGINE_HOOKPOINT(worldSnapshot, wsGetNodeInfo)         // int (__int64 id, UtinniWsNodeInfo* out) -- POD-out, size-first; 1 ok, 0 miss/tombstone
 ENGINE_HOOKPOINT(worldSnapshot, wsGetNodeTemplateName) // int (__int64 id, char* buf, int cap) -- copy-out; returns needed length INCLUDING the NUL; 0 = miss
 ENGINE_HOOKPOINT(worldSnapshot, wsGetGeneration)       // int (void) -- bumps on load/unload ONLY (consumer cache/undo invalidation)
+
+// -- worldSnapshot editor MUTATION wave (v17->v18, Goal B Wave 2; frozen
+// 2026-07-18): LIVE-ONLY mutation -- explicitly non-persistent (nothing
+// touches disk; persistence is Wave 3). Same TU / discipline as Wave 1.
+// Transform WRITE stays the advertised worldSnapshot::moveObject; live
+// refresh stays detailLevelChanged. Semantics per the accepted ANSWERS
+// 5.2/5.3/5.5 + Wave-2 deltas: adds route through the FULL streamed-create
+// bookkeeping; wsAddObject pre-validates EVERYTHING before minting (a failed
+// add never half-mutates); wsAddNodeAt = the undo-replay primitive (data
+// re-add at the explicit id; top-level dirties the update-diff sentinels,
+// child under a live parent spawns immediately); wsRemoveNode = the 7-step
+// occupancy-guarded subtree teardown (1 ok / 0 miss / -1 occupied);
+// allocator checks reader map + buildout set + NetworkIdManager inside the
+// consumer-configurable [floor, ceiling) band.
+ENGINE_HOOKPOINT(worldSnapshot, wsAddObject)           // __int64 (const char* sharedTemplateFilename, const float* transform12, __int64 containedById) -- mints id..id+cellCount, atomic POB cell expansion, spawns immediately; returns new top id, 0 = fail-closed nothing mutated
+ENGINE_HOOKPOINT(worldSnapshot, wsAddNodeAt)           // int (__int64 explicitId, __int64 containedById, const char* templateFilename, int cellIndex, const float* transform12, float radius, unsigned int portalLayoutCrc) -- undo-replay re-add at the EXPLICIT id; 1 ok, 0 fail-closed
+ENGINE_HOOKPOINT(worldSnapshot, wsRemoveNode)          // int (__int64 id) -- occupancy-guarded full subtree teardown + despawn; 1 removed / 0 miss / -1 occupied
+ENGINE_HOOKPOINT(worldSnapshot, wsSetNodeRadius)       // int (__int64 id, float radius) -- 1 ok, 0 miss/tombstone; re-seats the sphere-tree extent
+ENGINE_HOOKPOINT(worldSnapshot, wsConfigureIdAllocator) // int (__int64 floor, __int64 ceiling) -- one-time optional band config (0 = keep default per param); 1 accepted, 0 rejected (visible)
