@@ -52,6 +52,15 @@ is a correctness question about the §5.5 guard's reachability on the advertised
 client. Folds naturally into the Wave-3 conversation (the save-provenance flag + camera-accessor
 ask are already queued there).
 
+## 3a. Reproduced (2026-07-18, deliberate second test)
+
+Maintainer stood inside the cantina and deleted it AGAIN: `wsRemoveNode OK: id=1134557
+subtree=70 nodes` — same `OK`, no `-1`, no crash, building despawned, player fine. So this is
+reproducible, not a one-off, and it strongly supports case (a): the player is visually inside but
+NOT in the POB's live-Object containment (else the container cascade would have deleted the player
+and crashed). The guard is correct-by-its-own-logic but protects nothing in this configuration —
+which is the part we want your eyes on.
+
 ## 4. Not blocking
 
 The rest of the mutation surface smoked clean this session: add/remove/duplicate(after a consumer
