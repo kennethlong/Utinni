@@ -58,6 +58,17 @@ pSetAllowTargetAnything setAllowTargetAnything = nullptr;
 pGetAllowTargetAnything getAllowTargetAnything = nullptr;
 } // namespace swg::cuiPreferences
 
+// v20 (Live World Editor ray-pick): engine-side copy-out cursor ray-cast -- the
+// collideCursorWithWorld semantics done provider-side so CollisionInfo/ClientWorld::collide/
+// viewport math never cross the boundary. Client-window pixels in; 1 hit / 0 miss; terrain hit
+// -> ret 1 + id 0 + valid point (the place-at-cursor case); objectsOnly=1 drops
+// terrain/terrainFlora/interiorGeometry. Game-thread-only. Advertised-only slot (null on SWGEmu).
+namespace swg::clientWorld
+{
+using pCollideScreenRay = int(__cdecl*)(int screenX, int screenY, int objectsOnly, __int64* outHitObjectId, float* outPoint3);
+pCollideScreenRay collideScreenRay = nullptr;
+} // namespace swg::clientWorld
+
 // DIAG 2026-05-20 Issue #12 Phase A: SwgCuiGameMenu is the SWG system-menu
 // mediator class (resolved by hunting for the class-name string
 // "SwgCuiGameMenu" at VA 0x018BFD68, finding its sole push imm32

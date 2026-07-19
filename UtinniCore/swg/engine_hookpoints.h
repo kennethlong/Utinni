@@ -208,8 +208,17 @@
 // matrix accessors for the gizmo (GlMatrix4x4 verbatim / row-major 3x4
 // position-col-3), replaces raw struct-offset camera reads that crash on
 // the NGE layout. 140 names.
+//
+// v19 -> v20 (2026-07-19, SWG-Toolkit live-editor change request):
+// clientWorld::collideScreenRay -- engine-side copy-out cursor ray-pick
+// (screen pixel -> nearest-hit NetworkId + world point; the consumer's
+// collideCursorWithWorld done provider-side so CollisionInfo /
+// ClientWorld::collide's CollideParameters / camera viewport math never
+// cross the boundary; terrain hit = id 0 + valid point, the place-at-cursor
+// case). Plus cuiRadialMenuManager::clear -- the rider pre-approved in the
+// 2026-07-18 positionchanged ANSWER. 142 names.
 // ----------------------------------------------------------------------
-#define ENGINE_HOOKPOINTS_VERSION 19
+#define ENGINE_HOOKPOINTS_VERSION 20
 
 // ----------------------------------------------------------------------
 // One row per advertised endpoint: a stable contract name + the borrowed

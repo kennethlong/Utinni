@@ -388,3 +388,15 @@ ENGINE_HOOKPOINT(cuiPreferences, getAllowTargetAnything) // static bool (void) -
 // the consumer's raw struct-offset camera reads that crash on the NGE layout).
 ENGINE_HOOKPOINT(camera, getProjectionMatrix)           // int (float* out16) -- GlMatrix4x4 verbatim (row-major 4x4); 1 ok / 0 no camera
 ENGINE_HOOKPOINT(camera, getTransformO2W)               // int (float* out12) -- row-major 3x4, position column 3 (the UtinniWsNodeInfo convention); 1 ok / 0 no camera
+
+// -- Live World Editor ray-pick + pre-approved radial clear (v19->v20,
+// 2026-07-19 change request, SWG-Toolkit live-editor session): engine-side
+// copy-out cursor ray-cast -- the consumer's collideCursorWithWorld done
+// provider-side so CollisionInfo / ClientWorld::collide / camera viewport
+// math never cross the boundary (ABI RULE; the rider-4C copy-out shape).
+// Mirrors the engine's own hud pick (SwgCuiHud findObjectByPolygon /
+// hitReticle flags + CollideParameters::cms_default + player excluded).
+// Plus the cuiRadialMenuManager::clear rider pre-approved in the 2026-07-18
+// positionchanged ANSWER.
+ENGINE_HOOKPOINT(clientWorld, collideScreenRay)         // int (int screenX, int screenY, int objectsOnly, __int64* outHitObjectId, float* outPoint3) -- 1 hit / 0 miss; terrain hit -> id 0 + valid point; objectsOnly=1 drops terrain/terrainFlora/interiorGeometry
+ENGINE_HOOKPOINT(cuiRadialMenuManager, clear)           // static void (void) -- plain &fn [CuiRadialMenuManager.h:47]

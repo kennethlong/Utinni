@@ -540,8 +540,17 @@ extern pReplay replay;
 namespace swg::cuiRadialMenuManager
 {
 using pUpdate = void(__cdecl*)();
+using pClear = void(__cdecl*)();
 extern pUpdate update;
+extern pClear clear;
 } // namespace swg::cuiRadialMenuManager
+
+// -- clientWorld (ui/cui_hud.cpp; v20 Live World Editor ray-pick) --
+namespace swg::clientWorld
+{
+using pCollideScreenRay = int(__cdecl*)(int screenX, int screenY, int objectsOnly, __int64* outHitObjectId, float* outPoint3);
+extern pCollideScreenRay collideScreenRay;
+} // namespace swg::clientWorld
 
 // -- cuiMenu::infoTypesFindDefaultCursor (ui/cui_menu.cpp:32) --
 namespace swg::cuiMenu
@@ -861,6 +870,13 @@ static const Binding s_bindings[] = {
     {"cuiPreferences::getAllowTargetAnything", (void**)&swg::cuiPreferences::getAllowTargetAnything}, // restore-on-close read
     {"camera::getProjectionMatrix", (void**)&swg::camera::getProjectionMatrix},                       // gizmo projection (rider 4C; row-major float[4][4])
     {"camera::getTransformO2W", (void**)&swg::camera::getTransformO2W},                               // gizmo camera o2w (row-major float[3][4])
+
+    // ===== v20 (Live World Editor ray-pick + pre-approved radial clear): 2 new endpoints =====
+    // CALLED (never detoured), game-thread-only. collideScreenRay is the engine-side copy-out
+    // cursor ray-cast (hud pick semantics, player excluded; terrain hit -> ret 1 + id 0 + valid
+    // point). clear is the public static CuiRadialMenuManager::clear (editor-teardown reset).
+    {"clientWorld::collideScreenRay", (void**)&swg::clientWorld::collideScreenRay}, // 1 hit / 0 miss; objectsOnly=1 drops terrain/terrainFlora/interiorGeometry
+    {"cuiRadialMenuManager::clear", (void**)&swg::cuiRadialMenuManager::clear},     // static &CuiRadialMenuManager::clear (v20 rider)
 };
 
 // ----------------------------------------------------------------------
@@ -901,8 +917,8 @@ constexpr size_t kIncCount = 0
 
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
 
-static_assert(kIncCount == 140, "contract .inc size drifted from the expected 140 names (v19 / Goal B Wave 3 persistence + riders: 7 name-adds)");
-static_assert(kBindingCount == 138, "s_bindings[] must bind 138 of 140 (.inc minus the TWO carve-outs)");
+static_assert(kIncCount == 142, "contract .inc size drifted from the expected 142 names (v20 / Live World Editor ray-pick + radial clear: 2 name-adds)");
+static_assert(kBindingCount == 140, "s_bindings[] must bind 140 of 142 (.inc minus the TWO carve-outs)");
 static_assert(kBindingCount == kIncCount - 2,
               "exactly two .inc names are carve-outs: consoleHelper::sendInput (D-02) + "
               "client::wndProc (embed-resize regression; RNDR-04 follow-on)");
@@ -1067,6 +1083,9 @@ constexpr const char* kBindingNames[] = {
     "cuiPreferences::getAllowTargetAnything",
     "camera::getProjectionMatrix",
     "camera::getTransformO2W",
+    // ===== v20 additions — lockstep with s_bindings[] above =====
+    "clientWorld::collideScreenRay",
+    "cuiRadialMenuManager::clear",
 };
 
 constexpr bool allNamesInInc()
