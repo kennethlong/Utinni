@@ -843,13 +843,14 @@ bool Game::isSafeToUse()
     {
         return !swg::game::g_runningFlags();
     }
-    // SWGEmu RVA path: returns true only when both SWG-internal safety flags are set.
-    // Per docs/ai/internals.md:218-231, "AND ... Both must be true" — the operator was
-    // previously || (logical-OR), which returned true when only one flag was set, allowing
-    // world-snapshot mutations during scene transitions that the second flag would have
-    // blocked. CON-O-01 disposition: docs/ai/internals.md is the source of truth; the
-    // operator is &&. See assessment.md Open Questions §1.
-    return memory::read<bool>(0x01908858) && memory::read<bool>(0x01919410);
+    // SWGEmu RVA path: true when EITHER SWG-internal safety flag is set. 2026-07-19 LIVE
+    // COUNTER-EVIDENCE reverted the && this briefly was: in a fully-loaded in-world Core3
+    // session (player targeting/resolving objects, scene stable), one of the two flags is
+    // NOT set, so the && made isSafeToUse() false and silently no-op'd every world-snapshot
+    // mutation (remove regression, caught by the Node::removeNode diag). The || is the
+    // field-proven semantics (years of SWGEmu editing); internals.md's "both must be true"
+    // model does not hold live and has been corrected. See assessment.md Open Questions §1.
+    return memory::read<bool>(0x01908858) || memory::read<bool>(0x01919410);
 }
 
 // WR-03 (03-REVIEW): test-only accessors relocated to the test_internal
