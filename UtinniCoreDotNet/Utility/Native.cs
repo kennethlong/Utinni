@@ -187,6 +187,19 @@ namespace UtinniCoreDotNet.Utility
         [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool IsFreeCameraActive();
 
+        // v20 world-pick (the layer oracle / Live World Editor Slice-0 primitive): engine-side
+        // cursor ray-cast via the advertised clientWorld::collideScreenRay row. Returns 1 hit /
+        // 0 miss / -1 unavailable (SWGEmu, pre-v20 exe, or no game window). GAME THREAD ONLY --
+        // marshal via GameCallbacks.AddMainLoopCall. A hit with id 0 is VALID (terrain, or with
+        // objectsOnly=1 an id-less interior-layout decoration); outPoint3 = world x,y,z.
+        [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+            EntryPoint = "utinni_worldPickAt")]
+        public static extern int WorldPickAt(int screenX, int screenY, int objectsOnly, out long hitObjectId, [Out] float[] point3);
+
+        [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+            EntryPoint = "utinni_worldPickScreenCenter")]
+        public static extern int WorldPickScreenCenter(int objectsOnly, out long hitObjectId, [Out] float[] point3);
+
         // Phase 24: gate calls through SWG function pointers that may be UNRESOLVED
         // on the advertised (GetEngineHookPoints) client. On that client a SWG entry
         // point absent from the catalog keeps its hardcoded SWGEmu RVA, which is

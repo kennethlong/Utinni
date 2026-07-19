@@ -29,6 +29,7 @@
 #include "swg/camera/camera.h"
 #include "swg/scene/client_world.h"
 #include "swg/scene/ground_scene.h"
+#include "swg/client/client.h"
 #include "utility/log.h"
 
 #include <cstdio>
@@ -382,3 +383,37 @@ void detour()
 }
 
 } // namespace utinni::cuiHud
+
+// v20 world-pick exports (the layer oracle + Live World Editor Slice-0 primitive). Thin
+// extern "C" forwarders over the advertised clientWorld::collideScreenRay row -- CppSharp
+// never parses them, so no ABI re-bless (the utinni_reloadCurrentTerrain pattern). Returns
+// the provider tri-state 1 hit / 0 miss, or -1 when the row is unavailable (SWGEmu / pre-v20
+// exe / no game window). GAME THREAD ONLY -- the managed caller marshals via AddMainLoopCall.
+// Provider semantics reminder: a terrain hit is ret 1 + id 0 + valid point (id 0 is NOT
+// failure); objectsOnly=1 drops terrain/terrainFlora/interiorGeometry so an id-0 hit indoors
+// is interior-layout (.ilf) decoration; the shim already walked to the nearest networked
+// ancestor for child parts.
+extern "C" __declspec(dllexport) int __cdecl utinni_worldPickAt(int screenX, int screenY, int objectsOnly, __int64* outHitObjectId, float* outPoint3)
+{
+    if (swg::clientWorld::collideScreenRay == nullptr)
+    {
+        return -1;
+    }
+    return swg::clientWorld::collideScreenRay(screenX, screenY, objectsOnly, outHitObjectId, outPoint3);
+}
+
+extern "C" __declspec(dllexport) int __cdecl utinni_worldPickScreenCenter(int objectsOnly, __int64* outHitObjectId, float* outPoint3)
+{
+    if (swg::clientWorld::collideScreenRay == nullptr)
+    {
+        return -1;
+    }
+
+    const HWND hwnd = utinni::Client::getSwgHwnd();
+    RECT rc;
+    if (hwnd == nullptr || !GetClientRect(hwnd, &rc) || rc.right <= 0 || rc.bottom <= 0)
+    {
+        return -1;
+    }
+    return swg::clientWorld::collideScreenRay(rc.right / 2, rc.bottom / 2, objectsOnly, outHitObjectId, outPoint3);
+}
