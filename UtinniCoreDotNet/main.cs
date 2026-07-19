@@ -94,6 +94,40 @@ namespace UtinniCoreDotNet
                 ObjectCallbacks.Initialize();
                 CuiCallbacks.Initialize();
 
+                // Phase 24 embed render-sizing (crew-consult design A, docs commit d9bb55b):
+                // on the ADVERTISED client, create + maximize the editor BEFORE the ready
+                // signal below, measure the real embed panel, and write utinni_embed.cfg —
+                // the launcher appended '@utinni_embed.cfg' to the game's post-'--' config
+                // args, and the game's main thread is still spin-parked at its patched PE
+                // entry until the signal, so the engine is guaranteed to parse the freshly
+                // written file and create its backbuffer at the embed size (present 1:1,
+                // undistorted, gizmo maps 1:1). Show() performs layout synchronously; the
+                // message loop only starts at Application.Run below, which accepts an
+                // already-shown form. SWGEmu keeps the historical ordering EXACTLY (form
+                // constructed inside Application.Run); any failure here falls back to that
+                // same path and EmbedResolution clears the cfg (engine warns + uses
+                // client.cfg — degraded stretch, never a crash).
+                bool editorMode = UtinniCore.Utinni.utinni.GetConfig().GetBool("Editor", "enableEditorMode");
+                FormMain formMain = null;
+                if (editorMode && Native.IsAdvertisedClient())
+                {
+                    try
+                    {
+                        formMain = new FormMain(pluginLoader);
+                        formMain.WindowState = FormWindowState.Maximized;
+                        formMain.Show();
+                        EmbedResolution.WriteOrClear(formMain, formMain.GamePanelClientSize);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Info("EmbedResolution: editor pre-create failed; falling back to post-signal creation: " + ex.Message);
+                        if (formMain != null && formMain.IsDisposed)
+                        {
+                            formMain = null;
+                        }
+                    }
+                }
+
                 // 2026-05-19: signal the Launcher that all C++ + managed plugin
                 // setup is complete and SWG's main thread is safe to resume past
                 // the EB FE stall the Launcher applied at PE entry. By this point
@@ -160,9 +194,11 @@ namespace UtinniCoreDotNet
                     Log.InfoSimple("LivePipeServer: failed to start (live bridge disabled): " + ex.Message);
                 }
 
-                if (UtinniCore.Utinni.utinni.GetConfig().GetBool("Editor", "enableEditorMode"))
+                if (editorMode)
                 {
-                    Application.Run(new FormMain(pluginLoader));
+                    // Advertised path: run the pre-created (already shown) form from the
+                    // embed-sizing block above. SWGEmu / fallback: construct here, as always.
+                    Application.Run(formMain ?? new FormMain(pluginLoader));
                 }
 
             }

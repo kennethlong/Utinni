@@ -189,6 +189,12 @@ namespace UtinniCoreDotNet.UI.Forms
             }
         }
 
+        // Phase 24 embed render-sizing: the INNER PanelGame client size — the exact rect
+        // RepositionSwgWindow stretches the game window into, and therefore the resolution
+        // utinni_embed.cfg must pin. FormMain.ClientSize would over-measure by the tool
+        // panels + titlebar. Internal: consumed only by Startup.EntryPoint pre-signal.
+        internal System.Drawing.Size GamePanelClientSize => game.ClientSize;
+
         private void FormMain_Resize(object sender, EventArgs e)
         {
             if (WindowState == FormWindowState.Minimized || WindowState == FormWindowState.Normal || WindowState == FormWindowState.Maximized)

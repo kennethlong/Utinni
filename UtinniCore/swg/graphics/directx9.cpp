@@ -23,12 +23,14 @@
  **/
 
 #include "directx9.h"
+#include <cstdlib>
 #include <d3d9.h>
 #include <d3d9types.h>
 #include <imgui_impl_dx9.h>
 #include "utinni.h"
 #include "swg/ui/imgui_impl.h"
 #include "swg/ui/cui_manager.h"
+#include "swg/endpoints.h" // Phase 24 embed render-sizing: advertised-only first-present assert
 #include "depth_texture.h"
 #include "graphics.h"
 #include "render_backend.h" // Phase 18 / RNDR-01: stash live device + drive setup(HWND)
@@ -325,6 +327,48 @@ HRESULT __stdcall hkPresent(LPDIRECT3DDEVICE9 pDevice, const RECT* pSourceRect, 
                  "directX::hkPresent: first fire (block=%d, destHwndOverride=0x%p, src=%s, dst=%s%s)",
                  blockPresentCall ? 1 : 0, (void*)hDestWindowOverride, srcBuf, dstBuf, swapBuf);
         utinni::log::info(msg);
+
+        // Phase 24 embed render-sizing (crew consult d9bb55b): first-present LOUD assert,
+        // advertised client only. The startup chain (launcher @utinni_embed.cfg ref +
+        // managed pre-signal measure/write) must have produced a WINDOWED device whose
+        // backbuffer equals the device window's client rect — that is the invariant that
+        // makes present 1:1 and the gizmo mapping exact. If the engine clamped/overrode
+        // the resolution (VRAM cap, display-mode rejection into exclusive fullscreen,
+        // window-frame math), this is where it surfaces as a critical log instead of a
+        // silently mis-calibrated gizmo. The embed-panel comparison itself runs per-frame
+        // in imgui_impl newFrame (the panel size is only published at reparent, which is
+        // gated on this very first present — it cannot be compared here yet).
+        if (swg::endpoints::isAdvertisedClient())
+        {
+            IDirect3DSwapChain9* assertSc = nullptr;
+            if (SUCCEEDED(pDevice->GetSwapChain(0, &assertSc)) && assertSc != nullptr)
+            {
+                D3DPRESENT_PARAMETERS app = {};
+                if (SUCCEEDED(assertSc->GetPresentParameters(&app)))
+                {
+                    RECT rc = {0, 0, 0, 0};
+                    const bool haveRect = app.hDeviceWindow != nullptr && GetClientRect(app.hDeviceWindow, &rc) != 0;
+                    const int cw = rc.right - rc.left;
+                    const int ch = rc.bottom - rc.top;
+                    const bool bbMatchesWindow = haveRect && abs((int)app.BackBufferWidth - cw) <= 1 && abs((int)app.BackBufferHeight - ch) <= 1;
+                    char amsg[256];
+                    snprintf(amsg, sizeof(amsg),
+                             "embed-aspect first-present: bb=%ux%u window-client=%dx%d windowed=%d -> %s",
+                             app.BackBufferWidth, app.BackBufferHeight, cw, ch, app.Windowed ? 1 : 0,
+                             (app.Windowed && bbMatchesWindow) ? "OK (present 1:1)" : "MISMATCH");
+                    if (app.Windowed && bbMatchesWindow)
+                    {
+                        utinni::log::info(amsg);
+                    }
+                    else
+                    {
+                        utinni::log::critical(amsg);
+                    }
+                }
+                assertSc->Release();
+            }
+        }
+
         // Phase 24 embed-startup mitigation: latch "client has presented a frame" (D3D9).
         // PanelGame gates the advertised-client reparent on this; SWGEmu is not gated but
         // latching here keeps the signal correct for an advertised D3D9 client too.

@@ -37,6 +37,7 @@
 #include "swg/graphics/backend_select.h"
 
 #include <atomic>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <mutex>
@@ -177,6 +178,17 @@ WNDPROC originalWndProcHandler = nullptr;
 // is clamped -- shrink/minimize/move and the managed reposition itself (rect updated first) pass through.
 static int g_embedClampX = 0, g_embedClampY = 0, g_embedClampW = 0, g_embedClampH = 0;
 static bool g_embedClampValid = false;
+
+// Phase 24 embed render-sizing (crew consult d9bb55b): per-frame fail-closed latch.
+// True while the render target matches the SWG window client size (±1px) on the
+// advertised client — the invariant the startup embed cfg (utinni_embed.cfg) creates
+// (backbuffer == embed panel -> present 1:1). When it breaks (post-launch un-maximize,
+// SWG's fullscreen restyle, a WM_DISPLAYCHANGE fallback), imgui_gizmo::draw() refuses
+// to run rather than operate against a stretch it cannot map exactly — a broken drag
+// must be impossible, not approximate. Defaults true so SWGEmu (which legitimately
+// runs stretched and keeps the RT-space compensation below) and standalone windows
+// are unaffected; the latch is only ever written on the advertised client.
+static bool g_embedAspectOk = true;
 
 extern "C" __declspec(dllexport) void __cdecl utinni_setEmbedClampRect(int x, int y, int w, int h)
 {
@@ -664,38 +676,33 @@ void render()
                 if (hwnd != nullptr && GetCursorPos(&p) && ScreenToClient(hwnd, &p) && p.x >= 0 && p.y >= 0 && (float)p.x <= clientW && (float)p.y <= clientH)
                 {
                     io.AddMousePosEvent((float)p.x * rtw / clientW, (float)p.y * rth / clientH);
+                }
 
-                    // Wave-3 gizmo hit-test calibration diag (advertised only): the RT-space mouse
-                    // scale + SetRect were written for the D3D9 backbuffer-stretch; the DX11 embed's
-                    // render-target/window relationship differs (gizmo moves vertically but H-axis
-                    // hit-test is off + vanishes near the bottom). Log the exact dims/scale while the
-                    // gizmo is active so the next session calibrates on numbers, not guesses. Bounded.
-                    if (swg::endpoints::isAdvertisedClient() && imgui_gizmo::isEnabled())
+                // Phase 24 embed render-sizing (crew consult d9bb55b): refresh the fail-closed
+                // gizmo latch. On the advertised client the startup embed cfg makes the
+                // backbuffer equal the SWG window client size, so the RT-space scaling above is
+                // identity; if that invariant ever breaks (un-maximize, fullscreen restyle,
+                // WM_DISPLAYCHANGE), the mouse↔gizmo mapping is stretched again and the gizmo
+                // must refuse rather than mis-track. clientW/H here is io.DisplaySize as set by
+                // ImGui_ImplWin32_NewFrame from the swapchain window — the client-rect ground
+                // truth. Edge-transition logs only (no per-frame spam).
+                if (swg::endpoints::isAdvertisedClient())
+                {
+                    const bool aspectOk = fabsf(rtw - clientW) <= 1.0f && fabsf(rth - clientH) <= 1.0f;
+                    if (aspectOk != g_embedAspectOk)
                     {
-                        static std::atomic<int> s_gizmoDiagCount{0};
-                        const int n = s_gizmoDiagCount.fetch_add(1, std::memory_order_relaxed);
-                        if (n < 20 && (n % 4) == 0)
-                        {
-                            // Window-handle audit: the mouse is ScreenToClient'd against
-                            // Client::getSwgHwnd(); ImGui measures DisplaySize (=clientW/H) from the
-                            // swapchain's own HWND. If those windows differ in the embedded/reparented
-                            // maximized-Utinni setup, the cursor space and the layout space don't line
-                            // up -> hit-test off, machine-independently. Log both hwnds + swgHwnd's own
-                            // client rect to compare against DisplaySize (clientW/H). No guessing.
-                            RECT swgRc = {0, 0, 0, 0};
-                            if (hwnd != nullptr)
-                            {
-                                GetClientRect(hwnd, &swgRc);
-                            }
-                            char m[320];
-                            std::snprintf(m, sizeof(m),
-                                          "gizmo-diag: RT=%.0fx%.0f DisplaySize=%.0fx%.0f swgHwnd=0x%p swgClient=%ldx%ld rawCursor=(%ld,%ld) scaledMouse=(%.1f,%.1f)",
-                                          rtw, rth, clientW, clientH, (void*)hwnd,
-                                          swgRc.right - swgRc.left, swgRc.bottom - swgRc.top, p.x, p.y,
-                                          (float)p.x * rtw / clientW, (float)p.y * rth / clientH);
+                        char m[192];
+                        std::snprintf(m, sizeof(m),
+                                      "embed-aspect: RT %.0fx%.0f vs client %.0fx%.0f -> %s (gizmo %s)",
+                                      rtw, rth, clientW, clientH,
+                                      aspectOk ? "MATCH" : "MISMATCH",
+                                      aspectOk ? "enabled" : "disabled");
+                        if (aspectOk)
                             utinni::log::info(m);
-                        }
+                        else
+                            utinni::log::critical(m);
                     }
+                    g_embedAspectOk = aspectOk;
                 }
                 io.DisplaySize = ImVec2(rtw, rth); // lay out in render-target space (see above)
             }
@@ -1177,6 +1184,15 @@ void editTransform(const float* cameraView, float* cameraProjection, float* matr
 void draw()
 {
     if (object == nullptr || !enabled)
+    {
+        return;
+    }
+
+    // Phase 24 embed render-sizing (crew consult d9bb55b): fail closed. When the render
+    // target no longer matches the SWG window client size on the advertised client (the
+    // newFrame latch above), any drag would be mis-calibrated by the present-stretch —
+    // refuse to draw the gizmo at all instead of shipping a half-working manipulation.
+    if (swg::endpoints::isAdvertisedClient() && !imgui_impl::g_embedAspectOk)
     {
         return;
     }

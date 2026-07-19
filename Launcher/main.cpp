@@ -201,6 +201,74 @@ std::string getSwgClientFilename()
     return result;
 }
 
+// Phase 24 embed render-sizing: detect the advertised client BEFORE CreateProcess by
+// checking the target exe's export table for GetEngineHookPoints (the same export
+// endpoints_bindings.cpp resolves at runtime). SEC_IMAGE maps the file laid out at its
+// section RVAs without running any of it (no DllMain, no import resolution), so the
+// export directory can be walked with plain RVA adds — no RVA->file-offset math.
+// Returns false on any anomaly: an unreadable/invalid/64-bit image is simply "not the
+// advertised client" and the launch proceeds exactly as before.
+static bool fileExportsEngineHookPoints(const std::string& exePath)
+{
+    bool found = false;
+    HANDLE hFile = CreateFileA(exePath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (hFile == INVALID_HANDLE_VALUE)
+    {
+        return false;
+    }
+
+    HANDLE hMap = CreateFileMappingA(hFile, nullptr, PAGE_READONLY | SEC_IMAGE, 0, 0, nullptr);
+    if (hMap != nullptr)
+    {
+        BYTE* base = (BYTE*)MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0);
+        if (base != nullptr)
+        {
+            auto dosHeader = (PIMAGE_DOS_HEADER)base;
+            if (dosHeader->e_magic == IMAGE_DOS_SIGNATURE)
+            {
+                auto ntHeaders = (PIMAGE_NT_HEADERS32)(base + dosHeader->e_lfanew);
+                if (ntHeaders->Signature == IMAGE_NT_SIGNATURE && ntHeaders->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC)
+                {
+                    const IMAGE_DATA_DIRECTORY& exportDir = ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+                    if (exportDir.VirtualAddress != 0 && exportDir.Size != 0)
+                    {
+                        auto exports = (PIMAGE_EXPORT_DIRECTORY)(base + exportDir.VirtualAddress);
+                        const DWORD* nameRvas = (const DWORD*)(base + exports->AddressOfNames);
+                        for (DWORD i = 0; i < exports->NumberOfNames && !found; ++i)
+                        {
+                            found = strcmp((const char*)(base + nameRvas[i]), "GetEngineHookPoints") == 0;
+                        }
+                    }
+                }
+            }
+            UnmapViewOfFile(base);
+        }
+        CloseHandle(hMap);
+    }
+    CloseHandle(hFile);
+    return found;
+}
+
+// True when cmdLine contains a standalone "--" token (the start-of-config-args marker,
+// see main() below). Boundary-checked so tokens that merely CONTAIN "--" (e.g. a value
+// like "a--b" or a "--flag") don't count.
+static bool hasStandaloneDoubleDash(const std::string& cmdLine)
+{
+    size_t pos = 0;
+    while ((pos = cmdLine.find("--", pos)) != std::string::npos)
+    {
+        const size_t end = pos + 2;
+        const bool startsToken = pos == 0 || cmdLine[pos - 1] == ' ';
+        const bool endsToken = end == cmdLine.size() || cmdLine[end] == ' ';
+        if (startsToken && endsToken)
+        {
+            return true;
+        }
+        pos = end;
+    }
+    return false;
+}
+
 void loadDll(const std::string& cmdLine)
 {
     STARTUPINFOA StartupInfo = {0};
@@ -208,7 +276,32 @@ void loadDll(const std::string& cmdLine)
     PROCESS_INFORMATION procInfo;
 
     const std::string swgClientFilename = getSwgClientFilename();
-    if (CreateProcess(swgClientFilename.c_str(), const_cast<char*>(cmdLine.c_str()), nullptr, nullptr, false, CREATE_SUSPENDED, nullptr, swgClientPath.c_str(), &StartupInfo, &procInfo))
+
+    // Phase 24 embed render-sizing (crew-consult design A, d9bb55b): on the ADVERTISED
+    // client only, reference utinni_embed.cfg in the post-'--' config region. The managed
+    // side measures the embed panel and writes the file BEFORE signaling the ready event
+    // (the game is spin-parked at its entry until then), and the engine parses the post
+    // command line AFTER client.cfg — so its screenWidth/screenHeight override the pinned
+    // values and the backbuffer is created at the embed size. Constraints honored here:
+    //  - token must be CWD-RELATIVE: the engine's '@' parser is whitespace-delimited with
+    //    no quote support, and the client dir may contain spaces. CWD == swgClientPath
+    //    (the lpCurrentDirectory below), so the bare filename resolves to the client dir.
+    //  - merge-aware: a second standalone "--" inside the post-string FATALs the engine's
+    //    key=value parser, so append inside an existing post-region when one is present.
+    //  - SWGEmu must never see the token (shares the config-parsing lineage): gate on the
+    //    GetEngineHookPoints export.
+    // A missing/stale file is safe: the engine warns and falls back to client.cfg (the
+    // pre-fix stretched view), never a crash — but delete any prior-session copy anyway
+    // so a failed managed write can't feed old numbers to a new session.
+    std::string effectiveCmdLine = cmdLine;
+    if (fileExportsEngineHookPoints(swgClientFilename))
+    {
+        DeleteFileA((swgClientPath + "utinni_embed.cfg").c_str());
+        effectiveCmdLine += hasStandaloneDoubleDash(effectiveCmdLine) ? " @utinni_embed.cfg" : " -- @utinni_embed.cfg";
+        OutputDebugStringA(("[LAUNCHER] advertised client detected; embed cfg ref appended; cmdline:" + effectiveCmdLine + "\n").c_str());
+    }
+
+    if (CreateProcess(swgClientFilename.c_str(), const_cast<char*>(effectiveCmdLine.c_str()), nullptr, nullptr, false, CREATE_SUSPENDED, nullptr, swgClientPath.c_str(), &StartupInfo, &procInfo))
     {
         const HANDLE hProcess(procInfo.hProcess);
 
