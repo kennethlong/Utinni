@@ -676,10 +676,22 @@ void render()
                         const int n = s_gizmoDiagCount.fetch_add(1, std::memory_order_relaxed);
                         if (n < 20 && (n % 4) == 0)
                         {
-                            char m[256];
+                            // Window-handle audit: the mouse is ScreenToClient'd against
+                            // Client::getSwgHwnd(); ImGui measures DisplaySize (=clientW/H) from the
+                            // swapchain's own HWND. If those windows differ in the embedded/reparented
+                            // maximized-Utinni setup, the cursor space and the layout space don't line
+                            // up -> hit-test off, machine-independently. Log both hwnds + swgHwnd's own
+                            // client rect to compare against DisplaySize (clientW/H). No guessing.
+                            RECT swgRc = {0, 0, 0, 0};
+                            if (hwnd != nullptr)
+                            {
+                                GetClientRect(hwnd, &swgRc);
+                            }
+                            char m[320];
                             std::snprintf(m, sizeof(m),
-                                          "gizmo-diag: RT=%.0fx%.0f client=%.0fx%.0f rawCursor=(%ld,%ld) scaledMouse=(%.1f,%.1f)",
-                                          rtw, rth, clientW, clientH, p.x, p.y,
+                                          "gizmo-diag: RT=%.0fx%.0f DisplaySize=%.0fx%.0f swgHwnd=0x%p swgClient=%ldx%ld rawCursor=(%ld,%ld) scaledMouse=(%.1f,%.1f)",
+                                          rtw, rth, clientW, clientH, (void*)hwnd,
+                                          swgRc.right - swgRc.left, swgRc.bottom - swgRc.top, p.x, p.y,
                                           (float)p.x * rtw / clientW, (float)p.y * rth / clientH);
                             utinni::log::info(m);
                         }
@@ -1220,43 +1232,15 @@ void draw()
     Matrix4x4::transpose(&projection.matrix[0][0], projMatrix);
     Matrix4x4::transpose(&objectMatrix.matrix[0][0], objMatrix);
 
-    // Gizmo viewport: ImGuizmo maps the projected gizmo into the SetRect rect, and hit-tests the
-    // mouse against it. On the advertised DX11 embed the game renders its 3D world into a
-    // LETTERBOXED viewport inside the render target -- the camera projection aspect
-    // (proj[1][1]/proj[0][0], e.g. 1.951 = 1600/820) does NOT match the full-RT aspect (1600/900 =
-    // 1.778). Using the full RT for SetRect threw the vertical mapping off (gizmo out of range near
-    // the bottom, hit-test miscalibrated -- Wave-3 smoke, 2026-07-18, gizmo-diag confirmed). Derive
-    // the actual 3D viewport from the projection aspect (the camera getViewport accessor is an
-    // unadvertised SWGEmu RVA, unavailable here) and letterbox/pillarbox it within the RT, centered.
-    float setRectX = 0.0f;
-    float setRectY = 0.0f;
-    float setRectW = Graphics::getCurrentRenderTargetWidth();
-    float setRectH = Graphics::getCurrentRenderTargetHeight();
-    if (swg::endpoints::isAdvertisedClient() && projection.matrix[0][0] != 0.0f && setRectH != 0.0f)
-    {
-        const float projAspect = projection.matrix[1][1] / projection.matrix[0][0];
-        const float rtAspect = setRectW / setRectH;
-        if (projAspect > 0.0f && rtAspect > 0.0f)
-        {
-            if (rtAspect > projAspect)
-            {
-                // RT wider than the projection -> pillarbox (bars left/right).
-                const float vpW = setRectH * projAspect;
-                setRectX = (setRectW - vpW) * 0.5f;
-                setRectW = vpW;
-            }
-            else
-            {
-                // RT taller than the projection -> letterbox (bars top/bottom). This is the embed case.
-                const float vpH = setRectW / projAspect;
-                setRectY = (setRectH - vpH) * 0.5f;
-                setRectH = vpH;
-            }
-        }
-    }
+    // Enable and draw the gizmo. NOTE (2026-07-18): the advertised DX11 embed has an unresolved
+    // window-scaling problem between the backing canvas (render target) and the window client area;
+    // the mouse↔gizmo mapping is being fixed EXACTLY (not by derived-aspect guesses) -- see
+    // [[feedback_gizmo_no_half_working]]. Baseline full-RT SetRect restored here while the exact
+    // coordinate pipeline is instrumented (below) + a provider camera::getViewport row is requested.
+    const float setRectW = Graphics::getCurrentRenderTargetWidth();
+    const float setRectH = Graphics::getCurrentRenderTargetHeight();
 
-    // Enable and draw the gizmo
-    ImGuizmo::SetRect(setRectX, setRectY, setRectW, setRectH);
+    ImGuizmo::SetRect(0, 0, setRectW, setRectH);
     ImGuizmo::BeginFrame();
     ImGuizmo::Enable(true);
     editTransform(viewMatrix, projMatrix, objMatrix);
