@@ -381,24 +381,11 @@ WorldSnapshotReaderWriter::Node* WorldSnapshotReaderWriter::addNode(int nodeId, 
 
 void WorldSnapshotReaderWriter::Node::removeNode()
 {
-    // DIAG 2026-07-19 (SWGEmu remove-regression triage): bounded step logging so a failed
-    // remove pinpoints its dead step from utinni.log instead of a silent no-op. Remove
-    // once the regression is closed.
-    char diag[160];
-
     if (offlineSnapshotUnavailable())
         return;
 
     if (!Game::isSafeToUse())
-    {
-        std::snprintf(diag, sizeof(diag), "Node::removeNode: isSafeToUse=FALSE -> no-op (id=%d)", id);
-        utinni::log::info(diag);
         return;
-    }
-
-    std::snprintf(diag, sizeof(diag), "Node::removeNode: ENTRY id=%d parentId=%d safeFlags={%d,%d}", id, parentId,
-                  (int)memory::read<bool>(0x01908858), (int)memory::read<bool>(0x01919410));
-    utinni::log::info(diag);
 
     if (parentId == 0)
     {
@@ -430,10 +417,6 @@ void WorldSnapshotReaderWriter::Node::removeNode()
 
     Object* nodeObject = Network::getObjectById(id);
 
-    std::snprintf(diag, sizeof(diag), "Node::removeNode: getObjectById(%d) -> 0x%p%s", id,
-                  (void*)nodeObject, nodeObject != nullptr ? " -> remove()" : " (null: not despawning)");
-    utinni::log::info(diag);
-
     // Need to nullptr check because only loaded objects are non null, ie in range or previously 'seen'
     // and the loop goes through all nodes in the entire .WS
     if (nodeObject != nullptr)
@@ -442,7 +425,6 @@ void WorldSnapshotReaderWriter::Node::removeNode()
     }
 
     swg::worldSnapshotReaderWriter::removeNode(WorldSnapshotReaderWriter::get(), id);
-    utinni::log::info("Node::removeNode: EXIT (readerWriter::removeNode done)");
 }
 
 void WorldSnapshotReaderWriter::Node::removeNodeFull() // WIP - Messy IDA pseudo code
@@ -491,14 +473,6 @@ void WorldSnapshotReaderWriter::Node::removeNodeFull() // WIP - Messy IDA pseudo
     }
 
     Object* nodeObject = Network::getObjectById(id);
-
-    // DIAG 2026-07-19 (SWGEmu remove-regression triage, see Node::removeNode above).
-    {
-        char diag[160];
-        std::snprintf(diag, sizeof(diag), "Node::removeNodeFull: getObjectById(%d) -> 0x%p%s", id,
-                      (void*)nodeObject, nodeObject != nullptr ? " -> remove()" : " (null: not despawning)");
-        utinni::log::info(diag);
-    }
 
     // Need to nullptr check because only loaded objects are non null, ie in range or previously 'seen'
     // and the loop goes through all nodes in the entire .WS

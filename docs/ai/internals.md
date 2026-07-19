@@ -228,7 +228,7 @@ the original SWG config path is replaced with our `utinni.cfg`.
 | `0x00425BE0`           | `Game::getConstCamera`                         | PUSH_RET            | Exposed.                                              |
 | `0x1908830` *(data)*   | `Game::mainLoopCount` (int)                    | direct read         | Used by callback bookkeeping.                          |
 | `0x01908858` *(data)*  | `Game::isSafeToUse` flag #1                    | direct read         | `Game::isSafeToUse()` reads this OR...                 |
-| `0x01919410` *(data)*  | `Game::isSafeToUse` flag #2                    | direct read         | ...this. EITHER being set means safe. (2026-07-19 live: in a fully-loaded in-world session one flag stays unset; the earlier "both must be true" model made isSafeToUse false and silently blocked all world-snapshot mutations — the remove regression. OR is the field-proven semantics.) |
+| `0x01919410` *(data)*  | `Game::isSafeToUse` flag #2                    | direct read         | ...this. EITHER being set means safe. (2026-07-19 live: in a fully-loaded in-world session one flag stays unset; the earlier "both must be true" model made isSafeToUse false and silently blocked all world-snapshot mutations — the remove regression. OR is the field-proven semantics. Confirmation smoke measured `safeFlags={0,1}`: flag #1 `0x01908858` is the one that stays UNSET in-world on Core3; flag #2 `0x01919410` is set.) |
 
 ### `swg/appearance/skeleton.cpp`
 
