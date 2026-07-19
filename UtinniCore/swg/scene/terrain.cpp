@@ -23,6 +23,7 @@
  **/
 
 #include "terrain.h"
+#include "swg/endpoints.h"
 
 namespace swg::terrain
 {
@@ -44,13 +45,23 @@ Terrain* Terrain::get()
     return memory::read<Terrain*>(0x01947194); // TerrainObject static pointer
 }
 
+// The four RVA-backed members below are SWGEmu-only literals with no advertised rebinding.
+// Calling one on the advertised client executes unrelated NGE code (2026-07-19 live crash:
+// setWeatherIndex's 0x00845C90 landed mid-CuiStringIds-initializer there -> stray std::string
+// dtor -> MemoryManager::free(0x1) AV). Fail closed until provider rows exist. Terrain::get()
+// and getFilename() stay unguarded: field-proven valid on advertised (the Wave-3 reload leg's
+// getCurrentSceneNameFromTerrain depends on them).
 void Terrain::setTimeOfDay(float time)
 {
+    if (swg::endpoints::isAdvertisedClient())
+        return;
     swg::terrain::setTimeOfDay(this, time, true);
 }
 
 float Terrain::getTimeOfDay()
 {
+    if (swg::endpoints::isAdvertisedClient())
+        return 0.0f;
     return swg::terrain::getTimeOfDay(this);
 }
 
@@ -71,11 +82,15 @@ int Terrain::getTimeOfDayMinutes()
 
 int Terrain::getWeatherIndex()
 {
+    if (swg::endpoints::isAdvertisedClient())
+        return 0;
     return memory::read<int>(0x01924B6C); // Current terrain weatherIndex static pointer
 }
 
 void Terrain::setWeatherIndex(int weatherIndex)
 {
+    if (swg::endpoints::isAdvertisedClient())
+        return;
     swg::terrain::setWeatherIndex(weatherIndex);
 }
 
