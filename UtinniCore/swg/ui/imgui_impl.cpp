@@ -36,6 +36,7 @@
 // tier header (the directX11 tier .h) deliberately stays OUT of this TU.
 #include "swg/graphics/backend_select.h"
 
+#include <atomic>
 #include <cstdio>
 #include <cstring>
 #include <mutex>
@@ -663,6 +664,26 @@ void render()
                 if (hwnd != nullptr && GetCursorPos(&p) && ScreenToClient(hwnd, &p) && p.x >= 0 && p.y >= 0 && (float)p.x <= clientW && (float)p.y <= clientH)
                 {
                     io.AddMousePosEvent((float)p.x * rtw / clientW, (float)p.y * rth / clientH);
+
+                    // Wave-3 gizmo hit-test calibration diag (advertised only): the RT-space mouse
+                    // scale + SetRect were written for the D3D9 backbuffer-stretch; the DX11 embed's
+                    // render-target/window relationship differs (gizmo moves vertically but H-axis
+                    // hit-test is off + vanishes near the bottom). Log the exact dims/scale while the
+                    // gizmo is active so the next session calibrates on numbers, not guesses. Bounded.
+                    if (swg::endpoints::isAdvertisedClient() && imgui_gizmo::isEnabled())
+                    {
+                        static std::atomic<int> s_gizmoDiagCount{0};
+                        const int n = s_gizmoDiagCount.fetch_add(1, std::memory_order_relaxed);
+                        if (n < 20 && (n % 4) == 0)
+                        {
+                            char m[256];
+                            std::snprintf(m, sizeof(m),
+                                          "gizmo-diag: RT=%.0fx%.0f client=%.0fx%.0f rawCursor=(%ld,%ld) scaledMouse=(%.1f,%.1f)",
+                                          rtw, rth, clientW, clientH, p.x, p.y,
+                                          (float)p.x * rtw / clientW, (float)p.y * rth / clientH);
+                            utinni::log::info(m);
+                        }
+                    }
                 }
                 io.DisplaySize = ImVec2(rtw, rth); // lay out in render-target space (see above)
             }
@@ -1199,8 +1220,43 @@ void draw()
     Matrix4x4::transpose(&projection.matrix[0][0], projMatrix);
     Matrix4x4::transpose(&objectMatrix.matrix[0][0], objMatrix);
 
+    // Gizmo viewport: ImGuizmo maps the projected gizmo into the SetRect rect, and hit-tests the
+    // mouse against it. On the advertised DX11 embed the game renders its 3D world into a
+    // LETTERBOXED viewport inside the render target -- the camera projection aspect
+    // (proj[1][1]/proj[0][0], e.g. 1.951 = 1600/820) does NOT match the full-RT aspect (1600/900 =
+    // 1.778). Using the full RT for SetRect threw the vertical mapping off (gizmo out of range near
+    // the bottom, hit-test miscalibrated -- Wave-3 smoke, 2026-07-18, gizmo-diag confirmed). Derive
+    // the actual 3D viewport from the projection aspect (the camera getViewport accessor is an
+    // unadvertised SWGEmu RVA, unavailable here) and letterbox/pillarbox it within the RT, centered.
+    float setRectX = 0.0f;
+    float setRectY = 0.0f;
+    float setRectW = Graphics::getCurrentRenderTargetWidth();
+    float setRectH = Graphics::getCurrentRenderTargetHeight();
+    if (swg::endpoints::isAdvertisedClient() && projection.matrix[0][0] != 0.0f && setRectH != 0.0f)
+    {
+        const float projAspect = projection.matrix[1][1] / projection.matrix[0][0];
+        const float rtAspect = setRectW / setRectH;
+        if (projAspect > 0.0f && rtAspect > 0.0f)
+        {
+            if (rtAspect > projAspect)
+            {
+                // RT wider than the projection -> pillarbox (bars left/right).
+                const float vpW = setRectH * projAspect;
+                setRectX = (setRectW - vpW) * 0.5f;
+                setRectW = vpW;
+            }
+            else
+            {
+                // RT taller than the projection -> letterbox (bars top/bottom). This is the embed case.
+                const float vpH = setRectW / projAspect;
+                setRectY = (setRectH - vpH) * 0.5f;
+                setRectH = vpH;
+            }
+        }
+    }
+
     // Enable and draw the gizmo
-    ImGuizmo::SetRect(0, 0, Graphics::getCurrentRenderTargetWidth(), Graphics::getCurrentRenderTargetHeight());
+    ImGuizmo::SetRect(setRectX, setRectY, setRectW, setRectH);
     ImGuizmo::BeginFrame();
     ImGuizmo::Enable(true);
     editTransform(viewMatrix, projMatrix, objMatrix);
