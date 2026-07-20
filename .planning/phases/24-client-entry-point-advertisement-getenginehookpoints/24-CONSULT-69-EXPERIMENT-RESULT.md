@@ -25,6 +25,18 @@ class). Consumer probe = Utinni `c2cf79d` + UtinniPlugins `641de8d`.
   objects never get one assigned), logging `hudPickId=` per pick and `ownId=` per nudge.
   The next run turns the inference into a direct measurement; the manipulation half of the
   PASS (the latched pointer moved the object) stands regardless.
+- **DIRECT MEASUREMENT OBTAINED (2026-07-19 20:47, upgraded probe):** re-hovering the chair:
+  ```
+  20:47:24  hudPick=0x52965310 hudPickId=0 rayResult=1 rayId=1082878 rayObj=0x48CC4E60
+            -> DIVERGENCE (picked object is ID-LESS -- .ilf class, measured directly)
+  ```
+  The picked object's OWN id is 0 (three hovers, consistent) while the ray at the same pixel
+  resolves to a DIFFERENT networked object (rayObj non-null, ids 1082877/1082878 — the
+  server-streamed surroundings, exactly the synthesis's "the ray walks up to the networked
+  building; the hud pick keeps the chair"). Three further nudges moved `ownId=0`. The PASS
+  is now fully measured, no inference left. FREE RIDER also banked: this session's chair
+  pointer is 0x52965310 vs the first run's 0x52BE5CD0 — different session, different
+  pointer — the no-session-stable-handle datum that keeps id-minting rejected.
 - The latched pointer driven through the advertised `object::move_p` row: **the chair
   visibly moved in-world** (maintainer-confirmed). Pointer-keyed manipulation works.
 
