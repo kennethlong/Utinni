@@ -27,6 +27,7 @@
 #include "swg/camera/camera.h"
 #include "swg/misc/swg_string.h"
 #include "swg/client/client.h"
+#include "swg/object/object.h"
 #include "utility/log.h"
 
 #include <atomic>
@@ -441,13 +442,20 @@ void ilfProbeTick()
         rayObj = swg::network::idManagerGetObjectById(id);
     }
 
+    // DIRECT id measurement on the picked object itself (advertised getNetworkId row via
+    // getNetworkIdValue -- the inspector's getter). The ray's rayId is circumstantial (a
+    // different pick path at the same pixel); hudPickId is the object's OWN id: 0 = id-less
+    // (.ilf per the provider -- addClientOnlyInteriorLayoutObject never assigns one).
+    const int64_t hudPickId = hudPick->getNetworkIdValue();
+
     const bool same = (rayResult == 1 && rayObj == hudPick);
-    char m[224];
+    char m[256];
     std::snprintf(m, sizeof(m),
-                  "ilfProbe: hudPick=0x%p rayResult=%d rayId=%lld rayObj=0x%p -> %s",
-                  (void*)hudPick, rayResult, rayId, (void*)rayObj,
+                  "ilfProbe: hudPick=0x%p hudPickId=%lld rayResult=%d rayId=%lld rayObj=0x%p -> %s",
+                  (void*)hudPick, hudPickId, rayResult, rayId, (void*)rayObj,
                   same ? "SAME (networked object; id path covers it)"
-                       : "DIVERGENCE (pointer path reached an object the id path can't)");
+                       : (hudPickId == 0 ? "DIVERGENCE (picked object is ID-LESS -- .ilf class, measured directly)"
+                                         : "DIVERGENCE (picked object HAS an id the ray didn't resolve to)"));
     utinni::log::info(m);
 }
 } // namespace utinni::cuiHud
@@ -478,8 +486,9 @@ extern "C" __declspec(dllexport) bool __cdecl utinni_ilfProbeNudge()
     swg::math::Vector up(0.0f, 0.25f, 0.0f);
     obj->move(up);
 
-    char m[96];
-    std::snprintf(m, sizeof(m), "ilfProbeNudge: moved 0x%p +0.25 (parent-space Y)", (void*)obj);
+    char m[128];
+    std::snprintf(m, sizeof(m), "ilfProbeNudge: moved 0x%p (ownId=%lld) +0.25 (parent-space Y)",
+                  (void*)obj, obj->getNetworkIdValue());
     utinni::log::info(m);
     return true;
 }
