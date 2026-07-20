@@ -143,6 +143,10 @@ extern pLoadScene loadScene;
 // v16 (24 / Goal A+): player lookAt-target id READ shim (advertised-only; null on SWGEmu).
 using pGetPlayerLookAtTargetId = int64_t(__cdecl*)();
 extern pGetPlayerLookAtTargetId getPlayerLookAtTargetId;
+// v21 (24): current-scene-id copy-out (advertised-only; null on SWGEmu). wsGetSavePath
+// convention: returns needed length INCLUDING the NUL; 0 = no scene loaded.
+using pGetSceneId = int(__cdecl*)(char* buf, int cap);
+extern pGetSceneId getSceneId;
 } // namespace swg::game
 
 // -- graphics (graphics/graphics.cpp:37-83 + D-04 accessors) ----------------
@@ -877,6 +881,9 @@ static const Binding s_bindings[] = {
     // point). clear is the public static CuiRadialMenuManager::clear (editor-teardown reset).
     {"clientWorld::collideScreenRay", (void**)&swg::clientWorld::collideScreenRay}, // 1 hit / 0 miss; objectsOnly=1 drops terrain/terrainFlora/interiorGeometry
     {"cuiRadialMenuManager::clear", (void**)&swg::cuiRadialMenuManager::clear},     // static &CuiRadialMenuManager::clear (v20 rider)
+
+    // ===== v21 (current-scene-id copy-out): 1 new endpoint =====
+    {"game::getSceneId", (void**)&swg::game::getSceneId}, // needed length incl. NUL; 0 = no scene (wsGetSavePath convention)
 };
 
 // ----------------------------------------------------------------------
@@ -917,8 +924,8 @@ constexpr size_t kIncCount = 0
 
 constexpr size_t kBindingCount = sizeof(s_bindings) / sizeof(s_bindings[0]);
 
-static_assert(kIncCount == 142, "contract .inc size drifted from the expected 142 names (v20 / Live World Editor ray-pick + radial clear: 2 name-adds)");
-static_assert(kBindingCount == 140, "s_bindings[] must bind 140 of 142 (.inc minus the TWO carve-outs)");
+static_assert(kIncCount == 143, "contract .inc size drifted from the expected 143 names (v21 / current-scene-id copy-out: 1 name-add)");
+static_assert(kBindingCount == 141, "s_bindings[] must bind 141 of 143 (.inc minus the TWO carve-outs)");
 static_assert(kBindingCount == kIncCount - 2,
               "exactly two .inc names are carve-outs: consoleHelper::sendInput (D-02) + "
               "client::wndProc (embed-resize regression; RNDR-04 follow-on)");
@@ -1086,6 +1093,8 @@ constexpr const char* kBindingNames[] = {
     // ===== v20 additions — lockstep with s_bindings[] above =====
     "clientWorld::collideScreenRay",
     "cuiRadialMenuManager::clear",
+    // ===== v21 additions — lockstep with s_bindings[] above =====
+    "game::getSceneId",
 };
 
 constexpr bool allNamesInInc()

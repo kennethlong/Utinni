@@ -400,3 +400,9 @@ ENGINE_HOOKPOINT(camera, getTransformO2W)               // int (float* out12) --
 // positionchanged ANSWER.
 ENGINE_HOOKPOINT(clientWorld, collideScreenRay)         // int (int screenX, int screenY, int objectsOnly, __int64* outHitObjectId, float* outPoint3) -- 1 hit / 0 miss; terrain hit -> id 0 + valid point; objectsOnly=1 drops terrain/terrainFlora/interiorGeometry
 ENGINE_HOOKPOINT(cuiRadialMenuManager, clear)           // static void (void) -- plain &fn [CuiRadialMenuManager.h:47]
+
+// -- current-scene-id copy-out (v20->v21, 2026-07-19 change request #2):
+// one-click "Reload current scene" (unload + load(getSceneId())) + .ws
+// auto-naming. Game::getSceneId() is inline + returns const std::string&
+// -> copy-out shim mandatory (ABI RULE), wsGetSavePath convention.
+ENGINE_HOOKPOINT(game, getSceneId)                      // int (char* buf, int cap) -- needed length INCLUDING NUL; 0 = no scene loaded

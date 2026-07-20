@@ -116,6 +116,16 @@ pLoadScene loadScene = nullptr;
 using pGetPlayerLookAtTargetId = int64_t(__cdecl*)();
 pGetPlayerLookAtTargetId getPlayerLookAtTargetId = nullptr;
 
+// v21 (24): current-scene-id copy-out. Provider advertises game::getSceneId ->
+// extern "C" utinni_getSceneId(char* buf, int cap): Game::getSceneId() is inline + returns
+// const std::string& (both un-advertisable, ABI RULE) -> copy-out shim, wsGetSavePath
+// convention (returns needed length INCLUDING the NUL; 0 = no scene loaded). The id is the
+// SAME string WorldSnapshot::load()/wsSaveSnapshot() key the .ws filename on, so
+// wsUnloadSnapshot() + load(getSceneId()) is the correct one-click reload. The slot starts
+// null and resolves only on the advertised client.
+using pGetSceneId = int(__cdecl*)(char* buf, int cap);
+pGetSceneId getSceneId = nullptr;
+
 // WS-0/WS-1 (advertised-client editor unlock): consumer-maintained "advertised editor scene loaded" flag.
 // The advertised contract exposes NO isInWorld/getScene signal, so this is the closest proxy for "an
 // editor-initiated scene is live": set true after the advertised swg::game::loadScene returns in hkMainLoop,

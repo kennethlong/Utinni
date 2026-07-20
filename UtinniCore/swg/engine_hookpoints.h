@@ -217,8 +217,15 @@
 // cross the boundary; terrain hit = id 0 + valid point, the place-at-cursor
 // case). Plus cuiRadialMenuManager::clear -- the rider pre-approved in the
 // 2026-07-18 positionchanged ANSWER. 142 names.
+//
+// v20 -> v21 (2026-07-19, SWG-Toolkit change request #2): game::getSceneId
+// -- current-scene-id copy-out (wsGetSavePath convention: needed length
+// INCLUDING NUL; 0 = no scene). Game::getSceneId() is inline + returns
+// const std::string& -> shim mandatory (ABI RULE). Enables one-click
+// "Reload current scene" (unload + load(getSceneId())) and .ws
+// auto-naming. 143 names.
 // ----------------------------------------------------------------------
-#define ENGINE_HOOKPOINTS_VERSION 20
+#define ENGINE_HOOKPOINTS_VERSION 21
 
 // ----------------------------------------------------------------------
 // One row per advertised endpoint: a stable contract name + the borrowed
