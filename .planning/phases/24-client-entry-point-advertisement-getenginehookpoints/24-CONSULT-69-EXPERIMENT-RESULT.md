@@ -16,8 +16,15 @@ class). Consumer probe = Utinni `c2cf79d` + UtinniPlugins `641de8d`.
 - Hovering a cantina chair with `setAllowTargetAnything(true)`: the hud's pointer-keyed
   selection watcher (`cuiHud::getTarget` → `m_lastSelectedObject`) held a stable non-null
   `Object*` while the id-keyed ray at the same cursor pixel returned **id 0** (objectsOnly=1
-  → an id-less object; nothing in its parent chain carries a NetworkId). The predicted
-  divergence, measured.
+  → an id-less object; nothing in its parent chain carries a NetworkId).
+- **Evidence caveat (maintainer review, same evening):** the ray and the hud pick are two
+  different collision paths — "both resolved the same chair" was an INFERENCE in this run,
+  not a measurement (rayId=0 proves the ray hit *an* id-less object at that pixel, not that
+  the hud-picked object itself is id-less). Probe upgraded (`b93ebff`): it now reads the
+  picked object's OWN NetworkId directly (`getNetworkIdValue`, the inspector getter — .ilf
+  objects never get one assigned), logging `hudPickId=` per pick and `ownId=` per nudge.
+  The next run turns the inference into a direct measurement; the manipulation half of the
+  PASS (the latched pointer moved the object) stands regardless.
 - The latched pointer driven through the advertised `object::move_p` row: **the chair
   visibly moved in-world** (maintainer-confirmed). Pointer-keyed manipulation works.
 
