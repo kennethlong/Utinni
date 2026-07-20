@@ -38,6 +38,13 @@
 #include "swg/object/object.h"
 #include "swg/ui/imgui_impl.h"
 
+// CONSULT-69 .ilf probe reset, defined in ui/cui_manager.cpp. Forward-declared (not in a header)
+// so the probe adds zero CppSharp-parsed surface.
+namespace utinni::cuiHud
+{
+void ilfProbeReset();
+} // namespace utinni::cuiHud
+
 // WS-4: drop the advertised GroundScene reload latch on scene teardown (defined in ground_scene.cpp).
 // Global-scope forward-decl (the hooks live in namespace utinni; declaring it there would create a phantom
 // utinni::swg). Same lightweight forward-decl pattern as direct_input's isEditorSceneLoaded.
@@ -642,6 +649,11 @@ void __cdecl hkCleanupScene()
     // WS-4: drop the GroundScene reload latch before teardown so a reload queued mid-cleanup no-ops rather
     // than calling reloadTerrain on a freed instance. Inert on SWGEmu (latch never set there).
     swg::groundScene::clearAdvertisedInstance();
+
+    // CONSULT-69: clear the .ilf probe's latched Object* before teardown -- .ilf objects are
+    // deleted on building despawn/zone (the one delete site), so the latch must not survive
+    // a scene change. Inert while the probe is disarmed.
+    utinni::cuiHud::ilfProbeReset();
 
     utinni::log::info("hkCleanupScene: ENTRY -> calling swg::game::cleanupScene trampoline");
     swg::game::cleanupScene();

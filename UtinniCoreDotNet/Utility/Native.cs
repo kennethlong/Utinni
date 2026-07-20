@@ -200,6 +200,21 @@ namespace UtinniCoreDotNet.Utility
             EntryPoint = "utinni_worldPickScreenCenter")]
         public static extern int WorldPickScreenCenter(int objectsOnly, out long hitObjectId, [Out] float[] point3);
 
+        // CONSULT-69 decisive experiment (.ilf pointer-keyed selection probe). SetIlfProbe arms a
+        // per-frame native comparison of the hud's pointer-keyed hover pick vs the id-keyed cursor
+        // ray (divergence logged to utinni.log; last non-null pick latched). IlfProbeNudge moves the
+        // latched object +0.25m via the advertised object::move_p row -- live movement proves the
+        // pointer-keyed manipulation path. GAME THREAD ONLY -- marshal via AddMainLoopCall.
+        // Probe scaffolding: remove with the native probe when the experiment closes.
+        [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+            EntryPoint = "utinni_setIlfProbe")]
+        public static extern void SetIlfProbe([MarshalAs(UnmanagedType.I1)] bool enable);
+
+        [DllImport("UtinniCore", CallingConvention = CallingConvention.Cdecl,
+            EntryPoint = "utinni_ilfProbeNudge")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool IlfProbeNudge();
+
         // Phase 24: gate calls through SWG function pointers that may be UNRESOLVED
         // on the advertised (GetEngineHookPoints) client. On that client a SWG entry
         // point absent from the catalog keeps its hardcoded SWGEmu RVA, which is

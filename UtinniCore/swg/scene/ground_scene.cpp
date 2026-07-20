@@ -37,6 +37,14 @@
 #include "swg/camera/debug_camera.h"
 #include "swg/vtbl_resolve.h" // free-cam: SWGEmu alter-slot self-check (.cpp-only include -> not CppSharp-parsed)
 
+// CONSULT-69 .ilf probe tick, defined in ui/cui_manager.cpp. Forward-declared here (not in a header)
+// so the probe adds zero CppSharp-parsed surface.
+namespace utinni::cuiHud
+{
+void ilfProbeTick();
+void ilfProbeReset();
+} // namespace utinni::cuiHud
+
 #include <atomic>
 #include <cstdio>
 #include <intrin.h>
@@ -458,6 +466,9 @@ void __fastcall hkUpdateLoop(GroundScene* pThis, DWORD EDX, float time)
         dispatchSnapshot(preDrawLoopCallbacks, preDrawLoopCallbacksMutex,
                          [pThis](void (*func)(GroundScene*))
                          { func(pThis); });
+
+        // CONSULT-69 .ilf pointer-selection probe (cui_hud.cpp): no-op while disarmed.
+        utinni::cuiHud::ilfProbeTick();
 
         static std::atomic<int> s_updateProbeCount{0};
         const int n = s_updateProbeCount.fetch_add(1, std::memory_order_relaxed);

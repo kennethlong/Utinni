@@ -26,8 +26,10 @@
 #include "swg/endpoints.h"
 #include "swg/camera/camera.h"
 #include "swg/misc/swg_string.h"
+#include "swg/client/client.h"
 #include "utility/log.h"
 
+#include <atomic>
 #include <cstdio>
 #include <mutex>
 #include <vector>
@@ -353,3 +355,131 @@ void SystemMessageManager::detour()
     swg::systemMessageManager::receiveMessage = (swg::systemMessageManager::pReceiveMessage)Detour::Create(swg::systemMessageManager::receiveMessage, hkReceiveMessage, DETOUR_TYPE_PUSH_RET);
 }
 } // namespace utinni
+
+// CONSULT-69 probe externs: the v20 ray row (defined in ui/cui_hud.cpp) + the v12 id resolver
+// (defined in misc/network.cpp) -- same local-extern pattern as endpoints_bindings.cpp.
+namespace swg::clientWorld
+{
+using pCollideScreenRay = int(__cdecl*)(int screenX, int screenY, int objectsOnly, __int64* outHitObjectId, float* outPoint3);
+extern pCollideScreenRay collideScreenRay;
+} // namespace swg::clientWorld
+
+namespace swg::network
+{
+using pIdManagerGetObjectById = utinni::Object*(__cdecl*)(const int64_t& id);
+extern pIdManagerGetObjectById idManagerGetObjectById;
+} // namespace swg::network
+
+// ── CONSULT-69 decisive experiment (.ilf pointer-keyed selection probe) ─────────────────────
+// Per-frame while armed (called from hkUpdateLoop's advertised block): read the hud's
+// pointer-keyed selection watcher (cuiHud g_instance/getTarget = SwgCuiHud::m_lastSelectedObject,
+// a TRANSIENT hover pick per Cursor's trace) alongside the id-keyed ray at the cursor pixel.
+// DIVERGENCE (hud holds an Object* the ray's networked-ancestor id does NOT resolve to) proves
+// the pointer path reaches id-less .ilf decorations -> selection/manipulation ship on v21 as-is.
+// The last non-null hover pick is LATCHED (the hover clears when the cursor moves to the TJT
+// nudge button -- the latch is what the nudge drives). Latch lifetime: cleared on disarm and on
+// scene cleanup (the one .ilf delete site is building-despawn/zone, so a same-scene latch is
+// safe for a user-triggered probe; NEVER extend this pattern across scene changes). Kill switch:
+// disarm + setAllowTargetAnything(false). Probe scaffolding -- remove when the experiment closes.
+namespace
+{
+std::atomic<bool> s_ilfProbeArmed{false};
+utinni::Object* s_ilfLastHudPick = nullptr; // change-detector so the log fires per pick, not per frame
+utinni::Object* s_ilfLatchedPick = nullptr; // last non-null hover pick; the nudge target
+} // namespace
+
+namespace utinni::cuiHud
+{
+void ilfProbeReset()
+{
+    s_ilfLastHudPick = nullptr;
+    s_ilfLatchedPick = nullptr;
+}
+
+void ilfProbeTick()
+{
+    if (!s_ilfProbeArmed.load(std::memory_order_relaxed))
+    {
+        return;
+    }
+    if (swg::cuiHud::g_instance == nullptr || swg::cuiHud::getTarget == nullptr ||
+        swg::clientWorld::collideScreenRay == nullptr)
+    {
+        return;
+    }
+
+    const swgptr hud = swg::cuiHud::g_instance();
+    utinni::Object* hudPick = (hud != 0) ? reinterpret_cast<utinni::Object*>(swg::cuiHud::getTarget(hud)) : nullptr;
+
+    if (hudPick == s_ilfLastHudPick)
+    {
+        return; // no pick change this frame
+    }
+    s_ilfLastHudPick = hudPick;
+
+    if (hudPick == nullptr)
+    {
+        utinni::log::info("ilfProbe: hover pick cleared (latch retained for the nudge)");
+        return;
+    }
+    s_ilfLatchedPick = hudPick;
+
+    // The id-keyed half: ray at the cursor pixel, resolved back through the v12 id row.
+    __int64 rayId = 0;
+    float pt[3] = {};
+    int rayResult = -1;
+    POINT cur;
+    const HWND hwnd = utinni::Client::getSwgHwnd();
+    if (hwnd != nullptr && GetCursorPos(&cur) && ScreenToClient(hwnd, &cur))
+    {
+        rayResult = swg::clientWorld::collideScreenRay(cur.x, cur.y, 1, &rayId, pt);
+    }
+    utinni::Object* rayObj = nullptr;
+    if (rayId != 0 && swg::network::idManagerGetObjectById != nullptr)
+    {
+        const int64_t id = rayId;
+        rayObj = swg::network::idManagerGetObjectById(id);
+    }
+
+    const bool same = (rayResult == 1 && rayObj == hudPick);
+    char m[224];
+    std::snprintf(m, sizeof(m),
+                  "ilfProbe: hudPick=0x%p rayResult=%d rayId=%lld rayObj=0x%p -> %s",
+                  (void*)hudPick, rayResult, rayId, (void*)rayObj,
+                  same ? "SAME (networked object; id path covers it)"
+                       : "DIVERGENCE (pointer path reached an object the id path can't)");
+    utinni::log::info(m);
+}
+} // namespace utinni::cuiHud
+
+extern "C" __declspec(dllexport) void __cdecl utinni_setIlfProbe(bool enable)
+{
+    s_ilfProbeArmed.store(enable, std::memory_order_relaxed);
+    if (!enable)
+    {
+        utinni::cuiHud::ilfProbeReset();
+    }
+    utinni::log::info(enable ? "ilfProbe: ARMED (hover objects in-world; watch utinni.log)"
+                             : "ilfProbe: disarmed (latch cleared)");
+}
+
+// The manipulation half of the experiment: move the latched pick +0.25m in parent space via
+// the advertised object::move_p row. Live movement of a DIVERGENCE-classified pick = the
+// pointer-keyed gizmo path is proven end-to-end. GAME THREAD ONLY (managed marshals).
+extern "C" __declspec(dllexport) bool __cdecl utinni_ilfProbeNudge()
+{
+    utinni::Object* obj = s_ilfLatchedPick;
+    if (obj == nullptr)
+    {
+        utinni::log::info("ilfProbeNudge: nothing latched (arm the probe + hover an object first)");
+        return false;
+    }
+
+    swg::math::Vector up(0.0f, 0.25f, 0.0f);
+    obj->move(up);
+
+    char m[96];
+    std::snprintf(m, sizeof(m), "ilfProbeNudge: moved 0x%p +0.25 (parent-space Y)", (void*)obj);
+    utinni::log::info(m);
+    return true;
+}

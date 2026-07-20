@@ -32,6 +32,7 @@
 #include "swg/client/client.h"
 #include "utility/log.h"
 
+#include <atomic>
 #include <cstdio>
 #include <intrin.h>
 
